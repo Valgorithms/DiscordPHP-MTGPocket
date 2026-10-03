@@ -1,0 +1,190 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * This file is a part of the DiscordPHP-MTGPocket project.
+ *
+ * Copyright (c) 2026-present Valithor Obsidion <valithor@discordphp.org>
+ *
+ * This file is subject to the MIT license that is bundled
+ * with this source code in the LICENSE.md file.
+ */
+
+namespace MTGPocket\Tests;
+
+use Discord\Factory\Factory;
+use Discord\Helpers\Collection as DiscordCollection;
+use Discord\Http\Http;
+use Discord\Parts\Interactions\Command\Command;
+use Discord\Parts\Interactions\Command\Option;
+use MTG\Helpers\CommandSignature;
+use MTG\MTG;
+use MTGPocket\Builders\PocketMessageBuilder;
+use MTGPocket\Modules\Collection;
+use MTGPocket\Modules\Packs;
+use MTGPocket\Modules\PlayerDecks;
+
+/**
+ * The Discord side, without connecting: command definitions follow
+ * Discord's rules, and the game's messages build and fit Discord's limits.
+ *
+ * @covers \MTGPocket\Modules\Packs
+ * @covers \MTGPocket\Modules\Collection
+ * @covers \MTGPocket\Modules\PlayerDecks
+ * @covers \MTGPocket\Modules\PocketTrait
+ * @covers \MTGPocket\Builders\PocketMessageBuilder
+ */
+final class ModulesTest extends PocketTestCase
+{
+    /**
+     * An MTG client that can build parts but never connects.
+     *
+     * @return MTG
+     */
+    private static function offlineClient(): MTG
+    {
+        $mtg = (new \ReflectionClass(MTG::class))->newInstanceWithoutConstructor();
+        (function (): void {
+            $this->http = (new \ReflectionClass(Http::class))->newInstanceWithoutConstructor();
+            $this->factory = new Factory($this);
+            $this->collectionClass = DiscordCollection::class;
+        })->call($mtg);
+
+        return $mtg;
+    }
+
+    public function testCommandsFollowDiscordsRules(): void
+    {
+        $mtg = self::offlineClient();
+        $names = [];
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket)] as $module) {
+            foreach ($module->commands($mtg) as $builder) {
+                $command = $builder->jsonSerialize();
+                $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
+                $this->assertArrayNotHasKey($command['name'], $names);
+                $names[$command['name']] = true;
+
+                $this->assertMatchesRegularExpression('/^[-_\p{Ll}\p{N}]{1,32}$/u', $command['name']);
+                $this->assertDescription($command['description'], $command['name']);
+                $this->assertOptions($command['options'] ?? [], $command['name']);
+                $this->assertLessThanOrEqual(4000, self::characters($command), "{$command['name']} is over Discord's 4000 characters.");
+                $this->assertTrue(CommandSignature::same($command, json_decode(json_encode($command), true)));
+            }
+        }
+
+        // None clashes with DiscordPHP-MTG's own commands.
+        $this->assertSame(['pack', 'collection', 'decks'], array_keys($names));
+    }
+
+    public function testPackMessage(): void
+    {
+        $this->importPool('TST', ['R' => self::fullColor()]);
+        $opened = $this->pocket->dailyPacks->open('116927250145869826', 'Val', 'TST', 'R');
+
+        $json = json_encode(PocketMessageBuilder::pack($opened), JSON_UNESCAPED_UNICODE);
+
+        $this->assertStringContainsString('Set TST — Red pack', $json);
+        $this->assertStringContainsString('15 new', $json);
+        $this->assertStringContainsString('cards.scryfall.io', $json, 'The rare is shown big.');
+        $this->assertStringContainsString('"custom_id":"pocket:card"', $json);
+    }
+
+    public function testDeckMessageAndExport(): void
+    {
+        $this->importPool('TST', ['R' => ['common' => 1, 'rare' => 1]]);
+        $this->pocket->inventories->addCards('1', ['TST-R-common-1' => 4, 'TST-R-rare-1' => 1]);
+        $builder = $this->pocket->deckBuilder;
+        $deck = $builder->create('1', 'Val', 'Burn');
+        $builder->add('1', 'Burn', 'TST-R-common-1', 4);
+        $builder->add('1', 'Burn', 'Mountain', 16);
+        [$deck] = $builder->add('1', 'Burn', 'TST-R-rare-1', 1, true);
+
+        $json = json_encode(PocketMessageBuilder::deck($deck, $builder->cardData(...), true, 'Added.'), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('main deck 20 · side deck 1 · ✅ active', $json);
+        $this->assertStringContainsString('**Lands** (16)', $json);
+        $this->assertStringContainsString('**Creatures** (4)', $json);
+        $this->assertStringContainsString('pocket:export:1:'.$deck->id, $json);
+
+        $this->assertSame("Deck\n4 TST R common 1 (TST) 1\n16 Mountain\n\nSideboard\n1 TST R rare 1 (TST) 1\n", PocketMessageBuilder::export($deck, $builder->cardData(...)));
+
+        $list = json_encode(PocketMessageBuilder::deckList($builder->list('1'), $deck->id), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('**Burn** · Standard · 20 + 1 · ✅ active', $list);
+    }
+
+    public function testCollectionPagesKeepTheirQueryInTheCustomId(): void
+    {
+        $this->importPool('TST', ['R' => ['common' => 25]]);
+        $this->pocket->inventories->addCards('116927250145869826', array_fill_keys(array_map(fn ($n) => "TST-R-common-{$n}", range(1, 25)), 2));
+        $module = new Collection($this->pocket);
+        $page = (new \ReflectionMethod($module, 'page'))->getClosure($module);
+        $encode = (new \ReflectionMethod($module, 'encode'))->getClosure(null);
+        $decode = (new \ReflectionMethod($module, 'decode'))->getClosure(null);
+
+        $query = ['player' => '116927250145869826', 'set' => 'TST', 'color' => 'R', 'rarity' => 'common', 'name' => 'r common'];
+        $json = json_encode($page(self::offlineClient(), $query, 2), JSON_UNESCAPED_UNICODE);
+
+        $this->assertStringContainsString('page 2 of 3', $json);
+        $this->assertStringContainsString('50 copies', $json);
+        preg_match_all('/"custom_id":"([^"]+)"/', $json, $ids);
+        foreach ($ids[1] as $id) {
+            $this->assertLessThanOrEqual(100, strlen($id), "{$id} is too long for Discord.");
+        }
+        preg_match('/pocket:page:([^:"]+):3/', $json, $next);
+        $this->assertSame($query, $decode($next[1]), 'The next page runs the same query.');
+        $this->assertNull($decode('not-a-query'));
+
+        $unicode = ['player' => '1', 'set' => '', 'color' => '', 'rarity' => '', 'name' => mb_strcut('Æther ünïcödé names, cut short', 0, 24)];
+        $this->assertSame($unicode, $decode($encode($unicode)));
+        $longest = $encode(['player' => '11692725014586982600', 'set' => 'ABCDEFGH', 'color' => 'M', 'rarity' => 'mythic', 'name' => $unicode['name']]);
+        $this->assertLessThanOrEqual(100, strlen("pocket:page:{$longest}:999"), 'The longest query still fits in a custom id.');
+    }
+
+    private function assertDescription(string $description, string $where): void
+    {
+        $this->assertGreaterThanOrEqual(1, mb_strlen($description), "{$where} needs a description.");
+        $this->assertLessThanOrEqual(100, mb_strlen($description), "{$where}'s description is too long.");
+    }
+
+    private function assertOptions(array $options, string $where): void
+    {
+        $this->assertLessThanOrEqual(25, count($options), "{$where} has more than 25 options.");
+
+        $optional = false;
+        foreach ($options as $option) {
+            $option = (array) $option;
+            $name = "{$where} {$option['name']}";
+
+            $this->assertMatchesRegularExpression('/^[-_\p{Ll}\p{N}]{1,32}$/u', $option['name']);
+            $this->assertDescription($option['description'] ?? '', $name);
+
+            if (in_array($option['type'], [Option::SUB_COMMAND, Option::SUB_COMMAND_GROUP], true)) {
+                $this->assertOptions($option['options'] ?? [], $name);
+                continue;
+            }
+
+            if (! empty($option['required'])) {
+                $this->assertFalse($optional, "{$name}: required options must come first.");
+            } else {
+                $optional = true;
+            }
+
+            $choices = (array) ($option['choices'] ?? []);
+            $this->assertLessThanOrEqual(25, count($choices));
+            $this->assertFalse(! empty($choices) && ! empty($option['autocomplete']), "{$name}: choices or autocomplete, not both.");
+        }
+    }
+
+    private static function characters(array $command): int
+    {
+        $count = mb_strlen($command['name'] ?? '') + mb_strlen($command['description'] ?? '');
+        foreach ((array) ($command['options'] ?? []) as $option) {
+            $count += self::characters((array) $option);
+            foreach ((array) (((array) $option)['choices'] ?? []) as $choice) {
+                $count += mb_strlen((string) ((array) $choice)['name']) + mb_strlen((string) ((array) $choice)['value']);
+            }
+        }
+
+        return $count;
+    }
+}

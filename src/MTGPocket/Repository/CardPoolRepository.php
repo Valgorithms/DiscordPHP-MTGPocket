@@ -32,6 +32,20 @@ class CardPoolRepository
      */
     protected array $cache = [];
 
+    /**
+     * Set code by card uuid, across every pool; built on first use.
+     *
+     * @var array<string, string>|null
+     */
+    protected ?array $cardIndex = null;
+
+    /**
+     * The set codes the index was built from.
+     *
+     * @var string[]
+     */
+    protected array $indexedSets = [];
+
     public function __construct(protected JsonStore $store)
     {
     }
@@ -60,6 +74,58 @@ class CardPoolRepository
     {
         $this->store->put(self::COLLECTION, strtoupper($pool->setCode), $pool->jsonSerialize());
         $this->cache[strtoupper($pool->setCode)] = $pool;
+        $this->cardIndex = null;
+    }
+
+    /**
+     * Every imported pool, by set code, oldest set first.
+     *
+     * @return array<string, CardPool>
+     */
+    public function all(): array
+    {
+        $pools = [];
+        foreach ($this->setCodes() as $setCode) {
+            if ($pool = $this->find($setCode)) {
+                $pools[$pool->setCode] = $pool;
+            }
+        }
+        uasort($pools, fn (CardPool $a, CardPool $b) => [$a->releaseDate ?? '', $a->setCode] <=> [$b->releaseDate ?? '', $b->setCode]);
+
+        return $pools;
+    }
+
+    /**
+     * A card from any pool, with its `setCode` and `setName` added.
+     *
+     * @param string $uuid
+     *
+     * @return array|null Null when no imported pool has it.
+     */
+    public function card(string $uuid): ?array
+    {
+        // Pools can be imported by another process while the bot runs: on a
+        // miss, rebuild the index when the set of pools has changed.
+        if ($this->cardIndex !== null && ! isset($this->cardIndex[$uuid]) && $this->setCodes() !== $this->indexedSets) {
+            $this->cardIndex = null;
+        }
+        if ($this->cardIndex === null) {
+            $this->indexedSets = $this->setCodes();
+            $this->cardIndex = [];
+            foreach ($this->all() as $setCode => $pool) {
+                foreach (CardPool::COLORS as $color) {
+                    foreach ($pool->uuids($color) as $cardUuid) {
+                        $this->cardIndex[$cardUuid] ??= $setCode;
+                    }
+                }
+            }
+        }
+
+        $setCode = $this->cardIndex[$uuid] ?? null;
+        $pool = $setCode === null ? null : $this->find($setCode);
+        $card = $pool?->card($uuid);
+
+        return $card === null ? null : $card + ['setCode' => $pool->setCode, 'setName' => $pool->setName];
     }
 
     /**
