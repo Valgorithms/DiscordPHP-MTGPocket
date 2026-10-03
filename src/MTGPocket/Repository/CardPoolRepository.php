@@ -32,6 +32,13 @@ class CardPoolRepository
      */
     protected array $cache = [];
 
+    /**
+     * Set code by card uuid, across every pool; built on first use.
+     *
+     * @var array<string, string>|null
+     */
+    protected ?array $cardIndex = null;
+
     public function __construct(protected JsonStore $store)
     {
     }
@@ -60,6 +67,52 @@ class CardPoolRepository
     {
         $this->store->put(self::COLLECTION, strtoupper($pool->setCode), $pool->jsonSerialize());
         $this->cache[strtoupper($pool->setCode)] = $pool;
+        $this->cardIndex = null;
+    }
+
+    /**
+     * Every imported pool, by set code, oldest set first.
+     *
+     * @return array<string, CardPool>
+     */
+    public function all(): array
+    {
+        $pools = [];
+        foreach ($this->setCodes() as $setCode) {
+            if ($pool = $this->find($setCode)) {
+                $pools[$pool->setCode] = $pool;
+            }
+        }
+        uasort($pools, fn (CardPool $a, CardPool $b) => [$a->releaseDate ?? '', $a->setCode] <=> [$b->releaseDate ?? '', $b->setCode]);
+
+        return $pools;
+    }
+
+    /**
+     * A card from any pool, with its `setCode` and `setName` added.
+     *
+     * @param string $uuid
+     *
+     * @return array|null Null when no imported pool has it.
+     */
+    public function card(string $uuid): ?array
+    {
+        if ($this->cardIndex === null) {
+            $this->cardIndex = [];
+            foreach ($this->all() as $setCode => $pool) {
+                foreach (CardPool::COLORS as $color) {
+                    foreach ($pool->uuids($color) as $cardUuid) {
+                        $this->cardIndex[$cardUuid] ??= $setCode;
+                    }
+                }
+            }
+        }
+
+        $setCode = $this->cardIndex[$uuid] ?? null;
+        $pool = $setCode === null ? null : $this->find($setCode);
+        $card = $pool?->card($uuid);
+
+        return $card === null ? null : $card + ['setCode' => $pool->setCode, 'setName' => $pool->setName];
     }
 
     /**

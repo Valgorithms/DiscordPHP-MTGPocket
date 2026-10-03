@@ -103,6 +103,36 @@ class DeckRepository
     }
 
     /**
+     * Changes a deck under a lock, so two edits to it never lose each other.
+     *
+     * @param string               $playerId
+     * @param string               $deckId
+     * @param callable(Deck): void $change
+     *
+     * @throws \OutOfBoundsException When there is no such deck.
+     *
+     * @return Deck The deck as saved.
+     */
+    public function modify(string $playerId, string $deckId, callable $change): Deck
+    {
+        $saved = null;
+        $this->store->update(self::COLLECTION, $playerId, function (?array $data) use ($deckId, $change, &$saved): array {
+            if (! isset($data['decks'][$deckId])) {
+                throw new \OutOfBoundsException("No deck {$deckId}.");
+            }
+            $deck = Deck::fromArray($data['decks'][$deckId]);
+            $change($deck);
+            $deck->updatedAt = time();
+            $data['decks'][$deckId] = self::encode($deck);
+            $saved = $deck;
+
+            return $data;
+        });
+
+        return $saved;
+    }
+
+    /**
      * @param string $playerId
      * @param string $deckId
      *

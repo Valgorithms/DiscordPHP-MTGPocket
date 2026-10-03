@@ -21,6 +21,9 @@ use MTG\MTG;
 use MTG\Modules\About;
 use MTG\Modules\Cards;
 use MTG\Modules\Help;
+use MTGPocket\Modules\Collection;
+use MTGPocket\Modules\Packs;
+use MTGPocket\Modules\PlayerDecks;
 use MTGPocket\Pocket;
 
 use function React\Promise\set_rejection_handler;
@@ -57,9 +60,12 @@ $mtg = new MTG([
     ],
 ]);
 
-// Card lookups come from DiscordPHP-MTG. The game's own modules (daily
-// packs, collection, decks, matches) are added here as they are built.
+// Card lookups come from DiscordPHP-MTG; daily packs, collections and decks
+// are the game's own. Matches are added here as they are built.
 $mtg
+    ->addModule(new Packs($pocket))
+    ->addModule(new Collection($pocket))
+    ->addModule(new PlayerDecks($pocket))
     ->addModule(new Cards())
     ->addModule(new Help())
     ->addModule(new About());
