@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace MTGPocket\Packs;
 
 use MTGPocket\Cards\CardPool;
+use MTGPocket\Models\Inventory;
 use MTGPocket\Models\Player;
 use MTGPocket\Repository\CardPoolRepository;
 use MTGPocket\Repository\InventoryRepository;
@@ -121,23 +122,26 @@ class DailyPacks
         [$pool, $color] = $this->pick($set, $color);
         $pack = $this->generator->generate($pool, $color);
 
-        // Claim the day under the player's lock, so two clicks at once open one pack.
+        // Claim the day under the player's lock, so two clicks at once open
+        // one pack. The cards are added inside that lock and the claim is
+        // written only after them: if adding the cards fails, the day is not
+        // used up, so a pack is never claimed without its cards.
         $now = ($this->clock)();
-        $this->players->modify($playerId, function (Player $player) use ($now): void {
+        $new = [];
+        $this->players->modify($playerId, function (Player $player) use ($now, $pack, $playerId, &$new): void {
             if ($player->lastDailyPackAt !== null && self::nextDay($player->lastDailyPackAt) > $now) {
                 throw new DailyPackUnavailableException(self::nextDay($player->lastDailyPackAt));
             }
-            $player->lastDailyPackAt = $now;
-        });
 
-        $new = [];
-        $this->inventories->modify($playerId, function ($inventory) use ($pack, &$new): void {
-            foreach ($pack->counts() as $uuid => $count) {
-                if ($inventory->cards->get($uuid) === 0) {
-                    $new[$uuid] = true;
+            $this->inventories->modify($playerId, function (Inventory $inventory) use ($pack, &$new): void {
+                foreach ($pack->counts() as $uuid => $count) {
+                    if ($inventory->cards->get($uuid) === 0) {
+                        $new[$uuid] = true;
+                    }
+                    $inventory->cards->add($uuid, $count);
                 }
-                $inventory->cards->add($uuid, $count);
-            }
+            });
+            $player->lastDailyPackAt = $now;
         });
 
         return new OpenedPack($pack, $new, self::nextDay($now));

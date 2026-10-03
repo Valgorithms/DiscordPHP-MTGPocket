@@ -17,6 +17,7 @@ use MTGPocket\Cards\CardPool;
 use MTGPocket\Packs\DailyPacks;
 use MTGPocket\Packs\DailyPackUnavailableException;
 use MTGPocket\Packs\PackGenerator;
+use MTGPocket\Pocket;
 use Random\Engine\Xoshiro256StarStar;
 use Random\Randomizer;
 
@@ -66,6 +67,19 @@ final class PacksTest extends PocketTestCase
         $this->assertSame('mythic', $pack->cards[PackGenerator::SIZE - 1]['rarity']);
     }
 
+    public function testTheRareSlotKeepsItsCardWhenTheWildcardRollsRare(): void
+    {
+        // Exactly enough distinct cards: 14 commons and the only rare.
+        $pool = $this->importPool('TST', ['U' => ['common' => 14, 'rare' => 1]]);
+
+        for ($seed = 0; $seed < 200; $seed++) {
+            $pack = (new PackGenerator(new Randomizer(new Xoshiro256StarStar($seed))))->generate($pool, 'U');
+
+            $this->assertCount(PackGenerator::SIZE, $pack->counts(), "Seed {$seed} repeated a card.");
+            $this->assertSame('TST-U-rare-1', $pack->cards[PackGenerator::SIZE - 1]['uuid']);
+        }
+    }
+
     public function testAColorWithoutRaresHasNoPacks(): void
     {
         $pool = $this->importPool('TST', ['G' => ['common' => 20, 'uncommon' => 5]]);
@@ -113,6 +127,24 @@ final class PacksTest extends PocketTestCase
         $second = $packs->open('1', 'Val');
         $this->assertSame(2 * PackGenerator::SIZE, $this->pocket->inventories->get('1')->cards->total());
         $this->assertLessThan(PackGenerator::SIZE, count($second->new), 'Cards already owned are not new.');
+    }
+
+    public function testAPackWhoseCardsCannotBeSavedDoesNotUseUpTheDay(): void
+    {
+        $this->importPool('TST', ['R' => self::fullColor()]);
+        mkdir($this->directory.'/inventories', 0777, true);
+        file_put_contents($this->directory.'/inventories/1.json', '{broken');
+
+        try {
+            $this->pocket->dailyPacks->open('1', 'Val');
+            $this->fail('A broken inventory must stop the pack.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('not valid JSON', $e->getMessage());
+        }
+        $this->assertNull($this->pocket->players->find('1')->lastDailyPackAt, 'The day is still free to claim.');
+
+        unlink($this->directory.'/inventories/1.json');
+        $this->assertSame(PackGenerator::SIZE, count($this->pocket->dailyPacks->open('1', 'Val')->pack->cards));
     }
 
     public function testPacksLeftToChanceComeFromValidChoices(): void
@@ -173,5 +205,12 @@ final class PacksTest extends PocketTestCase
         $this->assertSame('BBB', $this->pocket->pools->card('BBB-U-rare-1')['setCode']);
         $this->assertSame('Set AAA', $this->pocket->pools->card('AAA-W-common-1')['setName']);
         $this->assertNull($this->pocket->pools->card('nope'));
+
+        // A set imported by another process (the importer) is found without a restart.
+        $importer = new Pocket($this->directory);
+        $pool = new CardPool('CCC', 'Set CCC', '2025-01-01');
+        $pool->add(['uuid' => 'CCC-G-rare-1', 'name' => 'New card', 'rarity' => 'rare', 'colors' => ['G']]);
+        $importer->pools->save($pool);
+        $this->assertSame('CCC', $this->pocket->pools->card('CCC-G-rare-1')['setCode']);
     }
 }

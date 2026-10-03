@@ -100,18 +100,23 @@ class DeckBuilder
      */
     public function create(string $playerId, string $playerName, string $name, string $format = 'standard'): Deck
     {
-        $name = $this->checkName($playerId, $name);
+        $name = self::cleanName($name);
         $format = self::checkFormat($format);
-        if (count($this->decks->forPlayer($playerId)) >= self::MAX_DECKS) {
-            throw new \InvalidArgumentException('You already have '.self::MAX_DECKS.' decks. Delete one first.');
-        }
 
-        $deck = $this->decks->create($playerId, $name, $format);
+        // Checked under the deck file's lock, so two creates at once cannot both pass.
+        $deck = $this->decks->create($playerId, $name, $format, function (array $decks) use ($name): void {
+            if (count($decks) >= self::MAX_DECKS) {
+                throw new \InvalidArgumentException('You already have '.self::MAX_DECKS.' decks. Delete one first.');
+            }
+            self::checkUnique($decks, $name);
+        });
 
-        $player = $this->players->findOrCreate($playerId, $playerName);
-        if ($player->activeDeckId === null || ! $this->decks->find($playerId, $player->activeDeckId)) {
-            $this->players->modify($playerId, fn (Player $player) => $player->activeDeckId = $deck->id);
-        }
+        $this->players->findOrCreate($playerId, $playerName);
+        $this->players->modify($playerId, function (Player $player) use ($playerId, $deck): void {
+            if ($player->activeDeckId === null || ! $this->decks->find($playerId, $player->activeDeckId)) {
+                $player->activeDeckId = $deck->id;
+            }
+        });
 
         return $deck;
     }
@@ -231,9 +236,12 @@ class DeckBuilder
     public function rename(string $playerId, string $deck, string $name): Deck
     {
         $deck = $this->find($playerId, $deck);
-        $name = $this->checkName($playerId, $name, $deck->id);
+        $name = self::cleanName($name);
 
-        return $this->decks->modify($playerId, $deck->id, fn (Deck $deck) => $deck->name = $name);
+        return $this->decks->modify($playerId, $deck->id, function (Deck $deck, array $decks) use ($name): void {
+            self::checkUnique($decks, $name, $deck->id);
+            $deck->name = $name;
+        });
     }
 
     /**
@@ -265,8 +273,12 @@ class DeckBuilder
     {
         $deck = $this->find($playerId, $deck);
         $this->decks->delete($playerId, $deck->id);
-        if ($this->players->find($playerId)?->activeDeckId === $deck->id) {
-            $this->players->modify($playerId, fn (Player $player) => $player->activeDeckId = null);
+        if ($this->players->find($playerId) !== null) {
+            $this->players->modify($playerId, function (Player $player) use ($deck): void {
+                if ($player->activeDeckId === $deck->id) {
+                    $player->activeDeckId = null;
+                }
+            });
         }
 
         return $deck;
@@ -285,7 +297,13 @@ class DeckBuilder
     {
         $deck = $this->find($playerId, $deck);
         $this->players->findOrCreate($playerId, $playerName);
-        $this->players->modify($playerId, fn (Player $player) => $player->activeDeckId = $deck->id);
+        $this->players->modify($playerId, function (Player $player) use ($playerId, $deck): void {
+            // Checked under the player's lock; delete clears the active deck under the same lock after removing the deck.
+            if ($this->decks->find($playerId, $deck->id) === null) {
+                throw new \OutOfBoundsException("**{$deck->name}** was just deleted.");
+            }
+            $player->activeDeckId = $deck->id;
+        });
 
         return $deck;
     }
@@ -400,29 +418,40 @@ class DeckBuilder
     }
 
     /**
-     * A valid, unused deck name.
+     * A deck name with its spaces tidied.
      *
-     * @param string      $playerId
-     * @param string      $name
-     * @param string|null $except   The deck being renamed.
+     * @param string $name
      *
-     * @throws \InvalidArgumentException
+     * @throws \InvalidArgumentException When it is empty or too long.
      *
      * @return string
      */
-    protected function checkName(string $playerId, string $name, ?string $except = null): string
+    protected static function cleanName(string $name): string
     {
         $name = trim(preg_replace('/\s+/u', ' ', $name));
         if ($name === '' || mb_strlen($name) > self::MAX_NAME) {
             throw new \InvalidArgumentException('A deck name needs 1 to '.self::MAX_NAME.' characters.');
         }
-        foreach ($this->decks->forPlayer($playerId) as $deck) {
+
+        return $name;
+    }
+
+    /**
+     * Refuses a name another of the player's decks already has.
+     *
+     * @param array<string, Deck> $decks
+     * @param string              $name
+     * @param string|null         $except The deck being renamed.
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected static function checkUnique(array $decks, string $name, ?string $except = null): void
+    {
+        foreach ($decks as $deck) {
             if ($deck->id !== $except && strcasecmp($deck->name, $name) === 0) {
                 throw new \InvalidArgumentException("You already have a deck called **{$deck->name}**.");
             }
         }
-
-        return $name;
     }
 
     /**

@@ -30,7 +30,8 @@ use Random\Randomizer;
  *
  * A pack holds no card twice while the color has enough cards. When a
  * color runs short of a rarity, the slot takes the nearest rarity that has
- * cards left; the rare slot never falls below rare.
+ * cards left; the rare slot never falls below rare, and is drawn first so
+ * the wildcard cannot take its card.
  *
  * @since 0.2.0
  */
@@ -57,6 +58,19 @@ class PackGenerator
         'uncommon' => ['uncommon', 'common', 'rare', 'mythic'],
         'rare' => ['rare', 'mythic'],
         'mythic' => ['mythic', 'rare'],
+    ];
+
+    /**
+     * Fallbacks for the wildcard slot, which, unlike the rare slot, may go
+     * below rare rather than repeat a card.
+     *
+     * @var array<string, string[]>
+     */
+    protected const array WILDCARD_FALLBACK = [
+        'common' => ['common', 'uncommon', 'rare', 'mythic'],
+        'uncommon' => ['uncommon', 'common', 'rare', 'mythic'],
+        'rare' => ['rare', 'mythic', 'uncommon', 'common'],
+        'mythic' => ['mythic', 'rare', 'uncommon', 'common'],
     ];
 
     protected Randomizer $random;
@@ -93,8 +107,11 @@ class PackGenerator
         foreach (array_fill(0, self::UNCOMMONS, 'uncommon') as $rarity) {
             $uuids[] = $this->draw($pool, $color, $rarity, $taken);
         }
-        $uuids[] = $this->draw($pool, $color, $this->wildcardRarity($pool, $color), $taken);
-        $uuids[] = $this->draw($pool, $color, $this->rareSlotRarity($pool, $color), $taken);
+        // The rare slot draws before the wildcard, so a rare wildcard can
+        // never take the only rare and leave the rare slot a repeat.
+        $rare = $this->draw($pool, $color, $this->rareSlotRarity($pool, $color), $taken);
+        $uuids[] = $this->draw($pool, $color, $this->wildcardRarity($pool, $color), $taken, true);
+        $uuids[] = $rare;
 
         return new Pack($pool->setCode, $pool->setName, $color, array_map(fn (string $uuid) => $pool->card($uuid), $uuids));
     }
@@ -146,13 +163,15 @@ class PackGenerator
      * @param CardPool            $pool
      * @param string              $color
      * @param string              $rarity
-     * @param array<string, bool> $taken  Uuids already in the pack.
+     * @param array<string, bool> $taken    Uuids already in the pack.
+     * @param bool                $wildcard Use {@see WILDCARD_FALLBACK}.
      *
      * @return string
      */
-    protected function draw(CardPool $pool, string $color, string $rarity, array &$taken): string
+    protected function draw(CardPool $pool, string $color, string $rarity, array &$taken, bool $wildcard = false): string
     {
-        foreach (self::FALLBACK[$rarity] as $candidate) {
+        $fallback = ($wildcard ? self::WILDCARD_FALLBACK : self::FALLBACK)[$rarity];
+        foreach ($fallback as $candidate) {
             $left = array_values(array_filter($pool->uuids($color, $candidate), fn (string $uuid) => ! isset($taken[$uuid])));
             if ($left !== []) {
                 $uuid = $left[$this->random->getInt(0, count($left) - 1)];
@@ -163,7 +182,7 @@ class PackGenerator
         }
 
         // Fewer distinct cards than slots: allow a repeat.
-        foreach (self::FALLBACK[$rarity] as $candidate) {
+        foreach ($fallback as $candidate) {
             if ($all = $pool->uuids($color, $candidate)) {
                 return $all[$this->random->getInt(0, count($all) - 1)];
             }

@@ -39,12 +39,7 @@ class DeckRepository
      */
     public function forPlayer(string $playerId): array
     {
-        $decks = [];
-        foreach ($this->store->get(self::COLLECTION, $playerId)['decks'] ?? [] as $id => $data) {
-            $decks[(string) $id] = Deck::fromArray($data);
-        }
-
-        return $decks;
+        return self::decode($this->store->get(self::COLLECTION, $playerId) ?? []);
     }
 
     /**
@@ -62,17 +57,21 @@ class DeckRepository
      * Starts a new empty deck with an id that is free among the player's
      * decks.
      *
-     * @param string $playerId
-     * @param string $name
-     * @param string $format
+     * @param string                                    $playerId
+     * @param string                                    $name
+     * @param string                                    $format
+     * @param (callable(array<string, Deck>): void)|null $check    Sees the player's decks under the lock and throws to refuse.
      *
      * @return Deck
      */
-    public function create(string $playerId, string $name, string $format = 'standard'): Deck
+    public function create(string $playerId, string $name, string $format = 'standard', ?callable $check = null): Deck
     {
         $deck = null;
-        $this->store->update(self::COLLECTION, $playerId, function (?array $data) use ($playerId, $name, $format, &$deck): array {
+        $this->store->update(self::COLLECTION, $playerId, function (?array $data) use ($playerId, $name, $format, $check, &$deck): array {
             $data ??= ['playerId' => $playerId, 'decks' => []];
+            if ($check !== null) {
+                $check(self::decode($data));
+            }
             do {
                 $id = 'd'.bin2hex(random_bytes(4));
             } while (isset($data['decks'][$id]));
@@ -104,10 +103,12 @@ class DeckRepository
 
     /**
      * Changes a deck under a lock, so two edits to it never lose each other.
+     * The change also sees all of the player's decks as they are under the
+     * lock, for checks that span decks.
      *
-     * @param string               $playerId
-     * @param string               $deckId
-     * @param callable(Deck): void $change
+     * @param string                                     $playerId
+     * @param string                                     $deckId
+     * @param callable(Deck, array<string, Deck>): void $change
      *
      * @throws \OutOfBoundsException When there is no such deck.
      *
@@ -121,7 +122,7 @@ class DeckRepository
                 throw new \OutOfBoundsException("No deck {$deckId}.");
             }
             $deck = Deck::fromArray($data['decks'][$deckId]);
-            $change($deck);
+            $change($deck, self::decode($data));
             $deck->updatedAt = time();
             $data['decks'][$deckId] = self::encode($deck);
             $saved = $deck;
@@ -152,6 +153,23 @@ class DeckRepository
         });
 
         return $found;
+    }
+
+    /**
+     * The decks in a player's file.
+     *
+     * @param array $data As stored.
+     *
+     * @return array<string, Deck>
+     */
+    protected static function decode(array $data): array
+    {
+        $decks = [];
+        foreach ($data['decks'] ?? [] as $id => $deck) {
+            $decks[(string) $id] = Deck::fromArray($deck);
+        }
+
+        return $decks;
     }
 
     /**

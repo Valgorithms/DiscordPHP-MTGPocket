@@ -39,6 +39,13 @@ class CardPoolRepository
      */
     protected ?array $cardIndex = null;
 
+    /**
+     * The set codes the index was built from.
+     *
+     * @var string[]
+     */
+    protected array $indexedSets = [];
+
     public function __construct(protected JsonStore $store)
     {
     }
@@ -97,7 +104,13 @@ class CardPoolRepository
      */
     public function card(string $uuid): ?array
     {
+        // Pools can be imported by another process while the bot runs: on a
+        // miss, rebuild the index when the set of pools has changed.
+        if ($this->cardIndex !== null && ! isset($this->cardIndex[$uuid]) && $this->setCodes() !== $this->indexedSets) {
+            $this->cardIndex = null;
+        }
         if ($this->cardIndex === null) {
+            $this->indexedSets = $this->setCodes();
             $this->cardIndex = [];
             foreach ($this->all() as $setCode => $pool) {
                 foreach (CardPool::COLORS as $color) {

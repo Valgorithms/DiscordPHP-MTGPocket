@@ -125,6 +125,10 @@ final class CollectionAndDecksTest extends PocketTestCase
             }, 'has only 2 **Island**'],
             'duplicate name' => [fn ($b) => $b->create('1', 'Val', ' mine '), 'already have a deck called **Mine**'],
             'empty name' => [fn ($b) => $b->create('1', 'Val', '   '), '1 to 50 characters'],
+            'renaming onto another deck' => [function ($b) {
+                $b->create('1', 'Val', 'Other');
+                $b->rename('1', 'Other', 'MINE');
+            }, 'already have a deck called **Mine**'],
             'unknown format' => [fn ($b) => $b->create('1', 'Val', 'Other', 'vintage'), 'format must be one of'],
         ];
     }
