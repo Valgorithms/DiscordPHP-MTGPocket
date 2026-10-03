@@ -22,6 +22,7 @@ use MTG\Helpers\CommandSignature;
 use MTG\MTG;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Modules\Collection;
+use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
 
@@ -32,6 +33,7 @@ use MTGPocket\Modules\PlayerDecks;
  * @covers \MTGPocket\Modules\Packs
  * @covers \MTGPocket\Modules\Collection
  * @covers \MTGPocket\Modules\PlayerDecks
+ * @covers \MTGPocket\Modules\Matches
  * @covers \MTGPocket\Modules\PocketTrait
  * @covers \MTGPocket\Builders\PocketMessageBuilder
  */
@@ -58,7 +60,7 @@ final class ModulesTest extends PocketTestCase
     {
         $mtg = self::offlineClient();
         $names = [];
-        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket)] as $module) {
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket)] as $module) {
             foreach ($module->commands($mtg) as $builder) {
                 $command = $builder->jsonSerialize();
                 $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
@@ -74,7 +76,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match'], array_keys($names));
     }
 
     public function testPackMessage(): void

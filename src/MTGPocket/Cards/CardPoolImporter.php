@@ -40,6 +40,14 @@ class CardPoolImporter
     public const array SET_TYPES = ['core', 'expansion', 'draft_innovation', 'masters'];
 
     /**
+     * Card columns the rules engine needs, kept with each pool card when
+     * the MTGJSON build has them.
+     *
+     * @var string[]
+     */
+    public const array RULES_COLUMNS = ['manaCost', 'types', 'supertypes', 'subtypes', 'power', 'toughness', 'loyalty', 'defense', 'text', 'keywords', 'layout'];
+
+    /**
      * @param Database $database An open MTGJSON build (wait for `ready()` first).
      */
     public function __construct(protected Database $database)
@@ -95,8 +103,10 @@ class CardPoolImporter
         }
 
         $rarities = CardPool::RARITIES;
+        $rules = array_values(array_intersect(self::RULES_COLUMNS, array_keys($this->database->getColumns('cards'))));
         $rows = $this->database->select(
             'SELECT "c"."uuid", "c"."name", "c"."number", "c"."rarity", "c"."colors", "c"."manaValue", "c"."type", "c"."boosterTypes", "i"."scryfallId"'
+            .implode('', array_map(fn (string $column) => ", \"c\".\"{$column}\"", $rules))
             .' FROM "cards" AS "c" LEFT JOIN "cardIdentifiers" AS "i" ON "i"."uuid" = "c"."uuid"'
             .' WHERE "c"."setCode" = ?'
             .' AND COALESCE("c"."side", \'a\') = \'a\''
@@ -121,7 +131,7 @@ class CardPoolImporter
             }
             $names[$row['name']] = true;
 
-            $pool->add([
+            $card = [
                 'uuid' => $row['uuid'],
                 'name' => $row['name'],
                 'number' => $row['number'] ?? null,
@@ -130,7 +140,17 @@ class CardPoolImporter
                 'manaValue' => (float) ($row['manaValue'] ?? 0),
                 'type' => $row['type'] ?? null,
                 'scryfallId' => $row['scryfallId'] ?? null,
-            ]);
+            ];
+            // What the rules engine reads. A card with no mana cost keeps `manaCost: null`: it cannot be cast.
+            foreach ($rules as $column) {
+                if (isset($row[$column])) {
+                    $card[$column] = $row[$column];
+                }
+            }
+            if (in_array('manaCost', $rules, true)) {
+                $card['manaCost'] ??= null;
+            }
+            $pool->add($card);
         }
 
         return $pool;
