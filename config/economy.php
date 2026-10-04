@@ -46,4 +46,23 @@ return [
         ['days' => 10 * 365, 'multiplier' => 1.0], // the last ten years
         ['days' => null, 'multiplier' => 0.75],    // older
     ],
+
+    // Points for ranked games (the ones `/match queue` pairs) and the limits
+    // on rental decks. Friendly challenges earn nothing, so two friends
+    // cannot farm points by conceding to each other.
+    'matches' => [
+        // Points for winning a ranked game, and for playing one to the end
+        // without winning.
+        'win_points' => 50,
+        'play_points' => 10,
+        // A game pays only if it reached this turn, so conceding at once earns nothing.
+        'reward_min_turns' => 3,
+        // Ranked games a player can earn points from each day (UTC).
+        'rewarded_games_per_day' => 10,
+        // Games a player can start with rental decks each day (UTC).
+        'rental_games_per_day' => 3,
+        // Rental decks are the official decks of the sets this mode's library
+        // allows: Standard's are the current sets.
+        'rental_mode' => 'standard',
+    ],
 ];

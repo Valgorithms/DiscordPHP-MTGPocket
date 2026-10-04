@@ -19,6 +19,8 @@ use MTGPocket\Cards\CardPool;
 use MTGPocket\Cards\CardPoolImporter;
 use MTGPocket\Game\CardDefinition;
 use MTGPocket\Pocket;
+use MTGPocket\Rentals\RentalDeck;
+use MTGPocket\Rentals\RentalDeckImporter;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
 use React\Http\Browser;
@@ -29,6 +31,8 @@ use React\Http\Browser;
  * @covers \MTGPocket\Cards\CardPool
  * @covers \MTGPocket\Cards\CardPoolImporter
  * @covers \MTGPocket\Repository\CardPoolRepository
+ * @covers \MTGPocket\Rentals\RentalDeckImporter
+ * @covers \MTGPocket\Repository\RentalRepository
  */
 final class CardPoolImporterTest extends StorageTestCase
 {
@@ -75,6 +79,14 @@ final class CardPoolImporterTest extends StorageTestCase
         }
         $pdo->exec('UPDATE "cards" SET "manaCost" = \'{3}{W}{W}\', "power" = \'4\', "toughness" = \'4\', "text" = \'Flying, vigilance\', "types" = \'Creature\', "subtypes" = \'Angel\', "keywords" = \'Flying, Vigilance\' WHERE "uuid" = \'angel\'');
         $pdo->exec('UPDATE "cards" SET "manaCost" = \'{R}\', "text" = \'Lightning Bolt deals 3 damage to any target.\', "types" = \'Instant\' WHERE "uuid" = \'bolt\'');
+        // Official decks, for rentals.
+        $pdo->exec('CREATE TABLE "setDecks" ("code" TEXT, "name" TEXT, "type" TEXT, "releaseDate" TEXT, "mainBoard" TEXT, "sideBoard" TEXT, "commander" TEXT)');
+        $deck = $pdo->prepare('INSERT INTO "setDecks" VALUES (\'TST\', ?, ?, ?, ?, ?, ?)');
+        $board = fn (array $counts) => json_encode(array_map(fn (string $uuid, int $count) => ['uuid' => $uuid, 'count' => $count], array_keys($counts), $counts));
+        $deck->execute(['Red Starter', 'Starter Kit', '2020-02-01', $board(['bolt' => 20, 'island' => 18, 'angel' => 2]), $board(['dragon' => 1]), null]);
+        $deck->execute(['Too Small', 'Theme Deck', null, $board(['bolt' => 10]), '[]', null]);
+        $deck->execute(['Big Commander', 'Commander Deck', null, $board(['bolt' => 99]), '[]', $board(['nicol' => 1])]);
+        $deck->execute(['Missing Cards', 'Theme Deck', null, $board(['bolt' => 20, 'not-in-build' => 20]), '[]', null]);
         $pdo = null;
 
         $loop = Loop::get();
@@ -121,6 +133,23 @@ final class CardPoolImporterTest extends StorageTestCase
 
         $this->assertTrue($pool->hasRareSlot('R'));
         $this->assertFalse($pool->hasRareSlot('W'));
+    }
+
+    public function testImportsOfficialDecksAsRentals(): void
+    {
+        $decks = (new RentalDeckImporter($this->database))->import('tst');
+        $this->assertSame(['Red Starter'], array_map(fn (RentalDeck $deck) => $deck->name, $decks), 'Not decks under 40 cards, Commander decks or decks with unknown cards.');
+
+        $deck = $decks[0];
+        $this->assertSame(['tst-red-starter', 'TST', 'Test Set', 'Starter Kit', '2020-02-01', 40], [$deck->id, $deck->setCode, $deck->setName, $deck->type, $deck->releaseDate, $deck->mainCount()]);
+        $this->assertSame(['dragon' => 1], $deck->deck('p', 'standard')->side->toArray());
+        $this->assertSame('{R}', $deck->card('bolt')['manaCost'], 'It carries the rules data.');
+        $this->assertSame('TST', $deck->card('bolt')['setCode']);
+        $this->assertCount(40, $deck->mainCards());
+
+        $pocket = new Pocket($this->directory.'/data');
+        $pocket->rentalDecks->save($deck);
+        $this->assertEquals($deck, (new Pocket($this->directory.'/data'))->rentalDecks->find('tst-red-starter'));
     }
 
     public function testUnknownSetIsAnError(): void

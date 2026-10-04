@@ -24,13 +24,18 @@ use Discord\Parts\Channel\Message\AllowedMentions;
 use MTG\Builders\CardMessageBuilder;
 use MTG\Helpers\Text;
 use MTGPocket\Game\Game;
+use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Game\GameObject;
+use MTGPocket\Matches\Ladder;
 use MTGPocket\Matches\MatchRecord;
+use MTGPocket\Modes\GameMode;
+use MTGPocket\Modes\GameModes;
 
 /**
  * The messages of a match:
  *
  * - the challenge, with **Accept** and **Decline**
+ * - matchmaking: waiting in a queue, the game modes and each mode's ladder
  * - the board everyone sees: life, cards in each zone, the battlefield,
  *   the stack and what just happened
  * - each player's own action panel, {@see actions()} (only they see it): their hand and the
@@ -79,14 +84,108 @@ class MatchMessageBuilder extends PocketMessageBuilder
             ->addComponent(Container::new()
                 ->setAccentColor(CardMessageBuilder::ACCENTS['R'])
                 ->addComponent(TextDisplay::new(sprintf(
-                    "### ⚔️ A challenge!\n<@%s>, **%s** challenges you to a game of Magic with **%s**.\n-# You play your active deck (`/decks use` to change it). Matches use full Magic rules; spells the engine cannot read yet still resolve without those parts.",
+                    "### ⚔️ A challenge!\n<@%s>, **%s** challenges you to a %s game of Magic with **%s**.\n-# You play your active deck (`/decks use` to change it); it has to meet the %s rules. Matches use full Magic rules; spells the engine cannot read yet still resolve without those parts.",
                     $opponent['id'],
                     $challenger['name'],
+                    self::modeLabel($match),
                     $challenger['deckName'],
+                    self::modeLabel($match),
                 ))))
             ->addComponent(ActionRow::new()
                 ->addComponent(Button::new(Button::STYLE_SUCCESS, self::id($match->id, 'accept'))->setLabel('Accept'))
                 ->addComponent(Button::new(Button::STYLE_DANGER, self::id($match->id, 'decline'))->setLabel('Decline')));
+    }
+
+    /**
+     * The name of a match's mode.
+     *
+     * @param MatchRecord $match
+     *
+     * @return string
+     */
+    private static function modeLabel(MatchRecord $match): string
+    {
+        return DeckBuilder::FORMATS[$match->mode] ?? ucfirst($match->mode);
+    }
+
+    /**
+     * Waiting in a queue for an opponent.
+     *
+     * @param GameMode $mode
+     * @param string   $deckName
+     * @param int      $rating
+     * @param int      $minutes  How long the spot lasts.
+     *
+     * @return static
+     */
+    public static function queued(GameMode $mode, string $deckName, int $rating, int $minutes): static
+    {
+        return static::notice(sprintf(
+            "### 🔎 Looking for a %s opponent\nYou are in the queue with **%s** (rating %d). The next %s player close to your rating plays you, and you are pinged where they queue. The longer you wait, the wider the range of ratings.\n-# Your spot lasts %d minutes. `/match leave` takes you out.",
+            $mode->label,
+            $deckName,
+            $rating,
+            $mode->label,
+            $minutes,
+        ));
+    }
+
+    /**
+     * The game modes, their deck rules and who is waiting in each.
+     *
+     * @param GameModes          $modes
+     * @param array<string, int> $waiting Mode => players in its queue.
+     *
+     * @return static
+     */
+    public static function modes(GameModes $modes, array $waiting): static
+    {
+        $lines = [];
+        foreach ($modes->all() as $id => $mode) {
+            $status = $mode->playable ? Text::plural($waiting[$id] ?? 0, 'player').' waiting' : 'games coming soon';
+            $lines[] = "**{$mode->label}** · {$status}\n-# {$mode->summary()}";
+        }
+
+        return static::panel()->addComponent(Container::new()
+            ->setAccentColor(CardMessageBuilder::ACCENTS['colorless'])
+            ->addComponent(TextDisplay::new("### 🎲 Game modes\n-# A deck is built for one mode (`/decks format`). `/match queue` finds you an opponent; `/match challenge` plays someone you pick."))
+            ->addComponent(Separator::new())
+            ->addComponent(TextDisplay::new(implode("\n", $lines))));
+    }
+
+    /**
+     * A mode's ratings ladder.
+     *
+     * @param GameMode $mode
+     * @param array[]  $standings Best first; see {@see Ladder::standings()}.
+     * @param string   $playerId  Who asked, to show their place.
+     * @param int      $top       How many to list.
+     *
+     * @return static
+     */
+    public static function ladder(GameMode $mode, array $standings, string $playerId, int $top = 10): static
+    {
+        $line = fn (int $rank, array $entry) => sprintf('%d. **%s** · %d · %d–%d%s', $rank, $entry['name'] !== '' ? $entry['name'] : 'Unknown', $entry['rating'], $entry['wins'], $entry['losses'], $entry['draws'] > 0 ? "–{$entry['draws']}" : '');
+        $lines = [];
+        $mine = null;
+        foreach (array_values($standings) as $index => $entry) {
+            if ($index < $top) {
+                $lines[] = $line($index + 1, $entry);
+            }
+            if ($entry['id'] === $playerId) {
+                $mine = [$index + 1, $entry];
+            }
+        }
+        $text = $lines === [] ? 'No ranked games yet. Be the first: `/match queue`.' : implode("\n", $lines);
+        $text .= "\n\n".($mine === null
+            ? '-# You have no ranked games in '.$mode->label.' yet; everyone starts at '.Ladder::START.'.'
+            : ($mine[0] > $top ? $line(...$mine)."\n" : '').'-# You are #'.$mine[0].' of '.count($standings).'.');
+
+        return static::panel()->addComponent(Container::new()
+            ->setAccentColor(CardMessageBuilder::ACCENTS['multicolor'])
+            ->addComponent(TextDisplay::new("### 🏆 {$mode->label} ladder\n-# Rating · wins–losses(–draws). Ranked games are the ones `/match queue` pairs."))
+            ->addComponent(Separator::new())
+            ->addComponent(TextDisplay::new(Text::clip($text, 3500))));
     }
 
     /**
@@ -126,7 +225,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             Game::MULLIGAN => 'Opening hands',
             Game::OVER => "Game over after turn {$game->turn}",
             default => "Turn {$game->turn} · {$names[$game->active]}'s turn · {$game->step->label()}",
-        };
+        }.' · '.self::modeLabel($match).($match->ranked ? ' (ranked)' : '');
 
         $container = Container::new()
             ->setAccentColor(CardMessageBuilder::ACCENTS[$game->stage === Game::OVER ? 'multicolor' : 'colorless'])
@@ -186,7 +285,18 @@ class MatchMessageBuilder extends PocketMessageBuilder
     {
         $game = $match->game;
         if ($game->stage === Game::OVER) {
-            return ['text' => $game->winner === null ? '🤝 The game is a draw.' : "🏆 **{$game->players[$game->winner]->name}** wins!", 'ids' => []];
+            $text = $game->winner === null ? '🤝 The game is a draw.' : "🏆 **{$game->players[$game->winner]->name}** wins!";
+            foreach ($match->rewards as $reward) {
+                $name = $game->players[$game->seatOf((string) $reward['id']) ?? 0]->name;
+                if (($reward['points'] ?? 0) > 0) {
+                    $text .= "\n-# {$name} earned ".PocketMessageBuilder::points((int) $reward['points']).'.';
+                }
+                foreach ($reward['quests'] ?? [] as $quest) {
+                    $text .= "\n-# {$name} completed the quest **{$quest['label']}**: +".PocketMessageBuilder::points((int) $quest['points']).'.';
+                }
+            }
+
+            return ['text' => $text, 'ids' => []];
         }
 
         $lines = [];

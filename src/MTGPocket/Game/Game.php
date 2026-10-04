@@ -127,10 +127,11 @@ final class Game
      * @param string $id
      * @param array<int, array{id: string, name: string, cards: array[]}> $players Two players, each with their deck as a list of card data.
      * @param string $seed
+     * @param int    $life  Each player's starting life.
      *
      * @return self
      */
-    public static function start(string $id, array $players, string $seed): self
+    public static function start(string $id, array $players, string $seed, int $life = GamePlayer::STARTING_LIFE): self
     {
         if (count($players) !== 2) {
             throw new GameException('A game needs two players.');
@@ -139,6 +140,7 @@ final class Game
         $game = new self($id, $seed);
         foreach (array_values($players) as $seat => $player) {
             $game->players[$seat] = new GamePlayer($seat, (string) $player['id'], (string) $player['name']);
+            $game->players[$seat]->life = $life;
             $game->autoPass[$seat] = true;
             foreach ($player['cards'] as $card) {
                 $object = new GameObject($game->nextId++, $seat, $card, GameObject::LIBRARY);

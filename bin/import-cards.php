@@ -20,6 +20,7 @@ declare(strict_types=1);
  * Reads the AllPrintings build DiscordPHP-MTG keeps (MTGJSON_DATABASE,
  * default var/mtgjson/AllPrintings.sqlite), downloading it (~250 MB) if
  * there is none yet, and writes pools to MTGPOCKET_DATA (default var/data).
+ * Each set's official preconstructed decks are imported too, as rental decks.
  */
 
 use Discord\Http\Drivers\React;
@@ -29,6 +30,7 @@ use MTG\Database\Database;
 use MTG\Http\Http;
 use MTGPocket\Cards\CardPoolImporter;
 use MTGPocket\Pocket;
+use MTGPocket\Rentals\RentalDeckImporter;
 use React\EventLoop\Loop;
 use React\Http\Browser;
 
@@ -55,6 +57,7 @@ $status = 0;
 
 $database->ready()->then(function () use ($database, $pocket, $codes, $logger, &$status): void {
     $importer = new CardPoolImporter($database);
+    $rentals = new RentalDeckImporter($database);
     $codes = $codes ?: array_keys($importer->sets());
     $logger->info(sprintf('Importing %d set(s) from MTGJSON %s', count($codes), $database->getVersion() ?? '(unknown version)'));
 
@@ -65,6 +68,13 @@ $database->ready()->then(function () use ($database, $pocket, $codes, $logger, &
             $logger->error($e->getMessage());
             $status = 1;
             continue;
+        }
+        $decks = $rentals->import($code);
+        foreach ($decks as $deck) {
+            $pocket->rentalDecks->save($deck);
+        }
+        if ($decks !== []) {
+            $logger->info(sprintf('%s: %d rental deck(s)', $code, count($decks)));
         }
         if ($pool->size() === 0) {
             $logger->warning("{$code}: no booster cards, skipped");

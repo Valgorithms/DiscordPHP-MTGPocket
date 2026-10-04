@@ -30,6 +30,8 @@ use MTGPocket\Cards\CardPool;
 use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Models\Deck;
 use MTGPocket\Packs\OpenedPack;
+use MTGPocket\Quests\Quest;
+use MTGPocket\Rentals\RentalDeck;
 
 /**
  * The game's messages, as Components V2 in the style of DiscordPHP-MTG's:
@@ -104,6 +106,9 @@ class PocketMessageBuilder extends MessageBuilder
             )))
             ->addComponent(Separator::new())
             ->addComponent(TextDisplay::new(Text::clip(implode("\n", $lines), 3500)));
+        if ($opened->quests !== []) {
+            $container->addComponent(TextDisplay::new(self::questsDone($opened->quests)));
+        }
 
         $gallery = MediaGallery::new();
         $images = 0;
@@ -149,17 +154,19 @@ class PocketMessageBuilder extends MessageBuilder
     }
 
     /**
-     * A deck: its cards grouped by type, its side deck, and a picker to look
-     * at a card.
+     * A deck: whether it meets its format's rules, its cards grouped by
+     * type, its side deck, and a picker to look at a card.
      *
      * @param Deck                    $deck
      * @param callable(string): array $card   Card data by deck key.
      * @param bool                    $active Whether it is the player's active deck.
-     * @param string|null             $note   What just changed, shown above the deck.
+     * @param string|null             $note     What just changed, shown above the deck.
+     * @param string[]|null           $problems What keeps it from being played in its format; null when not checked.
+     * @param bool                    $export   Whether to offer **Export decklist** (not for rental decks).
      *
      * @return static
      */
-    public static function deck(Deck $deck, callable $card, bool $active, ?string $note = null): static
+    public static function deck(Deck $deck, callable $card, bool $active, ?string $note = null, ?array $problems = null, bool $export = true): static
     {
         $sections = [];
         foreach ($deck->main as $key => $count) {
@@ -191,6 +198,12 @@ class PocketMessageBuilder extends MessageBuilder
             $deck->side->total(),
             $active ? ' · ✅ active' : '',
         );
+        $format = DeckBuilder::FORMATS[$deck->format] ?? ucfirst($deck->format);
+        if ($problems === []) {
+            $heading .= "\n✅ Meets the {$format} rules.";
+        } elseif ($problems !== null) {
+            $heading .= "\n⚠️ Does not meet the {$format} rules yet:\n".implode("\n", array_map(fn (string $problem) => "- {$problem}", $problems));
+        }
 
         $container = Container::new()->setAccentColor(CardMessageBuilder::ACCENTS['multicolor']);
         if ($note !== null) {
@@ -210,6 +223,9 @@ class PocketMessageBuilder extends MessageBuilder
         if ($cards !== []) {
             $message->addComponent(ActionRow::new()->addComponent(self::cardPicker($cards)));
         }
+        if (! $export) {
+            return $message;
+        }
 
         return $message->addComponent(ActionRow::new()->addComponent(
             Button::new(Button::STYLE_SECONDARY, self::PREFIX.":export:{$deck->playerId}:{$deck->id}")->setLabel('Export decklist')
@@ -221,10 +237,11 @@ class PocketMessageBuilder extends MessageBuilder
      *
      * @param Deck[]      $decks
      * @param string|null $activeId
+     * @param string|null $rental   The rental deck they play with instead, if any.
      *
      * @return static
      */
-    public static function deckList(array $decks, ?string $activeId): static
+    public static function deckList(array $decks, ?string $activeId, ?string $rental = null): static
     {
         $lines = array_map(fn (Deck $deck) => sprintf(
             '**%s** · %s · %d + %d%s',
@@ -232,14 +249,95 @@ class PocketMessageBuilder extends MessageBuilder
             DeckBuilder::FORMATS[$deck->format] ?? ucfirst($deck->format),
             $deck->main->total(),
             $deck->side->total(),
-            $deck->id === $activeId ? ' · ✅ active' : '',
+            $deck->id === $activeId && $rental === null ? ' · ✅ active' : '',
         ), array_values($decks));
+        if ($rental !== null) {
+            array_unshift($lines, "**{$rental}** · rental · ✅ active");
+        }
 
         return static::panel()->addComponent(Container::new()
             ->setAccentColor(CardMessageBuilder::ACCENTS['multicolor'])
             ->addComponent(TextDisplay::new("### Your decks\n-# ".Text::plural(count($decks), 'deck').' · main + side deck'))
             ->addComponent(Separator::new())
-            ->addComponent(TextDisplay::new($lines === [] ? 'No decks yet. Start one with `/decks create`.' : implode("\n", $lines))));
+            ->addComponent(TextDisplay::new($lines === [] ? 'No decks yet. Start one with `/decks create`, or borrow one with `/decks rent`.' : implode("\n", $lines))));
+    }
+
+    /**
+     * A player's daily and weekly quests and their progress.
+     *
+     * @param array{daily: list<array{quest: Quest, progress: int}>, weekly: list<array{quest: Quest, progress: int}>, dailyEnds: int, weeklyEnds: int} $board From {@see \MTGPocket\Quests\Quests::board()}.
+     * @param int                                                                                                                                       $points The player's points.
+     *
+     * @return static
+     */
+    public static function quests(array $board, int $points): static
+    {
+        $section = function (string $title, array $entries, int $ends): string {
+            $lines = array_map(fn (array $entry) => sprintf(
+                '%s %s · %d/%d · %s',
+                $entry['progress'] >= $entry['quest']->goal ? '✅' : '▫️',
+                $entry['progress'] >= $entry['quest']->goal ? "~~{$entry['quest']->label}~~" : "**{$entry['quest']->label}**",
+                $entry['progress'],
+                $entry['quest']->goal,
+                self::points($entry['quest']->points),
+            ), $entries);
+
+            return "**{$title}** · new quests <t:{$ends}:R>\n".($lines === [] ? 'None.' : implode("\n", $lines));
+        };
+
+        return static::panel()->addComponent(Container::new()
+            ->setAccentColor(CardMessageBuilder::ACCENTS['multicolor'])
+            ->addComponent(TextDisplay::new("### Quests\n-# Points are paid the moment a quest is done · you have ".self::points($points)))
+            ->addComponent(Separator::new())
+            ->addComponent(TextDisplay::new($section('Daily', $board['daily'], $board['dailyEnds'])))
+            ->addComponent(TextDisplay::new($section('Weekly', $board['weekly'], $board['weeklyEnds']))));
+    }
+
+    /**
+     * Lines for quests something just completed.
+     *
+     * @param list<array{label: string, points: int}> $quests
+     *
+     * @return string
+     */
+    public static function questsDone(array $quests): string
+    {
+        return implode("\n", array_map(fn (array $quest) => "🎯 Quest done: **{$quest['label']}**, +".self::points($quest['points']).'.', $quests));
+    }
+
+    /**
+     * The rental decks on offer and how many rental games the player has
+     * left today.
+     *
+     * @param RentalDeck[] $rentals
+     * @param int          $gamesLeft
+     * @param int          $perDay
+     * @param string       $mode      The mode whose sets the rentals come from.
+     * @param string|null  $activeId  The player's rental, without {@see RentalDeck::PREFIX}.
+     *
+     * @return static
+     */
+    public static function rentalList(array $rentals, int $gamesLeft, int $perDay, string $mode, ?string $activeId): static
+    {
+        $lines = array_map(fn (RentalDeck $deck) => sprintf(
+            '**%s** · %s · %s · %d cards%s',
+            $deck->name,
+            $deck->setName !== '' ? $deck->setName : $deck->setCode,
+            $deck->type !== '' ? $deck->type : 'Deck',
+            $deck->mainCount(),
+            $deck->id === $activeId ? ' · ✅ active' : '',
+        ), array_values($rentals));
+
+        return static::panel()->addComponent(Container::new()
+            ->setAccentColor(CardMessageBuilder::ACCENTS['multicolor'])
+            ->addComponent(TextDisplay::new(sprintf(
+                "### Rental decks\n-# Official decks of the %s sets, free to play without owning the cards · %s left today of %d · pick one with `/decks rent`",
+                $mode,
+                Text::plural($gamesLeft, 'game'),
+                $perDay,
+            )))
+            ->addComponent(Separator::new())
+            ->addComponent(TextDisplay::new($lines === [] ? 'No rental decks yet: none have been imported for the current sets.' : Text::clip(implode("\n", $lines), 3500))));
     }
 
     /**

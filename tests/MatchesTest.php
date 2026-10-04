@@ -53,7 +53,7 @@ final class MatchesTest extends PocketTestCase
         foreach ([[self::ALICE, 'Alice'], [self::BOB, 'Bob']] as [$id, $name]) {
             $this->pocket->inventories->addCards($id, ['bears' => 4, 'shock' => 4, 'oldcard' => 1]);
             $builder = $this->pocket->deckBuilder;
-            $builder->create($id, $name, 'Gruul');
+            $builder->create($id, $name, 'Gruul', 'casual');
             $builder->add($id, 'Gruul', 'bears', 4);
             $builder->add($id, 'Gruul', 'shock', 4);
             $builder->add($id, 'Gruul', 'Forest', 16);
@@ -74,8 +74,8 @@ final class MatchesTest extends PocketTestCase
         $this->assertException(fn () => $matches->challenge(self::ALICE, 'Alice', self::ALICE, 'Alice'), 'cannot challenge yourself');
         $this->assertException(fn () => $matches->challenge('333', 'Carol', self::BOB, 'Bob'), 'no deck to play with');
 
-        $this->pocket->deckBuilder->create(self::ALICE, 'Alice', 'Tiny');
-        $this->assertException(fn () => $matches->challenge(self::ALICE, 'Alice', self::BOB, 'Bob', 'Tiny'), 'a match needs at least 40');
+        $this->pocket->deckBuilder->create(self::ALICE, 'Alice', 'Tiny', 'casual');
+        $this->assertException(fn () => $matches->challenge(self::ALICE, 'Alice', self::BOB, 'Bob', 'Tiny'), 'Casual needs at least 40');
 
         $this->pocket->deckBuilder->add(self::ALICE, 'Tiny', 'oldcard', 1);
         $this->pocket->deckBuilder->add(self::ALICE, 'Tiny', 'Mountain', 39);
@@ -349,15 +349,5 @@ final class MatchesTest extends PocketTestCase
         }
 
         return null;
-    }
-
-    private function assertException(callable $call, string $message): void
-    {
-        try {
-            $call();
-            $this->fail("Expected an error containing \"{$message}\".");
-        } catch (\InvalidArgumentException|\OutOfBoundsException $e) {
-            $this->assertStringContainsString($message, $e->getMessage());
-        }
     }
 }

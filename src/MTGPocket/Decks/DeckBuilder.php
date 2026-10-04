@@ -328,6 +328,7 @@ class DeckBuilder
                 throw new \OutOfBoundsException("**{$deck->name}** was just deleted.");
             }
             $player->activeDeckId = $deck->id;
+            $player->activeRental = null;
         });
 
         return $deck;

@@ -21,7 +21,9 @@ use MTG\Modules\Module;
 use MTG\MTG;
 use MTGPocket\Builders\MatchMessageBuilder;
 use MTGPocket\Builders\PocketMessageBuilder;
+use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Matches\MatchRecord;
+use MTGPocket\Matches\MatchService;
 use MTGPocket\Matches\PanelActions;
 use MTGPocket\Pocket;
 use React\Promise\PromiseInterface;
@@ -29,9 +31,13 @@ use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 /**
- * Matches between two players: `/match challenge|board|leave`, the
- * challenge's **Accept** and **Decline**, the board's buttons, and each
- * player's private action panel.
+ * Matches between two players: `/match queue|challenge|board|leave|modes|ladder`,
+ * the challenge's **Accept** and **Decline**, the board's buttons, and
+ * each player's private action panel.
+ *
+ * `/match queue` waits for an opponent in a game mode, or plays the one
+ * already waiting; those games are ranked. A challenge is a friendly game
+ * against a player you name.
  *
  * The board is public and shows what both players may see. A player's
  * hand and choices are only ever in their own panel, a hidden reply to
@@ -65,16 +71,23 @@ final class Matches implements Module
      */
     public function commands(MTG $mtg): array
     {
+        $mode = fn (string $description) => self::withChoices($mtg, self::option($mtg, Option::STRING, 'mode', $description), DeckBuilder::FORMATS);
+        $deck = fn () => self::option($mtg, Option::STRING, 'deck', 'Which of your decks or a rental deck; defaults to your active deck.', false, true);
+
         return [self::command('match', 'Play Magic against another player with your decks.')
+            ->addOption(self::subcommand($mtg, 'queue', 'Find an opponent for a ranked game.', $mode('The game mode; defaults to your deck\'s format.'), $deck()))
             ->addOption(self::subcommand(
                 $mtg,
                 'challenge',
-                'Challenge another player to a game.',
+                'Challenge another player to a friendly game.',
                 self::option($mtg, Option::USER, 'opponent', 'Who to play against.', true),
-                self::option($mtg, Option::STRING, 'deck', 'Which of your decks; defaults to your active deck.', false, true),
+                $deck(),
+                $mode('The game mode; defaults to your deck\'s format.'),
             ))
+            ->addOption(self::subcommand($mtg, 'modes', 'The game modes, their deck rules and who is waiting.', self::hidden($mtg)))
+            ->addOption(self::subcommand($mtg, 'ladder', 'A game mode\'s ratings.', $mode('Which mode; defaults to your active deck\'s format.'), self::hidden($mtg)))
             ->addOption(self::subcommand($mtg, 'board', 'Show the board of your current game.', self::hidden($mtg)))
-            ->addOption(self::subcommand($mtg, 'leave', 'Call off your challenge, or concede your game.'))];
+            ->addOption(self::subcommand($mtg, 'leave', 'Leave the queue, call off your challenge, or concede your game.'))];
     }
 
     /**
@@ -90,22 +103,41 @@ final class Matches implements Module
             $opponentId = (string) ($args['opponent'] ?? '');
 
             return self::reply($mtg, $interaction, false, fn () => MatchMessageBuilder::challenge(
-                $matches->challenge($id, $name, $opponentId, self::userName($interaction, $opponentId, 'Opponent'), $args['deck'] ?? null)
+                $matches->challenge($id, $name, $opponentId, self::userName($interaction, $opponentId, 'Opponent'), $args['deck'] ?? null, $args['mode'] ?? null)
             ));
-        }, function (Interaction $interaction, $option): array {
-            if (($option->name ?? '') !== 'deck') {
-                return [];
-            }
-            [$id] = self::caller($interaction);
-            $typed = trim((string) ($option->value ?? ''));
-            $choices = [];
-            foreach ($this->pocket->deckBuilder->list($id) as $deck) {
-                if ($typed === '' || stripos($deck->name, $typed) !== false) {
-                    $choices[$deck->id] = "{$deck->name} ({$deck->main->total()} cards)";
-                }
-            }
+        }, $this->deckChoices(...));
 
-            return self::choices($choices);
+        $mtg->listenCommand(['match', 'queue'], function (Interaction $interaction, $options) use ($mtg, $matches) {
+            $args = self::values($options);
+            [$id, $name] = self::caller($interaction);
+
+            return self::reply($mtg, $interaction, false, function () use ($matches, $id, $name, $args) {
+                $result = $matches->queue($id, $name, $args['mode'] ?? null, $args['deck'] ?? null);
+
+                return $result['match'] !== null
+                    ? MatchMessageBuilder::board($result['match'], true)
+                    : MatchMessageBuilder::queued($result['mode'], $result['deck']->name, $matches->ladder->entry($result['mode']->id, $id)['rating'], intdiv(MatchService::QUEUE_WAIT, 60));
+            });
+        }, $this->deckChoices(...));
+
+        $mtg->listenCommand(['match', 'modes'], function (Interaction $interaction, $options) use ($mtg, $matches) {
+            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => MatchMessageBuilder::modes($matches->modes, $matches->queueSizes()));
+        });
+
+        $mtg->listenCommand(['match', 'ladder'], function (Interaction $interaction, $options) use ($mtg, $matches) {
+            $args = self::values($options);
+            [$id] = self::caller($interaction);
+
+            return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), function () use ($matches, $id, $args) {
+                $active = $this->pocket->deckBuilder->activeDeckId($id);
+                $format = $args['mode']
+                    ?? ($this->pocket->rentals->activeRental($id) !== null ? $this->pocket->rentals->mode()->id : null)
+                    ?? ($active === null ? null : $this->pocket->decks->find($id, $active)?->format)
+                    ?? 'standard';
+                $mode = $matches->modes->get($format);
+
+                return MatchMessageBuilder::ladder($mode, $matches->ladder->standings($mode->id), $id);
+            });
         });
 
         $mtg->listenCommand(['match', 'board'], function (Interaction $interaction, $options) use ($mtg, $matches) {
@@ -122,6 +154,9 @@ final class Matches implements Module
             [$id] = self::caller($interaction);
 
             return self::reply($mtg, $interaction, false, function () use ($matches, $id) {
+                if ($matches->current($id) === null && ($mode = $matches->unqueue($id)) !== null) {
+                    return MatchMessageBuilder::notice("You left the {$mode->label} queue.");
+                }
                 $match = $matches->leave($id);
 
                 return $match->status === MatchRecord::OVER ? MatchMessageBuilder::board($match) : MatchMessageBuilder::closed($match);
@@ -203,6 +238,32 @@ final class Matches implements Module
                 }
             )
             ->then(null, fn (\Throwable $e) => $mtg->logger->warning('Could not answer a match action: '.$e->getMessage()));
+    }
+
+    /**
+     * Autocomplete for `deck`: the caller's decks, then the rental decks.
+     *
+     * @param Interaction $interaction
+     * @param mixed       $option
+     *
+     * @return array
+     */
+    private function deckChoices(Interaction $interaction, $option): array
+    {
+        if (($option->name ?? '') !== 'deck') {
+            return [];
+        }
+        [$id] = self::caller($interaction);
+        $typed = trim((string) ($option->value ?? ''));
+        $choices = [];
+        foreach ($this->pocket->deckBuilder->list($id) as $deck) {
+            if ($typed === '' || stripos($deck->name, $typed) !== false) {
+                $choices[$deck->id] = "{$deck->name} ({$deck->main->total()} cards, ".DeckBuilder::FORMATS[$deck->format].')';
+            }
+        }
+        $choices += $this->pocket->rentals->suggest($typed);
+
+        return self::choices($choices);
     }
 
     private function find(string $matchId): MatchRecord

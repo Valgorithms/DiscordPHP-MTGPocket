@@ -16,6 +16,7 @@ namespace MTGPocket\Economy;
 use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Models\Inventory;
 use MTGPocket\Models\Player;
+use MTGPocket\Quests\Quests;
 use MTGPocket\Packs\DailyPacks;
 use MTGPocket\Packs\OpenedPack;
 use MTGPocket\Packs\PackGenerator;
@@ -60,6 +61,7 @@ class Shop
      * @param PackGenerator          $generator
      * @param PriceList              $prices
      * @param (\Closure(): int)|null $clock       Defaults to {@see time()}.
+     * @param Quests|null            $quests      Which bought packs count towards.
      */
     public function __construct(
         protected PlayerRepository $players,
@@ -70,6 +72,7 @@ class Shop
         protected PackGenerator $generator,
         public readonly PriceList $prices,
         ?\Closure $clock = null,
+        protected ?Quests $quests = null,
     ) {
         $this->clock = $clock ?? time(...);
     }
@@ -292,7 +295,9 @@ class Shop
             $player->points -= $price;
         });
 
-        return new OpenedPack($pack, $new, null, $price, $player->points);
+        $quests = $this->quests?->record($playerId, 'pack') ?? [];
+
+        return new OpenedPack($pack, $new, null, $price, $player->points + array_sum(array_column($quests, 'points')), $quests);
     }
 
     /**
