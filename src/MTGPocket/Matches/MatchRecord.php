@@ -16,9 +16,10 @@ namespace MTGPocket\Matches;
 use MTGPocket\Game\Game;
 
 /**
- * A match between two players: a challenge until the opponent accepts,
- * then the game itself, and what each player has picked so far in their
- * action panel (the spell they are casting and its targets, their blocks).
+ * A match between two players in one game mode: a challenge until the
+ * opponent accepts (or a ranked game matchmaking paired), then the game
+ * itself, and what each player has picked so far in their action panel
+ * (the spell they are casting and its targets, their blocks).
  *
  * @since 0.3.0
  */
@@ -38,6 +39,9 @@ final class MatchRecord
      * @param array<string, array>  $choices Player id => what they have picked in their panel.
      * @param int                   $createdAt
      * @param int                   $updatedAt
+     * @param string                $mode      A {@see \MTGPocket\Modes\GameMode} id.
+     * @param bool                  $ranked    Paired by matchmaking; the result moves ratings.
+     * @param list<array{id: string, points: int, quests: list<array{label: string, points: int}>}> $rewards Points the finished game paid, and the quests it completed.
      */
     public function __construct(
         public readonly string $id,
@@ -47,6 +51,9 @@ final class MatchRecord
         public array $choices = [],
         public int $createdAt = 0,
         public int $updatedAt = 0,
+        public string $mode = 'casual',
+        public bool $ranked = false,
+        public array $rewards = [],
     ) {
     }
 
@@ -102,6 +109,9 @@ final class MatchRecord
             'choices' => (object) $this->choices,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
+            'mode' => $this->mode,
+            'ranked' => $this->ranked,
+            'rewards' => $this->rewards,
         ];
     }
 
@@ -115,6 +125,14 @@ final class MatchRecord
             array_map(fn ($choice) => (array) $choice, (array) ($data['choices'] ?? [])),
             (int) ($data['createdAt'] ?? 0),
             (int) ($data['updatedAt'] ?? 0),
+            // Matches from before game modes were played like Casual.
+            (string) ($data['mode'] ?? 'casual'),
+            (bool) ($data['ranked'] ?? false),
+            array_values(array_map(fn ($reward) => [
+                'id' => (string) $reward['id'],
+                'points' => (int) $reward['points'],
+                'quests' => array_values(array_map(fn ($quest) => ['label' => (string) $quest['label'], 'points' => (int) $quest['points']], (array) ($reward['quests'] ?? []))),
+            ], (array) ($data['rewards'] ?? []))),
         );
     }
 }

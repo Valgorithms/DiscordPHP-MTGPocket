@@ -27,6 +27,7 @@ use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
+use MTGPocket\Modules\Quests;
 use MTGPocket\Modules\Shop;
 use MTGPocket\Modules\Trades;
 
@@ -68,7 +69,7 @@ final class ModulesTest extends PocketTestCase
     {
         $mtg = self::offlineClient();
         $names = [];
-        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Shop($this->pocket), new Trades($this->pocket)] as $module) {
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket)] as $module) {
             foreach ($module->commands($mtg) as $builder) {
                 $command = $builder->jsonSerialize();
                 $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
@@ -84,7 +85,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks', 'match', 'shop', 'trade'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade'], array_keys($names));
     }
 
     public function testPackMessage(): void

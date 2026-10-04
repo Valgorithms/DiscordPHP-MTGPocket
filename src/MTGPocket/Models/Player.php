@@ -29,7 +29,12 @@ class Player implements \JsonSerializable
      * @param int         $createdAt       Unix time the player first played.
      * @param int|null    $lastDailyPackAt Unix time of the last free daily pack, or null if never.
      * @param string|null $activeDeckId    The deck the player queues with.
-     * @param int         $points          Shop points, earned by selling cards and spent on cards and packs.
+     * @param int         $points          Shop points, earned by selling cards and winning ranked games, and spent on cards and packs.
+     * @param string|null $activeRental    The rental deck the player queues with instead of their own, if any.
+     * @param string|null $matchDay        The UTC day (`YYYY-MM-DD`) the counts below are for.
+     * @param int         $rentalGames     Games started with a rental deck that day.
+     * @param int         $rewardedGames   Ranked games that paid points that day.
+     * @param array<string, array{period: string, progress: array<string, int>}> $quests Quest progress, by `daily` and `weekly`; see {@see \MTGPocket\Quests\Quests}.
      */
     public function __construct(
         public readonly string $id,
@@ -38,9 +43,30 @@ class Player implements \JsonSerializable
         public ?int $lastDailyPackAt = null,
         public ?string $activeDeckId = null,
         public int $points = 0,
+        public ?string $activeRental = null,
+        public ?string $matchDay = null,
+        public int $rentalGames = 0,
+        public int $rewardedGames = 0,
+        public array $quests = [],
     ) {
         if ($this->createdAt === 0) {
             $this->createdAt = time();
+        }
+    }
+
+    /**
+     * Starts the daily match counts over on a new day.
+     *
+     * @param string $day `YYYY-MM-DD`, UTC.
+     *
+     * @return void
+     */
+    public function onDay(string $day): void
+    {
+        if ($this->matchDay !== $day) {
+            $this->matchDay = $day;
+            $this->rentalGames = 0;
+            $this->rewardedGames = 0;
         }
     }
 
@@ -58,6 +84,11 @@ class Player implements \JsonSerializable
             isset($data['lastDailyPackAt']) ? (int) $data['lastDailyPackAt'] : null,
             isset($data['activeDeckId']) ? (string) $data['activeDeckId'] : null,
             (int) ($data['points'] ?? 0),
+            isset($data['activeRental']) ? (string) $data['activeRental'] : null,
+            isset($data['matchDay']) ? (string) $data['matchDay'] : null,
+            (int) ($data['rentalGames'] ?? 0),
+            (int) ($data['rewardedGames'] ?? 0),
+            (array) ($data['quests'] ?? []),
         );
     }
 
@@ -73,6 +104,11 @@ class Player implements \JsonSerializable
             'lastDailyPackAt' => $this->lastDailyPackAt,
             'activeDeckId' => $this->activeDeckId,
             'points' => $this->points,
+            'activeRental' => $this->activeRental,
+            'matchDay' => $this->matchDay,
+            'rentalGames' => $this->rentalGames,
+            'rewardedGames' => $this->rewardedGames,
+            'quests' => $this->quests,
         ];
     }
 }

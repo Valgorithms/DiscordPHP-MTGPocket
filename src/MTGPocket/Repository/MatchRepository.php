@@ -13,12 +13,14 @@ declare(strict_types=1);
 
 namespace MTGPocket\Repository;
 
+use MTGPocket\Matches\Ladder;
 use MTGPocket\Matches\MatchRecord;
 use MTGPocket\Storage\JsonStore;
 
 /**
- * Matches, one file each under `matches/`, and which live match each
- * player is in, under `live/{playerId}.json`.
+ * Matches, one file each under `matches/`, which live match each player
+ * is in, under `live/{playerId}.json`, and who is waiting for a game in
+ * each mode, under `queues/{mode}.json`.
  *
  * @since 0.3.0
  */
@@ -26,6 +28,7 @@ class MatchRepository
 {
     public const COLLECTION = 'matches';
     public const LIVE = 'live';
+    public const QUEUES = 'queues';
 
     public function __construct(protected JsonStore $store)
     {
@@ -101,5 +104,42 @@ class MatchRepository
         } else {
             $this->store->put(self::LIVE, $playerId, ['match' => $matchId]);
         }
+    }
+
+    /**
+     * The players waiting in a mode's queue, in the order they joined.
+     *
+     * @param string $mode
+     *
+     * @return list<array{id: string, name: string, deckId: string, deckName: string, rating: int, since: int}>
+     */
+    public function queue(string $mode): array
+    {
+        return self::entries((array) ($this->store->get(self::QUEUES, $mode)['players'] ?? []));
+    }
+
+    /**
+     * Changes a mode's queue under a lock.
+     *
+     * @param string                    $mode
+     * @param callable(array[]): array[] $change Gets the entries and returns the new ones.
+     *
+     * @return void
+     */
+    public function updateQueue(string $mode, callable $change): void
+    {
+        $this->store->update(self::QUEUES, $mode, fn (?array $data) => ['players' => array_values($change(self::entries((array) ($data['players'] ?? []))))]);
+    }
+
+    private static function entries(array $entries): array
+    {
+        return array_values(array_map(fn ($entry) => [
+            'id' => (string) $entry['id'],
+            'name' => (string) ($entry['name'] ?? ''),
+            'deckId' => (string) ($entry['deckId'] ?? ''),
+            'deckName' => (string) ($entry['deckName'] ?? ''),
+            'rating' => (int) ($entry['rating'] ?? Ladder::START),
+            'since' => (int) ($entry['since'] ?? 0),
+        ], $entries));
     }
 }

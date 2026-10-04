@@ -86,4 +86,22 @@ abstract class PocketTestCase extends StorageTestCase
     {
         return ['common' => 20, 'uncommon' => 12, 'rare' => 8, 'mythic' => 2];
     }
+
+    /**
+     * Asserts that a call fails with a message the player sees.
+     *
+     * @param callable $call
+     * @param string   $message Part of the message.
+     *
+     * @return void
+     */
+    protected function assertException(callable $call, string $message): void
+    {
+        try {
+            $call();
+            $this->fail("Expected an error containing \"{$message}\".");
+        } catch (\InvalidArgumentException|\OutOfBoundsException $e) {
+            $this->assertStringContainsString($message, $e->getMessage());
+        }
+    }
 }

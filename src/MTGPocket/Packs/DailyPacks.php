@@ -16,6 +16,7 @@ namespace MTGPocket\Packs;
 use MTGPocket\Cards\CardPool;
 use MTGPocket\Models\Inventory;
 use MTGPocket\Models\Player;
+use MTGPocket\Quests\Quests;
 use MTGPocket\Repository\CardPoolRepository;
 use MTGPocket\Repository\InventoryRepository;
 use MTGPocket\Repository\PlayerRepository;
@@ -49,6 +50,7 @@ class DailyPacks
      * @param PackGenerator         $generator
      * @param (\Closure(): int)|null $clock  Defaults to {@see time()}.
      * @param Randomizer|null       $random For picking a set and color left to chance.
+     * @param Quests|null           $quests Which opened packs count towards.
      */
     public function __construct(
         protected PlayerRepository $players,
@@ -57,6 +59,7 @@ class DailyPacks
         protected PackGenerator $generator,
         ?\Closure $clock = null,
         ?Randomizer $random = null,
+        protected ?Quests $quests = null,
     ) {
         $this->clock = $clock ?? time(...);
         $this->random = $random ?? new Randomizer();
@@ -144,7 +147,7 @@ class DailyPacks
             $player->lastDailyPackAt = $now;
         });
 
-        return new OpenedPack($pack, $new, self::nextDay($now));
+        return new OpenedPack($pack, $new, self::nextDay($now), quests: $this->quests?->record($playerId, 'pack') ?? []);
     }
 
     /**

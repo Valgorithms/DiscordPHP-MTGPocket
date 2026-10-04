@@ -24,12 +24,15 @@ use MTG\MTG;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Models\Deck;
+use MTG\Helpers\Text;
 use MTGPocket\Pocket;
+use MTGPocket\Rentals\RentalDeck;
 use React\Promise\PromiseInterface;
 
 /**
  * The player's own decks and side decks, built from the cards they own:
- * `/decks list|show|create|add|remove|rename|format|delete|use`.
+ * `/decks list|show|create|add|remove|rename|format|delete|use`, and the
+ * official decks anyone can borrow: `/decks rentals|rent`.
  *
  * Named `/decks` so it does not clash with DiscordPHP-MTG's `/deck`, which
  * looks up preconstructed decks. Edits answer only the player; `list` and
@@ -76,7 +79,9 @@ final class PlayerDecks implements Module
             ->addOption(self::subcommand($mtg, 'rename', 'Rename a deck.', $deck(), self::option($mtg, Option::STRING, 'name', 'Its new name.', true)->setMaxLength(DeckBuilder::MAX_NAME)))
             ->addOption(self::subcommand($mtg, 'format', 'Change what a deck is for.', $deck(), $format(true)))
             ->addOption(self::subcommand($mtg, 'delete', 'Delete a deck.', $deck()))
-            ->addOption(self::subcommand($mtg, 'use', 'Make a deck the one you play with.', $deck()))];
+            ->addOption(self::subcommand($mtg, 'use', 'Make a deck the one you play with.', $deck()))
+            ->addOption(self::subcommand($mtg, 'rentals', 'Official decks you can play without owning the cards.', self::hidden($mtg)))
+            ->addOption(self::subcommand($mtg, 'rent', 'Play with an official deck, a few games a day.', self::option($mtg, Option::STRING, 'rental', 'A rental deck.', true, true)))];
     }
 
     /**
@@ -87,15 +92,37 @@ final class PlayerDecks implements Module
         $suggest = fn (Interaction $interaction, $option) => $this->suggest($interaction, $option);
         $builder = $this->pocket->deckBuilder;
 
-        $mtg->listenCommand(['decks', 'list'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => PocketMessageBuilder::deckList($builder->list($id), $builder->activeDeckId($id)), false));
-        $mtg->listenCommand(['decks', 'show'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($builder) {
-            $deck = ($args['deck'] ?? '') !== '' ? $args['deck'] : $builder->activeDeckId($id);
+        $rentals = $this->pocket->rentals;
+
+        $mtg->listenCommand(['decks', 'list'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id) use ($builder, $rentals) {
+            $rental = $rentals->activeRental($id);
+
+            return PocketMessageBuilder::deckList($builder->list($id), $builder->activeDeckId($id), $rental === null ? null : $this->rentalName($rental));
+        }, false));
+        $mtg->listenCommand(['decks', 'show'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($builder, $rentals) {
+            $deck = ($args['deck'] ?? '') !== '' ? $args['deck'] : ($rentals->activeRental($id) ?? $builder->activeDeckId($id));
             if ($deck === null) {
-                return PocketMessageBuilder::notice('You have no active deck. Pick one with `/decks show deck:` or start one with `/decks create`.');
+                return PocketMessageBuilder::notice('You have no active deck. Pick one with `/decks show deck:`, start one with `/decks create`, or borrow one with `/decks rent`.');
+            }
+            if (RentalDeck::isRental($deck)) {
+                return $this->rentalView($id, $rentals->find($deck));
             }
 
             return $this->view($builder->find($id, $deck));
         }, false), $suggest);
+        $mtg->listenCommand(['decks', 'rentals'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => PocketMessageBuilder::rentalList(
+            $rentals->available(),
+            $rentals->gamesLeft($id),
+            $rentals->rules->rentalGamesPerDay,
+            $rentals->mode()->label,
+            $this->pocket->players->find($id)?->activeRental,
+        ), false));
+        $mtg->listenCommand(['decks', 'rent'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($rentals) {
+            $rental = $rentals->rent($id, $name, (string) $args['rental']);
+            $left = $rentals->gamesLeft($id);
+
+            return $this->rentalView($id, $rental, "You now play with **{$rental->name}** until you pick one of your own decks with `/decks use`. You have ".Text::plural($left, 'rental game').' left today.');
+        }), $suggest);
         $mtg->listenCommand(['decks', 'create'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => $this->view(
             $deck = $builder->create($id, $name, (string) $args['name'], (string) ($args['format'] ?? 'standard')),
             "Started **{$deck->name}**. Add cards with `/decks add`."
@@ -186,7 +213,42 @@ final class PlayerDecks implements Module
     {
         $builder = $this->pocket->deckBuilder;
 
-        return PocketMessageBuilder::deck($deck, $builder->cardData(...), $builder->activeDeckId($deck->playerId) === $deck->id, $note);
+        $active = $this->pocket->rentals->activeRental($deck->playerId) === null && $builder->activeDeckId($deck->playerId) === $deck->id;
+
+        return PocketMessageBuilder::deck($deck, $builder->cardData(...), $active, $note, $this->pocket->matches->problems($deck));
+    }
+
+    /**
+     * A rental deck's view, checked against the rules of the mode it is
+     * offered for.
+     *
+     * @param string      $playerId
+     * @param RentalDeck  $rental
+     * @param string|null $note
+     *
+     * @return MessageBuilder
+     */
+    private function rentalView(string $playerId, RentalDeck $rental, ?string $note = null): MessageBuilder
+    {
+        $deck = $rental->deck($playerId, $this->pocket->rentals->mode()->id);
+
+        return PocketMessageBuilder::deck($deck, $rental->card(...), $this->pocket->rentals->activeRental($playerId) === $deck->id, $note, $this->pocket->matches->problems($deck), false);
+    }
+
+    /**
+     * A rental's name, or its id if it has gone.
+     *
+     * @param string $deckId
+     *
+     * @return string
+     */
+    private function rentalName(string $deckId): string
+    {
+        try {
+            return $this->pocket->rentals->find($deckId)->name.' (rental)';
+        } catch (\OutOfBoundsException) {
+            return substr($deckId, strlen(RentalDeck::PREFIX)).' (rental, no longer offered)';
+        }
     }
 
     /**
@@ -203,6 +265,15 @@ final class PlayerDecks implements Module
         [$id] = self::caller($interaction);
         $typed = (string) ($option->value ?? '');
         $builder = $this->pocket->deckBuilder;
+        $subcommand = '';
+        foreach ($interaction->data->options ?? [] as $sub) {
+            $subcommand = (string) ($sub->name ?? '');
+            break;
+        }
+
+        if (($option->name ?? '') === 'rental') {
+            return self::choices($this->pocket->rentals->suggest($typed));
+        }
 
         if (($option->name ?? '') === 'deck') {
             $choices = [];
@@ -211,18 +282,15 @@ final class PlayerDecks implements Module
                     $choices[$deck->id] = $deck->name;
                 }
             }
+            if ($subcommand === 'show') {
+                $choices += $this->pocket->rentals->suggest($typed);
+            }
 
             return self::choices($choices);
         }
 
         if (($option->name ?? '') !== 'card') {
             return [];
-        }
-
-        $subcommand = '';
-        foreach ($interaction->data->options ?? [] as $sub) {
-            $subcommand = (string) ($sub->name ?? '');
-            break;
         }
         if ($subcommand !== 'remove') {
             return self::choices($builder->suggestCards($id, $typed));
