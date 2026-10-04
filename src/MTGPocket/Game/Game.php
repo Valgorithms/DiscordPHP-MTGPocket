@@ -867,6 +867,13 @@ final class Game
                     }
                 }
             }
+            foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true)] as $code => $has) {
+                foreach ($has ? self::castWays($card, false) : [] as $how) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                        $plays[] = ['id' => $id, 'how' => $how];
+                    }
+                }
+            }
             if ($card->unearth !== null && $this->whyNotUnearth($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'unearth'];
             }
@@ -921,6 +928,9 @@ final class Game
             if ($card->kicker !== null) {
                 $ways[] = implode(',', [...$base, 'kick']);
             }
+            if (in_array('bargain', $card->keywords, true)) {
+                $ways[] = implode(',', [...$base, 'bargain']);
+            }
         }
         if ($card->entwine !== null && $card->modes !== []) {
             $ways[] = implode(',', array_filter([$flashback ? 'fb' : '', 'm'.implode('+', array_keys($card->modes)), 'entwine']));
@@ -947,11 +957,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -966,6 +976,12 @@ final class Game
                 $options['bestowed'] = true;
             } elseif ($part === 'entwine') {
                 $options['entwined'] = true;
+            } elseif ($part === 'bargain') {
+                // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
+                $options['kicked'] = $options['bargained'] = true;
+            } elseif (in_array($part, ['es', 'js', 'rt'], true)) {
+                // From the graveyard: escape, jump-start or retrace.
+                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp'], true)) {
@@ -1123,9 +1139,12 @@ final class Game
     {
         $object = $this->objects[$id] ?? null;
         $player = $this->players[$seat];
-        if ($options['flashback']) {
+        if ($options['flashback'] || $options['grave'] !== '') {
             if ($object === null || ! in_array($id, $player->graveyard, true)) {
                 return 'That card is not in your graveyard.';
+            }
+            if (($reason = $this->whyNotFromGraveyard($seat, $id, $options['grave'])) !== null) {
+                return $reason;
             }
         } elseif ($options['rebound']) {
             if ($object === null || ! $object->rebound || $object->zone !== GameObject::EXILE || $object->owner !== $seat) {
@@ -1160,8 +1179,11 @@ final class Game
         if ($options['flashback'] && $card->flashback === null) {
             return "{$card->name} has no flashback.";
         }
-        if ($options['kicked'] && $card->kicker === null) {
+        if ($options['kicked'] && ! $options['bargained'] && $card->kicker === null) {
             return "{$card->name} has no kicker.";
+        }
+        if ($options['bargained'] && (! in_array('bargain', $card->keywords, true) || $this->bargainFodder($seat) === null)) {
+            return "{$card->name} cannot be bargained now.";
         }
         if ($options['faceDown'] && $card->morph === null) {
             return "{$card->name} cannot be cast face down.";
@@ -1251,7 +1273,7 @@ final class Game
     {
         $options = self::castOptions($how);
         // Additional costs: kicker, entwine and each Spree mode's.
-        $more = ($options['kicked'] ? (string) $card->kicker : '').($options['entwined'] ? (string) $card->entwine : '')
+        $more = ($options['kicked'] && ! $options['bargained'] ? (string) $card->kicker : '').($options['entwined'] ? (string) $card->entwine : '')
             .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']));
         if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended'], true)) {
             // Without paying its mana cost (rule 118.9), but still its additional costs: X is 0.
@@ -1262,6 +1284,9 @@ final class Game
         }
         if ($options['exiled'] === 'madness') {
             return $card->altCosts['madness'].$more;
+        }
+        if ($options['grave'] === 'escape') {
+            return $card->altCosts['escape'].$more;
         }
         if ($options['bestowed']) {
             return $card->bestow['cost'];
@@ -1557,6 +1582,12 @@ final class Game
             $this->log("{$this->players[$seat]->name} exiles {$payment['delve']} card".($payment['delve'] === 1 ? '' : 's').' from their graveyard (delve).');
         }
 
+        $this->payGraveyardCost($seat, $id, $options);
+        if ($options['bargained'] && ($fodder = $this->bargainFodder($seat)) !== null) {
+            $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
+            $this->moveTo($fodder, GameObject::GRAVEYARD);
+        }
+
         $player = $this->players[$seat];
         $fromCommand = $object->zone === GameObject::COMMAND;
         $fromHand = $object->zone === GameObject::HAND;
@@ -1578,7 +1609,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'],
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'],
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0]);
         $this->passes = 0;
 
@@ -1586,6 +1617,8 @@ final class Game
         $ways = array_filter([
             $fromCommand ? 'from the command zone'.($tax > 0 ? " (tax {{$tax}})" : '') : '',
             $options['flashback'] ? 'with flashback' : '',
+            $options['grave'] !== '' ? "from the graveyard ({$options['grave']})" : '',
+            $options['bargained'] ? 'bargained' : '',
             $options['rebound'] ? 'from exile with rebound' : '',
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
@@ -1601,7 +1634,101 @@ final class Game
             $object->name().($options['kicked'] ? ' kicked' : '').($options['flashback'] ? ' fb' : '').($options['modes'] === [] ? '' : ' m'.implode('+', array_map(fn (int $mode) => $mode + 1, $options['modes']))).($xCount > 0 ? " X={$x}" : '').self::targetNotation($named),
         );
         $this->castTriggers($seat, $object);
+        $this->targetedTriggers($targets);
         $this->settle();
+    }
+
+    /**
+     * `When this creature becomes the target of a spell or ability, …`
+     *
+     * @param string[] $targets
+     *
+     * @return void
+     */
+    private function targetedTriggers(array $targets): void
+    {
+        foreach (array_unique($targets) as $target) {
+            $object = str_starts_with($target, 'o:') ? $this->targetObject($target) : null;
+            if ($object !== null && $object->zone === GameObject::BATTLEFIELD) {
+                $this->trigger($object, 'targeted', $object->controller);
+            }
+        }
+    }
+
+    /**
+     * Why a card can't be cast from a graveyard with escape, jump-start or retrace.
+     *
+     * @param int    $seat
+     * @param int    $id
+     * @param string $grave
+     *
+     * @return string|null
+     */
+    private function whyNotFromGraveyard(int $seat, int $id, string $grave): ?string
+    {
+        $card = $this->objects[$id]->printed();
+        $hand = $this->players[$seat]->hand;
+
+        return match ($grave) {
+            'escape' => ! isset($card->altCosts['escape']) ? "{$card->name} has no escape."
+                : (count($this->players[$seat]->graveyard) - 1 < self::escapeExile($card) ? 'Not enough other cards in your graveyard to escape.' : null),
+            'jumpstart' => ! in_array('jump-start', $card->keywords, true) ? "{$card->name} has no jump-start." : ($hand === [] ? 'Jump-start needs a card to discard.' : null),
+            'retrace' => ! in_array('retrace', $card->keywords, true) ? "{$card->name} has no retrace."
+                : (array_filter($hand, fn (int $card) => $this->objects[$card]->printed()->isLand()) === [] ? 'Retrace needs a land card to discard.' : null),
+            default => null,
+        };
+    }
+
+    private static function escapeExile(CardDefinition $card): int
+    {
+        foreach ($card->keywords as $keyword) {
+            if (preg_match('/^escape (\d+)$/', $keyword, $m)) {
+                return (int) $m[1];
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Escape exiles the oldest other cards in the graveyard; jump-start discards
+     * the cheapest card, retrace a land card.
+     *
+     * @param int   $seat
+     * @param int   $id
+     * @param array $options
+     *
+     * @return void
+     */
+    private function payGraveyardCost(int $seat, int $id, array $options): void
+    {
+        $player = $this->players[$seat];
+        if ($options['grave'] === 'escape') {
+            $exiled = array_slice(array_values(array_diff($player->graveyard, [$id])), 0, self::escapeExile($this->objects[$id]->printed()));
+            foreach ($exiled as $other) {
+                $this->moveTo($this->objects[$other], GameObject::EXILE);
+            }
+            $this->log("{$player->name} exiles ".count($exiled).' other cards from their graveyard (escape).');
+        } elseif ($options['grave'] === 'jumpstart') {
+            $hand = $player->hand;
+            usort($hand, fn (int $a, int $b) => $this->objects[$a]->definition()->cost->manaValue() <=> $this->objects[$b]->definition()->cost->manaValue());
+            $this->discardCards($seat, [$hand[0]]);
+        } elseif ($options['grave'] === 'retrace') {
+            $lands = array_values(array_filter($player->hand, fn (int $card) => $this->objects[$card]->printed()->isLand()));
+            $this->discardCards($seat, [$lands[0]]);
+        }
+    }
+
+    /**
+     * What bargain sacrifices: a token first, else the weakest artifact or enchantment.
+     *
+     * @param int $seat
+     *
+     * @return GameObject|null
+     */
+    private function bargainFodder(int $seat): ?GameObject
+    {
+        return $this->weakest($seat, fn (GameObject $o) => $o->definition()->isToken() || $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'));
     }
 
     /**
@@ -2066,6 +2193,11 @@ final class Game
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0));
             $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
+            foreach (($item['escaped'] ?? false) ? $card->keywords : [] as $keyword) {
+                if (preg_match('/^escapes with (\d+)$/', $keyword, $m)) {
+                    $object->addCounters('+1/+1', (int) $m[1]);
+                }
+            }
             if (($item['sunburst'] ?? 0) > 0) {
                 $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
             }
@@ -2670,6 +2802,20 @@ final class Game
                 }
                 break;
 
+            case 'echo':
+                // Echo: paid when its controller can, otherwise sacrificed (rule 702.30a).
+                if ($affected !== null && ! $affected->echoPaid && $affected->zone === GameObject::BATTLEFIELD) {
+                    $affected->echoPaid = true;
+                    if (($payment = $this->payFor($controller, $affected->definition()->altCosts['echo'])) !== null) {
+                        $this->pay($controller, $payment);
+                        $this->log("{$this->players[$controller]->name} pays echo for {$affected->name()}.");
+                    } else {
+                        $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()} (echo).");
+                        $this->moveTo($affected, GameObject::GRAVEYARD);
+                    }
+                }
+                break;
+
             case 'edict':
                 // Annihilator: the defending player sacrifices their weakest permanents.
                 foreach ($opponents as $seat) {
@@ -3047,6 +3193,10 @@ final class Game
                 continue;
             }
             if (! $this->gained($source, $ability)) {
+                continue;
+            }
+            // Echo triggers only until it has been paid once (rule 702.30a).
+            if ($source->echoPaid && ($ability['effects'][0]['type'] ?? '') === 'echo') {
                 continue;
             }
             $this->pendingTriggers[] = [
@@ -3533,6 +3683,7 @@ final class Game
             'kinds' => $kinds,
             'label' => $label,
         ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
+        $this->targetedTriggers($targets);
         if ($cost['sacrifice'] ?? false) {
             $this->moveTo($object, GameObject::GRAVEYARD);
             $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
@@ -4006,6 +4157,13 @@ final class Game
             $moves[] = $this->objects[(int) $blocker]->name().':'.$this->objects[(int) $attacker]->name();
         }
         $this->log($lines === [] ? "{$this->players[$seat]->name} does not block." : implode('; ', $lines).'.', $seat, $moves === [] ? null : 'blk '.implode(', ', $moves));
+        // Flanking (rule 702.25): a blocker without flanking gets -1/-1 for each instance.
+        foreach ($this->blockers as $blocker => $attacker) {
+            if ($this->hasKeyword($this->objects[$attacker], 'flanking') && ! $this->hasKeyword($this->objects[$blocker], 'flanking')) {
+                $this->objects[$blocker]->untilEndOfTurn[] = ['power' => -1, 'toughness' => -1, 'keywords' => []];
+                $this->log("Flanking: {$this->objects[$blocker]->name()} gets -1/-1 until end of turn.");
+            }
+        }
         // Bushido (rule 702.45): +N/+N when it blocks or becomes blocked.
         foreach (array_unique([...array_keys($this->blockers), ...array_keys($this->blocked)]) as $id) {
             if (($n = $this->keywordAmount($this->objects[$id], 'bushido')) > 0) {
@@ -5292,6 +5450,7 @@ final class Game
             'bestowed' => (bool) ($item['bestowed'] ?? false),
             'alt' => (string) ($item['alt'] ?? ''),
             'sunburst' => (int) ($item['sunburst'] ?? 0),
+            'escaped' => (bool) ($item['escaped'] ?? false),
         ])), (array) $data['stack']));
         $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
             'source' => (int) $trigger['source'],

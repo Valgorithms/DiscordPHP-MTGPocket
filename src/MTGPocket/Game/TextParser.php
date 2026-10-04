@@ -280,6 +280,10 @@ final class TextParser
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
                 'You may look at the top card of your library any time.' => 'look at top any time',
+                'CARDNAME escapes with a +1/+1 counter on it.' => 'escapes with 1',
+                'CARDNAME escapes with two +1/+1 counters on it.' => 'escapes with 2',
+                'CARDNAME escapes with three +1/+1 counters on it.' => 'escapes with 3',
+                'CARDNAME escapes with four +1/+1 counters on it.' => 'escapes with 4',
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -503,7 +507,8 @@ final class TextParser
      */
     private static function kickedSentence(string $sentence, array &$result): bool
     {
-        if ($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match)) {
+        if (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
+            && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))) {
             return false;
         }
         if (preg_match('/^(?:it|CARDNAME) deals (\w+) damage(?: to (?:that|this) [\w ]+)? instead$/', $match[1], $instead)) {
@@ -576,6 +581,13 @@ final class TextParser
     private static function keywords(string $line, array &$result, bool $spell): bool
     {
         $found = $result;
+        // Escape (rule 702.138): `Escape—{4}{B}, Exile five other cards from your graveyard.`
+        if (preg_match('/^Escape—'.self::COST.', Exile (\w+) other cards? from your graveyard\.?$/u', $line, $m) && is_int($n = self::amount($m[2])) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['escape'] = $m[1];
+            $result['keywords'][] = "escape {$n}";
+
+            return true;
+        }
         // `Convoke.` and `Rebound.` are written with a period in some sets.
         foreach (array_map('trim', preg_split('/[,;]\s*/', rtrim($line, '.'))) as $part) {
             $word = strtolower($part);
@@ -642,6 +654,10 @@ final class TextParser
             } elseif (preg_match('/^(dash|evoke|warp|plot) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
+            } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
+                // Echo (rule 702.30): see Game::applyEffect().
+                $found['altCosts']['echo'] = $m[1];
+                $found['triggered'][] = ['text' => $part, 'event' => 'upkeep', 'effects' => [['type' => 'echo', 'self' => true]]];
             } elseif (preg_match('/^madness '.self::COST.'$/i', $part, $m)) {
                 // Madness (rule 702.35): discarded, it is exiled and may be cast for this while its trigger waits.
                 $found['altCosts']['madness'] = $m[1];
@@ -1119,6 +1135,7 @@ final class TextParser
     private static function triggered(string $line, array &$result): bool
     {
         $events = [
+            'becomes the target of a spell or ability' => 'targeted',
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous',
@@ -1131,7 +1148,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield|becomes the target of a spell or ability)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -1573,7 +1590,7 @@ final class TextParser
         if (preg_match('/^(adapt|monstrosity) (\d+)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'amount' => (int) $m[2], 'self' => true];
         }
-        if ($s === 'sacrifice CARDNAME' || $s === 'Sacrifice CARDNAME') {
+        if ($s === 'sacrifice CARDNAME' || $s === 'Sacrifice CARDNAME' || $s === 'sacrifice it' || $s === 'Sacrifice it') {
             return ['type' => 'sacrifice', 'self' => true];
         }
         // Explore (rule 701.44).

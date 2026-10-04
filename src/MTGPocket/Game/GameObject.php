@@ -72,6 +72,9 @@ final class GameObject
     /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
     public bool $unearthed = false;
 
+    /** Echo was paid, or it has been under its controller's control since an upkeep (rule 702.30). */
+    public bool $echoPaid = false;
+
     /** Renown (rule 702.112): it has dealt combat damage to a player since it entered. */
     public bool $renowned = false;
 
@@ -191,6 +194,7 @@ final class GameObject
         $this->shields = 0;
         $this->borrowedFrom = null;
         $this->unearthed = false;
+        $this->echoPaid = false;
         $this->frozen = false;
         $this->renowned = false;
         $this->monstrous = false;
@@ -247,6 +251,7 @@ final class GameObject
             'kicked' => $this->kicked,
             'shields' => $this->shields,
             'unearthed' => $this->unearthed,
+            'echoPaid' => $this->echoPaid,
             'frozen' => $this->frozen,
             'renowned' => $this->renowned,
             'monstrous' => $this->monstrous,
@@ -293,6 +298,7 @@ final class GameObject
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
+        $object->echoPaid = (bool) ($data['echoPaid'] ?? false);
         $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
