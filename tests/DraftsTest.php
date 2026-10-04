@@ -320,6 +320,14 @@ final class DraftsTest extends PocketTestCase
         $this->assertSame(['200', '100', '400', '300'], array_column($standings, 'id'));
         $this->assertSame([6, 3, 1, 1], array_column($standings, 'points'));
 
+        // The entry fees (4 × 1,000) go to the top four: 40%, 25%, 15% and 10%.
+        $this->assertSame([1600, 1000, 600, 400], $drafts->prizeTable($draft));
+        $this->assertSame([['id' => '200', 'place' => 1, 'points' => 1600], ['id' => '100', 'place' => 2, 'points' => 1000], ['id' => '400', 'place' => 3, 'points' => 600], ['id' => '300', 'place' => 4, 'points' => 400]], $draft->prizes);
+        $this->assertSame([2100, 1500, 1100, 900], [$this->points('200'), $this->points('100'), $this->points('400'), $this->points('300')]);
+        $drafts->tickAll();
+        $drafts->find($draft->id);
+        $this->assertSame(2100, $this->points('200'), 'Prizes are paid once.');
+
         // Everyone keeps every card they drafted.
         foreach ($draft->seats as $seat) {
             $this->assertTrue($seat->collected);
@@ -328,7 +336,7 @@ final class DraftsTest extends PocketTestCase
         $this->assertNull($drafts->current('100'));
         $this->assertSame($draft->id, $drafts->last('100')->id);
         $news = implode("\n", array_merge(...array_column($drafts->takeNews(), 'news')));
-        $this->assertStringContainsString('**Ben** finishes first (2-0)', $news);
+        $this->assertStringContainsString('**Ben** finishes first (2-0). Prizes: 1. Ben 1,600 points, 2. Ann 1,000 points', $news);
     }
 
     public function testLeavingMidEventConcedesAndPaysOut(): void
@@ -358,6 +366,14 @@ final class DraftsTest extends PocketTestCase
         $this->assertSame(['400', null, 'a'], [$round[1]['a'], $round[1]['b'], $round[1]['result']]);
         $this->assertException(fn () => $drafts->play('400'), 'You have a bye');
         $this->assertSame($round[0]['match'], $drafts->play('100')->id, 'Play shows the game already going.');
+
+        // Cat left, so she wins nothing; Ann beats Ben for first.
+        $this->pocket->matches->leave('200');
+        $draft = $drafts->find($draft->id);
+        $this->assertSame(Draft::OVER, $draft->status);
+        $this->assertSame(['100', '200', '400'], array_column($draft->prizes, 'id'));
+        $this->assertSame(500, $this->points('300'));
+        $this->assertSame(500 + 1600, $this->points('100'));
     }
 
     public function testGamesWaitForPlayersBusyElsewhere(): void
@@ -399,7 +415,8 @@ final class DraftsTest extends PocketTestCase
         $this->assertSame(Draft::OVER, $draft->status);
         $this->assertSame(2, $this->pocket->inventories->get('100')->cards->total());
         $this->assertSame(1, $this->pocket->inventories->get('200')->cards->total());
-        $this->assertSame(500, $this->points('100'), 'The fee is spent once the draft has started.');
+        $this->assertSame(500, $this->points('100'), 'With no rounds played there are no standings, so no prizes.');
+        $this->assertSame([], $draft->prizes);
         $this->assertException(fn () => $drafts->leave('100'), 'not in a draft');
 
         // Free to join the next one.
@@ -413,5 +430,7 @@ final class DraftsTest extends PocketTestCase
         $reloaded = (new Pocket($this->directory, clock: fn () => $this->now, draftRules: $this->pocket->drafts->rules))->drafts->find($draft->id);
         $this->assertSame(json_encode($draft->toArray()), json_encode($reloaded->toArray()));
         $this->assertSame(DraftRules::fromFile()->entryFee, (new DraftRules())->entryFee);
+        $this->assertSame(DraftRules::fromFile()->prizes, (new DraftRules())->prizes);
+        $this->assertException(fn () => new DraftRules(prizes: [0.8, 0.3]), 'more than the entry fees');
     }
 }

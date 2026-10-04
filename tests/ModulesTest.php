@@ -216,10 +216,11 @@ final class ModulesTest extends PocketTestCase
         }
         $draft = $drafts->create('116927250145869826', 'Val', 'TST', '1');
 
-        $pod = json_encode(DraftMessageBuilder::pod($draft, $drafts->rules), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $pod = json_encode(DraftMessageBuilder::pod($draft, $drafts->rules, $drafts->prizeTable($draft)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->assertStringContainsString('Set TST booster draft', $pod);
         $this->assertStringContainsString('taking players · 1/8 players · 1,200 points to enter', $pod);
         $this->assertStringContainsString('Val · host', $pod);
+        $this->assertStringContainsString('🏆 Prizes when full: 1st 3,840 points · 2nd 2,400 points · 3rd 1,440 points · 4th 960 points', $pod);
         $this->assertStringContainsString('"custom_id":"pocket:dj:'.$draft->id.'"', $pod);
 
         $drafts->join('2', 'Ana');

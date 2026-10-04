@@ -49,7 +49,10 @@ use Random\Randomizer;
  *
  * Every player keeps the cards they drafted: they go to their collection
  * once their matches are done (when the event ends, or when they leave
- * it after the draft), or when the whole event times out.
+ * it after the draft), or when the whole event times out. When the rounds
+ * are over (or time runs out once they have started), the top finishers
+ * still in the event share the entry fees as points
+ * ({@see DraftRules::$prizes}).
  *
  * Everything that happens on its own (auto-picks, the next stage, timeouts)
  * happens the next time anyone touches the draft or {@see tickAll()} runs;
@@ -1056,8 +1059,54 @@ final class DraftService
         if ($draft->rounds !== []) {
             $top = $draft->standings()[0];
             $line = " **{$top['name']}** finishes first ({$top['wins']}-{$top['losses']}".($top['draws'] > 0 ? "-{$top['draws']}" : '').').';
+            $this->payPrizes($draft);
+            if ($draft->prizes !== []) {
+                $line .= ' Prizes: '.implode(', ', array_map(fn (array $prize) => "{$prize['place']}. ".$draft->seat($prize['id'])->name.' '.number_format($prize['points']).' points', $draft->prizes)).'.';
+            }
         }
         $draft->news[] = "The {$draft->setName} draft is over. {$why}{$line} Every player's drafted cards are now in their collection (`/collection`).";
+    }
+
+    /**
+     * What each place wins from a pod's entry fees.
+     *
+     * @param Draft $draft
+     *
+     * @return list<int> Points for 1st, 2nd and so on.
+     */
+    public function prizeTable(Draft $draft): array
+    {
+        $pot = $draft->status === Draft::SIGNUP ? $draft->fee * $draft->size : $draft->pot();
+
+        return array_values(array_filter(array_map(fn (float $share) => (int) floor($pot * $share), array_slice($this->rules->prizes, 0, max(count($draft->seats), $draft->status === Draft::SIGNUP ? $draft->size : 0)))));
+    }
+
+    /**
+     * Pays the prize pool by final standing, once, to players still in the
+     * event when it ended.
+     *
+     * @param Draft $draft
+     *
+     * @return void
+     */
+    private function payPrizes(Draft $draft): void
+    {
+        if ($draft->prizes !== []) {
+            return;
+        }
+        $table = $this->prizeTable($draft);
+        $place = 0;
+        foreach ($draft->standings() as $record) {
+            if ($record['dropped']) {
+                continue;
+            }
+            if (! isset($table[$place])) {
+                break;
+            }
+            $this->pay($record['id'], $table[$place]);
+            $draft->prizes[] = ['id' => $record['id'], 'place' => $place + 1, 'points' => $table[$place]];
+            $place++;
+        }
     }
 
     /**

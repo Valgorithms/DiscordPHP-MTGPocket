@@ -126,15 +126,13 @@ final class Drafts implements Module
         $drafts = $this->pocket->drafts;
         $rules = $drafts->rules;
 
-        $mtg->listenCommand(['draft', 'create'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => DraftMessageBuilder::pod(
+        $mtg->listenCommand(['draft', 'create'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => $this->podMessage(
             $drafts->create($id, $name, (string) $args['set'], $i->channel_id === null ? null : (string) $i->channel_id, isset($args['players']) ? (int) $args['players'] : null),
-            $rules,
         ), false), $this->suggest(...));
-        $mtg->listenCommand(['draft', 'join'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => DraftMessageBuilder::pod(
+        $mtg->listenCommand(['draft', 'join'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => $this->podMessage(
             $drafts->join($id, $name, $args['draft'] ?? null),
-            $rules,
         ), false), $this->suggest(...));
-        $mtg->listenCommand(['draft', 'start'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => DraftMessageBuilder::pod($drafts->start($id), $rules), false));
+        $mtg->listenCommand(['draft', 'start'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => $this->podMessage($drafts->start($id)), false));
         $mtg->listenCommand(['draft', 'leave'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id) use ($drafts) {
             $draft = $drafts->leave($id);
 
@@ -186,14 +184,14 @@ final class Drafts implements Module
                 return $this->status(strtolower(trim((string) $args['draft'])));
             }
             if (($draft = $drafts->last($id)) !== null && ($draft->isLive() || $drafts->open() === [])) {
-                return DraftMessageBuilder::pod($draft, $rules);
+                return $this->podMessage($draft);
             }
             $open = $drafts->open();
             if ($open === []) {
                 return PocketMessageBuilder::notice('No draft pod is open. Make one with `/draft create`; it costs '.PocketMessageBuilder::points($rules->entryFee).' to enter.');
             }
 
-            return DraftMessageBuilder::pod($open[0], $rules);
+            return $this->podMessage($open[0]);
         }, false), $this->suggest(...));
 
         $mtg->on(Event::INTERACTION_CREATE, function (Interaction $interaction) use ($mtg): void {
@@ -227,7 +225,7 @@ final class Drafts implements Module
         [$id, $name] = self::caller($interaction);
 
         return match ($action) {
-            'dj' => self::answer($mtg, $interaction, fn () => DraftMessageBuilder::pod($drafts->join($id, $name, $draftId), $drafts->rules), true),
+            'dj' => self::answer($mtg, $interaction, fn () => $this->podMessage($drafts->join($id, $name, $draftId)), true),
             'ds' => self::answer($mtg, $interaction, fn () => $this->status($draftId), true),
             'dv' => self::answer($mtg, $interaction, fn () => $this->status($draftId)),
             'dr' => self::answer($mtg, $interaction, fn () => $this->pack($id)),
@@ -256,9 +254,21 @@ final class Drafts implements Module
      */
     private function status(string $draftId): DraftMessageBuilder
     {
+        return $this->podMessage($this->pocket->drafts->find($draftId) ?? throw new \OutOfBoundsException('That draft no longer exists.'));
+    }
+
+    /**
+     * A pod's message, with its prizes.
+     *
+     * @param Draft $draft
+     *
+     * @return DraftMessageBuilder
+     */
+    private function podMessage(Draft $draft): DraftMessageBuilder
+    {
         $drafts = $this->pocket->drafts;
 
-        return DraftMessageBuilder::pod($drafts->find($draftId) ?? throw new \OutOfBoundsException('That draft no longer exists.'), $drafts->rules);
+        return DraftMessageBuilder::pod($draft, $drafts->rules, $drafts->prizeTable($draft));
     }
 
     /**

@@ -19,11 +19,13 @@ declare(strict_types=1);
  * its host starts it), everyone opens a pack, takes one card and passes the
  * rest, until every pack is empty. Then they build decks from what they
  * took, play Swiss rounds, and keep every card they drafted once their
- * matches are done or the event times out.
+ * matches are done or the event times out. The top finishers share a prize
+ * pool made of the entry fees.
  */
 return [
-    // Points to join a pod. Refunded when a player leaves before the draft
-    // starts, or when a pod never gets enough players.
+    // Points to join a pod; they make up the prize pool. Refunded when a
+    // player leaves before the draft starts, or when a pod never gets
+    // enough players.
     'entry_fee' => 1200,
 
     // Players in a full pod; the draft starts by itself when it fills.
@@ -56,6 +58,12 @@ return [
     // Days from the start of the draft until the event ends, whatever is
     // left unplayed. Everyone keeps the cards they drafted.
     'event_days' => 7,
+
+    // The prize pool: shares of all the entry fees the pod paid, by final
+    // place (1st, 2nd, ...), paid in points when the event ends. Players who
+    // left before the end get none, and the next player moves up. What is
+    // not paid out (10% by default, or more in a small pod) is spent.
+    'prizes' => [0.4, 0.25, 0.15, 0.1],
 
     // The game mode whose rules the games use (starting life).
     'mode' => 'limited',

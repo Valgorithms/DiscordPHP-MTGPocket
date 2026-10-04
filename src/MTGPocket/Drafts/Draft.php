@@ -61,6 +61,7 @@ final class Draft
      * @param int             $deadline     When the current stage times out: signup, building or the round; 0 while drafting.
      * @param int             $endsAt       When the whole event times out; 0 before the draft starts.
      * @param list<string>    $news         Announcements not yet posted to the pod's channel.
+     * @param list<array{id: string, place: int, points: int}> $prizes Points paid out when it ended.
      */
     public function __construct(
         public readonly string $id,
@@ -82,7 +83,18 @@ final class Draft
         public int $deadline = 0,
         public int $endsAt = 0,
         public array $news = [],
+        public array $prizes = [],
     ) {
+    }
+
+    /**
+     * Every entry fee paid and not refunded.
+     *
+     * @return int
+     */
+    public function pot(): int
+    {
+        return array_sum(array_map(fn (DraftSeat $seat) => $seat->paid, $this->seats));
     }
 
     /**
@@ -267,6 +279,7 @@ final class Draft
             'deadline' => $this->deadline,
             'endsAt' => $this->endsAt,
             'news' => $this->news,
+            'prizes' => $this->prizes,
         ];
     }
 
@@ -306,6 +319,7 @@ final class Draft
             (int) ($data['deadline'] ?? 0),
             (int) ($data['endsAt'] ?? 0),
             array_values(array_map('strval', (array) ($data['news'] ?? []))),
+            array_values(array_map(fn ($prize) => ['id' => (string) $prize['id'], 'place' => (int) $prize['place'], 'points' => (int) $prize['points']], (array) ($data['prizes'] ?? []))),
         );
     }
 }

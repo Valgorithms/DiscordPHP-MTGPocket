@@ -37,6 +37,7 @@ final class DraftRules
      * @param int    $signupHours
      * @param int    $eventDays
      * @param string $mode         The game mode whose rules the games use.
+     * @param float[] $prizes       Shares of the entry fees paid to 1st, 2nd and so on.
      */
     public function __construct(
         public readonly int $entryFee = 1200,
@@ -50,7 +51,16 @@ final class DraftRules
         public readonly int $signupHours = 24,
         public readonly int $eventDays = 7,
         public readonly string $mode = 'limited',
+        public readonly array $prizes = [0.4, 0.25, 0.15, 0.1],
     ) {
+        foreach ($prizes as $share) {
+            if (! is_float($share) && ! is_int($share) || $share < 0) {
+                throw new \InvalidArgumentException('Draft prize shares must be numbers no lower than 0.');
+            }
+        }
+        if (array_sum($prizes) > 1) {
+            throw new \InvalidArgumentException('Draft prizes cannot pay out more than the entry fees.');
+        }
         if ($entryFee < 0) {
             throw new \InvalidArgumentException('The draft entry fee cannot be negative.');
         }
@@ -95,6 +105,7 @@ final class DraftRules
             (int) ($config['signup_hours'] ?? 24),
             (int) ($config['event_days'] ?? 7),
             (string) ($config['mode'] ?? 'limited'),
+            array_values(array_map('floatval', (array) ($config['prizes'] ?? [0.4, 0.25, 0.15, 0.1]))),
         );
     }
 }

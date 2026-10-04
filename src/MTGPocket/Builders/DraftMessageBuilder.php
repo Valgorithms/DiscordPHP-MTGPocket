@@ -61,10 +61,11 @@ final class DraftMessageBuilder extends PocketMessageBuilder
      *
      * @param Draft      $draft
      * @param DraftRules $rules
+     * @param list<int>  $prizes Points for 1st, 2nd and so on; see {@see \MTGPocket\Drafts\DraftService::prizeTable()}.
      *
      * @return static
      */
-    public static function pod(Draft $draft, DraftRules $rules): static
+    public static function pod(Draft $draft, DraftRules $rules, array $prizes = []): static
     {
         $heading = sprintf(
             "### 🎴 %s booster draft\n-# %s · %d/%d players · %s to enter · %s packs each",
@@ -83,6 +84,11 @@ final class DraftMessageBuilder extends PocketMessageBuilder
             Draft::OVER => 'Every player has their drafted cards in their collection.',
             default => 'Entry fees were refunded.',
         };
+        if ($prizes !== []) {
+            $status .= "\n".($draft->prizes === []
+                ? '🏆 Prizes'.($draft->status === Draft::SIGNUP ? ' when full' : '').': '.implode(' · ', array_map(fn (int $points, int $place) => self::ordinal($place + 1).' '.self::points($points), $prizes, array_keys($prizes)))
+                : '🏆 Paid: '.implode(' · ', array_map(fn (array $prize) => self::ordinal($prize['place']).' '.$draft->seat($prize['id'])->name.' '.self::points($prize['points']), $draft->prizes)));
+        }
         if ($draft->endsAt > 0 && $draft->isLive()) {
             $status .= "\n-# The event ends <t:{$draft->endsAt}:R>, whatever is left unplayed; everyone keeps what they drafted.";
         }
@@ -295,6 +301,18 @@ final class DraftMessageBuilder extends PocketMessageBuilder
                 ->setAccentColor(CardMessageBuilder::ACCENTS['multicolor'])
                 ->addComponent(TextDisplay::new(Text::clip(implode("\n\n", $news), 3800))))
             ->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, self::PREFIX.":dv:{$draft->id}")->setLabel('Show the draft')));
+    }
+
+    /**
+     * `1st`, `2nd`, `3rd`, `4th` and so on.
+     *
+     * @param int $place
+     *
+     * @return string
+     */
+    private static function ordinal(int $place): string
+    {
+        return $place.(in_array($place % 100, [11, 12, 13], true) ? 'th' : (['th', 'st', 'nd', 'rd'][$place % 10] ?? 'th'));
     }
 
     /**
