@@ -114,6 +114,13 @@ final class ModernCardTextTest extends GameTestCase
         'Fog' => ['manaCost' => '{G}', 'type' => 'Instant', 'text' => 'Prevent all combat damage that would be dealt this turn.', 'colors' => ['G']],
         'Naturalize Lite' => ['manaCost' => '{G}', 'type' => 'Instant', 'text' => 'Destroy target artifact or enchantment.', 'colors' => ['G']],
         'Oil Lite' => ['manaCost' => '{2}', 'type' => 'Artifact', 'text' => 'This artifact enters with three oil counters on it.', 'colors' => []],
+        'Sudden Shock' => ['manaCost' => '{1}{R}', 'type' => 'Instant', 'text' => "Split second (As long as this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities.)\nSudden Shock deals 2 damage to any target.", 'colors' => ['R']],
+        'Hyena Umbra' => ['manaCost' => '{W}', 'type' => 'Enchantment — Aura', 'text' => "Enchant creature\nEnchanted creature gets +1/+1 and has first strike.\nUmbra armor (If enchanted creature would be destroyed, instead remove all damage from it and destroy this Aura.)", 'colors' => ['W']],
+        'Day of Judgment' => ['manaCost' => '{2}{W}{W}', 'type' => 'Sorcery', 'text' => 'Destroy all creatures.', 'colors' => ['W']],
+        'Electromancer Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Goblin Wizard', 'power' => '2', 'toughness' => '2', 'text' => 'Instant and sorcery spells you cast cost {1} less to cast.', 'colors' => ['R']],
+        'Treasure Cruise' => ['manaCost' => '{7}{U}', 'type' => 'Sorcery', 'text' => "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\nDraw three cards.", 'colors' => ['U']],
+        'Lava Coil' => ['manaCost' => '{1}{R}', 'type' => 'Sorcery', 'text' => 'Lava Coil deals 4 damage to target creature. If that creature would die this turn, exile it instead.', 'colors' => ['R']],
+        'Junk Lite' => ['manaCost' => '{1}', 'type' => 'Artifact', 'text' => "When this artifact is put into a graveyard from the battlefield, draw a card.\n{T}, Sacrifice this artifact: You gain 1 life.", 'colors' => []],
         'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
@@ -854,6 +861,60 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame([], $game->players[0]->hand);
     }
 
+    public function testSplitSecondUmbraArmorAndWraths(): void
+    {
+        $game = $this->newGame();
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $theirs = $this->battlefield(1, 'Grizzly Bears');
+        $this->lands(0, 'Plains', 5);
+        $this->lands(0, 'Mountain', 2);
+        $umbra = $this->put(0, 'Hyena Umbra', GameObject::HAND);
+        $game->cast(0, $umbra, 0, ["o:{$bears}"]);
+        $this->resolve();
+        $this->assertContains('first strike', $game->keywords($game->objects[$bears]));
+
+        $game->cast(0, $this->put(0, 'Sudden Shock', GameObject::HAND), 0, ["o:{$theirs}"]);
+        $this->lands(1, 'Mountain', 1);
+        $game->pass(0);
+        $this->assertFalse($game->canCast(1, $this->hand(1, 'Lightning Bolt')), 'Split second.');
+        $game->pass(1);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($theirs));
+
+        $game->cast(0, $this->put(0, 'Day of Judgment', GameObject::HAND), 0, []);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($bears), 'Umbra armor.');
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($umbra));
+    }
+
+    public function testCostReductionDelveExileIfDiesAndGraveyardTriggers(): void
+    {
+        $game = $this->newGame();
+        $this->put(0, 'Electromancer Lite', GameObject::BATTLEFIELD);
+        $theirs = $this->battlefield(1, 'Grizzly Bears');
+        $this->lands(0, 'Mountain', 1);
+        $game->cast(0, $this->put(0, 'Lava Coil', GameObject::HAND), 0, ["o:{$theirs}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::EXILE, $this->zone($theirs), 'Exiled instead, and {1} cheaper.');
+
+        foreach (range(1, 6) as $i) {
+            $this->put(0, 'Akrasan Squire', GameObject::GRAVEYARD);
+        }
+        $this->lands(0, 'Island', 1);
+        $cruise = $this->put(0, 'Treasure Cruise', GameObject::HAND);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $cruise, 0, []);
+        $this->resolve();
+        $this->assertSame($hand + 2, count($game->players[0]->hand));
+        $this->assertCount(2, $game->players[0]->graveyard, 'Six cards delved (it costs {1} less), so one is left beside the Cruise.');
+
+        $junk = $this->put(0, 'Junk Lite', GameObject::BATTLEFIELD);
+        $hand = count($game->players[0]->hand);
+        $game->activate(0, $junk, 0);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame($hand + 1, count($game->players[0]->hand));
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -1128,7 +1189,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
