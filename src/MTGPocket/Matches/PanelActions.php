@@ -103,7 +103,7 @@ final class PanelActions
 
         if (! $card->isLand() && ($card->cost->xCount > 0 || $card->targetCount() > 0)) {
             $seat = $match->game->seatOf($playerId);
-            if ($seat === null || ! in_array($id, $match->game->players[$seat]->hand, true) || ! $match->game->canCast($seat, $id)) {
+            if ($seat === null || ! in_array($id, [...$match->game->players[$seat]->hand, ...$match->game->commandCards($seat)], true) || ! $match->game->canCast($seat, $id)) {
                 throw new GameException("You cannot cast {$card->name} now.");
             }
 

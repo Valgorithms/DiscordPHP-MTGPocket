@@ -23,7 +23,8 @@ use Random\Randomizer;
  * hands and London mulligan, the turn structure, priority and the stack,
  * playing lands, casting spells with automatic mana payment, combat,
  * triggered and activated abilities (loyalty and Equip included), tokens
- * and state-based actions.
+ * and state-based actions; and in Commander games, the command zone,
+ * commander tax and commander damage (rule 903).
  *
  * Every action checks that the rules allow it and throws a
  * {@see GameException} (changing nothing) when they do not. After each
@@ -44,6 +45,9 @@ final class Game
     public const string OVER = 'over';
 
     public const int OPENING_HAND = 7;
+
+    /** Combat damage from one commander that loses the game (rule 903.10a). */
+    public const int COMMANDER_DAMAGE = 21;
     public const int MAX_LOG = 50;
 
     /** @var GamePlayer[] By seat. */
@@ -74,6 +78,12 @@ final class Game
 
     /** @var int[] */
     public array $exile = [];
+
+    /** @var int[] The command zone. */
+    public array $command = [];
+
+    /** @var array<int, int> Each commander, by object id, with how many times it has been cast from the command zone. */
+    public array $commanders = [];
 
     public string $stage = self::MULLIGAN;
     public int $turn = 1;
@@ -125,7 +135,7 @@ final class Game
      * opening hands drawn for the mulligan.
      *
      * @param string $id
-     * @param array<int, array{id: string, name: string, cards: array[]}> $players Two players, each with their deck as a list of card data.
+     * @param array<int, array{id: string, name: string, cards: array[], commander?: array|null}> $players Two players, each with their deck as a list of card data, and in Commander their commander's.
      * @param string $seed
      * @param int    $life  Each player's starting life.
      *
@@ -146,6 +156,12 @@ final class Game
                 $object = new GameObject($game->nextId++, $seat, $card, GameObject::LIBRARY);
                 $game->objects[$object->id] = $object;
                 $game->players[$seat]->library[] = $object->id;
+            }
+            if (! empty($player['commander'])) {
+                $object = new GameObject($game->nextId++, $seat, (array) $player['commander'], GameObject::COMMAND);
+                $game->objects[$object->id] = $object;
+                $game->command[] = $object->id;
+                $game->commanders[$object->id] = 0;
             }
             $game->shuffle($seat);
         }
@@ -636,11 +652,48 @@ final class Game
             return [];
         }
 
-        return array_values(array_filter($this->players[$seat]->hand, function (int $id) use ($seat) {
+        return array_values(array_filter([...$this->players[$seat]->hand, ...$this->commandCards($seat)], function (int $id) use ($seat) {
             $card = $this->objects[$id]->definition();
 
             return $card->isLand() ? $this->canPlayLand($seat, $id) : $this->canCast($seat, $id);
         }));
+    }
+
+    /**
+     * A player's commanders in the command zone.
+     *
+     * @param int $seat
+     *
+     * @return int[]
+     */
+    public function commandCards(int $seat): array
+    {
+        return array_values(array_filter($this->command, fn (int $id) => $this->objects[$id]->owner === $seat));
+    }
+
+    /**
+     * Whether an object is a commander.
+     *
+     * @param GameObject $object
+     *
+     * @return bool
+     */
+    public function isCommander(GameObject $object): bool
+    {
+        return isset($this->commanders[$object->id]);
+    }
+
+    /**
+     * The extra {2} a commander costs for each time it was cast from the
+     * command zone before (rule 903.8).
+     *
+     * @param int $id
+     *
+     * @return int Generic mana.
+     */
+    public function commanderTax(int $id): int
+    {
+        return 2 * ($this->commanders[$id] ?? 0);
     }
 
     private function sorcerySpeed(int $seat): bool
@@ -728,7 +781,7 @@ final class Game
     private function whyNotCast(int $seat, int $id): ?string
     {
         $object = $this->objects[$id] ?? null;
-        if ($object === null || ! in_array($id, $this->players[$seat]->hand, true)) {
+        if ($object === null || ! (in_array($id, $this->players[$seat]->hand, true) || in_array($id, $this->commandCards($seat), true))) {
             return 'That card is not in your hand.';
         }
         $card = $object->definition();
@@ -784,7 +837,11 @@ final class Game
     {
         $player = $this->players[$seat];
         $sources = $this->manaSources($seat);
+        $tax = $this->objects[$id]->zone === GameObject::COMMAND ? $this->commanderTax($id) : 0;
         foreach ($this->objects[$id]->definition()->cost->payments($x) as $payment) {
+            if ($tax > 0) {
+                $payment['mana']['generic'] = ($payment['mana']['generic'] ?? 0) + $tax;
+            }
             if ($payment['life'] > 0 && $payment['life'] > $player->life) {
                 continue;
             }
@@ -875,6 +932,11 @@ final class Game
         }
         $player->life -= $payment['life'];
 
+        $fromCommand = $object->zone === GameObject::COMMAND;
+        if ($fromCommand) {
+            $tax = $this->commanderTax($id);
+            $this->commanders[$id]++;
+        }
         $this->removeFromZone($object);
         $object->moveTo(GameObject::STACK);
         $object->controller = $seat;
@@ -889,7 +951,7 @@ final class Game
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
-        $this->log("{$player->name} casts {$card->name}".($card->cost->xCount > 0 ? " (X = {$x})" : '').($named === [] ? '' : ' targeting '.implode(', ', $named)).'.');
+        $this->log("{$player->name} casts {$card->name}".($fromCommand ? ' from the command zone'.($tax > 0 ? " (tax {{$tax}})" : '') : '').($card->cost->xCount > 0 ? " (X = {$x})" : '').($named === [] ? '' : ' targeting '.implode(', ', $named)).'.');
         $this->settle();
     }
 
@@ -1879,6 +1941,10 @@ final class Game
             $lines[] = "{$source->name()} deals {$amount} to ".$this->describeTarget($target);
             if ($target[0] === 'p') {
                 $hitPlayer[$source->id] = $source;
+                if ($this->isCommander($source)) {
+                    $hit = $this->players[(int) substr($target, 2)];
+                    $hit->commanderDamage[$source->id] = ($hit->commanderDamage[$source->id] ?? 0) + $amount;
+                }
             }
         }
         foreach ($hitPlayer as $source) {
@@ -2016,6 +2082,7 @@ final class Game
             GameObject::GRAVEYARD => $owner->graveyard[] = $object->id,
             GameObject::LIBRARY => $owner->library[] = $object->id,
             GameObject::EXILE => $this->exile[] = $object->id,
+            GameObject::COMMAND => $this->command[] = $object->id,
             GameObject::GONE => null,
         };
         if ($dies) {
@@ -2050,6 +2117,9 @@ final class Game
             case GameObject::EXILE:
                 $this->exile = $remove($this->exile);
                 break;
+            case GameObject::COMMAND:
+                $this->command = $remove($this->command);
+                break;
             case GameObject::STACK:
                 $this->stack = array_values(array_filter($this->stack, fn (array $item) => self::isAbility($item) || $item['object'] !== $object->id));
                 break;
@@ -2073,6 +2143,7 @@ final class Game
                 }
                 $reason = match (true) {
                     $player->life <= 0 => 'has no life left',
+                    max([0, ...$player->commanderDamage]) >= self::COMMANDER_DAMAGE => 'has taken '.self::COMMANDER_DAMAGE.' combat damage from one commander',
                     $player->drewFromEmpty => 'tried to draw from an empty library',
                     $player->poison >= 10 => 'has ten poison counters',
                     default => null,
@@ -2136,6 +2207,17 @@ final class Game
                 $this->moveTo($this->objects[$id], GameObject::GRAVEYARD);
                 $this->log("{$reason}.");
                 $changed = true;
+            }
+
+            // A commander put into a graveyard or exile goes back to the
+            // command zone (rule 903.9a; the game always chooses to).
+            foreach ($this->commanders as $id => $casts) {
+                $object = $this->objects[$id];
+                if (in_array($object->zone, [GameObject::GRAVEYARD, GameObject::EXILE], true)) {
+                    $this->moveTo($object, GameObject::COMMAND);
+                    $this->log("{$object->name()} returns to the command zone.");
+                    $changed = true;
+                }
             }
 
             if (! $changed) {
@@ -2343,6 +2425,8 @@ final class Game
             'stack' => $this->stack,
             'pendingTriggers' => $this->pendingTriggers,
             'exile' => $this->exile,
+            'command' => $this->command,
+            'commanders' => array_map(fn ($id, $casts) => [$id, $casts], array_keys($this->commanders), $this->commanders),
             'attackers' => array_keys($this->attackers),
             'blockers' => array_map(fn ($blocker, $attacker) => [$blocker, $attacker], array_keys($this->blockers), $this->blockers),
             'blocked' => array_keys($this->blocked),
@@ -2400,6 +2484,10 @@ final class Game
             'text' => (string) ($trigger['text'] ?? ''),
         ], (array) ($data['pendingTriggers'] ?? [])));
         $game->exile = array_map('intval', (array) $data['exile']);
+        $game->command = array_map('intval', (array) ($data['command'] ?? []));
+        foreach ((array) ($data['commanders'] ?? []) as [$id, $casts]) {
+            $game->commanders[(int) $id] = (int) $casts;
+        }
         $game->attackers = array_fill_keys(array_map('intval', (array) ($data['attackers'] ?? [])), true);
         foreach ((array) ($data['blockers'] ?? []) as [$blocker, $attacker]) {
             $game->blockers[(int) $blocker] = (int) $attacker;

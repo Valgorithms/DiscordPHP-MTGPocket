@@ -177,6 +177,9 @@ class PocketMessageBuilder extends MessageBuilder
         uksort($sections, fn (string $a, string $b) => $order[$a] <=> $order[$b]);
 
         $text = [];
+        if ($deck->commander !== null) {
+            $text[] = "**Commander**\n👑 ".$card($deck->commander)['name'];
+        }
         foreach ($sections as $title => $entries) {
             usort($entries, fn (array $a, array $b) => strcasecmp($a[1]['name'], $b[1]['name']));
             $text[] = "**{$title}** (".array_sum(array_column($entries, 0)).")\n".implode("\n", array_map(fn (array $entry) => "{$entry[0]} {$entry[1]['name']}", $entries));

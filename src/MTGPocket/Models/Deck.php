@@ -31,6 +31,7 @@ class Deck implements \JsonSerializable
      * @param CardCounts $side      The side deck.
      * @param int        $createdAt Unix time.
      * @param int        $updatedAt Unix time.
+     * @param string|null $commander The key of its commander, for Commander decks.
      */
     public function __construct(
         public readonly string $id,
@@ -41,6 +42,7 @@ class Deck implements \JsonSerializable
         public readonly CardCounts $side = new CardCounts(),
         public int $createdAt = 0,
         public int $updatedAt = 0,
+        public ?string $commander = null,
     ) {
         if ($this->createdAt === 0) {
             $this->createdAt = time();
@@ -51,14 +53,29 @@ class Deck implements \JsonSerializable
     }
 
     /**
-     * Every card the deck uses, main and side together, for checking it
-     * against the owner's inventory.
+     * Every card the deck uses, main and side deck and commander together,
+     * for checking it against the owner's inventory.
      *
      * @return CardCounts
      */
     public function allCards(): CardCounts
     {
-        return (new CardCounts($this->main->toArray()))->merge($this->side);
+        $cards = (new CardCounts($this->main->toArray()))->merge($this->side);
+        if ($this->commander !== null) {
+            $cards->add($this->commander, 1);
+        }
+
+        return $cards;
+    }
+
+    /**
+     * Cards in the main deck, with its commander.
+     *
+     * @return int
+     */
+    public function size(): int
+    {
+        return $this->main->total() + ($this->commander === null ? 0 : 1);
     }
 
     /**
@@ -77,6 +94,7 @@ class Deck implements \JsonSerializable
             new CardCounts((array) ($data['side'] ?? [])),
             (int) ($data['createdAt'] ?? 0),
             (int) ($data['updatedAt'] ?? 0),
+            isset($data['commander']) ? (string) $data['commander'] : null,
         );
     }
 
@@ -94,6 +112,7 @@ class Deck implements \JsonSerializable
             'side' => $this->side,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
+            'commander' => $this->commander,
         ];
     }
 }

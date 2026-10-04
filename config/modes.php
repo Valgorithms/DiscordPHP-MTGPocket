@@ -29,6 +29,9 @@ declare(strict_types=1);
  * - `banned`: card names that are not allowed.
  * - `playable`: false while the rules engine cannot run the mode yet; its
  *   decks can still be built and checked.
+ * - `commander`: decks need a commander (`/decks commander`) and every card
+ *   within its colors, and games use the Commander rules. `main_min` and
+ *   `main_max` count the commander. The copy limit counts it too.
  */
 return [
     // Recent sets only. Real Standard rotates by set; this keeps the sets
@@ -68,7 +71,10 @@ return [
         'banned' => [],
     ],
 
-    // 100 cards, one of each (basic lands aside), 40 life.
+    // 100 cards counting the commander, one of each (basic lands aside), all
+    // within the commander's colors, 40 life. Commanders start in the
+    // command zone, cost {2} more each time they are cast from it, and 21
+    // combat damage from one commander loses the game.
     'commander' => [
         'main_min' => 100,
         'main_max' => 100,
@@ -78,6 +84,6 @@ return [
         'sets' => null,
         'released_within_days' => null,
         'banned' => [],
-        'playable' => false,
+        'commander' => true,
     ],
 ];
