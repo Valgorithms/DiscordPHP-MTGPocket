@@ -89,7 +89,9 @@ final class ManaPayer
                 $free = $data['source'] === null || isset($tapped[$data['source']]);
                 if (! isset($used[$unit]) && (! $firstPass || $free)) {
                     $used[$unit] = $data['colors'][0];
-                    $tapped[$data['source']] = true;
+                    if ($data['source'] !== null) {
+                        $tapped[$data['source']] = true;
+                    }
                     $generic--;
                 }
             }

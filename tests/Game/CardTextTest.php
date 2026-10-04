@@ -125,4 +125,17 @@ final class CardTextTest extends GameTestCase
         $card = new CardDefinition(['name' => 'Sure Strike', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'This spell deals 3 damage to any target.']);
         $this->assertSame([['type' => 'damage', 'amount' => 3, 'target' => 'any']], $card->effects);
     }
+
+    public function testSymbolsThatAreNotManaArePaidAsGeneric(): void
+    {
+        // Mystery Booster 2 playtest card: {D} is a land drop.
+        $card = new CardDefinition(['name' => 'Boulder Jockey', 'type' => 'Creature — Goblin', 'manaCost' => '{2}{R}{D}', 'manaValue' => 4.0, 'power' => '3', 'toughness' => '3']);
+        $this->assertSame(4, $card->cost->manaValue());
+        $this->assertSame(['Mana cost {2}{R}{D} (paid as generic mana)'], $card->unsupported);
+
+        $equipment = new CardDefinition(['name' => 'Odd Blade', 'type' => 'Artifact — Equipment', 'manaCost' => '{1}', 'text' => "Equipped creature gets +1/+0.
+Equip {E}"]);
+        $this->assertSame([], $equipment->activated);
+        $this->assertSame(['Equip {E}'], $equipment->unsupported);
+    }
 }
