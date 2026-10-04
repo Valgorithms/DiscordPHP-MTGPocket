@@ -19,8 +19,9 @@ use MTGPocket\Storage\JsonStore;
 
 /**
  * Matches, one file each under `matches/`, which live match each player
- * is in, under `live/{playerId}.json`, and who is waiting for a game in
- * each mode, under `queues/{mode}.json`.
+ * is in, under `live/{playerId}.json`, the games each player has played
+ * under `history/{playerId}.json`, and who is waiting for a game in each
+ * mode, under `queues/{mode}.json`.
  *
  * @since 0.3.0
  */
@@ -29,6 +30,10 @@ class MatchRepository
     public const COLLECTION = 'matches';
     public const LIVE = 'live';
     public const QUEUES = 'queues';
+    public const HISTORY = 'history';
+
+    /** Finished games kept in each player's history. */
+    public const int HISTORY_SIZE = 25;
 
     public function __construct(protected JsonStore $store)
     {
@@ -104,6 +109,35 @@ class MatchRepository
         } else {
             $this->store->put(self::LIVE, $playerId, ['match' => $matchId]);
         }
+    }
+
+    /**
+     * The ids of the games a player has finished, newest first.
+     *
+     * @param string $playerId
+     *
+     * @return string[]
+     */
+    public function history(string $playerId): array
+    {
+        return array_values(array_map('strval', (array) ($this->store->get(self::HISTORY, $playerId)['matches'] ?? [])));
+    }
+
+    /**
+     * Adds a finished game to the front of a player's history.
+     *
+     * @param string $playerId
+     * @param string $matchId
+     *
+     * @return void
+     */
+    public function addToHistory(string $playerId, string $matchId): void
+    {
+        $this->store->update(self::HISTORY, $playerId, fn (?array $data) => ['matches' => array_slice(
+            [$matchId, ...array_values(array_filter(array_map('strval', (array) ($data['matches'] ?? [])), fn (string $id) => $id !== $matchId))],
+            0,
+            self::HISTORY_SIZE,
+        )]);
     }
 
     /**

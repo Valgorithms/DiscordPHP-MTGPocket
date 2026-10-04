@@ -115,8 +115,20 @@ final class Game
 
     public ?int $winner = null;
 
-    /** @var string[] What happened, newest last. */
+    /** @var string[] What happened, newest last; only the latest {@see MAX_LOG} lines. */
     public array $log = [];
+
+    /**
+     * The whole game, kept for review once it is over: every line of the
+     * log with the turn and step it happened in, and at the end of each
+     * turn the position (life, card counts and the battlefield). Moves a
+     * player made, and their outcomes, also have `m`, a short notation that
+     * {@see GameRecord} lays out turn by turn like a chess score sheet.
+     * Nothing hidden is recorded: no card drawn or put on the bottom is named.
+     *
+     * @var list<array{t: int, s: string, p?: int, m?: string, x?: string, pos?: list<array{life: int, hand: int, library: int, graveyard: int, board: string[]}>}>
+     */
+    public array $record = [];
 
     private int $nextId = 1;
     private int $nextStackId = 1;
@@ -168,7 +180,7 @@ final class Game
 
         $game->startingPlayer = $game->random()->getInt(0, 1);
         $game->active = $game->startingPlayer;
-        $game->log("{$game->players[$game->startingPlayer]->name} won the coin flip and plays first.");
+        $game->log("{$game->players[$game->startingPlayer]->name} won the coin flip and plays first.", $game->startingPlayer);
         foreach ($game->players as $seat => $player) {
             $game->draw($seat, self::OPENING_HAND);
         }
@@ -302,7 +314,7 @@ final class Game
         $player = $this->players[$seat];
         $player->kept = true;
         $player->toBottom = min($player->mulligans, count($player->hand));
-        $this->log("{$player->name} keeps ".($player->mulligans === 0 ? 'their opening hand.' : "after {$player->mulligans} mulligan".($player->mulligans === 1 ? '' : 's').'.'));
+        $this->log("{$player->name} keeps ".($player->mulligans === 0 ? 'their opening hand.' : "after {$player->mulligans} mulligan".($player->mulligans === 1 ? '' : 's').'.'), $seat, 'keep');
         $this->beginIfReady();
     }
 
@@ -328,7 +340,7 @@ final class Game
         $player->mulligans++;
         $this->shuffle($seat);
         $this->draw($seat, self::OPENING_HAND);
-        $this->log("{$player->name} takes a mulligan.");
+        $this->log("{$player->name} takes a mulligan.", $seat, 'mull');
     }
 
     /**
@@ -359,7 +371,7 @@ final class Game
             array_unshift($player->library, $id);
         }
         $player->toBottom = 0;
-        $this->log("{$player->name} puts ".count($ids).' card'.(count($ids) === 1 ? '' : 's').' on the bottom of their library.');
+        $this->log("{$player->name} puts ".count($ids).' card'.(count($ids) === 1 ? '' : 's').' on the bottom of their library.', $seat, 'bottom '.count($ids));
         $this->beginIfReady();
     }
 
@@ -372,7 +384,7 @@ final class Game
         }
 
         $this->stage = self::PLAYING;
-        $this->log("Turn 1: {$this->players[$this->active]->name}.");
+        $this->log("Turn 1: {$this->players[$this->active]->name}.", $this->active);
         $this->enterStep(Step::Untap);
         $this->settle();
     }
@@ -490,12 +502,14 @@ final class Game
 
     private function nextTurn(): void
     {
+        $this->recordPosition();
         $this->turn++;
         $this->active = $this->opponent($this->active);
         foreach ($this->players as $player) {
             $player->landsPlayed = 0;
         }
-        $this->log("Turn {$this->turn}: {$this->players[$this->active]->name}.");
+        $this->step = Step::Untap;
+        $this->log("Turn {$this->turn}: {$this->players[$this->active]->name}.", $this->active);
         $this->enterStep(Step::Untap);
     }
 
@@ -630,7 +644,8 @@ final class Game
         foreach ($ids as $id) {
             $this->moveTo($this->objects[$id], GameObject::GRAVEYARD);
         }
-        $this->log("{$player->name} discards ".implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids)).'.');
+        $discarded = implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids));
+        $this->log("{$player->name} discards {$discarded}.", $seat, "discard {$discarded}");
         $this->cleanup();
         $this->settle();
     }
@@ -751,7 +766,7 @@ final class Game
         $this->putOntoBattlefield($object, $seat);
         $this->players[$seat]->landsPlayed++;
         $this->passes = 0;
-        $this->log("{$this->players[$seat]->name} plays {$object->name()}.");
+        $this->log("{$this->players[$seat]->name} plays {$object->name()}.", $seat, '+'.$object->name());
         $this->settle();
     }
 
@@ -951,7 +966,11 @@ final class Game
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
-        $this->log("{$player->name} casts {$card->name}".($fromCommand ? ' from the command zone'.($tax > 0 ? " (tax {{$tax}})" : '') : '').($card->cost->xCount > 0 ? " (X = {$x})" : '').($named === [] ? '' : ' targeting '.implode(', ', $named)).'.');
+        $this->log(
+            "{$player->name} casts {$card->name}".($fromCommand ? ' from the command zone'.($tax > 0 ? " (tax {{$tax}})" : '') : '').($card->cost->xCount > 0 ? " (X = {$x})" : '').($named === [] ? '' : ' targeting '.implode(', ', $named)).'.',
+            $seat,
+            $card->name.($card->cost->xCount > 0 ? " X={$x}" : '').self::targetNotation($named),
+        );
         $this->settle();
     }
 
@@ -1140,7 +1159,7 @@ final class Game
                     if ($item['id'] === $stackId) {
                         array_splice($this->stack, $index, 1);
                         $countered = $this->objects[$item['object']];
-                        $this->log("{$countered->name()} is countered.");
+                        $this->log("{$countered->name()} is countered.", null, "{$countered->name()} countered");
                         $this->moveTo($countered, GameObject::GRAVEYARD);
                         break;
                     }
@@ -1285,13 +1304,13 @@ final class Game
     /**
      * Puts an ability on the stack with its targets.
      *
-     * @param array{source: int, incarnation: int, controller: int, effects: array[], kinds: string[], label: string} $ability
+     * @param array{source: int, incarnation: int, controller: int, effects: array[], kinds: string[], label: string, text?: string} $ability
      * @param string[] $targets Already checked.
      * @param string   $verb    For the log: `triggers` or `is activated`.
      *
      * @return void
      */
-    private function pushAbility(array $ability, array $targets, string $verb): void
+    private function pushAbility(array $ability, array $targets, string $verb, ?string $move = null): void
     {
         $targets = array_map(fn (string $target) => $this->pinTarget($target), $targets);
         $this->stack[] = [
@@ -1308,7 +1327,9 @@ final class Game
         ];
         $this->passes = 0;
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
-        $this->log("{$ability['label']} {$verb}".($named === [] ? '' : ' targeting '.implode(', ', $named)).'.');
+        $line = "{$ability['label']} {$verb}".($named === [] ? '' : ' targeting '.implode(', ', $named));
+        // The record also says what a triggered ability does, since one card can have several.
+        $this->log("{$line}.", $ability['controller'], $move === null ? null : $move.self::targetNotation($named), ($ability['text'] ?? '') === '' ? null : "{$line}: {$ability['text']}");
     }
 
     /**
@@ -1518,10 +1539,10 @@ final class Game
             'effects' => $ability['effects'],
             'kinds' => $kinds,
             'label' => $label,
-        ], $targets, 'is activated');
+        ], $targets, 'is activated', $object->name().'*');
         if ($cost['sacrifice'] ?? false) {
             $this->moveTo($object, GameObject::GRAVEYARD);
-            $this->log("{$player->name} sacrifices {$object->name()}.");
+            $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
         }
         $this->settle();
     }
@@ -1754,11 +1775,12 @@ final class Game
         }
 
         if ($ids === []) {
-            $this->log("{$this->players[$seat]->name} does not attack.");
+            $this->log("{$this->players[$seat]->name} does not attack.", $seat);
             // No attackers: the blockers and damage steps are skipped (rule 508.8).
             $this->enterStep(Step::EndCombat);
         } else {
-            $this->log("{$this->players[$seat]->name} attacks with ".implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids)).'.');
+            $attacking = implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids));
+            $this->log("{$this->players[$seat]->name} attacks with {$attacking}.", $seat, "atk {$attacking}");
             $this->priority = $this->active;
         }
         $this->settle();
@@ -1835,13 +1857,14 @@ final class Game
         }
 
         $this->declared['block'] = true;
-        $lines = [];
+        $lines = $moves = [];
         foreach ($blocks as $blocker => $attacker) {
             $this->blockers[(int) $blocker] = (int) $attacker;
             $this->blocked[(int) $attacker] = true;
             $lines[] = $this->objects[(int) $blocker]->name().' blocks '.$this->objects[(int) $attacker]->name();
+            $moves[] = $this->objects[(int) $blocker]->name().':'.$this->objects[(int) $attacker]->name();
         }
-        $this->log($lines === [] ? "{$this->players[$seat]->name} does not block." : implode('; ', $lines).'.');
+        $this->log($lines === [] ? "{$this->players[$seat]->name} does not block." : implode('; ', $lines).'.', $seat, $moves === [] ? null : 'blk '.implode(', ', $moves));
         $this->priority = $this->active;
         $this->settle();
     }
@@ -1935,12 +1958,13 @@ final class Game
         }
 
         // All combat damage is dealt at once (rule 510.2).
-        $lines = $hitPlayer = [];
+        $lines = $hitPlayer = $toPlayers = [];
         foreach ($assignments as [$source, $target, $amount]) {
             $this->dealDamage($source, $target, $amount);
             $lines[] = "{$source->name()} deals {$amount} to ".$this->describeTarget($target);
             if ($target[0] === 'p') {
                 $hitPlayer[$source->id] = $source;
+                $toPlayers[(int) substr($target, 2)] = ($toPlayers[(int) substr($target, 2)] ?? 0) + $amount;
                 if ($this->isCommander($source)) {
                     $hit = $this->players[(int) substr($target, 2)];
                     $hit->commanderDamage[$source->id] = ($hit->commanderDamage[$source->id] ?? 0) + $amount;
@@ -1951,7 +1975,8 @@ final class Game
             $this->trigger($source, 'combat_damage', $source->controller);
         }
         if ($lines !== []) {
-            $this->log(implode('; ', $lines).'.');
+            $hits = array_map(fn (int $seat, int $amount) => "{$this->players[$seat]->name} -{$amount}", array_keys($toPlayers), $toPlayers);
+            $this->log(implode('; ', $lines).'.', null, $hits === [] ? null : implode(', ', $hits));
         }
     }
 
@@ -2025,6 +2050,9 @@ final class Game
             }
             $this->objects[$id]->moveTo(GameObject::HAND);
             $player->hand[] = $id;
+        }
+        if ($this->stage === self::PLAYING) {
+            $this->note("{$player->name} draws ".($count === 1 ? 'a card' : "{$count} cards").'.', $seat);
         }
     }
 
@@ -2204,8 +2232,8 @@ final class Game
             }
 
             foreach ($toGraveyard as $id => $reason) {
+                $this->log("{$reason}.", null, '†'.$this->objects[$id]->name());
                 $this->moveTo($this->objects[$id], GameObject::GRAVEYARD);
-                $this->log("{$reason}.");
                 $changed = true;
             }
 
@@ -2231,6 +2259,7 @@ final class Game
             $this->priority = null;
             $this->winner = $alive === [] ? null : array_key_first($alive);
             $this->log($this->winner === null ? 'The game is a draw.' : "{$this->players[$this->winner]->name} wins the game!");
+            $this->recordPosition();
         }
     }
 
@@ -2238,7 +2267,7 @@ final class Game
     {
         $player->lost = true;
         $player->lossReason = $reason;
-        $this->log("{$player->name} {$reason} and loses the game.");
+        $this->log("{$player->name} {$reason} and loses the game.", $player->seat, $reason === 'concedes' ? 'resign' : null);
     }
 
     /**
@@ -2395,12 +2424,76 @@ final class Game
         return new Randomizer(new Xoshiro256StarStar(hash('sha256', $this->seed.':'.$this->shuffles++, true)));
     }
 
-    private function log(string $line): void
+    /**
+     * Adds a line to the log and the record.
+     *
+     * @param string      $line
+     * @param int|null    $seat The player who made the move or whose turn begins; null for what follows from the rules.
+     * @param string|null $move The move in the record's notation, when it belongs on the score sheet.
+     * @param string|null $full The line for the record, when it says more than the board has room for.
+     *
+     * @return void
+     */
+    private function log(string $line, ?int $seat = null, ?string $move = null, ?string $full = null): void
     {
         $this->log[] = $line;
         if (count($this->log) > self::MAX_LOG) {
             $this->log = array_slice($this->log, -self::MAX_LOG);
         }
+        $this->note($full ?? $line, $seat, $move);
+    }
+
+    /**
+     * Adds a line to the record only, for what the board does not need to show.
+     *
+     * @param string      $line
+     * @param int|null    $seat
+     * @param string|null $move
+     *
+     * @return void
+     */
+    private function note(string $line, ?int $seat = null, ?string $move = null): void
+    {
+        $this->record[] = ['t' => $this->stage === self::MULLIGAN ? 0 : $this->turn, 's' => $this->stage === self::MULLIGAN ? 'mulligan' : $this->step->value]
+            + ($seat === null ? [] : ['p' => $seat])
+            + ($move === null ? [] : ['m' => $move])
+            + ['x' => $line];
+    }
+
+    /**
+     * Records the position at the end of a turn or of the game: each
+     * player's life, how many cards are in their hidden zones, and their
+     * permanents (creatures with their power and toughness).
+     *
+     * @return void
+     */
+    private function recordPosition(): void
+    {
+        $position = [];
+        foreach ($this->players as $seat => $player) {
+            $board = [];
+            foreach ($this->permanents($seat) as $object) {
+                $board[] = $object->name()
+                    .($this->isCreature($object) ? ' '.$this->power($object).'/'.$this->toughness($object) : '')
+                    .($object->definition()->isPlaneswalker() ? ' ['.$object->counter('loyalty').']' : '')
+                    .($object->attachedTo !== null && isset($this->objects[$object->attachedTo]) ? ' (on '.$this->objects[$object->attachedTo]->name().')' : '')
+                    .($object->tapped ? ' (tapped)' : '');
+            }
+            $position[$seat] = ['life' => $player->life, 'hand' => count($player->hand), 'library' => count($player->library), 'graveyard' => count($player->graveyard), 'board' => $board];
+        }
+        $this->record[] = ['t' => $this->turn, 's' => $this->step->value, 'pos' => $position];
+    }
+
+    /**
+     * Targets in move notation: ` > Bob, Grizzly Bears`.
+     *
+     * @param string[] $named
+     *
+     * @return string
+     */
+    private static function targetNotation(array $named): string
+    {
+        return $named === [] ? '' : ' > '.implode(', ', $named);
     }
 
     // ----------------------------------------------------------------------
@@ -2435,6 +2528,7 @@ final class Game
             'autoPass' => $this->autoPass,
             'winner' => $this->winner,
             'log' => $this->log,
+            'record' => $this->record,
             'nextId' => $this->nextId,
             'nextStackId' => $this->nextStackId,
             'shuffles' => $this->shuffles,
@@ -2500,6 +2594,8 @@ final class Game
         }
         $game->winner = isset($data['winner']) ? (int) $data['winner'] : null;
         $game->log = array_values(array_map('strval', (array) ($data['log'] ?? [])));
+        // Games from before the record have none.
+        $game->record = array_values(array_map(fn ($entry) => (array) $entry, (array) ($data['record'] ?? [])));
         $game->nextId = (int) $data['nextId'];
         $game->nextStackId = (int) $data['nextStackId'];
         $game->shuffles = (int) $data['shuffles'];

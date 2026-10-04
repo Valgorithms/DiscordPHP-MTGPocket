@@ -270,6 +270,49 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$bears]->zone);
     }
 
+    public function testFinishedGamesKeepTheirRecordForReview(): void
+    {
+        $matches = $this->pocket->matches;
+        $this->assertException(fn () => $matches->forReview(self::ALICE), 'not played a game yet');
+
+        $match = $this->startMatch();
+        $panel = new PanelActions($matches);
+        $panel->run($match->id, self::ALICE, 'keep');
+        $panel->run($match->id, self::BOB, 'keep');
+        $this->assertSame($match->id, $matches->forReview(self::BOB)->id, 'A live game can be reviewed too.');
+        $this->assertStringContainsString('[Result "*"]', $matches->forReview(self::BOB)->transcript());
+
+        $over = $matches->leave(self::BOB);
+        $this->assertSame(MatchRecord::OVER, $over->status);
+        $this->assertSame([$match->id], array_map(fn (MatchRecord $m) => $m->id, $matches->history(self::ALICE)));
+        $this->assertSame([$match->id], array_map(fn (MatchRecord $m) => $m->id, $matches->history(self::BOB)));
+
+        $review = $matches->forReview(self::ALICE);
+        $this->assertSame($match->id, $review->id, 'With no live game, the last finished one.');
+        $this->assertSame($match->id, $matches->forReview('333', $match->id)->id, 'Anyone can look a game up by its id.');
+        $this->assertException(fn () => $matches->forReview(self::ALICE, 'ffff'), 'no game with that id');
+
+        $text = $review->transcript();
+        $this->assertStringContainsString('[Match "'.$match->id.'"]', $text);
+        $this->assertStringContainsString('[Mode "Casual (friendly)"]', $text);
+        $this->assertStringContainsString('[Seat 1 deck "Gruul"]', $text);
+        $this->assertStringContainsString('[Result "1-0"]', $text);
+        $this->assertStringContainsString('[Termination "Bob concedes"]', $text);
+        $this->assertStringContainsString('Bob: resign', $text);
+
+        $message = MatchMessageBuilder::log($review);
+        $this->assertSame([["match-{$match->id}.txt", $text]], $message->getFiles());
+        $this->assertStringContainsString('1-0 after 1 turn, won by **Alice**', json_encode($message, JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString("pocket:m:{$match->id}:log", json_encode(MatchMessageBuilder::board($review), JSON_UNESCAPED_UNICODE));
+        $this->assertSame('vs Bob · won · 1 turn · Casual · '.gmdate('M j', $this->now), MatchMessageBuilder::historyLine($review, self::ALICE));
+        $this->assertStringStartsWith('vs Alice · lost', MatchMessageBuilder::historyLine($review, self::BOB));
+
+        // A declined challenge never had a game, so it is not in anyone's history.
+        $declined = $matches->challenge(self::ALICE, 'Alice', self::BOB, 'Bob');
+        $matches->decline($declined->id, self::BOB);
+        $this->assertCount(1, $matches->history(self::ALICE));
+    }
+
     public function testMessagesFitDiscord(): void
     {
         $match = $this->pocket->matches->challenge(self::ALICE, 'Alice', self::BOB, 'Bob');

@@ -682,7 +682,8 @@ final class MatchService
     }
 
     /**
-     * Frees the players of a match that is no longer live.
+     * Frees the players of a match that is no longer live, and adds a game
+     * that was played to their histories.
      *
      * @param MatchRecord $match
      *
@@ -694,6 +695,44 @@ final class MatchService
             if ($this->matches->liveMatchId($player['id']) === $match->id) {
                 $this->matches->setLive($player['id'], null);
             }
+            if ($match->game !== null) {
+                $this->matches->addToHistory($player['id'], $match->id);
+            }
         }
+    }
+
+    /**
+     * The games a player has finished, newest first.
+     *
+     * @param string $playerId
+     *
+     * @return MatchRecord[]
+     */
+    public function history(string $playerId): array
+    {
+        return array_values(array_filter(array_map(fn (string $id) => $this->matches->find($id), $this->matches->history($playerId))));
+    }
+
+    /**
+     * The match whose record a player wants to review: one by id, or else
+     * their live game, or else the last game they finished.
+     *
+     * @param string      $playerId
+     * @param string|null $matchId
+     *
+     * @throws \InvalidArgumentException When there is no such game.
+     *
+     * @return MatchRecord
+     */
+    public function forReview(string $playerId, ?string $matchId = null): MatchRecord
+    {
+        $match = $matchId !== null && $matchId !== ''
+            ? $this->matches->find(strtolower(trim($matchId)))
+            : (($live = $this->current($playerId)) !== null && $live->game !== null ? $live : ($this->history($playerId)[0] ?? null));
+        if ($match === null || $match->game === null) {
+            throw new \InvalidArgumentException($matchId ? 'There is no game with that id.' : 'You have not played a game yet.');
+        }
+
+        return $match;
     }
 }

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace MTGPocket\Matches;
 
 use MTGPocket\Game\Game;
+use MTGPocket\Game\GameRecord;
 
 /**
  * A match between two players in one game mode: a challenge until the
@@ -97,6 +98,34 @@ final class MatchRecord
     public function choice(string $playerId): array
     {
         return $this->choices[$playerId] ?? [];
+    }
+
+    /**
+     * The game's record as text, for review: the match's own tags (id,
+     * mode, date, decks), then the {@see GameRecord}.
+     *
+     * @return string|null Null before the game has started.
+     */
+    public function transcript(): ?string
+    {
+        if ($this->game === null) {
+            return null;
+        }
+        $tags = [
+            'Match' => $this->id,
+            'Mode' => ucfirst($this->mode).($this->ranked ? ' (ranked)' : ' (friendly)'),
+        ];
+        if ($this->createdAt > 0) {
+            $tags['Date'] = gmdate('Y.m.d H:i', $this->createdAt).' UTC';
+        }
+        foreach ($this->players as $seat => $player) {
+            $tags['Seat '.($seat + 1)] = $player['name'];
+            if (($player['deckName'] ?? null) !== null) {
+                $tags['Seat '.($seat + 1).' deck'] = (string) $player['deckName'];
+            }
+        }
+
+        return GameRecord::render($this->game, $tags);
     }
 
     public function toArray(): array
