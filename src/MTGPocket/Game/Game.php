@@ -1696,7 +1696,7 @@ final class Game
         }
         $rest = array_values(array_diff($choice['cards'], $ids));
         shuffle($rest);
-        foreach ($rest as $id) {
+        foreach ($choice['rest'] === 'top' ? [] : $rest as $id) {
             $object = $this->objects[$id];
             if ($choice['rest'] === 'graveyard') {
                 $this->moveTo($object, GameObject::GRAVEYARD);
@@ -1999,6 +1999,13 @@ final class Game
                 }
                 break;
 
+            case 'saddled':
+                if ($self !== null) {
+                    $self->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['saddled']];
+                    $this->log("{$self->name()} becomes saddled until end of turn.");
+                }
+                break;
+
             case 'crewed':
                 if ($self !== null) {
                     $self->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => [], 'creature' => true];
@@ -2034,7 +2041,16 @@ final class Game
             'creature_or_land' => $card->isCreature() || $card->isLand(),
             'artifact' => $card->is('Artifact'),
             'enchantment' => $card->is('Enchantment'),
-            default => true,
+            'instant' => $card->is('Instant'),
+            'sorcery' => $card->is('Sorcery'),
+            'planeswalker' => $card->isPlaneswalker(),
+            'battle' => $card->is('Battle'),
+            'permanent' => $card->isPermanentCard(),
+            'nonland_permanent' => $card->isPermanentCard() && ! $card->isLand(),
+            'any' => true,
+            // `creature|land` or `sub:Dwarf|sub:Equipment`: any of them.
+            default => str_contains($filter, '|') ? array_filter(explode('|', $filter), fn (string $piece) => $this->matchesFilter($card, $piece)) !== []
+                : (! str_starts_with($filter, 'sub:') || in_array(substr($filter, 4), $card->subtypes, true)),
         };
     }
 
@@ -2195,6 +2211,10 @@ final class Game
         foreach ($source->definition()->triggersOn($event) as $ability) {
             // "When this creature enters, if it was kicked, …"
             if (($ability['kicked'] ?? false) && ! $source->kicked) {
+                continue;
+            }
+            // "Whenever this creature attacks while saddled, …"
+            if (($ability['saddled'] ?? false) && ! $this->hasKeyword($source, 'saddled')) {
                 continue;
             }
             $this->pendingTriggers[] = [
@@ -2539,7 +2559,7 @@ final class Game
             }
         }
         if (isset($cost['crew']) && $this->crew($seat, $object, $cost['crew']) === null) {
-            return "Crewing {$card->name} needs untapped creatures with total power {$cost['crew']} or more.";
+            return (str_starts_with(strtolower($card->activated[$index]['text']), 'saddle') ? 'Saddling' : 'Crewing')." {$card->name} needs untapped creatures with total power {$cost['crew']} or more.";
         }
         if (($cost['life'] ?? 0) > $this->players[$seat]->life) {
             return 'You do not have enough life.';

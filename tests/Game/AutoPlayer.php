@@ -263,6 +263,7 @@ final class AutoPlayer
                     || isset($ability['cost']['loyalty'])
                     || in_array('level', $types, true)
                     || (isset($ability['cost']['energy']) && in_array('counters', $types, true))
+                    || (in_array('saddled', $types, true) && $game->step === Step::PrecombatMain && ! $object->sick && ! $game->hasKeyword($object, 'saddled'))
                     || in_array('face_up', $types, true)
                     || (in_array('crewed', $types, true) && $game->step === Step::PrecombatMain && ! $game->isCreature($object))
                 );

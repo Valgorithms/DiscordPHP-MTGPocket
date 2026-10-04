@@ -783,7 +783,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     $game->choiceAwaiting()['take'] === 0 => 'None of them can go to your hand.',
                     $game->choiceAwaiting()['may'] => 'You may put '.($game->choiceAwaiting()['take'] === 1 ? 'one' : 'up to '.$game->choiceAwaiting()['take']).' of the highlighted choices into your hand.',
                     default => 'Choose '.$game->choiceAwaiting()['take'].' to put into your hand.',
-                }.' The rest go '.($game->choiceAwaiting()['rest'] === 'graveyard' ? 'into your graveyard.' : 'on the bottom in a random order.'),
+                }.' '.match ($game->choiceAwaiting()['rest']) {
+                    'graveyard' => 'The rest go into your graveyard.',
+                    'top' => 'They stay on top.',
+                    default => 'The rest go on the bottom in a random order.',
+                },
             'mode' => 'Choose the mode for **'.$game->choiceAwaiting()['label'].'**, which just triggered.',
             'priority' => match (true) {
                 isset($choice['cast']) => 'Finish casting your spell, or cancel.',

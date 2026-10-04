@@ -64,6 +64,12 @@ final class ModernCardTextTest extends GameTestCase
         'Staggershock' => ['manaCost' => '{2}{R}', 'type' => 'Instant', 'text' => "Staggershock deals 2 damage to any target.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)", 'colors' => ['R']],
         'Longtusk Cub' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '2', 'text' => "Whenever this creature deals combat damage to a player, you get {E}{E} (two energy counters).\nPay {E}{E}: Put a +1/+1 counter on this creature.", 'colors' => ['G']],
         'Thriving Rhino' => ['manaCost' => '{4}{G}', 'type' => 'Creature — Rhino', 'power' => '3', 'toughness' => '3', 'text' => "When this creature enters, you get {E}{E}.\nPay {E}{E}: This creature gets +2/+2 until end of turn.", 'colors' => ['G']],
+        'Brightfield Mustang' => ['manaCost' => '{3}{W}', 'type' => 'Creature — Horse Mount', 'power' => '3', 'toughness' => '3', 'text' => "Whenever this creature attacks while saddled, untap it and put a +1/+1 counter on it.\nSaddle 1 (Tap any number of other creatures you control with total power 1 or more: This Mount becomes saddled until end of turn. Saddle only as a sorcery.)", 'colors' => ['W']],
+        'Brightfield Glider' => ['manaCost' => '{W}', 'type' => 'Creature — Possum Mount', 'power' => '1', 'toughness' => '1', 'text' => "Vigilance\nWhenever this creature attacks while saddled, it gets +1/+2 and gains flying until end of turn.\nSaddle 3 (Tap any number of other creatures you control with total power 3 or more: This Mount becomes saddled until end of turn. Saddle only as a sorcery.)", 'colors' => ['W']],
+        'Grisly Salvage' => ['manaCost' => '{B}{G}', 'type' => 'Instant', 'text' => 'Reveal the top five cards of your library. You may put a creature or land card from among them into your hand. Put the rest into your graveyard.', 'colors' => ['B', 'G']],
+        'Sleight of Hand' => ['manaCost' => '{U}', 'type' => 'Sorcery', 'text' => 'Look at the top two cards of your library. Put one of them into your hand and the other on the bottom of your library.', 'colors' => ['U']],
+        "Dáin's Company Lite" => ['manaCost' => '{R}{W}', 'type' => 'Creature — Dwarf Warrior', 'power' => '2', 'toughness' => '2', 'text' => 'When this creature enters, look at the top four cards of your library. You may reveal a Dwarf or Equipment card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.', 'colors' => ['R', 'W']],
+        'Glimpse Lite' => ['manaCost' => '{U}', 'type' => 'Instant', 'text' => "Look at the top three cards of your library, then put them back in any order.\nDraw a card.", 'colors' => ['U']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -296,6 +302,30 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(2, $game->players[0]->energy);
     }
 
+    public function testSaddle(): void
+    {
+        $game = $this->newGame();
+        $mustang = $this->put(0, 'Brightfield Mustang', GameObject::BATTLEFIELD);
+        $squire = $this->put(0, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $game->declareAttackers(0, [$mustang]);
+        $this->resolve();
+        $this->assertSame(0, $game->objects[$mustang]->counter('+1/+1'), 'Not saddled: no trigger.');
+
+        $this->passUntil(Step::PrecombatMain, 5);
+        $game->activate(0, $mustang, 0);
+        $this->assertTrue($game->objects[$squire]->tapped);
+        $this->resolve();
+        $this->assertContains('saddled', $game->keywords($game->objects[$mustang]));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::DeclareAttackers, 5);
+        $game->declareAttackers(0, [$mustang]);
+        $this->assertTrue($game->objects[$mustang]->tapped);
+        $this->resolve();
+        $this->assertFalse($game->objects[$mustang]->tapped, 'Untapped by its trigger.');
+        $this->assertSame(1, $game->objects[$mustang]->counter('+1/+1'));
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -488,6 +518,49 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertNull($game->choiceAwaiting());
     }
 
+    public function testMoreWaysToLookAtTheTopCards(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Swamp', 4);
+        $this->lands(0, 'Forest', 4);
+        $library = &$game->players[0]->library;
+        $salvage = $this->put(0, 'Grisly Salvage', GameObject::HAND);
+        $top = array_reverse(array_slice($library, -5));
+        $game->cast(0, $salvage);
+        $this->resolve();
+        $look = $game->choiceAwaiting();
+        $this->assertSame($top, $look['cards']);
+        foreach ($top as $id) {
+            $card = $game->objects[$id]->printed();
+            $this->assertSame($card->isCreature() || $card->isLand(), in_array($id, $look['eligible'], true));
+        }
+        $game->take(0, []);
+        foreach ($top as $id) {
+            $this->assertSame(GameObject::GRAVEYARD, $this->zone($id));
+        }
+
+        $this->assertSame('sub:Dwarf|sub:Equipment', self::read("Dáin's Company Lite")->triggered[0]['effects'][0]['filter']);
+        $dwarf = $game->addCard(0, self::more("Dáin's Company Lite"), GameObject::LIBRARY)->id;
+        $company = $this->put(0, "Dáin's Company Lite", GameObject::HAND);
+        $this->lands(0, 'Mountain', 1);
+        $this->lands(0, 'Plains', 1);
+        $game->cast(0, $company);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame([$dwarf], $game->choiceAwaiting()['eligible']);
+        $game->take(0, [$dwarf]);
+        $this->assertSame(GameObject::HAND, $this->zone($dwarf));
+
+        $top = array_slice($library, -3);
+        $this->lands(0, 'Island', 2);
+        $game->cast(0, $this->put(0, 'Glimpse Lite', GameObject::HAND));
+        $this->resolve();
+        $this->assertSame(0, $game->choiceAwaiting()['take']);
+        $game->take(0, []);
+        $this->assertContains($top[2], $game->players[0]->hand, 'They stay on top, and then it draws one.');
+        $this->assertSame(array_slice($top, 0, 2), array_slice($library, -2));
+    }
+
     public function testModalEntersTriggers(): void
     {
         $game = $this->newGame();
@@ -527,11 +600,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 
