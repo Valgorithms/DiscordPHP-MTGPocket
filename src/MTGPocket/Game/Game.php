@@ -544,9 +544,17 @@ final class Game
 
         switch ($step) {
             case Step::Untap:
+                foreach ($this->players as $player) {
+                    $player->lifeMark = $player->life;
+                }
                 foreach ($this->permanents($this->active) as $object) {
                     $object->sick = false;
-                    if (! $this->hasKeyword($object, "doesn't untap")) {
+                    if ($object->frozen) {
+                        $object->frozen = false;
+                    } elseif ($object->tapped && $object->counter('stun') > 0) {
+                        // Stun counters (rule 122.1d): one is removed instead.
+                        $object->addCounters('stun', -1);
+                    } elseif (! $this->hasKeyword($object, "doesn't untap")) {
                         $object->tapped = false;
                     }
                 }
@@ -1544,16 +1552,20 @@ final class Game
 
         // A spell or ability whose targets are all illegal does not resolve (rule 608.2b).
         $legal = [];
+        $chosen = [];
         foreach ($item['targets'] as $slot => $target) {
-            $legal[$slot] = $this->isLegalTarget($kinds[$slot], $target, $item['controller'], $item['id']);
+            $legal[$slot] = $target !== '-' && $this->isLegalTarget($kinds[$slot], $target, $item['controller'], $item['id']);
+            if ($target !== '-') {
+                $chosen[] = $legal[$slot];
+            }
         }
-        if ($legal !== [] && ! in_array(true, $legal, true) && ! $ability && ($item['bestowed'] ?? false)) {
+        if ($chosen !== [] && ! in_array(true, $chosen, true) && ! $ability && ($item['bestowed'] ?? false)) {
             // A bestowed Aura with nothing to enchant resolves as a creature (rule 702.103e).
             $item['bestowed'] = false;
             $item['targets'] = [];
-            $legal = [];
+            $legal = $chosen = [];
         }
-        if ($legal !== [] && ! in_array(true, $legal, true)) {
+        if ($chosen !== [] && ! in_array(true, $chosen, true)) {
             $this->log("{$name} has no legal targets left and does nothing.");
             if (! $ability) {
                 $this->spellLeavesStack($object, $item);
@@ -1869,6 +1881,8 @@ final class Game
             case 'untap':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $affected->tapped = $effect['type'] === 'tap';
+                    $affected->frozen = $affected->frozen || ($effect['freeze'] ?? false);
+                    $affected->addCounters('stun', (int) ($effect['stun'] ?? 0));
                 }
                 break;
 
@@ -2621,7 +2635,11 @@ final class Game
             return $this->classLevel($object) > $ability['fromLevel'] ? "{$card->name} is already past that level." : "{$card->name} must reach level {$ability['fromLevel']} first.";
         }
         if (! $this->gained($object, $ability)) {
-            return isset($ability['charge']) ? "{$card->name} needs {$ability['charge']} charge counters for that ability." : "{$card->name} gains that ability at level {$ability['classLevel']}.";
+            return match (true) {
+                isset($ability['charge']) => "{$card->name} needs {$ability['charge']} charge counters for that ability.",
+                isset($ability['maxSpeed']) => "{$card->name} needs you at max speed for that ability.",
+                default => "{$card->name} gains that ability at level {$ability['classLevel']}.",
+            };
         }
         if (($ability['cost']['station'] ?? false) && $this->stationCrew($object) === null) {
             return "{$card->name} needs another untapped creature you control to station it.";
@@ -2820,6 +2838,13 @@ final class Game
      */
     public function isLegalTarget(string $kind, string $target, int $controller, ?int $self = null): bool
     {
+        // `up to one target …`: `?kind`, and `-` when none is chosen.
+        if (str_starts_with($kind, '?')) {
+            if ($target === '-') {
+                return true;
+            }
+            $kind = substr($kind, 1);
+        }
         $parts = explode(':', $target);
         switch ($parts[0]) {
             case 'p':
@@ -2941,7 +2966,7 @@ final class Game
         foreach ($this->battlefield as $id) {
             $options[] = "o:{$id}";
         }
-        if (self::isGraveyardKind($kind)) {
+        if (self::isGraveyardKind(ltrim($kind, '?'))) {
             foreach ($this->players as $player) {
                 foreach ($player->graveyard as $id) {
                     $options[] = "o:{$id}";
@@ -2950,6 +2975,9 @@ final class Game
         }
         foreach ($this->stack as $item) {
             $options[] = "s:{$item['id']}";
+        }
+        if (str_starts_with($kind, '?')) {
+            $options[] = '-';
         }
 
         return array_values(array_filter($options, fn (string $target) => $this->isLegalTarget($kind, $target, $seat, $self)));
@@ -3008,6 +3036,7 @@ final class Game
             'p' => $this->players[(int) $parts[1]]->name ?? 'a player',
             'o' => isset($this->objects[(int) $parts[1]]) ? $this->objects[(int) $parts[1]]->name() : 'a permanent',
             's' => $this->describeStackItem((int) $parts[1]),
+            '-' => 'no target',
             default => $target,
         };
     }
@@ -3688,6 +3717,7 @@ final class Game
      */
     private function checkStateBasedActions(): void
     {
+        $this->updateSpeed();
         for ($guard = 0; $guard < 100; $guard++) {
             $changed = false;
 
@@ -3900,6 +3930,49 @@ final class Game
     }
 
     /**
+     * Speed (rule 702.179): it becomes 1 when a permanent with "Start your
+     * engines!" is yours, then goes up by one, to at most 4, the first time
+     * in each of your turns that an opponent loses life.
+     *
+     * @return void
+     */
+    private function updateSpeed(): void
+    {
+        foreach ($this->players as $seat => $player) {
+            if ($player->speed === 0 && array_filter($this->permanents($seat), fn (GameObject $o) => in_array('start your engines', $o->definition()->keywords, true)) !== []) {
+                $player->speed = 1;
+                $this->log("{$player->name}'s speed is 1.");
+            }
+        }
+        $player = $this->players[$this->active] ?? null;
+        if ($player === null || $player->speed === 0 || $player->speed >= 4 || $player->speedTurn === $this->turn) {
+            return;
+        }
+        foreach ($this->players as $seat => $opponent) {
+            if ($seat !== $this->active && $opponent->life < $opponent->lifeMark) {
+                $player->speed++;
+                $player->speedTurn = $this->turn;
+                $this->log("{$player->name}'s speed is {$player->speed}".($player->speed === 4 ? ' (max speed)' : '').'.');
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * What a permanent's `Max speed — CARDNAME gets …/has …` gives it now.
+     *
+     * @param  GameObject  $object
+     * @return array{power: int, toughness: int, keywords: string[]}|null
+     */
+    private function maxSpeedBonus(GameObject $object): ?array
+    {
+        $bonus = $object->definition()->maxSpeed;
+
+        return $bonus !== null && $object->zone === GameObject::BATTLEFIELD && $this->players[$object->controller]->speed >= 4 ? $bonus : null;
+    }
+
+    /**
      * Whether a permanent has an ability yet: a Class at its level, a
      * Spacecraft with enough charge counters.
      *
@@ -3910,7 +3983,8 @@ final class Game
      */
     private function gained(GameObject $object, array $ability): bool
     {
-        return ($ability['classLevel'] ?? 1) <= $this->classLevel($object) && ($ability['charge'] ?? 0) <= $object->counter('charge');
+        return ($ability['classLevel'] ?? 1) <= $this->classLevel($object) && ($ability['charge'] ?? 0) <= $object->counter('charge')
+            && (! ($ability['maxSpeed'] ?? false) || $this->players[$object->controller]->speed >= 4);
     }
 
     /**
@@ -3969,6 +4043,7 @@ final class Game
     public function power(GameObject $object): int
     {
         $power = ($this->levelBand($object)['power'] ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $power += $this->maxSpeedBonus($object)['power'] ?? 0;
         foreach ($this->attachments($object) as $attached) {
             $power += $this->bonusOf($attached)['power'];
         }
@@ -3985,6 +4060,7 @@ final class Game
     public function toughness(GameObject $object): int
     {
         $toughness = ($this->levelBand($object)['toughness'] ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $toughness += $this->maxSpeedBonus($object)['toughness'] ?? 0;
         foreach ($this->attachments($object) as $attached) {
             $toughness += $this->bonusOf($attached)['toughness'];
         }
@@ -4011,6 +4087,7 @@ final class Game
         $keywords = $object->definition()->keywords;
         if ($object->zone === GameObject::BATTLEFIELD) {
             array_push($keywords, ...($this->levelBand($object)['keywords'] ?? []));
+            array_push($keywords, ...($this->maxSpeedBonus($object)['keywords'] ?? []));
             foreach ($object->definition()->stationBands as $band) {
                 if ($object->counter('charge') >= $band['min']) {
                     array_push($keywords, ...$band['keywords']);

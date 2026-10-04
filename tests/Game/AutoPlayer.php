@@ -354,6 +354,9 @@ final class AutoPlayer
                     $bestScore = $score;
                 }
             }
+            if ($best === null && str_starts_with($kind, '?')) {
+                $best = '-';
+            }
             if ($best === null && $forced) {
                 $best = $game->targetOptions($seat, $kind)[0] ?? null;
             }

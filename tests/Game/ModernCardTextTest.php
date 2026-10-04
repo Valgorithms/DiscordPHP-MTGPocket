@@ -78,6 +78,11 @@ final class ModernCardTextTest extends GameTestCase
         'Curse of the Pierced Heart' => ['manaCost' => '{1}{R}', 'type' => 'Enchantment — Aura Curse', 'text' => "Enchant player\nAt the beginning of enchanted player's upkeep, Curse of the Pierced Heart deals 1 damage to that player or a planeswalker that player controls.", 'colors' => ['R']],
         "Curse of Death's Hold" => ['manaCost' => '{3}{B}{B}', 'type' => 'Enchantment — Aura Curse', 'text' => "Enchant player\nCreatures enchanted player controls get -1/-1.", 'colors' => ['B']],
         'Druid Class Lite' => ['manaCost' => '{1}{G}', 'type' => 'Enchantment — Class', 'text' => "(Gain the next level as a sorcery to add its ability.)\nWhenever a land you control enters, you gain 1 life.\n{2}{G}: Level 2\nCreatures you control get +1/+1.\n{4}{G}: Level 3\nWhen this Class becomes level 3, draw two cards.", 'colors' => ['G']],
+        'Burnout Bashtronaut' => ['manaCost' => '{R}', 'type' => 'Creature — Goblin Warrior', 'power' => '1', 'toughness' => '1', 'text' => "Menace\nStart your engines! (If you have no speed, it starts at 1. It increases once on each of your turns when an opponent loses life. Max speed is 4.)\n{2}: This creature gets +1/+0 until end of turn.\nMax speed — This creature has double strike.", 'colors' => ['R']],
+        'Speedway Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Human Pilot', 'power' => '2', 'toughness' => '2', 'text' => "Start your engines!\nMax speed — This creature gets +1/+1 and has menace.\nMax speed — {T}: Target creature gains haste until end of turn.", 'colors' => ['R']],
+        'Outpace Oblivion' => ['manaCost' => '{2}{R}', 'type' => 'Enchantment', 'text' => "Start your engines!\nWhen this enchantment enters, it deals 5 damage to up to one target creature or planeswalker.", 'colors' => ['R']],
+        'Frost Breath' => ['manaCost' => '{2}{U}', 'type' => 'Instant', 'text' => "Tap up to two target creatures. Those creatures don't untap during their controller's next untap step.", 'colors' => ['U']],
+        'Stun Lite' => ['manaCost' => '{1}{U}', 'type' => 'Instant', 'text' => 'Tap up to two target creatures. Put a stun counter on each of them. (If a permanent with a stun counter would become untapped, remove one from it instead.)', 'colors' => ['U']],
         'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
@@ -465,6 +470,83 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertFalse($game->canActivate(0, $frigate, 0), 'No other untapped creature.');
     }
 
+    public function testStartYourEnginesAndMaxSpeed(): void
+    {
+        $game = $this->newGame();
+        $bash = $this->put(0, 'Burnout Bashtronaut', GameObject::BATTLEFIELD);
+        $pilot = $this->put(0, 'Speedway Lite', GameObject::BATTLEFIELD);
+        $this->assertSame([], self::read('Burnout Bashtronaut')->unsupported);
+        $this->assertSame([], self::read('Speedway Lite')->unsupported);
+        $bolt = function (): void {
+            $this->lands(0, 'Mountain', 1);
+            $this->game->cast(0, $this->hand(0, 'Lightning Bolt'), 0, ['p:1']);
+            $this->resolve();
+        };
+        $bolt();
+        $this->assertSame(2, $game->players[0]->speed, 'It starts at 1, then Bob lost life.');
+        $bolt();
+        $this->assertSame(2, $game->players[0]->speed, 'Once each turn.');
+        $this->assertFalse($game->canActivate(0, $pilot, 0), 'Not before max speed.');
+
+        $this->passUntil(Step::PrecombatMain, 2);
+        $this->lands(1, 'Mountain', 1);
+        $game->cast(1, $this->hand(1, 'Lightning Bolt'), 0, ['p:0']);
+        $this->resolve();
+        $this->assertSame(2, $game->players[0]->speed, 'Only on your own turns.');
+
+        foreach ([3 => 3, 5 => 4, 7 => 4] as $turn => $speed) {
+            $this->passUntil(Step::PrecombatMain, $turn);
+            $bolt();
+            $this->assertSame($speed, $game->players[0]->speed, 'Max speed is 4.');
+        }
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertSame(4, $game->players[0]->speed);
+        $this->assertContains('double strike', $game->keywords($game->objects[$bash]));
+        $this->assertSame(3, $game->power($game->objects[$pilot]));
+        $this->assertContains('menace', $game->keywords($game->objects[$pilot]));
+        $this->assertTrue($game->canActivate(0, $pilot, 0));
+    }
+
+    public function testUpToTargets(): void
+    {
+        $game = $this->newGame();
+        $this->assertSame([], self::read('Frost Breath')->unsupported);
+        $this->assertSame(['?creature', '?creature'], self::read('Frost Breath')->targetKinds());
+        $bears = $this->battlefield(1, 'Grizzly Bears');
+        $other = $this->battlefield(1, 'Grizzly Bears');
+        $this->lands(0, 'Island', 5);
+        $game->cast(0, $this->put(0, 'Frost Breath', GameObject::HAND), 0, ["o:{$bears}", '-']);
+        $this->resolve();
+        $this->assertTrue($game->objects[$bears]->tapped);
+        $this->assertFalse($game->objects[$other]->tapped, 'Only one target was chosen.');
+        $game->cast(0, $this->put(0, 'Stun Lite', GameObject::HAND), 0, ["o:{$other}", '-']);
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$other]->counter('stun'));
+
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::PrecombatMain, 2);
+        $this->assertTrue($game->objects[$bears]->tapped, "It doesn't untap during Bob's next untap step.");
+        $this->assertTrue($game->objects[$other]->tapped, 'A stun counter is removed instead.');
+        $this->assertSame(0, $game->objects[$other]->counter('stun'));
+        $this->passUntil(Step::PrecombatMain, 4);
+        $this->assertFalse($game->objects[$bears]->tapped);
+        $this->assertFalse($game->objects[$other]->tapped);
+    }
+
+    public function testUpToOneTargetWithNothingToTarget(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 3);
+        $oblivion = $this->put(0, 'Outpace Oblivion', GameObject::HAND);
+        $game->cast(0, $oblivion, 0, []);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($oblivion));
+        $this->assertSame(1, $game->players[0]->speed);
+        $this->resolve(); // Its enters trigger, with no target.
+        $this->assertSame([], $game->stack);
+        $this->assertSame(20, $this->life(1));
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -739,7 +821,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

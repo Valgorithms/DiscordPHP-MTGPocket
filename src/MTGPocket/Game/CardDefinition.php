@@ -115,6 +115,9 @@ final class CardDefinition
     /** @var array<int, array{min: int, keywords: string[]}> A Spacecraft's station thresholds; it is a creature at the highest (rule 702.184). */
     public readonly array $stationBands;
 
+    /** @var array{power: int, toughness: int, keywords: string[]}|null What it gets and has while its controller is at max speed. */
+    public readonly ?array $maxSpeed;
+
     /** `type` or `color`: what is chosen as it enters (`As this enters, choose a creature type.`). */
     public readonly ?string $chooses;
 
@@ -203,6 +206,7 @@ final class CardDefinition
         $this->bestow = $parsed['bestow'];
         $this->chooses = $parsed['chooses'];
         $this->stationBands = $parsed['stationBands'];
+        $this->maxSpeed = $parsed['maxSpeed'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];
