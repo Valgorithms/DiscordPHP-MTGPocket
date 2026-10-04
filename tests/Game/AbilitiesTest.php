@@ -74,7 +74,7 @@ final class AbilitiesTest extends GameTestCase
         $this->assertSame('token', (new CardDefinition(self::card('Raise the Alarm')))->effects[0]['type']);
 
         // A cost or effect the engine cannot read leaves the whole ability unsupported.
-        $odd = new CardDefinition(['name' => 'Odd', 'type' => 'Creature — Ooze', 'manaCost' => '{G}', 'power' => '1', 'toughness' => '1', 'text' => "{X}, {T}: Draw X cards.\nDiscard a card: Draw a card.\nWhen Odd enters, investigate."]);
+        $odd = new CardDefinition(['name' => 'Odd', 'type' => 'Creature — Ooze', 'manaCost' => '{G}', 'power' => '1', 'toughness' => '1', 'text' => "{X}, {T}: Draw X cards.\nDiscard a card: Draw a card.\nWhen Odd enters, proliferate."]);
         $this->assertSame([], $odd->activated);
         $this->assertSame([], $odd->triggered);
         $this->assertCount(3, $odd->unsupported);

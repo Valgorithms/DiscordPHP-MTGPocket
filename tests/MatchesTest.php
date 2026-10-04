@@ -412,6 +412,51 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame('priority', $match->game->decision($active));
     }
 
+    public function testLookAndModalTriggersThroughThePanel(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        $ids = [self::ALICE, self::BOB];
+        $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $active = $match->game->active;
+        $player = $ids[$active];
+
+        $impulse = $sprite = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($active, &$impulse, &$sprite): void {
+            foreach (range(1, 2) as $i) {
+                $game->addCard($active, $this->pocket->deckBuilder->cardData('basic:Island'), GameObject::BATTLEFIELD);
+                $game->addCard($active, $this->pocket->deckBuilder->cardData('basic:Forest'), GameObject::BATTLEFIELD);
+            }
+            $game->addCard($game->opponent($active), ['uuid' => 'thopter', 'name' => 'Ornithopter', 'type' => 'Artifact Creature — Thopter', 'manaCost' => '{0}', 'power' => '0', 'toughness' => '2', 'text' => 'Flying'], GameObject::BATTLEFIELD);
+            $impulse = $game->addCard($active, ['uuid' => 'impulse', 'name' => 'Impulse', 'type' => 'Instant', 'manaCost' => '{1}{U}', 'text' => 'Look at the top four cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order.'], GameObject::HAND)->id;
+            $sprite = $game->addCard($active, ['uuid' => 'sprite', 'name' => 'Mode Sprite', 'type' => 'Creature — Faerie', 'manaCost' => '{1}{G}', 'power' => '2', 'toughness' => '2', 'text' => "When this creature enters, choose one —\n• Draw a card.\n• Destroy target artifact."], GameObject::HAND)->id;
+        });
+
+        [$match] = $panel->run($match->id, $player, 'play', [], ["{$impulse}:"]);
+        while ($match->game->decision($active) !== 'look') {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $panelJson = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Choose 1 to put into your hand', $panelJson);
+        $top = $match->game->choiceAwaiting()['cards'][0];
+        [$match] = $panel->run($match->id, $player, 'take', [], [(string) $top]);
+        $this->assertContains($top, $match->game->players[$active]->hand);
+
+        while ($match->game->stack !== []) {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        [$match] = $panel->run($match->id, $player, 'play', [], ["{$sprite}:"]);
+        while ($match->game->decision($active) !== 'mode') {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $this->assertStringContainsString('choose modes for Mode Sprite', MatchMessageBuilder::waiting($match)['text']);
+        $panelJson = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Destroy target artifact', $panelJson);
+        [$match] = $panel->run($match->id, $player, 'mode', [], ['1']);
+        $this->assertSame([], $match->game->choiceAwaiting() ?? []);
+    }
+
     private function modifyGame(MatchRecord $match, callable $change): MatchRecord
     {
         $repository = new \MTGPocket\Repository\MatchRepository($this->pocket->store);

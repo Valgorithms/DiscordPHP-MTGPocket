@@ -48,7 +48,7 @@ final class CardPoolImporterTest extends StorageTestCase
         $pdo->exec('CREATE TABLE "meta" ("version" TEXT, "date" TEXT)');
         $pdo->exec('INSERT INTO "meta" VALUES (\'5.3.0+test\', \'2026-10-03\')');
         $pdo->exec('CREATE TABLE "sets" ("code" TEXT, "name" TEXT, "releaseDate" TEXT, "type" TEXT, "isOnlineOnly" BOOLEAN)');
-        $pdo->exec('INSERT INTO "sets" VALUES (\'TST\', \'Test Set\', \'2020-01-01\', \'expansion\', 0), (\'PRM\', \'Promos\', \'2020-01-01\', \'promo\', 0), (\'FUT\', \'Future\', \'2999-01-01\', \'expansion\', 0)');
+        $pdo->exec('INSERT INTO "sets" VALUES (\'TST\', \'Test Set\', \'2020-01-01\', \'expansion\', 0), (\'PRM\', \'Promos\', \'2020-01-01\', \'promo\', 0), (\'FUT\', \'Future\', \'2999-01-01\', \'expansion\', 0), (\'TSB\', \'Time Spiral Timeshifted\', \'2006-10-06\', \'expansion\', 0)');
         $pdo->exec('CREATE TABLE "cards" ("uuid" TEXT, "name" TEXT, "setCode" TEXT, "number" TEXT, "rarity" TEXT, "colors" TEXT, "manaValue" FLOAT, "type" TEXT, "supertypes" TEXT, "side" TEXT, "isPromo" BOOLEAN, "boosterTypes" TEXT)');
         $pdo->exec('CREATE TABLE "cardIdentifiers" ("uuid" TEXT, "scryfallId" TEXT)');
 
@@ -73,6 +73,7 @@ final class CardPoolImporterTest extends StorageTestCase
             $card->execute($row);
             $identifier->execute([$row[0], 'scry-'.$row[0]]);
         }
+        $pdo->exec('INSERT INTO "cards" VALUES (\'akroma\', \'Akroma, Angel of Wrath\', \'TSB\', \'1\', \'special\', \'W\', 8, \'Card\', null, null, 0, null)');
         // Rules columns, as the real build has them.
         foreach (['manaCost', 'power', 'toughness', 'text', 'types', 'subtypes', 'keywords'] as $column) {
             $pdo->exec("ALTER TABLE \"cards\" ADD COLUMN \"{$column}\" TEXT");
@@ -104,7 +105,13 @@ final class CardPoolImporterTest extends StorageTestCase
 
     public function testListsReleasedPaperSets(): void
     {
-        $this->assertSame(['TST'], array_keys((new CardPoolImporter($this->database))->sets()));
+        $this->assertSame(['TSB', 'TST'], array_keys((new CardPoolImporter($this->database))->sets()));
+    }
+
+    public function testASetOfOnlySpecialCardsCountsThemAsRares(): void
+    {
+        $pool = (new CardPoolImporter($this->database))->import('TSB');
+        $this->assertSame(['akroma'], $pool->uuids('W', 'rare'));
     }
 
     public function testSortsBoosterCardsByColorAndRarity(): void
