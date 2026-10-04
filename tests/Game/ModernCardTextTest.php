@@ -158,6 +158,13 @@ final class ModernCardTextTest extends GameTestCase
         'Etched Oracle' => ['manaCost' => '{4}', 'type' => 'Artifact Creature — Wizard', 'power' => '0', 'toughness' => '0', 'text' => 'Sunburst (This creature enters with a +1/+1 counter on it for each color of mana spent to cast it.)', 'colors' => []],
         'Reckless Impulse' => ['manaCost' => '{1}{R}', 'type' => 'Sorcery', 'text' => 'Exile the top two cards of your library. Until the end of your next turn, you may play those cards.', 'colors' => ['R']],
         'Seer Lite' => ['manaCost' => '{1}{U}', 'type' => 'Creature — Human Wizard', 'power' => '1', 'toughness' => '2', 'text' => 'You may look at the top card of your library any time.', 'colors' => ['U']],
+        'Echo Lite' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Beast', 'power' => '3', 'toughness' => '3', 'text' => 'Echo {1}{G} (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)', 'colors' => ['G']],
+        'Flanking Lite' => ['manaCost' => '{1}{W}', 'type' => 'Creature — Human Knight', 'power' => '2', 'toughness' => '2', 'text' => 'Flanking (Whenever a creature without flanking blocks this creature, the blocking creature gets -1/-1 until end of turn.)', 'colors' => ['W']],
+        'Escape Lite' => ['manaCost' => '{1}{B}', 'type' => 'Creature — Zombie', 'power' => '2', 'toughness' => '1', 'text' => "Escape—{2}{B}, Exile three other cards from your graveyard.\nEscape Lite escapes with a +1/+1 counter on it.", 'colors' => ['B']],
+        "Chemister's Insight" => ['manaCost' => '{3}{U}', 'type' => 'Instant', 'text' => "Draw two cards.\nJump-start (You may cast this card from your graveyard by discarding a card in addition to paying its other costs. Then exile this card.)", 'colors' => ['U']],
+        'Retrace Lite' => ['manaCost' => '{1}{R}', 'type' => 'Sorcery', 'text' => "Retrace Lite deals 2 damage to any target.\nRetrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)", 'colors' => ['R']],
+        'Bargain Lite' => ['manaCost' => '{1}{R}', 'type' => 'Instant', 'text' => "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nBargain Lite deals 2 damage to any target. If this spell was bargained, it deals 4 damage instead.", 'colors' => ['R']],
+        'Skulking Ghost' => ['manaCost' => '{1}{B}', 'type' => 'Creature — Spirit', 'power' => '2', 'toughness' => '1', 'text' => "Flying\nWhen Skulking Ghost becomes the target of a spell or ability, sacrifice it.", 'colors' => ['B']],
         'Ascend Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '1', 'text' => "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)", 'colors' => ['W']],
     ];
 
@@ -718,6 +725,96 @@ final class ModernCardTextTest extends GameTestCase
         $this->resolve();
         $this->assertTrue($game->players[0]->blessed);
         $this->assertFalse($game->players[1]->blessed);
+    }
+
+    public function testEchoFlankingAndTargetedSacrifice(): void
+    {
+        $game = $this->newGame();
+        $echo = $this->put(0, 'Echo Lite', GameObject::BATTLEFIELD);
+        $doomed = $this->put(0, 'Echo Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Forest', 2);
+        $this->passUntil(Step::PrecombatMain, 3);
+        $kept = array_values(array_filter([$echo, $doomed], fn (int $id) => $this->zone($id) === GameObject::BATTLEFIELD));
+        $this->assertCount(1, $kept, 'Mana for only one echo: the other is sacrificed.');
+        $echo = $kept[0];
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::PrecombatMain, 5);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($echo), 'Echo is paid only once.');
+
+        $flanker = $this->put(0, 'Flanking Lite', GameObject::BATTLEFIELD);
+        $blocker = $this->put(1, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::DeclareAttackers, 7);
+        $game->declareAttackers(0, [$flanker]);
+        while ($game->decision(1) !== 'block') {
+            $game->pass($game->priority);
+        }
+        $game->declareBlockers(1, [$blocker => $flanker]);
+        $this->assertContains('Flanking: Akrasan Squire gets -1/-1 until end of turn.', $game->log);
+        $this->passUntil(Step::PostcombatMain, 7);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($blocker), 'A 0/0 blocker dies.');
+
+        $ghost = $this->put(1, 'Skulking Ghost', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Mountain', 1);
+        $game->cast(0, $this->hand(0, 'Lightning Bolt'), 0, ["o:{$ghost}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($ghost), 'Sacrificed as it became the target.');
+        $this->assertContains('Skulking Ghost\'s ability triggers.', $game->log);
+    }
+
+    public function testEscapeJumpStartRetraceAndBargain(): void
+    {
+        $game = $this->newGame();
+        $this->assertSame(['escape' => '{2}{B}'], self::read('Escape Lite')->altCosts);
+        $escape = $this->put(0, 'Escape Lite', GameObject::GRAVEYARD);
+        $this->put(0, 'Relentless Rats', GameObject::GRAVEYARD);
+        $this->put(0, 'Relentless Rats', GameObject::GRAVEYARD);
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Swamp', 3);
+        $this->assertNotContains(['id' => $escape, 'how' => 'es'], $game->plays(0), 'Only two other cards.');
+        $third = $this->put(0, 'Relentless Rats', GameObject::GRAVEYARD);
+        $this->assertContains(['id' => $escape, 'how' => 'es'], $game->plays(0));
+        $game->cast(0, $escape, 0, [], 'es');
+        $this->assertSame(GameObject::EXILE, $this->zone($third));
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($escape));
+        $this->assertSame(1, $game->objects[$escape]->counter('+1/+1'));
+
+        $insight = $this->put(0, "Chemister's Insight", GameObject::GRAVEYARD);
+        $this->lands(0, 'Island', 4);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $insight, 0, [], 'js');
+        $this->resolve();
+        $this->assertSame($hand + 1, count($game->players[0]->hand), 'Discarded one, drew two.');
+        $this->assertSame(GameObject::EXILE, $this->zone($insight));
+
+        $retrace = $this->put(0, 'Retrace Lite', GameObject::GRAVEYARD);
+        $this->lands(0, 'Mountain', 2);
+        foreach ($game->players[0]->hand as $card) {
+            $game->objects[$card]->moveTo(GameObject::EXILE);
+            $game->exile[] = $card;
+        }
+        $game->players[0]->hand = [];
+        $this->assertNotContains(['id' => $retrace, 'how' => 'rt'], $game->plays(0), 'No land card to discard.');
+        $forest = $this->hand(0, 'Forest');
+        $game->cast(0, $retrace, 0, ['p:1'], 'rt');
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($forest));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($retrace), 'Retrace does not exile.');
+        $this->assertSame(18, $this->life(1));
+
+        $this->passUntil(Step::PrecombatMain, 5);
+        $this->lands(0, 'Mountain', 4);
+        $bargain = $this->put(0, 'Bargain Lite', GameObject::HAND);
+        $this->assertNotContains(['id' => $bargain, 'how' => 'bargain'], $game->plays(0), 'Nothing to sacrifice.');
+        $lens = $this->put(0, 'Prismatic Lens', GameObject::BATTLEFIELD);
+        $this->assertContains(['id' => $bargain, 'how' => 'bargain'], $game->plays(0));
+        $game->cast(0, $bargain, 0, ['p:1'], 'bargain');
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($lens));
+        $this->resolve();
+        $this->assertSame(14, $this->life(1));
+        $game->cast(0, $this->put(0, 'Bargain Lite', GameObject::HAND), 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(12, $this->life(1));
     }
 
     public function testUnearth(): void
@@ -1628,11 +1725,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 
