@@ -549,6 +549,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $hand[] = '-# 🂠 Your face-down '.$object->printed()->name.' turns face up for '.$object->printed()->morph['cost'].'.';
             }
         }
+        // `You may look at the top card of your library any time.`
+        $top = end($player->library);
+        if ($top !== false && array_filter($game->permanents($seat), fn (GameObject $o) => in_array('look at top any time', $o->definition()->keywords, true)) !== []) {
+            $hand[] = '-# 🔝 Top of your library: '.self::cardLabel($game->objects[$top]);
+        }
         foreach ($player->graveyard as $id) {
             if (in_array($id, $playable, true)) {
                 $hand[] = '✅ 🪦 '.self::cardLabel($game->objects[$id]).' · graveyard · flashback '.$game->objects[$id]->printed()->flashback;
@@ -854,7 +859,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         } : implode(', ', array_filter([
             $options['exiled'] === 'plot' ? 'plotted, free' : '',
             $options['exiled'] === 'suspended' ? 'suspended, free' : '',
-            $options['exiled'] === 'warp' ? 'from exile' : '',
+            in_array($options['exiled'], ['warp', 'impulse'], true) ? 'from exile' : '',
             $options['exiled'] === 'madness' ? "madness {$card->altCosts['madness']}" : '',
             $options['entwined'] ? "entwined +{$card->entwine}" : '',
             $options['alt'] === '' ? '' : "{$options['alt']} {$card->altCosts[$options['alt']]}",
