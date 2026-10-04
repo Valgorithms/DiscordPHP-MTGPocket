@@ -79,7 +79,9 @@ final class ManaPayer
         // Generic mana: floating mana and what already-tapped sources make, then new sources.
         $tapped = [];
         foreach (array_keys($used) as $unit) {
-            $tapped[$units[$unit]['source']] = true;
+            if ($units[$unit]['source'] !== null) {
+                $tapped[$units[$unit]['source']] = true;
+            }
         }
         foreach ([true, false] as $firstPass) {
             foreach ($units as $unit => $data) {

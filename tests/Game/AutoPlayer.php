@@ -181,7 +181,7 @@ final class AutoPlayer
         if ($game->step === Step::DeclareBlockers && $game->stack === []) {
             foreach ($game->playableCards($seat) as $id) {
                 $card = $game->objects[$id]->definition();
-                if (! in_array('pump', array_column($card->effects, 'type'), true) || $card->isPermanentCard()) {
+                if (! in_array('pump', array_column($card->effects, 'type'), true) || $card->isPermanentCard() || $card->targetCount() !== 1) {
                     continue;
                 }
                 $fighting = $mine ? array_keys(array_filter($game->blocked)) : array_keys($game->blockers);

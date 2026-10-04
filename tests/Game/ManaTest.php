@@ -80,6 +80,11 @@ final class ManaTest extends TestCase
         $plan = ManaPayer::plan(['mana' => ['G' => 1, 'generic' => 1], 'life' => 0], new ManaPool(), [5 => $sources[5], 6 => $sources[6]]);
         $this->assertEqualsCanonicalizing([5, 6], $plan['tap']);
         $this->assertSame(['C' => 1], $plan['float']);
+
+        // A colored pip paid from the pool, generic from a source.
+        $plan = ManaPayer::plan(['mana' => ['G' => 1, 'generic' => 1], 'life' => 0], new ManaPool(['G' => 1]), [5 => $sources[5]]);
+        $this->assertSame(['G' => 1], $plan['pool']);
+        $this->assertSame([5], $plan['tap']);
     }
 
     public function testPool(): void
