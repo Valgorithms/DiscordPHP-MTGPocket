@@ -74,6 +74,10 @@ final class TextParser
         'target land' => 'land',
         'target planeswalker' => 'planeswalker',
         'target nonland permanent' => 'nonland_permanent',
+        'target nonland permanent an opponent controls' => 'nonland_permanent_opponent',
+        'target nonland permanent you don\'t control' => 'nonland_permanent_opponent',
+        'target artifact or creature an opponent controls' => 'artifact_or_creature_opponent',
+        'target artifact, creature, or enchantment an opponent controls' => 'artifact_creature_enchantment_opponent',
         'target permanent' => 'permanent',
         'target creature you control' => 'creature_you_control',
         'target creature an opponent controls' => 'creature_opponent',
@@ -153,7 +157,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -211,7 +215,10 @@ final class TextParser
             }
             // `Max speed — …`: an ability that works while its controller's speed is 4.
             // Static lines that work like keywords.
-            $statics = ['You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land'];
+            $statics = [
+                'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land',
+                'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
+            ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
 
@@ -495,7 +502,7 @@ final class TextParser
         // `Convoke.` and `Rebound.` are written with a period in some sets.
         foreach (array_map('trim', preg_split('/[,;]\s*/', rtrim($line, '.'))) as $part) {
             $word = strtolower($part);
-            if (in_array($word, CardDefinition::KEYWORDS, true) && $word !== 'evolve') {
+            if (in_array($word, CardDefinition::KEYWORDS, true) && ! in_array($word, ['evolve', 'unleash'], true)) {
                 $found['keywords'][] = $word;
             } elseif (preg_match('/^(bushido|toxic|bloodthirst) (\d+)$/', $word, $m)) {
                 $found['keywords'][] = "{$m[1]} {$m[2]}";
@@ -552,6 +559,21 @@ final class TextParser
             } elseif ($word === 'extort' && ! $spell) {
                 // Extort (rule 702.101): paid whenever its controller can.
                 $found['triggered'][] = ['text' => 'Extort', 'event' => 'cast_spell', 'effects' => [['type' => 'extort']]];
+            } elseif (preg_match('/^firebending (\d+)$/i', $part, $m) && ! $spell) {
+                // Firebending (rule 702.188): {R} for each, when it attacks.
+                $found['triggered'][] = ['text' => $part, 'event' => 'attacks', 'effects' => [['type' => 'add_mana', 'color' => 'R', 'amount' => (int) $m[1]]]];
+            } elseif (preg_match('/^graft (\d+)$/i', $part, $m) && ! $spell) {
+                // Graft (rule 702.58): its counters move, one at a time, to your creatures as they enter.
+                $found['counters'] = (int) $found['counters'] + (int) $m[1];
+                $found['keywords'][] = 'graft';
+                $found['triggered'][] = ['text' => $part, 'event' => 'graft', 'effects' => [['type' => 'graft', 'self' => true]]];
+            } elseif (preg_match('/^devour (\d+)$/i', $part, $m) && ! $spell) {
+                // Devour (rule 702.82): see Game::putOntoBattlefield().
+                $found['keywords'][] = "devour {$m[1]}";
+            } elseif ($word === 'unleash' && ! $spell) {
+                // Unleash (rule 702.98): always with the counter, so it can't block.
+                $found['counters'] = (int) $found['counters'] + 1;
+                $found['keywords'][] = 'unleash';
             } elseif ($word === 'riot' && ! $spell) {
                 // Riot (rule 702.136): always the counter, not haste.
                 $found['counters'] = (int) $found['counters'] + 1;
@@ -682,6 +704,11 @@ final class TextParser
         }
         if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) -1\/-1 counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[1]))) {
             $result['minusCounters'] = $n;
+
+            return true;
+        }
+        if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[1]))) {
+            $result['otherCounters'][$match[2]] = $n;
 
             return true;
         }
@@ -842,6 +869,13 @@ final class TextParser
         if (preg_match('/^Enchant (.+)$/', $line, $match) && isset(self::ENCHANT[strtolower($match[1])])) {
             $result['aura'] ??= ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
             $result['aura']['enchant'] = self::ENCHANT[strtolower($match[1])];
+
+            return true;
+        }
+        // "You control enchanted creature.": see Game::updateControl().
+        if (preg_match('/^You control enchanted (?:creature|permanent|artifact|land|planeswalker)\.?$/', $line)) {
+            $result['aura'] ??= ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
+            $result['aura']['control'] = true;
 
             return true;
         }
@@ -1388,8 +1422,11 @@ final class TextParser
         if (preg_match("/^destroy ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'destroy', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match("/^exile ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
-            return ['type' => 'exile', 'target' => self::TARGETS[strtolower($m[1])]];
+        if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+            return ['type' => 'exile', 'target' => self::TARGETS[strtolower($m[1])]] + (($m[2] ?? '') !== '' ? ['until' => true] : []);
+        }
+        if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
+            return ['type' => 'fog'];
         }
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'bounce', 'target' => self::TARGETS[strtolower($m[1])]];

@@ -116,6 +116,9 @@ final class Game
     /** @var array<int, true> Attackers that were blocked, even if their blockers have left. */
     public array $blocked = [];
 
+    /** The turn in which all combat damage is prevented (`Prevent all combat damage that would be dealt this turn.`). */
+    public int $fogTurn = 0;
+
     /** @var array<int, true> Creatures that dealt first-strike damage this combat. */
     public array $struckFirst = [];
 
@@ -399,6 +402,15 @@ final class Game
         }
 
         $this->stage = self::PLAYING;
+        // Leylines (`If this card is in your opening hand, you may begin the game with it on the battlefield.`).
+        foreach ($this->players as $seat => $player) {
+            foreach ($player->hand as $id) {
+                if (in_array('leyline', $this->objects[$id]->definition()->keywords, true)) {
+                    $this->putOntoBattlefield($this->objects[$id], $seat, false);
+                    $this->log("{$player->name} begins the game with {$this->objects[$id]->name()} on the battlefield.");
+                }
+            }
+        }
         $this->log("Turn 1: {$this->players[$this->active]->name}.", $this->active);
         $this->enterStep(Step::Untap);
         $this->settle();
@@ -544,6 +556,7 @@ final class Game
 
         switch ($step) {
             case Step::Untap:
+                $this->updateControl();
                 foreach ($this->players as $player) {
                     $player->lifeMark = $player->life;
                 }
@@ -564,6 +577,7 @@ final class Game
 
             case Step::Upkeep:
             case Step::End:
+                $this->updateControl();
                 if ($step === Step::End) {
                     foreach ($this->permanents() as $object) {
                         if ($object->unearthed) {
@@ -1970,7 +1984,35 @@ final class Game
                 break;
 
             case 'exile':
+                // "… until this leaves the battlefield": nothing is exiled if it already has (rule 610.3c).
+                if ($effect['until'] ?? false) {
+                    if ($self === null || $self->zone !== GameObject::BATTLEFIELD || $affected === null) {
+                        break;
+                    }
+                    $this->moveTo($affected, GameObject::EXILE);
+                    $self->holding[] = $affected->id;
+                    break;
+                }
                 $this->moveTo($affected, GameObject::EXILE);
+                break;
+
+            case 'fog':
+                $this->fogTurn = $this->turn;
+                $this->log('Combat damage is prevented this turn.');
+                break;
+
+            case 'add_mana':
+                $this->players[$controller]->manaPool->add((string) $effect['color'], $amount);
+                $this->log("{$this->players[$controller]->name} adds ".str_repeat('{'.$effect['color'].'}', $amount).'.');
+                break;
+
+            case 'graft':
+                $to = $this->objects[(int) ($effect['to'] ?? -1)] ?? null;
+                if ($affected !== null && $to !== null && $to->zone === GameObject::BATTLEFIELD && $affected->counter('+1/+1') > 0) {
+                    $affected->addCounters('+1/+1', -1);
+                    $to->addCounters('+1/+1', 1);
+                    $this->log("{$affected->name()} moves a +1/+1 counter onto {$to->name()}.");
+                }
                 break;
 
             case 'bounce':
@@ -2415,15 +2457,17 @@ final class Game
      * @param string     $event       See {@see CardDefinition::triggersOn()}.
      * @param int        $controller  Who controlled the source when the event happened.
      * @param int|null   $incarnation The source's, if it has since changed zones.
+     * @param int        $context     For modular, the +1/+1 counters it died with; for graft, the creature that entered.
      *
      * @return void
      */
-    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $counters = 0): void
+    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0): void
     {
         foreach ($source->definition()->triggersOn($event) as $ability) {
-            // Modular: the +1/+1 counters it had as it died. Mentor: lesser power than it has now.
+            // Modular: the +1/+1 counters it had as it died. Graft: the creature that entered. Mentor: lesser power than it has now.
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
-                ($effect['amount'] ?? null) === 'counters' => ['amount' => $counters] + $effect,
+                ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
+                $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
                 default => $effect,
             }, $ability['effects']);
@@ -3055,6 +3099,9 @@ final class Game
             'land_you_control' => $card->isLand() && $object->controller === $controller,
             'land' => $card->isLand(),
             'nonland_permanent' => ! $card->isLand(),
+            'nonland_permanent_opponent' => ! $card->isLand() && $object->controller !== $controller,
+            'artifact_or_creature_opponent' => ($card->is('Artifact') || $creature) && $object->controller !== $controller,
+            'artifact_creature_enchantment_opponent' => ($card->is('Artifact') || $creature || $card->is('Enchantment')) && $object->controller !== $controller,
             'permanent' => true,
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
@@ -3283,7 +3330,8 @@ final class Game
      */
     public function canBlock(GameObject $blocker, GameObject $attacker): bool
     {
-        if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block")) {
+        if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block")
+            || ($this->hasKeyword($blocker, 'unleash') && $blocker->counter('+1/+1') > 0)) {
             return false;
         }
         if (! isset($this->attackers[$attacker->id]) || $attacker->zone !== GameObject::BATTLEFIELD) {
@@ -3411,6 +3459,11 @@ final class Game
      */
     private function combatDamage(bool $first): void
     {
+        if ($this->fogTurn === $this->turn) {
+            $this->log('All combat damage is prevented this turn.');
+
+            return;
+        }
         $deals = function (GameObject $object) use ($first): bool {
             if ($object->zone !== GameObject::BATTLEFIELD || ! $this->isCreature($object)) {
                 return false;
@@ -3668,6 +3721,20 @@ final class Game
             $this->log("{$this->players[$controller]->name} chooses {$object->chosen} for {$object->name()}.");
         }
         // Bloodthirst (rule 702.54): if an opponent was dealt damage this turn.
+        foreach ($card->entersWithOther as $kind => $n) {
+            $object->addCounters($kind, $n);
+        }
+        // Devour (rule 702.82): the game feeds it your creature tokens.
+        if (($n = $this->keywordAmount($object, 'devour')) > 0) {
+            $eaten = array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $object->id && $o->definition()->isToken() && $this->isCreature($o));
+            foreach ($eaten as $token) {
+                $this->moveTo($token, GameObject::GRAVEYARD);
+            }
+            if ($eaten !== []) {
+                $object->addCounters('+1/+1', $n * count($eaten));
+                $this->log("{$object->name()} devours ".count($eaten).' creature'.(count($eaten) === 1 ? '' : 's').'.');
+            }
+        }
         if (($n = $this->keywordAmount($object, 'vanishing')) > 0) {
             $object->addCounters('time', $n);
         }
@@ -3682,8 +3749,13 @@ final class Game
         $this->battlefield[] = $object->id;
         if ($triggers) {
             $this->trigger($object, 'enters', $controller);
-            // Evolve (rule 702.100): a bigger creature entering under your control.
+            // Evolve (rule 702.100): a bigger creature entering under your control. Graft: any other creature of yours.
             if ($this->isCreature($object)) {
+                foreach ($this->permanents($controller) as $permanent) {
+                    if ($permanent->id !== $object->id && $this->hasKeyword($permanent, 'graft') && $permanent->counter('+1/+1') > 0) {
+                        $this->trigger($permanent, 'graft', $controller, null, $object->id);
+                    }
+                }
                 foreach ($this->permanents($controller) as $permanent) {
                     if ($permanent->id !== $object->id && $this->hasKeyword($permanent, 'evolve') && $this->isCreature($permanent)
                         && ($this->power($object) > $this->power($permanent) || $this->toughness($object) > $this->toughness($permanent))) {
@@ -3811,6 +3883,7 @@ final class Game
             $zone = GameObject::GONE;
         }
 
+        $held = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? $object->holding : [];
         $this->removeFromZone($object);
         $object->moveTo($zone);
         $owner = $this->players[$object->owner];
@@ -3824,6 +3897,13 @@ final class Game
         };
         if ($dies) {
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
+        }
+        // What it exiled "until this leaves the battlefield" returns.
+        foreach ($held as $id) {
+            if (isset($this->objects[$id]) && $this->objects[$id]->zone === GameObject::EXILE) {
+                $this->putOntoBattlefield($this->objects[$id], $this->objects[$id]->owner);
+                $this->log("{$this->objects[$id]->name()} returns to the battlefield.");
+            }
         }
         if ($returns !== null && $object->zone === GameObject::GRAVEYARD) {
             $this->putOntoBattlefield($object, $object->owner);
@@ -3877,6 +3957,7 @@ final class Game
     private function checkStateBasedActions(): void
     {
         $this->updateSpeed();
+        $this->updateControl();
         for ($guard = 0; $guard < 100; $guard++) {
             $changed = false;
 
@@ -4086,6 +4167,36 @@ final class Game
         $card = $object->definition();
 
         return $card->levels === [] ? null : $card->levelBand($object->counter('level'));
+    }
+
+    /**
+     * `You control enchanted creature.`: its controller is the Aura's while
+     * the Aura is on it, and goes back to its owner after.
+     *
+     * @return void
+     */
+    private function updateControl(): void
+    {
+        foreach ($this->permanents() as $object) {
+            if ($object->stolenBy !== null) {
+                $aura = $this->objects[$object->stolenBy] ?? null;
+                if ($aura === null || $aura->zone !== GameObject::BATTLEFIELD || $aura->attachedTo !== $object->id) {
+                    $object->stolenBy = null;
+                    $object->controller = $object->owner;
+                    $object->sick = true;
+                    $this->log("{$object->name()} returns to {$this->players[$object->owner]->name}'s control.");
+                }
+            }
+        }
+        foreach ($this->permanents() as $aura) {
+            $stolen = $aura->attachedTo === null ? null : ($this->objects[$aura->attachedTo] ?? null);
+            if (($aura->definition()->aura['control'] ?? false) && $stolen !== null && $stolen->zone === GameObject::BATTLEFIELD && $stolen->controller !== $aura->controller) {
+                $stolen->controller = $aura->controller;
+                $stolen->stolenBy = $aura->id;
+                $stolen->sick = true;
+                $this->log("{$this->players[$aura->controller]->name} gains control of {$stolen->name()}.");
+            }
+        }
     }
 
     /**
@@ -4496,6 +4607,7 @@ final class Game
             'nextId' => $this->nextId,
             'nextStackId' => $this->nextStackId,
             'shuffles' => $this->shuffles,
+            'fogTurn' => $this->fogTurn,
         ];
     }
 
@@ -4571,6 +4683,7 @@ final class Game
         $game->nextId = (int) $data['nextId'];
         $game->nextStackId = (int) $data['nextStackId'];
         $game->shuffles = (int) $data['shuffles'];
+        $game->fogTurn = (int) ($data['fogTurn'] ?? 0);
 
         return $game;
     }

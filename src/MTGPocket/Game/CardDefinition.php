@@ -38,7 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound',
-        'evolve', 'improvise', 'no maximum hand size', 'additional land',
+        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash',
     ];
 
     /**
@@ -118,6 +118,9 @@ final class CardDefinition
 
     /** @var array{power: int, toughness: int, keywords: string[]}|null What it gets and has while its controller is at max speed. */
     public readonly ?array $maxSpeed;
+
+    /** @var array<string, int> Other counters it enters with (`This artifact enters with three oil counters on it.`). */
+    public readonly array $entersWithOther;
 
     /** @var string[] Keywords it has during its controller's turn (`During your turn, this creature has first strike.`). */
     public readonly array $yourTurnKeywords;
@@ -212,6 +215,7 @@ final class CardDefinition
         $this->stationBands = $parsed['stationBands'];
         $this->maxSpeed = $parsed['maxSpeed'];
         $this->yourTurnKeywords = $parsed['yourTurnKeywords'];
+        $this->entersWithOther = $parsed['otherCounters'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];
