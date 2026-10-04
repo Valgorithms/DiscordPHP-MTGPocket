@@ -84,6 +84,15 @@ final class GameObject
     /** The turn in which it is exiled instead if it would die (`If that creature would die this turn, exile it instead.`). */
     public int $exileIfDies = 0;
 
+    /** How it was cast, when that matters later: `dash`, `evoke` or `warp`; `temporary` for a Mobilize token. */
+    public ?string $alt = null;
+
+    /** The turn it was exiled by warp or plotted, to be cast from exile on a later turn. */
+    public int $exiledOn = 0;
+
+    /** `warp` or `plot`: why it waits in exile. */
+    public ?string $exiledBy = null;
+
     /** Monstrosity (rule 701.37) has made it monstrous. */
     public bool $monstrous = false;
 
@@ -187,6 +196,9 @@ final class GameObject
         $this->monstrous = false;
         $this->holding = [];
         $this->exileIfDies = 0;
+        $this->alt = null;
+        $this->exiledOn = 0;
+        $this->exiledBy = null;
         $this->stolenBy = null;
         $this->rebound = false;
         $this->bestowed = false;
@@ -240,6 +252,9 @@ final class GameObject
             'monstrous' => $this->monstrous,
             'holding' => $this->holding,
             'exileIfDies' => $this->exileIfDies,
+            'alt' => $this->alt,
+            'exiledOn' => $this->exiledOn,
+            'exiledBy' => $this->exiledBy,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
@@ -283,6 +298,9 @@ final class GameObject
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
+        $object->alt = isset($data['alt']) ? (string) $data['alt'] : null;
+        $object->exiledOn = (int) ($data['exiledOn'] ?? 0);
+        $object->exiledBy = isset($data['exiledBy']) ? (string) $data['exiledBy'] : null;
         $object->stolenBy = isset($data['stolenBy']) ? (int) $data['stolenBy'] : null;
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);

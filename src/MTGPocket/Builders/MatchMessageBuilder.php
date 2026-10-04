@@ -845,8 +845,15 @@ class MatchMessageBuilder extends PocketMessageBuilder
     {
         $object = $game->objects[$id];
         $card = $object->printed();
-        $options = in_array($how, ['cycle', 'unearth'], true) ? null : Game::castOptions($how);
-        $way = $options === null ? ($how === 'cycle' ? "cycle {$card->cycling}" : "unearth {$card->unearth}") : implode(', ', array_filter([
+        $options = in_array($how, ['cycle', 'unearth', 'plot'], true) ? null : Game::castOptions($how);
+        $way = $options === null ? match ($how) {
+            'cycle' => "cycle {$card->cycling}",
+            'unearth' => "unearth {$card->unearth}",
+            default => "plot {$card->altCosts['plot']}",
+        } : implode(', ', array_filter([
+            $options['exiled'] === 'plot' ? 'plotted, free' : '',
+            $options['exiled'] === 'warp' ? 'from exile' : '',
+            $options['alt'] === '' ? '' : "{$options['alt']} {$card->altCosts[$options['alt']]}",
             $options['faceDown'] ? 'face down for {3}' : '',
             $options['flashback'] ? "flashback {$card->flashback}" : '',
             $options['rebound'] ? 'rebound, free' : '',

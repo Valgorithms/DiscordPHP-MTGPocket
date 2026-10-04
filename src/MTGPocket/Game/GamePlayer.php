@@ -38,6 +38,11 @@ final class GamePlayer
     /** The turn their speed last went up: once each turn. */
     public int $speedTurn = 0;
 
+    /** Cards drawn this turn, and the turn that was. */
+    public int $drawn = 0;
+
+    public int $drawnTurn = 0;
+
     /** Their life when the turn began, to tell when they have lost life this turn. */
     public int $lifeMark = self::STARTING_LIFE;
 
@@ -100,6 +105,8 @@ final class GamePlayer
             'speed' => $this->speed,
             'speedTurn' => $this->speedTurn,
             'lifeMark' => $this->lifeMark,
+            'drawn' => $this->drawn,
+            'drawnTurn' => $this->drawnTurn,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
@@ -125,6 +132,8 @@ final class GamePlayer
         $player->speed = (int) ($data['speed'] ?? 0);
         $player->speedTurn = (int) ($data['speedTurn'] ?? 0);
         $player->lifeMark = (int) ($data['lifeMark'] ?? $player->life);
+        $player->drawn = (int) ($data['drawn'] ?? 0);
+        $player->drawnTurn = (int) ($data['drawnTurn'] ?? 0);
         $player->library = array_map('intval', (array) $data['library']);
         $player->hand = array_map('intval', (array) $data['hand']);
         $player->graveyard = array_map('intval', (array) $data['graveyard']);

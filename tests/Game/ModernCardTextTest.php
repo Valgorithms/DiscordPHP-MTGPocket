@@ -15,6 +15,7 @@ namespace MTGPocket\Tests\Game;
 
 use MTGPocket\Game\CardDefinition;
 use MTGPocket\Game\Game;
+use MTGPocket\Game\GameException;
 use MTGPocket\Game\GameObject;
 use MTGPocket\Game\Step;
 
@@ -123,6 +124,16 @@ final class ModernCardTextTest extends GameTestCase
         'Junk Lite' => ['manaCost' => '{1}', 'type' => 'Artifact', 'text' => "When this artifact is put into a graveyard from the battlefield, draw a card.\n{T}, Sacrifice this artifact: You gain 1 life.", 'colors' => []],
         'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
+        'Mardu Scout' => ['manaCost' => '{R}{R}', 'type' => 'Creature — Goblin Scout', 'power' => '2', 'toughness' => '1', 'text' => "Dash {1}{R} (You may cast this spell for its dash cost. If you do, it gains haste, and it's returned from the battlefield to its owner's hand at the beginning of the next end step.)", 'colors' => ['R']],
+        'Mulldrifter' => ['manaCost' => '{4}{U}', 'type' => 'Creature — Elemental', 'power' => '2', 'toughness' => '2', 'text' => "Flying\nWhen this creature enters, draw two cards.\nEvoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)", 'colors' => ['U']],
+        'Warp Lite' => ['manaCost' => '{2}{R}', 'type' => 'Creature — Human Pilot', 'power' => '3', 'toughness' => '2', 'text' => 'Warp {R} (You can cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)', 'colors' => ['R']],
+        'Plot Lite' => ['manaCost' => '{3}{R}', 'type' => 'Sorcery', 'text' => "Plot Lite deals 3 damage to any target.\nPlot {1}{R} (You may pay {1}{R} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)", 'colors' => ['R']],
+        'Mobilize Lite' => ['manaCost' => '{2}{R}', 'type' => 'Creature — Goblin Warrior', 'power' => '2', 'toughness' => '2', 'text' => 'Mobilize 2 (Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)', 'colors' => ['R']],
+        'Soul Warden Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Human Cleric', 'power' => '1', 'toughness' => '1', 'text' => 'Whenever another creature you control enters, you gain 1 life.', 'colors' => ['W']],
+        'Second Draw Lite' => ['manaCost' => '{1}{U}', 'type' => 'Creature — Human Wizard', 'power' => '1', 'toughness' => '1', 'text' => 'Whenever you draw your second card each turn, put a +1/+1 counter on this creature.', 'colors' => ['U']],
+        'Draw Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => 'Draw two cards.', 'colors' => ['U']],
+        'Goblin War Drums Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Goblin', 'power' => '3', 'toughness' => '3', 'text' => "This creature can't be blocked by more than one creature.", 'colors' => ['R']],
+        'Relentless Rats' => ['manaCost' => '{1}{B}{B}', 'type' => 'Creature — Rat', 'power' => '2', 'toughness' => '2', 'text' => 'A deck can have any number of cards named Relentless Rats.', 'colors' => ['B']],
     ];
 
     private function put(int $seat, string $name, string $zone): int
@@ -279,6 +290,126 @@ final class ModernCardTextTest extends GameTestCase
         $game->cast(0, $frogmite);
         $this->resolve();
         $this->assertSame(GameObject::BATTLEFIELD, $this->zone($frogmite));
+    }
+
+    public function testDashEvokeWarpAndPlot(): void
+    {
+        $game = $this->newGame();
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Mountain', 2);
+        $scout = $this->put(0, 'Mardu Scout', GameObject::HAND);
+        $this->assertContains(['id' => $scout, 'how' => 'dash'], $game->plays(0));
+        $this->assertSame('{1}{R}', Game::castCost(self::read('Mardu Scout'), 'dash'));
+        $game->cast(0, $scout, 0, [], 'dash');
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($scout));
+        $this->assertContains('haste', $game->keywords($game->objects[$scout]));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::End, 3);
+        $this->assertSame(GameObject::HAND, $this->zone($scout), 'Dash returns it at the end step.');
+
+        // Evoke: it enters, its trigger draws, and it is sacrificed.
+        $this->passUntil(Step::PrecombatMain, 5);
+        $this->lands(0, 'Island', 3);
+        $drifter = $this->put(0, 'Mulldrifter', GameObject::HAND);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $drifter, 0, [], 'evoke');
+        for ($i = 0; $i < 5 && ($game->stack !== [] || $this->zone($drifter) === GameObject::STACK); $i++) {
+            $this->resolve();
+        }
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($drifter));
+        $this->assertSame($hand + 1, count($game->players[0]->hand), 'Cast one, drew two.');
+
+        // Warp: exiled at the end step, then cast from exile on a later turn.
+        $this->passUntil(Step::PrecombatMain, 7);
+        $this->lands(0, 'Mountain', 3);
+        $warp = $this->put(0, 'Warp Lite', GameObject::HAND);
+        $game->cast(0, $warp, 0, [], 'warp');
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($warp));
+        $this->passUntil(Step::End, 7);
+        $this->assertSame(GameObject::EXILE, $this->zone($warp));
+        $this->assertNotContains(['id' => $warp, 'how' => 'wx'], $game->plays(0), 'Not the same turn.');
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::PrecombatMain, 9);
+        $this->assertContains(['id' => $warp, 'how' => 'wx'], $game->plays(0));
+        $game->cast(0, $warp, 0, [], 'wx');
+        $this->resolve();
+        $this->passUntil(Step::PrecombatMain, 11);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($warp), 'Cast normally, it stays.');
+
+        // Plot: exiled now for its plot cost, cast free on a later turn.
+        foreach ($game->players[0]->hand as $id) {
+            $game->objects[$id]->moveTo(GameObject::EXILE);
+            $game->exile[] = $id;
+        }
+        $game->players[0]->hand = [];
+        $plot = $this->put(0, 'Plot Lite', GameObject::HAND);
+        $this->assertContains(['id' => $plot, 'how' => 'plot'], $game->plays(0));
+        $game->plot(0, $plot);
+        $this->assertSame(GameObject::EXILE, $this->zone($plot));
+        $this->assertNotContains(['id' => $plot, 'how' => 'pl'], $game->plays(0));
+        $this->passUntil(Step::PrecombatMain, 13);
+        foreach ($game->permanents(0) as $object) {
+            $object->tapped = $object->printed()->isLand();
+        }
+        $this->assertContains(['id' => $plot, 'how' => 'pl'], $game->plays(0));
+        $life = $this->life(1);
+        $game->cast(0, $plot, 0, ['p:1'], 'pl');
+        $this->resolve();
+        $this->assertSame($life - 3, $this->life(1), 'Free, with every land tapped.');
+    }
+
+    public function testMobilizeAndBlockLimit(): void
+    {
+        $game = $this->newGame();
+        $mobilize = $this->put(0, 'Mobilize Lite', GameObject::BATTLEFIELD);
+        $drums = $this->put(0, 'Goblin War Drums Lite', GameObject::BATTLEFIELD);
+        $first = $this->put(1, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $second = $this->put(1, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $game->declareAttackers(0, [$mobilize, $drums]);
+        $this->resolve();
+        $this->assertCount(4, $game->attackers, 'Two attacking Warriors.');
+        while ($game->decision(1) !== 'block') {
+            $game->pass($game->priority);
+        }
+        try {
+            $game->declareBlockers(1, [$first => $drums, $second => $drums]);
+            $this->fail('Two blockers on one creature that cannot be blocked by more than one.');
+        } catch (GameException) {
+        }
+        $game->declareBlockers(1, [$first => $mobilize, $second => $mobilize]);
+        $this->passUntil(Step::PostcombatMain, 3);
+        $this->assertSame(15, $this->life(1));
+        $warriors = fn () => count(array_filter($game->permanents(0), fn (GameObject $object) => $object->name() === 'Warrior Token'));
+        $this->assertSame(2, $warriors());
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::Upkeep, 4);
+        $this->assertSame(0, count(array_filter($game->permanents(0), fn (GameObject $object) => $object->name() === 'Warrior Token')), 'Sacrificed at the end step.');
+    }
+
+    public function testCreatureEntersSecondDrawAndAnyNumber(): void
+    {
+        $game = $this->newGame();
+        $this->put(0, 'Soul Warden Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Plains', 2);
+        $game->cast(0, $this->put(0, 'Akrasan Squire', GameObject::HAND), 0, []);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(21, $this->life(0));
+        $this->put(1, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $this->assertSame(21, $this->life(0), "Only creatures you control.");
+
+        $sage = $this->put(0, 'Second Draw Lite', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Island', 2);
+        $game->cast(0, $this->put(0, 'Draw Lite', GameObject::HAND), 0, []);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$sage]->counter('+1/+1'), 'The draw step, then the second card.');
+
+        $this->assertContains('any number', self::read('Relentless Rats')->keywords);
     }
 
     public function testUnearth(): void
@@ -1189,11 +1320,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 
