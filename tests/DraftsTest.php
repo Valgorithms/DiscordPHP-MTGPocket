@@ -328,15 +328,22 @@ final class DraftsTest extends PocketTestCase
         $drafts->find($draft->id);
         $this->assertSame(2100, $this->points('200'), 'Prizes are paid once.');
 
-        // Everyone keeps every card they drafted.
+        // Everyone keeps every card they drafted, and each win opened a
+        // 15-card pack of the set: two for Ben, one for Ann.
+        $wins = ['100' => 1, '200' => 2, '300' => 0, '400' => 0];
         foreach ($draft->seats as $seat) {
             $this->assertTrue($seat->collected);
-            $this->assertSame($seat->picks->toArray(), $this->pocket->inventories->get($seat->id)->cards->toArray());
+            $this->assertSame($wins[$seat->id], $seat->packsWon);
+            $owned = $this->pocket->inventories->get($seat->id)->cards;
+            $this->assertTrue($owned->contains($seat->picks));
+            $this->assertSame($seat->picks->total() + 15 * $wins[$seat->id], $owned->total());
         }
         $this->assertNull($drafts->current('100'));
         $this->assertSame($draft->id, $drafts->last('100')->id);
         $news = implode("\n", array_merge(...array_column($drafts->takeNews(), 'news')));
         $this->assertStringContainsString('**Ben** finishes first (2-0). Prizes: 1. Ben 1,600 points, 2. Ann 1,000 points', $news);
+        $this->assertStringContainsString('🎁 **Ben** won a Draft Set pack', $news);
+        $this->assertStringContainsString('The cards are in their collection.', $news);
     }
 
     public function testLeavingMidEventConcedesAndPaysOut(): void
@@ -365,6 +372,8 @@ final class DraftsTest extends PocketTestCase
         $this->assertSame(['100', '200'], [$round[0]['a'], $round[0]['b']]);
         $this->assertSame(['400', null, 'a'], [$round[1]['a'], $round[1]['b'], $round[1]['result']]);
         $this->assertException(fn () => $drafts->play('400'), 'You have a bye');
+        $this->assertSame(1, $draft->seat('400')->packsWon, 'A bye is a win, and pays its pack at once.');
+        $this->assertSame(15, $this->pocket->inventories->get('400')->cards->total());
         $this->assertSame($round[0]['match'], $drafts->play('100')->id, 'Play shows the game already going.');
 
         // Cat left, so she wins nothing; Ann beats Ben for first.

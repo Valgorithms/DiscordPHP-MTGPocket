@@ -89,6 +89,9 @@ final class DraftMessageBuilder extends PocketMessageBuilder
                 ? '🏆 Prizes'.($draft->status === Draft::SIGNUP ? ' when full' : '').': '.implode(' · ', array_map(fn (int $points, int $place) => self::ordinal($place + 1).' '.self::points($points), $prizes, array_keys($prizes)))
                 : '🏆 Paid: '.implode(' · ', array_map(fn (array $prize) => self::ordinal($prize['place']).' '.$draft->seat($prize['id'])->name.' '.self::points($prize['points']), $draft->prizes)));
         }
+        if ($rules->packsPerWin > 0) {
+            $status .= "\n🎁 Every match win also opens ".($rules->packsPerWin === 1 ? 'a pack' : "{$rules->packsPerWin} packs")." of {$draft->setName}.";
+        }
         if ($draft->endsAt > 0 && $draft->isLive()) {
             $status .= "\n-# The event ends <t:{$draft->endsAt}:R>, whatever is left unplayed; everyone keeps what they drafted.";
         }

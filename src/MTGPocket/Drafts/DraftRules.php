@@ -38,6 +38,7 @@ final class DraftRules
      * @param int    $eventDays
      * @param string $mode         The game mode whose rules the games use.
      * @param float[] $prizes       Shares of the entry fees paid to 1st, 2nd and so on.
+     * @param int    $packsPerWin  Packs of the drafted set each match win opens for the winner.
      */
     public function __construct(
         public readonly int $entryFee = 1200,
@@ -52,7 +53,11 @@ final class DraftRules
         public readonly int $eventDays = 7,
         public readonly string $mode = 'limited',
         public readonly array $prizes = [0.4, 0.25, 0.15, 0.1],
+        public readonly int $packsPerWin = 1,
     ) {
+        if ($packsPerWin < 0 || $packsPerWin > 10) {
+            throw new \InvalidArgumentException('Draft prize packs per win must be between 0 and 10.');
+        }
         foreach ($prizes as $share) {
             if (! is_float($share) && ! is_int($share) || $share < 0) {
                 throw new \InvalidArgumentException('Draft prize shares must be numbers no lower than 0.');
@@ -106,6 +111,7 @@ final class DraftRules
             (int) ($config['event_days'] ?? 7),
             (string) ($config['mode'] ?? 'limited'),
             array_values(array_map('floatval', (array) ($config['prizes'] ?? [0.4, 0.25, 0.15, 0.1]))),
+            (int) ($config['packs_per_win'] ?? 1),
         );
     }
 }

@@ -34,6 +34,7 @@ final class DraftSeat
      * @param bool       $dropped   They left the event.
      * @param bool       $collected Their picks are in their collection.
      * @param list<string> $pickLog Card uuids in the order they took them.
+     * @param int        $packsWon  Prize packs already opened for their wins.
      */
     public function __construct(
         public readonly string $id,
@@ -45,6 +46,7 @@ final class DraftSeat
         public bool $dropped = false,
         public bool $collected = false,
         public array $pickLog = [],
+        public int $packsWon = 0,
     ) {
     }
 
@@ -60,6 +62,7 @@ final class DraftSeat
             (bool) ($data['dropped'] ?? false),
             (bool) ($data['collected'] ?? false),
             array_values(array_map('strval', (array) ($data['pickLog'] ?? []))),
+            (int) ($data['packsWon'] ?? 0),
         );
     }
 
@@ -75,6 +78,7 @@ final class DraftSeat
             'dropped' => $this->dropped,
             'collected' => $this->collected,
             'pickLog' => $this->pickLog,
+            'packsWon' => $this->packsWon,
         ];
     }
 }

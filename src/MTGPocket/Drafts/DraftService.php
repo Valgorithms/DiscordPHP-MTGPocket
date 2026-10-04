@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace MTGPocket\Drafts;
 
+use MTGPocket\Builders\DraftMessageBuilder;
 use MTGPocket\Cards\BasicLands;
 use MTGPocket\Cards\CardPool;
 use MTGPocket\Decks\DeckBuilder;
@@ -52,7 +53,8 @@ use Random\Randomizer;
  * it after the draft), or when the whole event times out. When the rounds
  * are over (or time runs out once they have started), the top finishers
  * still in the event share the entry fees as points
- * ({@see DraftRules::$prizes}).
+ * ({@see DraftRules::$prizes}), and every match win opens packs of the
+ * drafted set into the winner's collection ({@see DraftRules::$packsPerWin}).
  *
  * Everything that happens on its own (auto-picks, the next stage, timeouts)
  * happens the next time anyone touches the draft or {@see tickAll()} runs;
@@ -715,8 +717,7 @@ final class DraftService
             $status = $draft->status;
             if ($draft->endsAt > 0 && $now >= $draft->endsAt) {
                 $this->finish($draft, 'The event has run out of time.');
-
-                return;
+                break;
             }
             match ($status) {
                 Draft::SIGNUP => $this->advanceSignup($draft, $now),
@@ -726,8 +727,49 @@ final class DraftService
                 default => null,
             };
             if ($draft->status === $status) {
+                break;
+            }
+        }
+        $this->awardPacks($draft);
+    }
+
+    /**
+     * Opens the packs players have won and not yet received: {@see
+     * DraftRules::$packsPerWin} packs of the drafted set for each match win
+     * (a bye counts), each of a random color, straight into their
+     * collection.
+     *
+     * @param Draft $draft
+     *
+     * @return void
+     */
+    private function awardPacks(Draft $draft): void
+    {
+        if ($this->rules->packsPerWin === 0 || $draft->rounds === []) {
+            return;
+        }
+        $pool = null;
+        foreach ($draft->standings() as $record) {
+            $seat = $draft->seat($record['id']);
+            $owed = $record['wins'] * $this->rules->packsPerWin - $seat->packsWon;
+            if ($owed <= 0) {
+                continue;
+            }
+            $pool ??= $this->pools->find($draft->setCode);
+            if ($pool === null) {
                 return;
             }
+            $colors = $this->packColors($pool);
+            $opened = [];
+            for ($i = 0; $i < $owed; $i++) {
+                $pack = $this->generator->generate($pool, $colors[$this->shuffler->getInt(0, count($colors) - 1)]);
+                $this->players->findOrCreate($seat->id, $seat->name);
+                $this->inventories->addCards($seat->id, $pack->counts());
+                $seat->packsWon++;
+                $rares = array_column($pack->ofRarity('rare', 'mythic'), 'name');
+                $opened[] = (DraftMessageBuilder::COLOR_NAMES[$pack->color] ?? $pack->color).($rares === [] ? '' : ' ('.implode(', ', $rares).')');
+            }
+            $draft->news[] = "🎁 **{$seat->name}** won ".($owed === 1 ? 'a' : $owed)." {$draft->setName} pack".($owed === 1 ? '' : 's').': '.implode('; ', $opened).'. The cards are in their collection.';
         }
     }
 
