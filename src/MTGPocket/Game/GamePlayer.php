@@ -35,6 +35,9 @@ final class GamePlayer
     /** Speed, 0 to 4 (rule 702.179); 0 until a permanent with "Start your engines!" is theirs. */
     public int $speed = 0;
 
+    /** The city's blessing (rule 702.131): kept for the rest of the game. */
+    public bool $blessed = false;
+
     /** The turn their speed last went up: once each turn. */
     public int $speedTurn = 0;
 
@@ -103,6 +106,7 @@ final class GamePlayer
             'poison' => $this->poison,
             'energy' => $this->energy,
             'speed' => $this->speed,
+            'blessed' => $this->blessed,
             'speedTurn' => $this->speedTurn,
             'lifeMark' => $this->lifeMark,
             'drawn' => $this->drawn,
@@ -130,6 +134,7 @@ final class GamePlayer
         $player->poison = (int) ($data['poison'] ?? 0);
         $player->energy = (int) ($data['energy'] ?? 0);
         $player->speed = (int) ($data['speed'] ?? 0);
+        $player->blessed = (bool) ($data['blessed'] ?? false);
         $player->speedTurn = (int) ($data['speedTurn'] ?? 0);
         $player->lifeMark = (int) ($data['lifeMark'] ?? $player->life);
         $player->drawn = (int) ($data['drawn'] ?? 0);

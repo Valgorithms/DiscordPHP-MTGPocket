@@ -172,6 +172,32 @@ final class TextParser
         for ($i = 0; $i < count($lines); $i++) {
             $line = $lines[$i];
 
+            // Any other triggered ability with modes: `Landfall — Whenever a land you control enters, choose one —`.
+            if (! $spell && preg_match('/^(.+), choose (one|two|three|one or both|one or more) —$/u', $line, $match)
+                && ! preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks)$/', $match[1])) {
+                $bullets = [];
+                while (isset($lines[$i + 1]) && str_starts_with($lines[$i + 1], '•')) {
+                    $bullets[] = trim(mb_substr($lines[++$i], 1));
+                }
+                $probe = $result;
+                $modes = array_map(fn (string $bullet) => ['text' => $bullet, 'effects' => self::effects($bullet)], $bullets);
+                [$min, $max] = self::CHOOSE[$match[2]];
+                if (count($bullets) >= 2 && ! in_array(null, array_column($modes, 'effects'), true) && $min <= count($modes)
+                    && self::triggered($match[1].', you gain 1 life.', $probe) && count($probe['triggered']) === count($result['triggered']) + 1) {
+                    $ability = end($probe['triggered']);
+                    $result['triggered'][] = [
+                        'text' => implode("\n", [$line, ...array_map(fn ($bullet) => "• {$bullet}", $bullets)]),
+                        'effects' => [],
+                        'modes' => $modes,
+                        'choose' => ['min' => $min, 'max' => min($max ?? count($modes), count($modes))],
+                    ] + $ability;
+                } else {
+                    $unread = array_values(array_filter($bullets, fn (string $bullet) => self::effects($bullet) === null));
+                    $result['unsupported'] = [...$result['unsupported'], ...($unread === [] ? [$line] : array_map(fn ($bullet) => "• {$bullet}", $unread))];
+                }
+
+                continue;
+            }
             // A modal spell's `Choose one —` and its `•` modes, or a triggered ability's `When CARDNAME enters, choose one —`.
             if (preg_match('/^(?:(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks), )?[Cc]hoose (one|two|three|one or both|one or more) —$/u', $line, $match)) {
                 $bullets = [];
@@ -253,6 +279,7 @@ final class TextParser
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
+                'You may look at the top card of your library any time.' => 'look at top any time',
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -343,6 +370,11 @@ final class TextParser
                 continue;
             }
 
+            if (($impulse = self::impulse($line)) !== null) {
+                $result['effects'][] = $impulse;
+
+                continue;
+            }
             if (($look = self::look($line)) !== null) {
                 $result['effects'][] = $look;
 
@@ -1215,7 +1247,7 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
-        if (($look = self::look($text)) !== null) {
+        if (($look = self::look($text) ?? self::impulse($text)) !== null) {
             return [$look];
         }
         $effects = [];
@@ -1277,6 +1309,27 @@ final class TextParser
             'filter' => $filter,
             'rest' => $rest === 'top' ? 'top' : (str_starts_with($rest, 'into') ? 'graveyard' : 'bottom'),
         ];
+    }
+
+    /**
+     * `Exile the top two cards of your library. Until the end of your next
+     * turn, you may play those cards.`, or `… You may play that card this turn.`
+     *
+     * @param string $text
+     *
+     * @return array|null
+     */
+    private static function impulse(string $text): ?array
+    {
+        if (! preg_match('/^Exile the top (card|(\w+) cards) of your library\. (?:Until the end of your next turn, you may play (?:that card|those cards|them)|You may play (?:that card|those cards|them) (this turn|until the end of your next turn))\.?$/', trim($text), $m)) {
+            return null;
+        }
+        $n = $m[1] === 'card' ? 1 : self::amount($m[2]);
+        if (! is_int($n) || $n < 1) {
+            return null;
+        }
+
+        return ['type' => 'impulse', 'amount' => $n, 'until' => ($m[3] ?? '') === 'this turn' ? 'this' : 'next'];
     }
 
     /**

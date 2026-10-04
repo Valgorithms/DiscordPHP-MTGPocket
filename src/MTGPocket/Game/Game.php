@@ -876,12 +876,16 @@ final class Game
         }
         foreach ($this->exile as $id) {
             $exiled = $this->objects[$id];
-            if (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended'], true) && $exiled->owner === $seat) {
+            if ($exiled->printed()->isLand()) {
+                if ($this->impulsePlayable($seat, $id) && $this->canPlayLand($seat, $id)) {
+                    $plays[] = ['id' => $id, 'how' => ''];
+                }
+            } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
                     if (preg_match('/kick|dash|evoke|warp|morph|bestow/', $how)) {
                         continue;
                     }
-                    $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp'][$exiled->exiledBy] ?? null, $how]));
+                    $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix'][$exiled->exiledBy] ?? null, $how]));
                     if ($this->canCast($seat, $id, $how)) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
@@ -966,9 +970,9 @@ final class Game
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp'], true)) {
                 $options['alt'] = $part;
-            } elseif (in_array($part, ['pl', 'wx', 'md', 'sp'], true)) {
+            } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, or its last time counter removed.
-                $options['exiled'] = ['pl' => 'plot', 'wx' => 'warp', 'md' => 'madness', 'sp' => 'suspended'][$part];
+                $options['exiled'] = ['pl' => 'plot', 'wx' => 'warp', 'md' => 'madness', 'sp' => 'suspended', 'ix' => 'impulse'][$part];
             } elseif (preg_match('/^m\d+(?:\+\d+)*$/', $part)) {
                 $options['modes'] = array_map('intval', explode('+', substr($part, 1)));
             } else {
@@ -1029,6 +1033,21 @@ final class Game
      *
      * @return bool
      */
+    /**
+     * Whether a card exiled by `Exile the top card … you may play it` can still be played.
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return bool
+     */
+    private function impulsePlayable(int $seat, int $id): bool
+    {
+        $object = $this->objects[$id] ?? null;
+
+        return $object !== null && $object->zone === GameObject::EXILE && $object->exiledBy === 'impulse' && $object->owner === $seat && $this->turn <= $object->exiledOn;
+    }
+
     public function canPlayLand(int $seat, int $id): bool
     {
         return $this->whyNotPlayLand($seat, $id) === null;
@@ -1037,7 +1056,7 @@ final class Game
     private function whyNotPlayLand(int $seat, int $id): ?string
     {
         $object = $this->objects[$id] ?? null;
-        if ($object === null || ! in_array($id, $this->players[$seat]->hand, true)) {
+        if ($object === null || (! in_array($id, $this->players[$seat]->hand, true) && ! $this->impulsePlayable($seat, $id))) {
             return 'That card is not in your hand.';
         }
         if (! $object->definition()->isLand()) {
@@ -1122,7 +1141,10 @@ final class Game
             if ($options['exiled'] === 'suspended' && ($this->step !== Step::Upkeep || $this->active !== $seat || $object->exiledOn !== $this->turn)) {
                 return 'A suspended card is cast in the upkeep its last time counter is removed.';
             }
-            if (! in_array($options['exiled'], ['madness', 'suspended'], true) && $object->exiledOn >= $this->turn) {
+            if ($options['exiled'] === 'impulse' && $this->turn > $object->exiledOn) {
+                return 'The time to play it has passed.';
+            }
+            if (! in_array($options['exiled'], ['madness', 'suspended', 'impulse'], true) && $object->exiledOn >= $this->turn) {
                 return 'It can be cast from exile on a later turn.';
             }
         } elseif ($object === null || ! (in_array($id, $player->hand, true) || in_array($id, $this->commandCards($seat), true))) {
@@ -1525,6 +1547,8 @@ final class Game
             throw new GameException("You cannot pay {$cost}".($xCount > 0 ? " with X = {$x}" : '').($wardMana !== '' || $wardLife > 0 ? ' and ward' : '').'.');
         }
         $this->pay($seat, $payment);
+        // Sunburst (rule 702.44): how many colors of mana were spent.
+        $colorsSpent = count(array_intersect(['W', 'U', 'B', 'R', 'G'], [...array_values($payment['made'] ?? []), ...array_keys(array_filter($payment['pool'] ?? []))]));
         if (($payment['delve'] ?? 0) > 0) {
             $delved = array_slice(array_values(array_diff($this->players[$seat]->graveyard, [$id])), 0, $payment['delve']);
             foreach ($delved as $delvedId) {
@@ -1554,7 +1578,8 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt']]);
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'],
+            'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0]);
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
@@ -2041,6 +2066,9 @@ final class Game
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0));
             $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
+            if (($item['sunburst'] ?? 0) > 0) {
+                $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
+            }
             // Evoke (rule 702.74): sacrificed as it enters; its own enters abilities resolve first.
             if ($object->alt === 'evoke') {
                 array_unshift($this->pendingTriggers, [
@@ -2731,6 +2759,25 @@ final class Game
                     $this->pendingChoice = ['type' => $effect['type'], 'seat' => $controller, 'cards' => $cards];
 
                     return true;
+                }
+                break;
+
+            case 'impulse':
+                // Exiled from the top; playable until the end of this turn or the controller's next.
+                $until = $this->turn;
+                if ($effect['until'] === 'next') {
+                    for ($seat = $this->active, $until++; ($seat = $this->opponent($seat)) !== $controller && $until < $this->turn + 8; $until++);
+                }
+                $exiled = [];
+                for ($i = 0; $i < $amount && ($top = array_pop($this->players[$controller]->library)) !== null; $i++) {
+                    $this->players[$controller]->library[] = $top;
+                    $this->moveTo($this->objects[$top], GameObject::EXILE);
+                    $this->objects[$top]->exiledBy = 'impulse';
+                    $this->objects[$top]->exiledOn = $until;
+                    $exiled[] = $this->objects[$top]->name();
+                }
+                if ($exiled !== []) {
+                    $this->log("{$this->players[$controller]->name} exiles ".implode(', ', $exiled).' and may play '.(count($exiled) === 1 ? 'it' : 'them').($effect['until'] === 'this' ? ' this turn.' : ' until the end of their next turn.'));
                 }
                 break;
 
@@ -4539,6 +4586,14 @@ final class Game
     private function checkStateBasedActions(): void
     {
         $this->updateSpeed();
+        // Ascend (rule 702.131): ten or more permanents and one with ascend.
+        foreach ($this->players as $seat => $player) {
+            $permanents = $this->permanents($seat);
+            if (! $player->blessed && count($permanents) >= 10 && array_filter($permanents, fn (GameObject $o) => in_array('ascend', $o->definition()->keywords, true)) !== []) {
+                $player->blessed = true;
+                $this->log("{$player->name} gets the city's blessing.");
+            }
+        }
         $this->updateControl();
         for ($guard = 0; $guard < 100; $guard++) {
             $changed = false;
@@ -5236,6 +5291,7 @@ final class Game
             'fromHand' => (bool) ($item['fromHand'] ?? false),
             'bestowed' => (bool) ($item['bestowed'] ?? false),
             'alt' => (string) ($item['alt'] ?? ''),
+            'sunburst' => (int) ($item['sunburst'] ?? 0),
         ])), (array) $data['stack']));
         $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
             'source' => (int) $trigger['source'],
