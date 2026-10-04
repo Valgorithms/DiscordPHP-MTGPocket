@@ -32,6 +32,15 @@ final class GamePlayer
     /** Energy counters (rule 107.14). */
     public int $energy = 0;
 
+    /** Speed, 0 to 4 (rule 702.179); 0 until a permanent with "Start your engines!" is theirs. */
+    public int $speed = 0;
+
+    /** The turn their speed last went up: once each turn. */
+    public int $speedTurn = 0;
+
+    /** Their life when the turn began, to tell when they have lost life this turn. */
+    public int $lifeMark = self::STARTING_LIFE;
+
     /** @var int[] Object ids; the last is the top. */
     public array $library = [];
 
@@ -88,6 +97,9 @@ final class GamePlayer
             'life' => $this->life,
             'poison' => $this->poison,
             'energy' => $this->energy,
+            'speed' => $this->speed,
+            'speedTurn' => $this->speedTurn,
+            'lifeMark' => $this->lifeMark,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
@@ -110,6 +122,9 @@ final class GamePlayer
         $player->life = (int) $data['life'];
         $player->poison = (int) ($data['poison'] ?? 0);
         $player->energy = (int) ($data['energy'] ?? 0);
+        $player->speed = (int) ($data['speed'] ?? 0);
+        $player->speedTurn = (int) ($data['speedTurn'] ?? 0);
+        $player->lifeMark = (int) ($data['lifeMark'] ?? $player->life);
         $player->library = array_map('intval', (array) $data['library']);
         $player->hand = array_map('intval', (array) $data['hand']);
         $player->graveyard = array_map('intval', (array) $data['graveyard']);

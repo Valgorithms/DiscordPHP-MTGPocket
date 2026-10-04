@@ -152,7 +152,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -205,6 +205,25 @@ final class TextParser
             if (! $spell && in_array('Class', $card->subtypes, true) && preg_match('/^((?:\{[0-9WUBRGC\/]+\})+): Level (\d+)$/', $line, $match)) {
                 $classLevel = (int) $match[2];
                 $result['activated'][] = ['text' => $line, 'cost' => ['mana' => $match[1]], 'effects' => [['type' => 'class_level', 'amount' => $classLevel, 'self' => true]], 'sorcery' => true, 'once' => false, 'fromLevel' => $classLevel - 1];
+
+                continue;
+            }
+            // `Max speed — …`: an ability that works while its controller's speed is 4.
+            if (! $spell && preg_match('/^Max speed — (.+)$/u', $line, $match)) {
+                $before = $result;
+                if (preg_match('/^CARDNAME (?:gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))?|has (.+?))\.?$/', $match[1], $has)
+                    && ($keywords = self::keywordList(($has[3] ?? '') !== '' ? $has[3] : ($has[4] ?? ''))) !== null) {
+                    $result['maxSpeed'] = ['power' => (int) ($has[1] ?? 0), 'toughness' => (int) ($has[2] ?? 0), 'keywords' => $keywords];
+                } elseif (self::triggered($match[1], $result) || self::activated($match[1], $result) || self::anthem($match[1], $result)) {
+                    foreach (['triggered', 'activated', 'anthem'] as $key) {
+                        foreach (array_slice(array_keys($result[$key]), count($before[$key])) as $index) {
+                            $result[$key][$index]['maxSpeed'] = true;
+                        }
+                    }
+                } else {
+                    $result = $before;
+                    $result['unsupported'][] = $line;
+                }
 
                 continue;
             }
@@ -491,6 +510,9 @@ final class TextParser
                 $found['morph'] = ['kind' => strtolower($m[1]), 'cost' => $m[2]];
             } elseif (preg_match('/^crew (\d+)$/i', $part, $m) && ! $spell) {
                 $found['activated'][] = ['text' => $part, 'cost' => ['crew' => (int) $m[1]], 'effects' => [['type' => 'crewed', 'self' => true]], 'sorcery' => false, 'once' => false];
+            } elseif (strtolower($part) === 'start your engines!' && ! $spell) {
+                // Speed (rule 702.179): see Game::updateSpeed().
+                $found['keywords'][] = 'start your engines';
             } elseif (strtolower($part) === 'station' && ! $spell) {
                 // Station (rule 702.184): tap another creature for charge counters equal to its power, as a sorcery.
                 $found['activated'][] = ['text' => 'Station', 'cost' => ['station' => true], 'effects' => [['type' => 'charge', 'amount' => 0, 'self' => true]], 'sorcery' => true, 'once' => false];
@@ -1115,6 +1137,18 @@ final class TextParser
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
+        // "Tap up to two target creatures": optional targets, `?kind` (see Game::isLegalTarget()).
+        if (preg_match('/^(tap|untap) up to (\w+) target (.+)$/i', $sentence, $m) && is_int($n = self::amount($m[2])) && $n >= 1 && $n <= 5
+            && isset(self::TARGETS[$phrase = 'target '.preg_replace('/s\b/', '', strtolower($m[3]))]) && self::isPermanentTarget($phrase)) {
+            return array_fill(0, $n, ['type' => strtolower($m[1]), 'target' => '?'.self::TARGETS[$phrase]]);
+        }
+        // "… to up to one target creature": the same effect with its one target optional.
+        if (str_contains($sentence, 'up to one target ') && ($found = self::sentenceEffects(preg_replace('/\bup to one target /', 'target ', $sentence, 1))) !== null
+            && count($withTarget = array_keys(array_filter($found, fn (array $effect) => isset($effect['target'])))) === 1) {
+            $found[$withTarget[0]]['target'] = '?'.$found[$withTarget[0]]['target'];
+
+            return $found;
+        }
         $targets = implode('|', array_map(fn ($phrase) => preg_quote($phrase, '/'), array_keys(self::TARGETS)));
         // Fight (rule 701.14), or one-sided: "… deals damage equal to its power to …". The second effect uses the first one's target too.
         if (preg_match("/^target creature you control (fights|deals damage equal to its power to) ({$targets})$/i", $sentence, $m)
@@ -1162,6 +1196,19 @@ final class TextParser
         }
         if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && $effects[$last]['type'] === 'destroy') {
             $effects[$last]['noRegen'] = true;
+
+            return true;
+        }
+        // "Those creatures don't untap during their controller's next untap step." / "Put a stun counter on each of them." after tapping.
+        $tapped = [];
+        for ($i = $last; isset($effects[$i]) && $effects[$i]['type'] === 'tap' && isset($effects[$i]['target']); $i--) {
+            $tapped[] = $i;
+        }
+        $freeze = preg_match("/^(?:It|They|That creature|Those creatures|That permanent|Those permanents) (?:doesn't|don't) untap during (?:its|their) controller's next untap step$/i", $sentence);
+        if ($tapped !== [] && ($freeze || preg_match('/^Put a stun counter on (?:it|that creature|that permanent|each of them)$/i', $sentence))) {
+            foreach ($tapped as $i) {
+                $effects[$i][$freeze ? 'freeze' : 'stun'] = $freeze ? true : 1;
+            }
 
             return true;
         }

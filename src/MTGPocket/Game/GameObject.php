@@ -72,6 +72,9 @@ final class GameObject
     /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
     public bool $unearthed = false;
 
+    /** Doesn't untap during its controller's next untap step. */
+    public bool $frozen = false;
+
     /** The player an Aura with enchant player is attached to. */
     public ?int $enchantedPlayer = null;
 
@@ -164,6 +167,7 @@ final class GameObject
         $this->shields = 0;
         $this->borrowedFrom = null;
         $this->unearthed = false;
+        $this->frozen = false;
         $this->rebound = false;
         $this->bestowed = false;
         $this->chosen = null;
@@ -211,6 +215,7 @@ final class GameObject
             'kicked' => $this->kicked,
             'shields' => $this->shields,
             'unearthed' => $this->unearthed,
+            'frozen' => $this->frozen,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
@@ -246,6 +251,7 @@ final class GameObject
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
+        $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
         $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;

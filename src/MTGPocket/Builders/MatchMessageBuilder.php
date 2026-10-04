@@ -389,6 +389,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
             count($player->library),
             count($player->graveyard),
         );
+        if ($player->speed > 0) {
+            $line .= " · 🏁 speed {$player->speed}";
+        }
         if ($player->energy > 0) {
             $line .= " · ⚡ {$player->energy}";
         }
@@ -896,6 +899,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         return match ($parts[0]) {
             'p' => (int) $parts[1] === $seat ? "You ({$game->players[$seat]->name})" : $game->players[(int) $parts[1]]->name,
             'o' => str_replace('**', '', self::permanent($game, $game->objects[(int) $parts[1]])).($game->objects[(int) $parts[1]]->controller === $seat ? ' (yours)' : ''),
+            '-' => 'No target',
             default => 'Spell: '.$game->describeTarget($target),
         };
     }
