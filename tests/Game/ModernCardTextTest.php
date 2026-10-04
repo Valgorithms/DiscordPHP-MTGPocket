@@ -83,6 +83,18 @@ final class ModernCardTextTest extends GameTestCase
         'Outpace Oblivion' => ['manaCost' => '{2}{R}', 'type' => 'Enchantment', 'text' => "Start your engines!\nWhen this enchantment enters, it deals 5 damage to up to one target creature or planeswalker.", 'colors' => ['R']],
         'Frost Breath' => ['manaCost' => '{2}{U}', 'type' => 'Instant', 'text' => "Tap up to two target creatures. Those creatures don't untap during their controller's next untap step.", 'colors' => ['U']],
         'Stun Lite' => ['manaCost' => '{1}{U}', 'type' => 'Instant', 'text' => 'Tap up to two target creatures. Put a stun counter on each of them. (If a permanent with a stun counter would become untapped, remove one from it instead.)', 'colors' => ['U']],
+        'Arcbound Worker' => ['manaCost' => '{1}', 'type' => 'Artifact Creature — Construct', 'power' => '0', 'toughness' => '0', 'text' => "Modular 1 (This creature enters with a +1/+1 counter on it. When it dies, you may put its +1/+1 counters on target artifact creature.)", 'colors' => []],
+        'Topan Freeblade' => ['manaCost' => '{1}{W}', 'type' => 'Creature — Human Soldier', 'power' => '2', 'toughness' => '2', 'text' => "Vigilance\nRenown 1 (When this creature deals combat damage to a player, if it isn't renowned, put a +1/+1 counter on it and it becomes renowned.)", 'colors' => ['W']],
+        'Cloudfin Raptor' => ['manaCost' => '{U}', 'type' => 'Creature — Bird Mutant', 'power' => '0', 'toughness' => '1', 'text' => "Flying\nEvolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)", 'colors' => ['U']],
+        'Glint-Sleeve Artisan' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Dwarf Artificer', 'power' => '2', 'toughness' => '2', 'text' => 'Fabricate 1 (When this creature enters, put a +1/+1 counter on it or create a 1/1 colorless Servo artifact creature token.)', 'colors' => ['W']],
+        'Flayer Husk' => ['manaCost' => '{1}', 'type' => 'Artifact — Equipment', 'text' => "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)\nEquipped creature gets +1/+1.\nEquip {2}", 'colors' => []],
+        'Syndic of Tithes' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Human Cleric', 'power' => '2', 'toughness' => '2', 'text' => 'Extort (Whenever you cast a spell, you may pay {W/B}. If you do, each opponent loses 1 life and you gain that much life.)', 'colors' => ['W']],
+        'Reliquary Tower' => ['manaCost' => '', 'type' => 'Land', 'text' => "You have no maximum hand size.\n{T}: Add {C}.", 'colors' => []],
+        'Explore Lite' => ['manaCost' => '{1}{G}', 'type' => 'Enchantment', 'text' => 'You may play an additional land on each of your turns.', 'colors' => ['G']],
+        'Turn Duelist' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Human Warrior', 'power' => '2', 'toughness' => '1', 'text' => 'During your turn, this creature has first strike.', 'colors' => ['R']],
+        "Ajani's Pridemate" => ['manaCost' => '{1}{W}', 'type' => 'Creature — Cat Soldier', 'power' => '2', 'toughness' => '2', 'text' => "Whenever you gain life, put a +1/+1 counter on Ajani's Pridemate.", 'colors' => ['W']],
+        'Grim Return Lite' => ['manaCost' => '{2}{B}', 'type' => 'Sorcery', 'text' => 'Return up to two target creature cards from your graveyard to your hand.', 'colors' => ['B']],
+        'Reverse Engineer' => ['manaCost' => '{3}{U}{U}', 'type' => 'Sorcery', 'text' => "Improvise (Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for {1}.)\nDraw three cards.", 'colors' => ['U']],
         'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
@@ -547,6 +559,114 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(20, $this->life(1));
     }
 
+    public function testModularFabricateAndLivingWeapon(): void
+    {
+        $game = $this->newGame();
+        $worker = $this->put(0, 'Arcbound Worker', GameObject::BATTLEFIELD);
+        $other = $this->put(0, 'Arcbound Worker', GameObject::BATTLEFIELD);
+        $this->assertSame(1, $game->power($game->objects[$worker]));
+        $this->lands(1, 'Mountain', 1);
+        $this->passUntil(Step::PrecombatMain, 2);
+        $game->cast(1, $this->hand(1, 'Shock'), 0, ["o:{$worker}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($worker));
+        $this->resolve(); // Modular, onto the only artifact creature.
+        $this->assertSame(2, $game->objects[$other]->counter('+1/+1'));
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Plains', 4);
+        $artisan = $this->put(0, 'Glint-Sleeve Artisan', GameObject::HAND);
+        $game->cast(0, $artisan, 0, []);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(3, $game->power($game->objects[$artisan]));
+        $husk = $this->put(0, 'Flayer Husk', GameObject::HAND);
+        $game->cast(0, $husk, 0, []);
+        $this->resolve();
+        $this->resolve();
+        $germ = $game->objects[$game->objects[$husk]->attachedTo];
+        $this->assertSame('Phyrexian Germ Token', $germ->name());
+        $this->assertSame(1, $game->toughness($germ));
+    }
+
+    public function testRenownEvolveAndExtort(): void
+    {
+        $game = $this->newGame();
+        $blade = $this->put(0, 'Topan Freeblade', GameObject::BATTLEFIELD);
+        $raptor = $this->put(0, 'Cloudfin Raptor', GameObject::BATTLEFIELD);
+        $this->put(0, 'Syndic of Tithes', GameObject::BATTLEFIELD);
+        foreach ([$blade, $raptor] as $id) {
+            $game->objects[$id]->sick = false;
+        }
+        $this->lands(0, 'Plains', 2);
+        $game->cast(0, $this->put(0, 'Akrasan Squire', GameObject::HAND), 0, []);
+        $this->resolve(); // Extort, paid with the other Plains.
+        $this->assertSame(19, $this->life(1));
+        $this->assertSame(21, $this->life(0));
+        $this->resolve(); // The Squire.
+        $this->resolve(); // Evolve.
+        $this->assertSame(1, $game->objects[$raptor]->counter('+1/+1'));
+
+        $this->passUntil(Step::DeclareAttackers);
+        $game->declareAttackers(0, [$blade]);
+        $this->passUntil(Step::PostcombatMain);
+        $this->assertTrue($game->objects[$blade]->renowned);
+        $this->assertSame(1, $game->objects[$blade]->counter('+1/+1'));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertTrue($game->objects[$blade]->renowned);
+    }
+
+    public function testStaticRulesChanges(): void
+    {
+        $game = $this->newGame();
+        $this->put(0, 'Explore Lite', GameObject::BATTLEFIELD);
+        $duelist = $this->put(0, 'Turn Duelist', GameObject::BATTLEFIELD);
+        $this->put(0, 'Reliquary Tower', GameObject::BATTLEFIELD);
+        $game->playLand(0, $this->hand(0, 'Forest'));
+        $game->playLand(0, $this->hand(0, 'Forest'));
+        $this->assertFalse($game->canPlayLand(0, $this->hand(0, 'Forest')));
+        $this->assertContains('first strike', $game->keywords($game->objects[$duelist]));
+        for ($i = 0; $i < 9; $i++) {
+            $this->hand(0, 'Forest');
+        }
+        $this->passUntil(Step::PrecombatMain, 2);
+        $this->assertGreaterThan(7, count($game->players[0]->hand), 'No maximum hand size.');
+        $this->assertNotContains('first strike', $game->keywords($game->objects[$duelist]));
+    }
+
+    public function testLifeGainUpToTwoAndImprovise(): void
+    {
+        $game = $this->newGame();
+        $pridemate = $this->put(0, "Ajani's Pridemate", GameObject::BATTLEFIELD);
+        $this->assertSame([], self::read("Ajani's Pridemate")->unsupported);
+        $this->put(0, 'Syndic of Tithes', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Plains', 2);
+        $game->cast(0, $this->put(0, 'Akrasan Squire', GameObject::HAND), 0, []);
+        $this->resolve(); // Extort.
+        $this->resolve(); // Pridemate.
+        $this->assertSame(1, $game->objects[$pridemate]->counter('+1/+1'));
+        $this->resolve(); // The Squire.
+
+        $this->assertSame(['?creature_card_yours', '?creature_card_yours'], self::read('Grim Return Lite')->targetKinds());
+        $dead = $this->put(0, 'Akrasan Squire', GameObject::GRAVEYARD);
+        $this->lands(0, 'Swamp', 3);
+        $game->cast(0, $this->put(0, 'Grim Return Lite', GameObject::HAND), 0, ["o:{$dead}", '-']);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($dead));
+
+        $this->lands(0, 'Island', 2);
+        $this->put(0, 'Arcbound Worker', GameObject::BATTLEFIELD);
+        $this->put(0, 'Arcbound Worker', GameObject::BATTLEFIELD);
+        $this->put(0, 'Arcbound Worker', GameObject::BATTLEFIELD);
+        $engineer = $this->put(0, 'Reverse Engineer', GameObject::HAND);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $engineer, 0, []);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame($hand + 2, count($game->players[0]->hand), 'Three artifacts paid for {3}.');
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -821,7 +941,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

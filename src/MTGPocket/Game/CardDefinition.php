@@ -38,6 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound',
+        'evolve', 'improvise', 'no maximum hand size', 'additional land',
     ];
 
     /**
@@ -117,6 +118,9 @@ final class CardDefinition
 
     /** @var array{power: int, toughness: int, keywords: string[]}|null What it gets and has while its controller is at max speed. */
     public readonly ?array $maxSpeed;
+
+    /** @var string[] Keywords it has during its controller's turn (`During your turn, this creature has first strike.`). */
+    public readonly array $yourTurnKeywords;
 
     /** `type` or `color`: what is chosen as it enters (`As this enters, choose a creature type.`). */
     public readonly ?string $chooses;
@@ -207,6 +211,7 @@ final class CardDefinition
         $this->chooses = $parsed['chooses'];
         $this->stationBands = $parsed['stationBands'];
         $this->maxSpeed = $parsed['maxSpeed'];
+        $this->yourTurnKeywords = $parsed['yourTurnKeywords'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];
