@@ -32,7 +32,7 @@ final class ManaPayer
      *
      * @param array{mana: array<string, int>, life: int}               $payment One of {@see ManaCost::payments()}.
      * @param ManaPool                                                 $pool
-     * @param array<int, array{count: int, colors: string[]}>          $sources Untapped mana sources by object id: each makes `count` mana of one of `colors`.
+     * @param array<int, array{count: int, colors: string[], fixed?: string[][]}> $sources Untapped mana sources by object id: each makes `count` mana of one of `colors`, or one mana of each of `fixed`.
      *
      * @return array{pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null What to take from the pool, which sources to tap, the mana they make beyond the cost (it stays in the pool) and the type each tapped source made. Null when it cannot be paid.
      */
@@ -47,8 +47,9 @@ final class ManaPayer
         }
         uasort($sources, fn (array $a, array $b) => count($a['colors']) <=> count($b['colors']));
         foreach ($sources as $id => $source) {
-            for ($i = 0; $i < $source['count']; $i++) {
-                $units[] = ['source' => $id, 'colors' => $source['colors']];
+            // A bounce land's `{W}{U}`: one mana of each, fixed.
+            foreach ($source['fixed'] ?? array_fill(0, $source['count'], $source['colors']) as $colors) {
+                $units[] = ['source' => $id, 'colors' => $colors];
             }
         }
 

@@ -252,6 +252,7 @@ final class TextParser
                 'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land',
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
+                'You have hexproof.' => 'you have hexproof',
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -703,6 +704,18 @@ final class TextParser
      */
     private static function manaAbility(string $line, array &$result): bool
     {
+        // `{1}, {T}: Add one mana of any color.`: see Game::payFor().
+        if (preg_match('/^\{1\}, \{T\}: Add one mana of any colou?r\.$/', $line)) {
+            if ($result['mana'] === null) {
+                $result['mana'] = ['count' => 0, 'colors' => ['C'], 'filter' => true];
+            } elseif (($result['mana']['filter'] ?? false) || ($result['mana']['sacrifice'] ?? false)) {
+                return false;
+            } else {
+                $result['mana']['filter'] = true;
+            }
+
+            return true;
+        }
         if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
             return false;
         }
@@ -717,10 +730,10 @@ final class TextParser
             $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G'], 'chosen' => true];
         } elseif (preg_match('/^(\{[WUBRGC]\})+$/', $what)) {
             preg_match_all('/\{([WUBRGC])\}/', $what, $symbols);
-            if (count(array_unique($symbols[1])) !== 1) {
-                return false;
-            }
-            $ability = ['count' => count($symbols[1]), 'colors' => [$symbols[1][0]]];
+            $ability = count(array_unique($symbols[1])) === 1
+                ? ['count' => count($symbols[1]), 'colors' => [$symbols[1][0]]]
+                // A bounce land's `{W}{U}`: one of each.
+                : ['count' => count($symbols[1]), 'colors' => array_values(array_unique($symbols[1])), 'fixed' => array_map(fn (string $color) => [$color], $symbols[1])];
         } elseif (preg_match('/^\{[WUBRGC]\}(?:,? (?:or )?\{[WUBRGC]\})+$/', $what)) {
             preg_match_all('/\{([WUBRGC])\}/', $what, $symbols);
             $ability = ['count' => 1, 'colors' => array_values(array_unique($symbols[1]))];
@@ -742,10 +755,18 @@ final class TextParser
         }
 
         $existing = $result['mana'];
+        if ($existing !== null && $existing['count'] === 0) {
+            // The filter ability came first.
+            $existing = null;
+            $ability['filter'] = true;
+        }
         if ($existing === null) {
             $result['mana'] = $ability;
 
             return true;
+        }
+        if (isset($existing['fixed']) || isset($ability['fixed'])) {
+            return false;
         }
         // Two abilities of one mana each: one source of either, the painless colors first.
         if ($existing['count'] !== 1 || $ability['count'] !== 1) {
@@ -757,7 +778,7 @@ final class TextParser
         $painless = array_values(array_unique([...array_diff($existing['colors'], $existing['pain'] ?? []), ...array_diff($ability['colors'], $ability['pain'] ?? [])]));
         $pain = array_values(array_diff($pain, $painless));
         usort($colors, fn (string $a, string $b) => in_array($a, $pain, true) <=> in_array($b, $pain, true));
-        $result['mana'] = ['count' => 1, 'colors' => $colors] + ($pain === [] ? [] : ['pain' => $pain]);
+        $result['mana'] = ['count' => 1, 'colors' => $colors] + ($pain === [] ? [] : ['pain' => $pain]) + (($existing['filter'] ?? false) ? ['filter' => true] : []);
 
         return true;
     }
@@ -1238,7 +1259,7 @@ final class TextParser
         $where = '(on the bottom of your library(?: in (?:a random|any) order)?|into your graveyard)';
         if ($head[1] === 'Look at' && preg_match('/^, then put them back in any order\.?$/', $head[3])) {
             [$take, $may, $filter, $rest] = [0, true, 'any', 'top'];
-        } elseif (preg_match("/^\\. Put (\\w+) of them into your hand and the (?:rest|other) {$where}\\.?$/", $head[3], $m) && is_int($take = self::amount($m[1]))) {
+        } elseif (preg_match("/^\\. Put (\\w+) of (?:them|those cards) into your hand and the (?:rest|other) {$where}\\.?$/", $head[3], $m) && is_int($take = self::amount($m[1]))) {
             [$may, $filter, $rest] = [false, 'any', $m[2]];
         } elseif (preg_match("/^\\. You may (?:reveal|put) (an?|up to \\w+) (?:(.+?) )?cards? from among them (?:and put (?:it|that card|them) )?into your hand\\. Put the rest {$where}\\.?$/", $head[3], $m)
             && ($filter = ($m[2] ?? '') === '' ? 'any' : self::cardFilter($m[2])) !== null
@@ -1298,13 +1319,14 @@ final class TextParser
      */
     private static function revealDiscard(string $text): ?array
     {
-        $filters = ['card' => 'any', 'nonland card' => 'nonland', 'creature card' => 'creature', 'noncreature card' => 'noncreature', 'noncreature, nonland card' => 'noncreature_nonland', 'instant or sorcery card' => 'instant_sorcery', 'nonland permanent card' => 'nonland_permanent', 'creature or planeswalker card' => 'creature|planeswalker'];
+        $filters = ['card' => 'any', 'nonland card' => 'nonland', 'creature card' => 'creature', 'noncreature card' => 'noncreature', 'noncreature, nonland card' => 'noncreature_nonland', 'instant or sorcery card' => 'instant_sorcery', 'nonland permanent card' => 'nonland_permanent', 'creature or planeswalker card' => 'creature|planeswalker', 'artifact or creature card' => 'artifact|creature'];
         $filter = implode('|', array_map(fn ($f) => preg_quote($f, '/'), array_keys($filters)));
-        if (! preg_match("/^(Target opponent|Target player) reveals (?:their|his or her) hand\. You choose an? ({$filter}) from it\. That player discards that card\.?\s*(.*)$/s", trim($text), $m)) {
+        // `… That player discards that card.`, or `… and exile that card.` / `… Exile that card.`
+        if (! preg_match("/^(Target opponent|Target player) reveals (?:their|his or her) hand\. You choose an? ({$filter}) from it(\. That player discards that card| and exile that card|\. Exile that card)\.?\s*(.*)$/s", trim($text), $m)) {
             return null;
         }
 
-        return [['type' => 'discard', 'amount' => 1, 'target' => self::TARGETS[strtolower($m[1])], 'chooser' => 'you', 'filter' => $filters[$m[2]]], trim($m[3])];
+        return [['type' => 'discard', 'amount' => 1, 'target' => self::TARGETS[strtolower($m[1])], 'chooser' => 'you', 'filter' => $filters[$m[2]]] + (str_contains($m[3], 'xile') ? ['exile' => true] : []), trim($m[4])];
     }
 
     /**
@@ -1319,6 +1341,10 @@ final class TextParser
     {
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
+        }
+        // A bounce land's `When this land enters, return a land you control to its owner's hand.`
+        if (preg_match("/^return an? (land|creature|nonland permanent) you control to its owner's hand$/i", $sentence, $m)) {
+            return [['type' => 'return_own', 'filter' => str_replace(' ', '_', strtolower($m[1]))]];
         }
         // "Tap up to two target creatures": optional targets, `?kind` (see Game::isLegalTarget()).
         if (preg_match('/^(tap|untap) up to (\w+) target (.+)$/i', $sentence, $m) && is_int($n = self::amount($m[2])) && $n >= 1 && $n <= 5
