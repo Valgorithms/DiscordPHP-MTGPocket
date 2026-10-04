@@ -21,17 +21,21 @@ Everything can be done with buttons, menus and forms: `/menu` opens your home pa
 | 🎁 **Packs** | Pick a set and a color from menus (or leave them on 🎲 for a surprise), then **Open free pack** or **Buy a pack**. |
 | 📚 **Collection** | Your cards a page at a time; **Filter** asks for a set, color, rarity and part of a name. |
 | 🃏 **Decks** | Open a deck from a menu or make one with **New deck**. On a deck: **Add cards** lists the cards you own with copies to spare (by color, a page at a time) to add from a menu; **Add by name** and **Take out** ask for a card and a count; a menu takes one copy out; **Basic lands** sets every basic land count at once; the format, **Rename**, **Commander**, **Play with it** and **Delete** are there too. **Rental decks** lists the official decks to play with. |
-| ⚔️ **Play** | Find a ranked game in a mode from a menu, or pick a player to challenge; show your board, leave the queue, concede, see a ladder, or get your last game's record. |
+| ⚔️ **Play** | Find a ranked game in a mode from a menu, or pick a player to challenge; show your board, leave the queue, concede, see a ladder, or get your last game's record. **Practice vs bot** starts a practice game. |
 | 🎴 **Draft** | Join an open pod or make one for a set from menus; start, leave, take your picks, and build your draft deck from menus (**Basic lands**, **Auto-build**, **Ready**), then play your round. |
 | 🛒 **Shop** | **Buy a card**, **Sell a card**, **Sell extras** and **Check a price** each ask in a short form; **Buy a pack** goes to the packs panel. |
 | 🤝 **Trades** | Pick a player to open the offer form (cards you give and want, one per line like `2 Shock`, and points each way); add to or call off an offer you made from a menu. |
 | 🎯 **Quests** | Your daily and weekly quests. |
+| 📖 **How to play** | A quick start for someone who has never played Magic: seven short pages on cards, mana and lands, turns, combat and winning, then a **practice game** against a bot. |
+
+A practice game needs no cards or deck: you play a red-green starter deck against the bot's white-black one, in Casual. Only you see it, it is not ranked and pays nothing, and your action panel adds a 💡 tip for each decision.
 
 Your own panels change in place. Anyone else who clicks a panel you posted gets their own copy, only for them. Challenges, trade offers, draft pods and boards are posted in the channel for everyone.
 
 | Command | What it does |
 | --- | --- |
 | `/menu` | Your home panel, only for you. |
+| `/tutorial` | How to play, only for you: the basics of Magic in a few pages, then a practice game. |
 | `/pack open [set] [color]` | Opens your free pack for today and adds it to your collection. Leave the set or color empty for a surprise. |
 | `/pack list` | The sets and colors you can open, and when your next free pack is ready. |
 | `/collection [set] [color] [rarity] [name] [player]` | The cards you (or another player) own, in pages. Pick a card to see it in full. |

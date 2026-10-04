@@ -95,7 +95,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft', 'export', 'menu'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft', 'export', 'menu', 'tutorial'], array_keys($names));
     }
 
     public function testPackMessage(): void

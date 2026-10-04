@@ -27,6 +27,8 @@ use MTGPocket\Rentals\Rentals;
 use MTGPocket\Repository\InventoryRepository;
 use MTGPocket\Repository\MatchRepository;
 use MTGPocket\Repository\PlayerRepository;
+use MTGPocket\Tutorial\PracticeBot;
+use MTGPocket\Tutorial\StarterDecks;
 
 /**
  * Matches: direct challenges, the matchmaking queue and the games they
@@ -246,6 +248,43 @@ final class MatchService
         return $this->act($match->id, $playerId, fn (Game $game, int $seat) => $game->concede($seat));
     }
 
+    /**
+     * Starts a practice game against the bot: the player plays the
+     * red-green starter deck, the bot the white-black one, in Casual. It is
+     * not ranked and pays nothing, and the player needs no cards or deck.
+     *
+     * @param string $playerId
+     * @param string $playerName
+     *
+     * @return MatchRecord
+     */
+    public function practice(string $playerId, string $playerName): MatchRecord
+    {
+        if ($this->current($playerId) !== null) {
+            throw new \InvalidArgumentException('You are already in a match. Finish it, or leave it with `/match leave`.');
+        }
+        $now = ($this->clock)();
+        $match = new MatchRecord(
+            substr(($this->random)(), 0, 12),
+            MatchRecord::PENDING,
+            [
+                ['id' => $playerId, 'name' => $playerName, 'deckId' => null, 'deckName' => StarterDecks::PLAYER_DECK],
+                ['id' => PracticeBot::ID, 'name' => PracticeBot::NAME, 'deckId' => null, 'deckName' => StarterDecks::BOT_DECK],
+            ],
+            createdAt: $now,
+            updatedAt: $now,
+            mode: 'casual',
+            practice: true,
+        );
+        $this->begin($match, [StarterDecks::cards(StarterDecks::PLAYER), StarterDecks::cards(StarterDecks::BOT)], $this->modes->get('casual'));
+        PracticeBot::play($match->game, 1);
+        $this->matches->save($match);
+        $this->matches->setLive($playerId, $match->id);
+        $this->unqueue($playerId);
+
+        return $match;
+    }
+
     // ----------------------------------------------------------------------
     // Matchmaking
     // ----------------------------------------------------------------------
@@ -431,6 +470,9 @@ final class MatchService
                 throw new \InvalidArgumentException('You are not playing in this game.');
             }
             $action($match->game, $seat, $match);
+            if ($match->practice && ($bot = $match->game->seatOf(PracticeBot::ID)) !== null) {
+                PracticeBot::play($match->game, $bot);
+            }
             if ($match->game->stage === Game::OVER) {
                 $match->status = MatchRecord::OVER;
                 $match->choices = [];
@@ -793,6 +835,9 @@ final class MatchService
     private function release(MatchRecord $match): void
     {
         foreach ($match->players as $player) {
+            if ($player['id'] === PracticeBot::ID) {
+                continue;
+            }
             if ($this->matches->liveMatchId($player['id']) === $match->id) {
                 $this->matches->setLive($player['id'], null);
             }

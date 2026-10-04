@@ -35,6 +35,7 @@ use MTGPocket\Packs\OpenedPack;
 use MTGPocket\Pocket;
 use MTGPocket\Rentals\RentalDeck;
 use MTGPocket\Trades\TradeService;
+use MTGPocket\Tutorial\Tutorial;
 
 /**
  * Everything a player does, as panels of buttons, menus and forms: the
@@ -46,6 +47,7 @@ use MTGPocket\Trades\TradeService;
  * opened it. The actions:
  *
  * - `home`; `quests`.
+ * - How to play: `tut:<page>`, `tjump` (menu of pages), `tplay` (a practice game).
  * - Packs: `packs:<set>:<color>`, `pset:<color>` and `pcolor:<set>` (menus),
  *   `popen:<set>:<color>` (the free pack), `pbuy:<set>:<color>`. An empty set
  *   or color is a surprise.
@@ -56,7 +58,7 @@ use MTGPocket\Trades\TradeService;
  *   `dremv:<deck>` → `mrem`, `duse:<deck>`, `dren:<deck>` → `mren`,
  *   `dfmt:<deck>` (menu), `dcmd:<deck>` → `mcmd`, `dlands:<deck>` → `mlands`,
  *   `ddel:<deck>` and `ddelok:<deck>`; `rentals`, `rent` (menu).
- * - Play: `play`, `pqueue` (menu of modes), `pchal` (menu of players),
+ * - Play: `play`, `pqueue` (menu of modes), `pchal` (menu of players), `tplay`,
  *   `pleave`, `pconc` and `pconcok`, `pboard`, `pladder` (menu), `plog`.
  * - Drafts: `draft`, `djoin` and `dnewpod` (menus), `dstart`, `dleave` and
  *   `dleaveok`, `dpack`, `dpool`, `dplay`; on the pool, `dpadd` and `dprem`
@@ -121,7 +123,7 @@ final class Panels
             in_array($action, ['deck', 'dbrowse', 'dqrem', 'dtype', 'dremv', 'duse', 'dren', 'dfmt', 'dcmd', 'dlands', 'ddel', 'ddelok', 'madd', 'mrem', 'mren', 'mcmd', 'mlands'], true) => $this->deckOrList($u, $arg(0), $error),
             in_array($action, ['dpadd', 'dprem', 'dplands', 'mplands', 'dpauto', 'dpready'], true) => $this->draftPool($u, $error),
             in_array($action, ['djoin', 'dnewpod', 'dstart', 'dleave', 'dleaveok', 'dpack', 'dpool', 'dplay'], true) => $this->draft($u, $error),
-            in_array($action, ['pqueue', 'pchal', 'pleave', 'pconc', 'pconcok', 'pboard', 'pladder', 'plog'], true) => $this->play($u, $error),
+            in_array($action, ['pqueue', 'pchal', 'pleave', 'pconc', 'pconcok', 'pboard', 'pladder', 'plog', 'tplay'], true) => $this->play($u, $error),
             in_array($action, ['sbuy', 'ssell', 'sextra', 'sprice', 'mbuy', 'msell', 'mextra', 'mprice'], true) => $this->shop($u, $error),
             in_array($action, ['tnew', 'tadd', 'tcancel', 'mtrade', 'mtadd'], true) => $this->trades($u, $error),
             default => $this->home($u, $userName, $error),
@@ -162,6 +164,14 @@ final class Panels
                 return $panel($this->home($u, $name));
             case 'quests':
                 return $panel($this->quests($u));
+
+                // How to play.
+            case 'tut':
+                return $panel($this->tutorial($u, (int) $arg(0)));
+            case 'tjump':
+                return $panel($this->tutorial($u, (int) $value));
+            case 'tplay':
+                return $panel(MatchMessageBuilder::board($matches->practice($u, $name)));
 
                 // Packs.
             case 'packs':
@@ -343,9 +353,16 @@ final class Panels
             case 'pconcok':
                 $match = $matches->leave($u);
 
-                return $panel($this->play($u, $match->status === MatchRecord::OVER ? 'You conceded.' : 'Called off.'), $match->status === MatchRecord::OVER ? MatchMessageBuilder::board($match) : MatchMessageBuilder::closed($match));
+                return $panel($this->play($u, $match->status === MatchRecord::OVER ? 'You conceded.' : 'Called off.'), match (true) {
+                    $match->practice => null,
+                    $match->status === MatchRecord::OVER => MatchMessageBuilder::board($match),
+                    default => MatchMessageBuilder::closed($match),
+                });
             case 'pboard':
                 $match = $matches->current($u) ?? throw new \InvalidArgumentException('You are not in a match.');
+                if ($match->practice) {
+                    return $panel(MatchMessageBuilder::board($match));
+                }
 
                 return $panel($this->play($u, 'The board is posted in the channel.'), $match->status === MatchRecord::PENDING ? MatchMessageBuilder::challenge($match) : MatchMessageBuilder::board($match));
             case 'pladder':
@@ -549,8 +566,46 @@ final class Panels
         $board = $this->pocket->quests->board($playerId);
         $done = count(array_filter($board['daily'], fn (array $entry) => $entry['progress'] >= $entry['quest']->goal));
         $status[] = "🎯 Daily quests {$done}/".count($board['daily']).' done.';
+        if ($match === null && $matches->history($playerId) === []) {
+            $status[] = '📖 New to Magic? **How to play** teaches the basics in a few minutes, then lets you practice against a bot.';
+        }
 
         return Menu::home($playerId, $name, $status, $note);
+    }
+
+    /**
+     * A page of How to play, with buttons to turn the pages and start a
+     * practice game.
+     *
+     * @param string      $playerId
+     * @param int         $page     From 0.
+     * @param string|null $note
+     *
+     * @return MessageBuilder
+     */
+    public function tutorial(string $playerId, int $page = 0, ?string $note = null): MessageBuilder
+    {
+        $u = $playerId;
+        [$page, $title, $text] = Tutorial::page($page);
+        $last = Tutorial::count() - 1;
+        $message = Menu::text(sprintf("### 📖 How to play · %s\n-# Page %d of %d\n%s", $title, $page + 1, $last + 1, $text), $note, PocketMessageBuilder::accent('G'));
+
+        $pages = [];
+        foreach (array_keys(Tutorial::PAGES) as $number => $name) {
+            $pages[(string) $number] = ($number + 1).'. '.$name;
+        }
+        $message->addComponent(Menu::select(Menu::id($u, 'tjump'), 'Go to a page', $pages, default: (string) $page));
+
+        $row = ActionRow::new()
+            ->addComponent(Menu::button($u, '◀ Back', 'tut', (string) ($page - 1))->setDisabled($page === 0));
+        if ($page < $last) {
+            $row->addComponent(Menu::styled(Button::STYLE_PRIMARY, $u, 'Next ▶', 'tut', (string) ($page + 1)))
+                ->addComponent(Menu::button($u, '🤖 Practice game', 'tplay'));
+        } else {
+            $row->addComponent(Menu::styled(Button::STYLE_SUCCESS, $u, '🤖 Start a practice game', 'tplay'));
+        }
+
+        return $message->addComponent($row->addComponent(Menu::menuButton($u)));
     }
 
     /**
@@ -844,6 +899,9 @@ final class Panels
         }
         if (($match !== null && $match->game !== null) || $matches->history($playerId) !== []) {
             $row->addComponent(Menu::button($u, '📜 Game record', 'plog'));
+        }
+        if ($match === null && $queued === null) {
+            $row->addComponent(Menu::button($u, '🤖 Practice vs bot', 'tplay'));
         }
         $row->addComponent(Menu::button($u, '🃏 Decks', 'decks'));
 

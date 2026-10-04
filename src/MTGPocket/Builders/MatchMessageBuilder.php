@@ -32,6 +32,7 @@ use MTGPocket\Matches\MatchRecord;
 use MTGPocket\Matches\PanelActions;
 use MTGPocket\Modes\GameMode;
 use MTGPocket\Modes\GameModes;
+use MTGPocket\Tutorial\Tutorial;
 
 /**
  * The messages of a match:
@@ -228,7 +229,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             Game::MULLIGAN => 'Opening hands',
             Game::OVER => "Game over after turn {$game->turn}",
             default => "Turn {$game->turn} · {$names[$game->active]}'s turn · {$game->step->label()}",
-        }.' · '.self::modeLabel($match).($match->ranked ? ' (ranked)' : ($match->event !== null ? ' (draft)' : ''));
+        }.' · '.self::modeLabel($match).($match->kind() === 'friendly' ? '' : ' ('.$match->kind().')');
 
         $container = Container::new()
             ->setAccentColor(CardMessageBuilder::ACCENTS[$game->stage === Game::OVER ? 'multicolor' : 'colorless'])
@@ -294,7 +295,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
         return static::new()
             ->setAllowedMentions(AllowedMentions::none())
-            ->setContent("📜 **{$names[0]} vs {$names[1]}** · ".self::modeLabel($match).($match->ranked ? ' (ranked)' : ($match->event !== null ? ' (draft)' : ''))." · {$state}\n-# Match `{$match->id}`. The record has a score sheet with every move by turn, then the full log with each player's position at the end of every turn.")
+            ->setContent("📜 **{$names[0]} vs {$names[1]}** · ".self::modeLabel($match).($match->kind() === 'friendly' ? '' : ' ('.$match->kind().')')." · {$state}\n-# Match `{$match->id}`. The record has a score sheet with every move by turn, then the full log with each player's position at the end of every turn.")
             ->addFileFromContent("match-{$match->id}.txt", (string) $match->transcript());
     }
 
@@ -560,7 +561,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
             }
         }
         $container->addComponent(TextDisplay::new($hand === [] ? '*Your hand is empty.*' : Text::clip(implode("\n", $hand), 2500)));
-        $container->addComponent(Separator::new())->addComponent(TextDisplay::new(self::prompt($game, $seat, $decision, $choice)));
+        $prompt = self::prompt($game, $seat, $decision, $choice);
+        if ($match->practice && ($tip = Tutorial::tip($game, $seat, $decision, $choice)) !== null) {
+            $prompt .= "\n-# 💡 {$tip}";
+        }
+        $container->addComponent(Separator::new())->addComponent(TextDisplay::new($prompt));
         $message->addComponent($container);
 
         $id = fn (string $action, string ...$args) => self::id($match->id, $action, ...$args);
