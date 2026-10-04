@@ -671,6 +671,10 @@ final class Game
             return $this->pendingChoice['count'];
         }
 
+        if (array_filter($this->permanents($this->active), fn (GameObject $o) => $this->hasKeyword($o, 'no maximum hand size')) !== []) {
+            return 0;
+        }
+
         return max(0, count($this->players[$this->active]->hand) - GamePlayer::HAND_SIZE);
     }
 
@@ -935,7 +939,7 @@ final class Game
         if (! $this->sorcerySpeed($seat)) {
             return 'You can play a land only in your own main phase, when the stack is empty.';
         }
-        if ($this->players[$seat]->landsPlayed >= 1) {
+        if ($this->players[$seat]->landsPlayed >= 1 + count(array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'additional land')))) {
             return 'You have already played a land this turn.';
         }
 
@@ -1150,7 +1154,7 @@ final class Game
             $tax -= count(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')));
         }
 
-        return $this->payFor($seat, self::castCost($card, $options).$wardMana, $wardLife, [], $x, $tax, ! $options['faceDown'] && in_array('convoke', $card->keywords, true));
+        return $this->payFor($seat, self::castCost($card, $options).$wardMana, $wardLife, [], $x, $tax, ! $options['faceDown'] && in_array('convoke', $card->keywords, true), ! $options['faceDown'] && in_array('improvise', $card->keywords, true));
     }
 
     /**
@@ -1163,11 +1167,12 @@ final class Game
      * @param int[]  $without Sources that cannot be tapped for it.
      * @param int    $x
      * @param int    $tax     Generic mana added, for commander tax, or taken off for affinity.
-     * @param bool   $convoke Untapped creatures can be tapped for {1} or one mana of their color (rule 702.51).
+     * @param bool   $convoke   Untapped creatures can be tapped for {1} or one mana of their color (rule 702.51).
+     * @param bool   $improvise Untapped artifacts can be tapped for {1} (rule 702.126).
      *
      * @return array{life: int, pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null
      */
-    private function payFor(int $seat, string $mana, int $life = 0, array $without = [], int $x = 0, int $tax = 0, bool $convoke = false): ?array
+    private function payFor(int $seat, string $mana, int $life = 0, array $without = [], int $x = 0, int $tax = 0, bool $convoke = false, bool $improvise = false): ?array
     {
         $player = $this->players[$seat];
         $sources = array_diff_key($this->manaSources($seat), array_flip($without));
@@ -1175,6 +1180,13 @@ final class Game
             foreach ($this->permanents($seat) as $object) {
                 if ($this->isCreature($object) && ! $object->tapped && ! isset($sources[$object->id])) {
                     $sources[$object->id] = ['count' => 1, 'colors' => [...$object->definition()->colors, 'C'], 'convoke' => true];
+                }
+            }
+        }
+        if ($improvise) {
+            foreach ($this->permanents($seat) as $object) {
+                if ($object->definition()->is('Artifact') && ! $object->tapped && ! isset($sources[$object->id])) {
+                    $sources[$object->id] = ['count' => 1, 'colors' => ['C'], 'convoke' => true];
                 }
             }
         }
@@ -1832,7 +1844,34 @@ final class Game
                 break;
 
             case 'gain_life':
-                $this->players[$controller]->life += $amount;
+                $this->gainLife($controller, $amount);
+                break;
+
+            case 'renown':
+                if ($affected !== null && ! $affected->renowned) {
+                    $affected->addCounters('+1/+1', $amount);
+                    $affected->renowned = true;
+                    $this->log("{$affected->name()} becomes renowned.");
+                }
+                break;
+
+            case 'living_weapon':
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
+                    $germ = $this->createToken(['name' => 'Phyrexian Germ Token', 'type' => 'Token Creature — Phyrexian Germ', 'types' => ['Creature'], 'subtypes' => ['Phyrexian', 'Germ'], 'colors' => ['B'], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null], $controller);
+                    $self->attachedTo = $germ->id;
+                    $this->log("{$self->name()} is attached to a Germ token.");
+                }
+                break;
+
+            case 'extort':
+                if (($payment = $this->payFor($controller, '{W/B}')) !== null) {
+                    $this->pay($controller, $payment);
+                    foreach ($opponents as $seat) {
+                        $this->players[$seat]->life--;
+                    }
+                    $this->gainLife($controller, count($opponents));
+                    $this->log("{$this->players[$controller]->name} extorts.");
+                }
                 break;
 
             case 'lose_life':
@@ -2299,9 +2338,11 @@ final class Game
      *
      * @return void
      */
-    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null): void
+    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $counters = 0): void
     {
         foreach ($source->definition()->triggersOn($event) as $ability) {
+            // Modular: the +1/+1 counters it had as it died.
+            $ability['effects'] = array_map(fn (array $effect) => ($effect['amount'] ?? null) === 'counters' ? ['amount' => $counters] + $effect : $effect, $ability['effects']);
             // "When this creature enters, if it was kicked, …"
             if (($ability['kicked'] ?? false) && ! $source->kicked) {
                 continue;
@@ -2915,6 +2956,7 @@ final class Game
             'enchantment' => $card->is('Enchantment'),
             'artifact_or_enchantment' => $card->is('Artifact') || $card->is('Enchantment'),
             'artifact_or_creature' => $card->is('Artifact') || $creature,
+            'artifact_creature' => $card->is('Artifact') && $creature,
             'creature_or_vehicle' => $creature || in_array('Vehicle', $card->subtypes, true),
             'attacking_or_blocking' => $creature && (isset($this->attackers[$object->id]) || isset($this->blockers[$object->id])),
             'attacking' => $creature && isset($this->attackers[$object->id]),
@@ -3425,7 +3467,26 @@ final class Game
             }
         }
         if ($this->hasKeyword($source, 'lifelink')) {
-            $this->players[$source->controller]->life += $amount;
+            $this->gainLife($source->controller, $amount);
+        }
+    }
+
+    /**
+     * A player gains life, triggering `Whenever you gain life, …`.
+     *
+     * @param int $seat
+     * @param int $amount
+     *
+     * @return void
+     */
+    private function gainLife(int $seat, int $amount): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+        $this->players[$seat]->life += $amount;
+        foreach ($this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'gain_life', $seat);
         }
     }
 
@@ -3533,6 +3594,15 @@ final class Game
         $this->battlefield[] = $object->id;
         if ($triggers) {
             $this->trigger($object, 'enters', $controller);
+            // Evolve (rule 702.100): a bigger creature entering under your control.
+            if ($this->isCreature($object)) {
+                foreach ($this->permanents($controller) as $permanent) {
+                    if ($permanent->id !== $object->id && $this->hasKeyword($permanent, 'evolve') && $this->isCreature($permanent)
+                        && ($this->power($object) > $this->power($permanent) || $this->toughness($object) > $this->toughness($permanent))) {
+                        $this->trigger($permanent, 'evolve', $controller);
+                    }
+                }
+            }
             if ($card->isLand()) {
                 foreach ($this->permanents($controller) as $permanent) {
                     $this->trigger($permanent, 'landfall', $controller);
@@ -3642,6 +3712,7 @@ final class Game
             $zone = GameObject::EXILE;
         }
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
+        $plusCounters = $object->counter('+1/+1');
         // Persist and undying (rules 702.79 and 702.93) look at its counters as it died.
         $returns = ! $dies ? null : match (true) {
             $this->hasKeyword($object, 'persist') && $object->counter('-1/-1') === 0 => '-1/-1',
@@ -3664,7 +3735,7 @@ final class Game
             GameObject::GONE => null,
         };
         if ($dies) {
-            $this->trigger($object, 'dies', $controller, $incarnation);
+            $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
         }
         if ($returns !== null && $object->zone === GameObject::GRAVEYARD) {
             $this->putOntoBattlefield($object, $object->owner);
@@ -4088,6 +4159,9 @@ final class Game
         if ($object->zone === GameObject::BATTLEFIELD) {
             array_push($keywords, ...($this->levelBand($object)['keywords'] ?? []));
             array_push($keywords, ...($this->maxSpeedBonus($object)['keywords'] ?? []));
+            if ($this->active === $object->controller) {
+                array_push($keywords, ...$object->definition()->yourTurnKeywords);
+            }
             foreach ($object->definition()->stationBands as $band) {
                 if ($object->counter('charge') >= $band['min']) {
                     array_push($keywords, ...$band['keywords']);

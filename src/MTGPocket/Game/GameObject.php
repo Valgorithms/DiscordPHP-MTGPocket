@@ -72,6 +72,9 @@ final class GameObject
     /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
     public bool $unearthed = false;
 
+    /** Renown (rule 702.112): it has dealt combat damage to a player since it entered. */
+    public bool $renowned = false;
+
     /** Doesn't untap during its controller's next untap step. */
     public bool $frozen = false;
 
@@ -168,6 +171,7 @@ final class GameObject
         $this->borrowedFrom = null;
         $this->unearthed = false;
         $this->frozen = false;
+        $this->renowned = false;
         $this->rebound = false;
         $this->bestowed = false;
         $this->chosen = null;
@@ -216,6 +220,7 @@ final class GameObject
             'shields' => $this->shields,
             'unearthed' => $this->unearthed,
             'frozen' => $this->frozen,
+            'renowned' => $this->renowned,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
@@ -252,6 +257,7 @@ final class GameObject
         $object->shields = (int) ($data['shields'] ?? 0);
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
         $object->frozen = (bool) ($data['frozen'] ?? false);
+        $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
         $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
