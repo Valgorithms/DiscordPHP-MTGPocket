@@ -76,11 +76,11 @@ final class MatchmakingTest extends PocketTestCase
     public function testTheModesThatComeWithTheGame(): void
     {
         $modes = GameModes::fromFile();
-        $this->assertSame(['standard' => 'Standard', 'casual' => 'Casual', 'limited' => 'Limited'], $modes->playable());
-        $this->assertFalse($modes->get('commander')->playable);
+        $this->assertSame(['standard' => 'Standard', 'casual' => 'Casual', 'limited' => 'Limited', 'commander' => 'Commander'], $modes->playable());
+        $this->assertTrue($modes->get('commander')->commander);
         $this->assertSame(40, $modes->get('commander')->life);
         $this->assertSame('main deck at least 60 cards · side deck up to 15 · up to 4 copies of a card · 20 life · sets from the last 3 years', $modes->get('standard')->summary());
-        $this->assertSame('main deck exactly 100 cards · no side deck · one copy of each card · 40 life', $modes->get('commander')->summary());
+        $this->assertSame('main deck exactly 100 cards · no side deck · one copy of each card · a legendary creature as commander · 40 life', $modes->get('commander')->summary());
 
         $this->expectException(\InvalidArgumentException::class);
         GameModes::fromArray(['standard' => ['main_min' => 60]]);
@@ -221,7 +221,7 @@ final class MatchmakingTest extends PocketTestCase
     {
         $matches = $this->pocket->matches;
         $this->assertException(fn () => $matches->queue(self::ALICE, 'Alice', 'standard'), 'Standard needs at least 60');
-        $this->assertException(fn () => $matches->queue(self::ALICE, 'Alice', 'commander'), 'Commander games cannot be played yet');
+        $this->assertException(fn () => $matches->queue(self::ALICE, 'Alice', 'commander'), 'A Commander deck needs a commander');
         $this->assertException(fn () => $matches->challenge(self::ALICE, 'Alice', self::BOB, 'Bob', null, 'standard'), 'Cards from OLD are not in the Standard library');
         $this->assertException(fn () => $matches->queue(self::ALICE, 'Alice', 'vintage'), 'The mode must be one of');
 

@@ -24,6 +24,7 @@ use MTG\MTG;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Models\Deck;
+use MTGPocket\Modes\GameMode;
 use MTG\Helpers\Text;
 use MTGPocket\Pocket;
 use MTGPocket\Rentals\RentalDeck;
@@ -31,7 +32,7 @@ use React\Promise\PromiseInterface;
 
 /**
  * The player's own decks and side decks, built from the cards they own:
- * `/decks list|show|create|add|remove|rename|format|delete|use`, and the
+ * `/decks list|show|create|add|remove|rename|format|commander|delete|use`, and the
  * official decks anyone can borrow: `/decks rentals|rent`.
  *
  * Named `/decks` so it does not clash with DiscordPHP-MTG's `/deck`, which
@@ -79,6 +80,7 @@ final class PlayerDecks implements Module
             ->addOption(self::subcommand($mtg, 'rename', 'Rename a deck.', $deck(), self::option($mtg, Option::STRING, 'name', 'Its new name.', true)->setMaxLength(DeckBuilder::MAX_NAME)))
             ->addOption(self::subcommand($mtg, 'format', 'Change what a deck is for.', $deck(), $format(true)))
             ->addOption(self::subcommand($mtg, 'delete', 'Delete a deck.', $deck()))
+            ->addOption(self::subcommand($mtg, 'commander', 'Pick the legendary creature that leads a Commander deck.', $deck(), self::option($mtg, Option::STRING, 'card', 'A legendary creature you own; leave empty to take the commander out.', false, true)))
             ->addOption(self::subcommand($mtg, 'use', 'Make a deck the one you play with.', $deck()))
             ->addOption(self::subcommand($mtg, 'rentals', 'Official decks you can play without owning the cards.', self::hidden($mtg)))
             ->addOption(self::subcommand($mtg, 'rent', 'Play with an official deck, a few games a day.', self::option($mtg, Option::STRING, 'rental', 'A rental deck.', true, true)))];
@@ -150,6 +152,11 @@ final class PlayerDecks implements Module
             $deck = $builder->setFormat($id, (string) $args['deck'], (string) $args['format']),
             'It is now a '.DeckBuilder::FORMATS[$deck->format].' deck.'
         )), $suggest);
+        $mtg->listenCommand(['decks', 'commander'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($builder) {
+            [$deck, $card] = $builder->setCommander($id, (string) $args['deck'], isset($args['card']) ? (string) $args['card'] : null);
+
+            return $this->view($deck, $card === null ? 'This deck has no commander now.' : "**{$card['name']}** now leads this deck.");
+        }), $suggest);
         $mtg->listenCommand(['decks', 'delete'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => PocketMessageBuilder::notice(
             'Deleted **'.$builder->delete($id, (string) $args['deck'])->name.'**.'
         )), $suggest);
@@ -291,6 +298,9 @@ final class PlayerDecks implements Module
 
         if (($option->name ?? '') !== 'card') {
             return [];
+        }
+        if ($subcommand === 'commander') {
+            return self::choices(array_filter($builder->suggestCards($id, $typed), fn ($key) => GameMode::canBeCommander($builder->cardData((string) $key)), ARRAY_FILTER_USE_KEY));
         }
         if ($subcommand !== 'remove') {
             return self::choices($builder->suggestCards($id, $typed));

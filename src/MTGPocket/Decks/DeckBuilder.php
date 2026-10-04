@@ -17,6 +17,7 @@ use MTGPocket\Cards\BasicLands;
 use MTGPocket\Collection\CollectionQuery;
 use MTGPocket\Models\CardCounts;
 use MTGPocket\Models\Deck;
+use MTGPocket\Modes\GameMode;
 use MTGPocket\Models\Player;
 use MTGPocket\Repository\CardPoolRepository;
 use MTGPocket\Repository\DeckRepository;
@@ -284,6 +285,39 @@ class DeckBuilder
         $format = self::checkFormat($format);
 
         return $this->decks->modify($playerId, $deck->id, fn (Deck $deck) => $deck->format = $format);
+    }
+
+    /**
+     * Makes a legendary creature the player owns a deck's commander, or
+     * takes the commander out.
+     *
+     * @param string      $playerId
+     * @param string      $deck
+     * @param string|null $card     Uuid or name; null to take it out.
+     *
+     * @return array{0: Deck, 1: array|null} The deck as saved and the commander's data.
+     */
+    public function setCommander(string $playerId, string $deck, ?string $card): array
+    {
+        $deck = $this->find($playerId, $deck);
+        if ($card === null || trim($card) === '') {
+            return [$this->decks->modify($playerId, $deck->id, fn (Deck $deck) => $deck->commander = null), null];
+        }
+        [$key, $data] = $this->resolveCard($playerId, $card, $deck);
+        if (! GameMode::canBeCommander($data)) {
+            throw new \InvalidArgumentException("**{$data['name']}** cannot be a commander: it is not a legendary creature.");
+        }
+
+        $saved = $this->decks->modify($playerId, $deck->id, function (Deck $deck) use ($playerId, $key, $data): void {
+            $owned = $this->inventories->get($playerId)->cards->get($key);
+            $used = $deck->allCards()->get($key) - ($deck->commander === $key ? 1 : 0);
+            if ($used + 1 > $owned) {
+                throw new \InvalidArgumentException("You own {$owned} of **{$data['name']}**, and this deck already uses {$used}.");
+            }
+            $deck->commander = $key;
+        });
+
+        return [$saved, $data];
     }
 
     /**

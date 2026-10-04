@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace MTGPocket\Modes;
 
 use MTGPocket\Cards\BasicLands;
+use MTGPocket\Cards\ColorIdentity;
 use MTGPocket\Models\Deck;
 
 /**
@@ -42,6 +43,7 @@ final class GameMode
      * @param int|null      $releasedWithinDays
      * @param string[]      $banned             Lowercase card names.
      * @param bool          $playable
+     * @param bool          $commander          Decks need a commander, and games use the Commander rules (rule 903).
      */
     public function __construct(
         public readonly string $id,
@@ -55,6 +57,7 @@ final class GameMode
         public readonly ?int $releasedWithinDays = null,
         public readonly array $banned = [],
         public readonly bool $playable = true,
+        public readonly bool $commander = false,
     ) {
         if ($mainMin < 1 || ($mainMax !== null && $mainMax < $mainMin)) {
             throw new \InvalidArgumentException("The {$label} mode needs a main deck minimum of at least 1, and a maximum no lower than it.");
@@ -90,6 +93,7 @@ final class GameMode
             $int('released_within_days'),
             array_values(array_map(fn ($name) => mb_strtolower(trim((string) $name)), (array) ($config['banned'] ?? []))),
             (bool) ($config['playable'] ?? true),
+            (bool) ($config['commander'] ?? false),
         );
     }
 
@@ -106,11 +110,17 @@ final class GameMode
     public function problems(Deck $deck, callable $card, callable $releaseDate, int $now): array
     {
         $problems = [];
-        $main = $deck->main->total();
+        $main = $deck->size();
+        $what = $deck->commander === null ? 'The main deck has' : 'The deck has, with its commander,';
         if ($main < $this->mainMin) {
-            $problems[] = "The main deck has {$main} cards; {$this->label} needs at least {$this->mainMin}.";
+            $problems[] = "{$what} {$main} cards; {$this->label} needs ".($this->mainMax === $this->mainMin ? 'exactly' : 'at least')." {$this->mainMin}.";
         } elseif ($this->mainMax !== null && $main > $this->mainMax) {
-            $problems[] = "The main deck has {$main} cards; {$this->label} allows at most {$this->mainMax}.";
+            $problems[] = "{$what} {$main} cards; {$this->label} allows ".($this->mainMax === $this->mainMin ? 'exactly' : 'at most')." {$this->mainMax}.";
+        }
+        if ($this->commander) {
+            array_push($problems, ...$this->commanderProblems($deck, $card));
+        } elseif ($deck->commander !== null) {
+            $problems[] = "{$this->label} decks have no commander; take it out with `/decks commander` and no card.";
         }
         if ($this->sideMax !== null && $deck->side->total() > $this->sideMax) {
             $problems[] = "The side deck has {$deck->side->total()} cards; {$this->label} allows ".($this->sideMax === 0 ? 'none' : "at most {$this->sideMax}").'.';
@@ -153,6 +163,58 @@ final class GameMode
         }
 
         return array_slice($problems, 0, self::MAX_PROBLEMS);
+    }
+
+    /**
+     * Rule 903.3 and 903.5c: a legendary creature as commander, and every
+     * card within its color identity.
+     *
+     * @param Deck                    $deck
+     * @param callable(string): array $card
+     *
+     * @return string[]
+     */
+    private function commanderProblems(Deck $deck, callable $card): array
+    {
+        if ($deck->commander === null) {
+            return ["A {$this->label} deck needs a commander: pick a legendary creature with `/decks commander`."];
+        }
+        $commander = $card($deck->commander);
+        $problems = [];
+        if (! self::canBeCommander($commander)) {
+            $problems[] = "**{$commander['name']}** cannot be a commander: it is not a legendary creature.";
+        }
+        $identity = ColorIdentity::of($commander);
+        $outside = [];
+        foreach ($deck->allCards() as $key => $count) {
+            $data = $card((string) $key);
+            if (array_diff(ColorIdentity::of($data), $identity) !== []) {
+                $outside[] = (string) $data['name'];
+            }
+        }
+        if ($outside !== []) {
+            $outside = array_values(array_unique($outside));
+            $list = implode(', ', array_map(fn ($name) => "**{$name}**", array_slice($outside, 0, 3))).(count($outside) > 3 ? ' and more' : '');
+            $problems[] = "Cards outside **{$commander['name']}**'s colors (".ColorIdentity::describe($identity)."): {$list}.";
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Whether a card can be a commander: a legendary creature, or a card
+     * that says it can be (rule 903.3).
+     *
+     * @param array $card
+     *
+     * @return bool
+     */
+    public static function canBeCommander(array $card): bool
+    {
+        $type = (string) ($card['type'] ?? '');
+
+        return (str_contains($type, 'Legendary') && str_contains($type, 'Creature'))
+            || str_contains((string) ($card['text'] ?? ''), 'can be your commander');
     }
 
     /**
@@ -199,6 +261,9 @@ final class GameMode
             1 => 'one copy of each card',
             default => "up to {$this->copies} copies of a card",
         };
+        if ($this->commander) {
+            $parts[] = 'a legendary creature as commander';
+        }
         $parts[] = "{$this->life} life";
         if ($this->sets !== null) {
             $parts[] = 'sets '.implode(', ', $this->sets);

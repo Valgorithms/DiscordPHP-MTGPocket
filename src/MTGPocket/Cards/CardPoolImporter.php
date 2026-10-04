@@ -45,7 +45,7 @@ class CardPoolImporter
      *
      * @var string[]
      */
-    public const array RULES_COLUMNS = ['manaCost', 'types', 'supertypes', 'subtypes', 'power', 'toughness', 'loyalty', 'defense', 'text', 'keywords', 'layout'];
+    public const array RULES_COLUMNS = ['manaCost', 'types', 'supertypes', 'subtypes', 'power', 'toughness', 'loyalty', 'defense', 'text', 'keywords', 'layout', 'colorIdentity'];
 
     /**
      * @param Database $database An open MTGJSON build (wait for `ready()` first).

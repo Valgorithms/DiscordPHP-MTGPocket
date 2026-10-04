@@ -33,6 +33,9 @@ final class GameObject
     public const string STACK = 'stack';
     public const string EXILE = 'exile';
 
+    /** Where commanders start and return to (rule 903.6). */
+    public const string COMMAND = 'command';
+
     /** Where a token goes when it leaves the battlefield: it has ceased to exist (rule 111.7). */
     public const string GONE = 'gone';
 

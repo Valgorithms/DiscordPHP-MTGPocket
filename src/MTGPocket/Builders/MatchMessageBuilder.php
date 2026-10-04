@@ -347,6 +347,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if ($player->lost) {
             $line .= ' · ❌ '.$player->lossReason;
         }
+        foreach ($game->commandCards($seat) as $id) {
+            $tax = $game->commanderTax($id);
+            $line .= "\n👑 Command zone: {$game->objects[$id]->name()}".($tax > 0 ? " (tax {{$tax}})" : '');
+        }
+        foreach ($player->commanderDamage as $id => $damage) {
+            $line .= "\n⚔️ {$damage}/".Game::COMMANDER_DAMAGE." commander damage from {$game->objects[$id]->name()}";
+        }
 
         $lands = [];
         $others = [];
@@ -387,7 +394,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
     public static function permanent(Game $game, GameObject $object): string
     {
         $card = $object->definition();
-        $text = "**{$object->name()}**";
+        $text = ($game->isCommander($object) ? '👑 ' : '')."**{$object->name()}**";
         if ($game->isCreature($object)) {
             $text .= " {$game->power($object)}/{$game->toughness($object)}";
         }
@@ -470,6 +477,10 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $hand[] = '-# ⚠️ Not applied yet: '.Text::clip($text, 120);
             }
         }
+        foreach ($game->commandCards($seat) as $id) {
+            $tax = $game->commanderTax($id);
+            $hand[] = (in_array($id, $playable, true) ? '✅ ' : '▫️ ').'👑 '.self::cardLabel($game->objects[$id]).' · command zone'.($tax > 0 ? " · tax {{$tax}}" : '');
+        }
         $container->addComponent(TextDisplay::new($hand === [] ? '*Your hand is empty.*' : Text::clip(implode("\n", $hand), 2500)));
         $container->addComponent(Separator::new())->addComponent(TextDisplay::new(self::prompt($game, $seat, $decision, $choice)));
         $message->addComponent($container);
@@ -539,7 +550,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
             case 'priority':
                 $cast = $choice['cast'] ?? null;
-                if ($cast !== null && in_array((int) $cast['id'], $player->hand, true)) {
+                if ($cast !== null && in_array((int) $cast['id'], [...$player->hand, ...$game->commandCards($seat)], true)) {
                     self::castControls($message, $match, $seat, $cast);
                     break;
                 }

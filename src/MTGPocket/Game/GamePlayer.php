@@ -53,6 +53,9 @@ final class GamePlayer
     /** Tried to draw from an empty library since state-based actions were last checked (rule 704.5b). */
     public bool $drewFromEmpty = false;
 
+    /** @var array<int, int> Combat damage dealt to this player by each commander, by object id (rule 903.10a). */
+    public array $commanderDamage = [];
+
     public bool $lost = false;
 
     public ?string $lossReason = null;
@@ -87,6 +90,7 @@ final class GamePlayer
             'kept' => $this->kept,
             'toBottom' => $this->toBottom,
             'drewFromEmpty' => $this->drewFromEmpty,
+            'commanderDamage' => array_map(fn ($id, $damage) => [$id, $damage], array_keys($this->commanderDamage), $this->commanderDamage),
             'lost' => $this->lost,
             'lossReason' => $this->lossReason,
         ];
@@ -106,6 +110,9 @@ final class GamePlayer
         $player->kept = (bool) ($data['kept'] ?? false);
         $player->toBottom = (int) ($data['toBottom'] ?? 0);
         $player->drewFromEmpty = (bool) ($data['drewFromEmpty'] ?? false);
+        foreach ((array) ($data['commanderDamage'] ?? []) as [$id, $damage]) {
+            $player->commanderDamage[(int) $id] = (int) $damage;
+        }
         $player->lost = (bool) ($data['lost'] ?? false);
         $player->lossReason = $data['lossReason'] ?? null;
 

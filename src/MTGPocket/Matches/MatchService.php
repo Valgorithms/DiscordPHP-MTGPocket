@@ -546,7 +546,11 @@ final class MatchService
         );
 
         $owned = $this->inventories->get($deck->playerId)->cards;
-        foreach ($deck->main as $key => $count) {
+        $played = $deck->main->toArray();
+        if ($deck->commander !== null) {
+            $played[$deck->commander] = ($played[$deck->commander] ?? 0) + 1;
+        }
+        foreach ($played as $key => $count) {
             $key = (string) $key;
             if (BasicLands::isBasic($key)) {
                 continue;
@@ -648,14 +652,33 @@ final class MatchService
     {
         $match->status = MatchRecord::PLAYING;
         $match->game = Game::start($match->id, [
-            ['id' => $match->players[0]['id'], 'name' => $match->players[0]['name'], 'cards' => $cards[0]],
-            ['id' => $match->players[1]['id'], 'name' => $match->players[1]['name'], 'cards' => $cards[1]],
+            ['id' => $match->players[0]['id'], 'name' => $match->players[0]['name'], 'cards' => $cards[0], 'commander' => $this->commanderCard($match->players[0], $mode)],
+            ['id' => $match->players[1]['id'], 'name' => $match->players[1]['name'], 'cards' => $cards[1], 'commander' => $this->commanderCard($match->players[1], $mode)],
         ], ($this->random)(), $mode->life);
         foreach ($match->players as $player) {
             if (RentalDeck::isRental((string) $player['deckId'])) {
                 $this->rentals->countGame($player['id']);
             }
         }
+    }
+
+    /**
+     * The card data of a player's commander, in a Commander game.
+     *
+     * @param array{id: string, deckId?: string|null} $player
+     * @param GameMode                                $mode
+     *
+     * @return array|null
+     */
+    private function commanderCard(array $player, GameMode $mode): ?array
+    {
+        $deckId = (string) ($player['deckId'] ?? '');
+        if (! $mode->commander || $deckId === '' || RentalDeck::isRental($deckId)) {
+            return null;
+        }
+        $commander = $this->decks->find($player['id'], $deckId)->commander;
+
+        return $commander === null ? null : $this->decks->cardData($commander);
     }
 
     /**
