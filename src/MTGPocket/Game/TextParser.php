@@ -667,6 +667,14 @@ final class TextParser
             } elseif ($word === 'extort' && ! $spell) {
                 // Extort (rule 702.101): paid whenever its controller can.
                 $found['triggered'][] = ['text' => 'Extort', 'event' => 'cast_spell', 'effects' => [['type' => 'extort']]];
+            } elseif (preg_match('/^overload '.self::COST.'$/i', $part, $m) && $spell) {
+                // Overload (rule 702.96): see Game::castOptions().
+                $found['altCosts']['overload'] = $m[1];
+            } elseif (preg_match('/^(eternalize|embalm) '.self::COST.'$/i', $part, $m) && ! $spell) {
+                // Eternalize and embalm: see Game::embalm().
+                $found['altCosts'][strtolower($m[1])] = $m[2];
+            } elseif ($word === 'enlist' && ! $spell) {
+                $found['keywords'][] = 'enlist';
             } elseif (preg_match('/^(dash|evoke|warp|plot) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
@@ -791,6 +799,19 @@ final class TextParser
 
             return true;
         }
+        // A Signet's `{1}, {T}: Add {W}{U}.`: two mana for {1}, see Game::payFor().
+        if (preg_match('/^\{1\}, \{T\}: Add \{([WUBRGC])\}\{([WUBRGC])\}\.$/', $line, $match)) {
+            $two = ['count' => 2, 'colors' => array_values(array_unique([$match[1], $match[2]])), 'fixed' => [[$match[1]], [$match[2]]]];
+            if ($result['mana'] === null) {
+                $result['mana'] = ['count' => 0, 'colors' => ['C'], 'filter' => true, 'filterAs' => $two];
+            } elseif (($result['mana']['filter'] ?? false) || ($result['mana']['sacrifice'] ?? false) || isset($result['mana']['fixed'])) {
+                return false;
+            } else {
+                $result['mana'] += ['filter' => true, 'filterAs' => $two];
+            }
+
+            return true;
+        }
         if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
             return false;
         }
@@ -832,8 +853,8 @@ final class TextParser
         $existing = $result['mana'];
         if ($existing !== null && $existing['count'] === 0) {
             // The filter ability came first.
+            $ability += array_intersect_key($existing, ['filter' => true, 'filterAs' => true]);
             $existing = null;
-            $ability['filter'] = true;
         }
         if ($existing === null) {
             $result['mana'] = $ability;
@@ -874,6 +895,11 @@ final class TextParser
         }
         if (preg_match('/^As CARDNAME enters(?: the battlefield)?, you may pay (\d+) life\. If you don\'t, it enters(?: the battlefield)? tapped\.?$/', $line, $match)) {
             $result['tappedUnless'] = ['life' => (int) $match[1]];
+
+            return true;
+        }
+        if (preg_match('/^CARDNAME enters(?: the battlefield)? tapped unless a player has (\d+) or less life\.?$/', $line, $match)) {
+            $result['tappedUnless'] = ['player_life' => (int) $match[1]];
 
             return true;
         }
