@@ -19,6 +19,10 @@ declare(strict_types=1);
  *   php bin/card-coverage.php 100                … the 100 most common lines
  *   php bin/card-coverage.php 40 2020-01-01      … in sets released since 2020
  *   php bin/card-coverage.php 40 all             … in every set
+ *   php bin/card-coverage.php 40 modern          … only cards legal in Modern (or pioneer, legacy …), every set listed
+ *
+ * A format is read from the MTGJSON build (MTGJSON_DATABASE, default
+ * var/mtgjson/AllPrintings.sqlite), which needs pdo_sqlite.
  *
  * Reads the pools `composer import-cards` wrote to MTGPOCKET_DATA
  * (default var/data). Each card is counted once, by name, in the newest
@@ -44,6 +48,16 @@ $pools = array_map(fn (string $file) => json_decode(file_get_contents($file), tr
 usort($pools, fn (array $a, array $b) => [$b['releaseDate'] ?? '', $b['setCode'] ?? ''] <=> [$a['releaseDate'] ?? '', $a['setCode'] ?? '']);
 $newest = $pools[0]['releaseDate'] ?? date('Y-m-d');
 $since = $argv[2] ?? date('Y-m-d', strtotime($newest.' -2 years'));
+$legal = null;
+if (preg_match('/^[a-z]+$/', $since) && $since !== 'all') {
+    $format = $since;
+    $sqlite = getenv('MTGJSON_DATABASE') ?: $baseDir.'/var/mtgjson/AllPrintings.sqlite';
+    $pdo = new PDO('sqlite:'.$sqlite);
+    $statement = $pdo->query('SELECT DISTINCT "c"."name" FROM "cards" "c" JOIN "cardLegalities" "l" ON "l"."uuid" = "c"."uuid" WHERE "l"."'.$format.'" = \'Legal\'');
+    $legal = array_fill_keys($statement->fetchAll(PDO::FETCH_COLUMN), true);
+    // Split and double-faced cards are named "Front // Back" in the cards table; pools keep that name too.
+    $since = 'all';
+}
 if ($since === 'all') {
     $since = '';
 }
@@ -56,7 +70,7 @@ foreach ($pools as $pool) {
     $date = $pool['releaseDate'] ?? '';
     $set = ['code' => $pool['setCode'] ?? '?', 'date' => $date, 'whole' => 0, 'total' => 0];
     foreach ($pool['cards'] as $card) {
-        if (isset($seen[$card['name']])) {
+        if (isset($seen[$card['name']]) || ($legal !== null && ! isset($legal[$card['name']]))) {
             continue;
         }
         $seen[$card['name']] = true;
@@ -81,10 +95,10 @@ foreach ($pools as $pool) {
 
 $total = count($seen);
 printf("%s of %s cards (%.1f%%) are read whole.\n\nNewest sets (cards first printed there or reprinted from older sets):\n", number_format($whole), number_format($total), 100 * $whole / max(1, $total));
-foreach (array_slice(array_filter($sets, fn (array $set) => $set['total'] > 0), 0, 15) as $set) {
+foreach (array_slice(array_filter($sets, fn (array $set) => $set['total'] > 0), 0, $legal === null ? 15 : null) as $set) {
     printf("  %-6s %s  %4d of %4d (%5.1f%%)\n", $set['code'], $set['date'] ?: '????-??-??', $set['whole'], $set['total'], 100 * $set['whole'] / $set['total']);
 }
-printf("\nMost common lines not read yet%s (newest set it appears in):\n", $since === '' ? '' : " in sets since {$since}");
+printf("\nMost common lines not read yet%s (newest set it appears in):\n", $legal !== null ? " in cards legal in {$format}" : ($since === '' ? '' : " in sets since {$since}"));
 uasort($lines, fn (array $a, array $b) => $b['count'] <=> $a['count']);
 foreach (array_slice($lines, 0, (int) ($argv[1] ?? 40), true) as $line => $info) {
     printf("%6d  %-6s %s\n", $info['count'], $info['set'], mb_strimwidth((string) $line, 0, 104, '…'));
