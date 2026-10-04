@@ -73,6 +73,8 @@ final class ModernCardTextTest extends GameTestCase
         'Hopeful Eidolon' => ['manaCost' => '{W}', 'type' => 'Enchantment Creature — Spirit', 'power' => '1', 'toughness' => '1', 'text' => "Bestow {3}{W} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a creature again if it's not attached.)\nLifelink\nEnchanted creature gets +1/+1 and has lifelink.", 'colors' => ['W']],
         'Patchwork Banner' => ['manaCost' => '{3}', 'type' => 'Artifact', 'text' => "As this artifact enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{T}: Add one mana of any color.", 'colors' => []],
         'Room of Refuge Lite' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped. As it enters, choose a color.\n{T}: Add one mana of the chosen color.", 'colors' => []],
+        'Scuttling Death' => ['manaCost' => '{4}{B}', 'type' => 'Creature — Spirit', 'power' => '4', 'toughness' => '2', 'text' => "Sacrifice this creature: Target creature gets -1/-1 until end of turn.\nSoulshift 4 (When this creature dies, you may return target Spirit card with mana value 4 or less from your graveyard to your hand.)", 'colors' => ['B']],
+        'Wicked Akuba Lite' => ['manaCost' => '{B}{B}', 'type' => 'Creature — Spirit', 'power' => '2', 'toughness' => '2', 'text' => '', 'colors' => ['B']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -376,6 +378,19 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(['G'], $game->manaSources(0)[$room]['colors']);
     }
 
+    public function testSoulshift(): void
+    {
+        $game = $this->newGame();
+        $death = $this->put(0, 'Scuttling Death', GameObject::BATTLEFIELD);
+        $akuba = $game->addCard(0, self::more('Wicked Akuba Lite'), GameObject::GRAVEYARD)->id;
+        $game->addCard(0, self::card('Grizzly Bears'), GameObject::GRAVEYARD);
+        $this->lands(0, 'Mountain', 1);
+        $game->cast(0, $this->hand(0, 'Lightning Bolt'), 0, ["o:{$death}"]);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($akuba), 'The only Spirit with mana value 4 or less; not itself (5) or the Bears.');
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -650,7 +665,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

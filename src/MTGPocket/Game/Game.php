@@ -2785,7 +2785,7 @@ final class Game
             case 'o':
                 $object = $this->targetObject($target);
                 // Cards in a graveyard are targeted only as cards (`target creature card from your graveyard`).
-                $inGraveyard = in_array($kind, self::GRAVEYARD_KINDS, true);
+                $inGraveyard = self::isGraveyardKind($kind);
                 if ($object === null || $object->zone !== ($inGraveyard ? GameObject::GRAVEYARD : GameObject::BATTLEFIELD)) {
                     return false;
                 }
@@ -2853,8 +2853,22 @@ final class Game
             'land' => $card->isLand(),
             'nonland_permanent' => ! $card->isLand(),
             'permanent' => true,
-            default => false,
+            // Soulshift N: a Spirit card with mana value N or less.
+            default => (bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
+                && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1],
         };
+    }
+
+    /**
+     * Whether a kind of target is a card in a graveyard.
+     *
+     * @param string $kind
+     *
+     * @return bool
+     */
+    private static function isGraveyardKind(string $kind): bool
+    {
+        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_');
     }
 
     /**
@@ -2875,7 +2889,7 @@ final class Game
         foreach ($this->battlefield as $id) {
             $options[] = "o:{$id}";
         }
-        if (in_array($kind, self::GRAVEYARD_KINDS, true)) {
+        if (self::isGraveyardKind($kind)) {
             foreach ($this->players as $player) {
                 foreach ($player->graveyard as $id) {
                     $options[] = "o:{$id}";

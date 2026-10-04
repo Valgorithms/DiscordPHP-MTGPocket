@@ -446,6 +446,9 @@ final class TextParser
                 $found['morph'] = ['kind' => strtolower($m[1]), 'cost' => $m[2]];
             } elseif (preg_match('/^crew (\d+)$/i', $part, $m) && ! $spell) {
                 $found['activated'][] = ['text' => $part, 'cost' => ['crew' => (int) $m[1]], 'effects' => [['type' => 'crewed', 'self' => true]], 'sorcery' => false, 'once' => false];
+            } elseif (preg_match('/^soulshift (\d+)$/i', $part, $m) && ! $spell) {
+                // Soulshift (rule 702.46): when it dies, return a Spirit card with mana value N or less.
+                $found['triggered'][] = ['text' => $part, 'event' => 'dies', 'effects' => [['type' => 'bounce', 'target' => "spirit_card_yours_{$m[1]}"]]];
             } elseif (preg_match('/^saddle (\d+)$/i', $part, $m) && ! $spell) {
                 // Saddle (rule 702.171): like crew, but only as a sorcery, and it stays a creature.
                 $found['activated'][] = ['text' => $part, 'cost' => ['crew' => (int) $m[1]], 'effects' => [['type' => 'saddled', 'self' => true]], 'sorcery' => true, 'once' => false];
