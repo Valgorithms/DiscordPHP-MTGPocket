@@ -389,6 +389,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
             count($player->library),
             count($player->graveyard),
         );
+        if ($player->energy > 0) {
+            $line .= " · ⚡ {$player->energy}";
+        }
         if ($player->poison > 0) {
             $line .= " · ☠️ {$player->poison}";
         }

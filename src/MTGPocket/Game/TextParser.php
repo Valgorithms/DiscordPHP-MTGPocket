@@ -857,6 +857,8 @@ final class TextParser
                 $cost['sacrifice'] = true;
             } elseif (preg_match('/^Pay (\d+) life$/', $part, $life)) {
                 $cost['life'] = (int) $life[1];
+            } elseif (preg_match('/^Pay ((?:\{E\})+)$/', $part, $energy)) {
+                $cost['energy'] = substr_count($energy[1], '{E}');
             } else {
                 return false;
             }
@@ -1206,6 +1208,9 @@ final class TextParser
         }
         if (preg_match('/^each opponent mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'mill', 'amount' => $n, 'each' => 'opponent'];
+        }
+        if (preg_match('/^you get ((?:\{E\})+)$/', $s, $m)) {
+            return ['type' => 'energy', 'amount' => substr_count($m[1], '{E}')];
         }
         if (preg_match('/^investigate$/i', $s)) {
             return ['type' => 'token', 'amount' => 1, 'token' => self::ARTIFACT_TOKENS['Clue']];

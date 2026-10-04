@@ -29,6 +29,9 @@ final class GamePlayer
     public int $life = self::STARTING_LIFE;
     public int $poison = 0;
 
+    /** Energy counters (rule 107.14). */
+    public int $energy = 0;
+
     /** @var int[] Object ids; the last is the top. */
     public array $library = [];
 
@@ -84,6 +87,7 @@ final class GamePlayer
             'name' => $this->name,
             'life' => $this->life,
             'poison' => $this->poison,
+            'energy' => $this->energy,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
@@ -105,6 +109,7 @@ final class GamePlayer
         $player = new self((int) $data['seat'], (string) $data['id'], (string) $data['name']);
         $player->life = (int) $data['life'];
         $player->poison = (int) ($data['poison'] ?? 0);
+        $player->energy = (int) ($data['energy'] ?? 0);
         $player->library = array_map('intval', (array) $data['library']);
         $player->hand = array_map('intval', (array) $data['hand']);
         $player->graveyard = array_map('intval', (array) $data['graveyard']);

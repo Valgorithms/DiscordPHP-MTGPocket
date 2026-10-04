@@ -1928,6 +1928,11 @@ final class Game
                 }
                 break;
 
+            case 'energy':
+                $this->players[$controller]->energy += $amount;
+                $this->log("{$this->players[$controller]->name} gets {$amount} energy.");
+                break;
+
             case 'unearth':
                 if ($source->zone === GameObject::GRAVEYARD) {
                     $this->putOntoBattlefield($source, $controller);
@@ -2539,6 +2544,9 @@ final class Game
         if (($cost['life'] ?? 0) > $this->players[$seat]->life) {
             return 'You do not have enough life.';
         }
+        if (($cost['energy'] ?? 0) > $this->players[$seat]->energy) {
+            return 'You do not have enough energy.';
+        }
 
         return null;
     }
@@ -2632,6 +2640,7 @@ final class Game
         if (isset($cost['loyalty'])) {
             $object->addCounters('loyalty', $cost['loyalty']);
         }
+        $player->energy -= $cost['energy'] ?? 0;
 
         if (self::isSpecialAction($ability)) {
             $this->turnFaceUp($object);

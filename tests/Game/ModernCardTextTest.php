@@ -62,6 +62,8 @@ final class ModernCardTextTest extends GameTestCase
         'Frogmite' => ['manaCost' => '{4}', 'type' => 'Artifact Creature — Frog', 'power' => '2', 'toughness' => '2', 'text' => 'Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)', 'colors' => []],
         'Hellspark Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Elemental', 'power' => '3', 'toughness' => '1', 'text' => "Trample\nUnearth {R} ({R}: Return this card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield. Unearth only as a sorcery.)", 'colors' => ['R']],
         'Staggershock' => ['manaCost' => '{2}{R}', 'type' => 'Instant', 'text' => "Staggershock deals 2 damage to any target.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)", 'colors' => ['R']],
+        'Longtusk Cub' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '2', 'text' => "Whenever this creature deals combat damage to a player, you get {E}{E} (two energy counters).\nPay {E}{E}: Put a +1/+1 counter on this creature.", 'colors' => ['G']],
+        'Thriving Rhino' => ['manaCost' => '{4}{G}', 'type' => 'Creature — Rhino', 'power' => '3', 'toughness' => '3', 'text' => "When this creature enters, you get {E}{E}.\nPay {E}{E}: This creature gets +2/+2 until end of turn.", 'colors' => ['G']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -267,6 +269,31 @@ final class ModernCardTextTest extends GameTestCase
         $this->resolve();
         $this->assertSame(16, $this->life(1));
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($shock), 'Rebound only from the hand.');
+    }
+
+    public function testEnergy(): void
+    {
+        $game = $this->newGame();
+        $cub = $this->put(0, 'Longtusk Cub', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Forest', 5);
+        $rhino = $this->put(0, 'Thriving Rhino', GameObject::HAND);
+        $game->cast(0, $rhino);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(2, $game->players[0]->energy);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertSame(2, $game->players[0]->energy);
+        $game->activate(0, $cub, 0);
+        $this->resolve();
+        $this->assertSame(0, $game->players[0]->energy);
+        $this->assertSame(1, $game->objects[$cub]->counter('+1/+1'));
+        $this->assertFalse($game->canActivate(0, $cub, 0), 'No energy left.');
+
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $game->declareAttackers(0, [$cub]);
+        $this->passUntil(Step::CombatDamage, 3);
+        $this->resolve();
+        $this->assertSame(2, $game->players[0]->energy);
     }
 
     public function testAnthems(): void
@@ -504,7 +531,7 @@ final class ModernCardTextTest extends GameTestCase
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 
