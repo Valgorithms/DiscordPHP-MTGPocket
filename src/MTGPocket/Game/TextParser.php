@@ -658,6 +658,17 @@ final class TextParser
                 // Echo (rule 702.30): see Game::applyEffect().
                 $found['altCosts']['echo'] = $m[1];
                 $found['triggered'][] = ['text' => $part, 'event' => 'upkeep', 'effects' => [['type' => 'echo', 'self' => true]]];
+            } elseif ($word === 'cascade') {
+                // Cascade (rule 702.85): see Game::cascade().
+                $found['keywords'][] = 'cascade';
+                $found['triggered'][] = ['text' => 'Cascade', 'event' => 'cascade', 'effects' => [['type' => 'cascade']]];
+            } elseif (preg_match('/^cumulative upkeep '.self::COST.'$/i', $part, $m) && ! $spell) {
+                // Cumulative upkeep (rule 702.24): an age counter each upkeep, then pay for each or sacrifice it.
+                $found['altCosts']['cumulative'] = $m[1];
+                $found['triggered'][] = ['text' => $part, 'event' => 'upkeep', 'effects' => [['type' => 'cumulative_upkeep', 'self' => true]]];
+            } elseif (preg_match('/^foretell '.self::COST.'$/i', $part, $m)) {
+                // Foretell (rule 702.143): exiled face down for {2} on your turn, cast on a later turn for this.
+                $found['altCosts']['foretell'] = $m[1];
             } elseif (preg_match('/^madness '.self::COST.'$/i', $part, $m)) {
                 // Madness (rule 702.35): discarded, it is exiled and may be cast for this while its trigger waits.
                 $found['altCosts']['madness'] = $m[1];
@@ -1230,6 +1241,8 @@ final class TextParser
                 $cost['life'] = (int) $life[1];
             } elseif (preg_match('/^Pay ((?:\{E\})+)$/', $part, $energy)) {
                 $cost['energy'] = substr_count($energy[1], '{E}');
+            } elseif (preg_match('/^Remove (\w+) (\w+) counters? from CARDNAME$/', $part, $remove) && is_int($n = self::amount($remove[1])) && $remove[2] !== 'loyalty') {
+                $cost['remove'] = [$remove[2], $n];
             } else {
                 return false;
             }
@@ -1497,6 +1510,13 @@ final class TextParser
 
             return true;
         }
+        // "Destroy target creature. Its controller loses 2 life."
+        if (isset($effects[$last]['target']) && in_array($effects[$last]['target'], self::CREATURE_KINDS, true)
+            && preg_match('/^Its controller loses (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
+            $effects[] = ['type' => 'lose_life', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
+
+            return true;
+        }
         if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && $effects[$last]['type'] === 'destroy') {
             $effects[$last]['noRegen'] = true;
 
@@ -1654,6 +1674,9 @@ final class TextParser
         }
         if (preg_match('/^you lose (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'lose_life', 'amount' => $n, 'you' => true];
+        }
+        if (preg_match('/^put (\w+) (spore|charge|age|time|ki|oil|verse|fade|quest|storage|page|lore) counters? on CARDNAME$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'counters', 'amount' => $n, 'self' => true, 'kind' => strtolower($m[2])];
         }
         if (preg_match("/^put (\w+) \+1\/\+1 counters? on ({$targets}|CARDNAME)$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             if ($m[2] === 'CARDNAME') {
