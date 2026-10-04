@@ -460,6 +460,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if ($object->chosen !== null) {
             $notes[] = 'chose '.$object->chosen;
         }
+        if ($object->enchantedPlayer !== null) {
+            $notes[] = 'enchanting '.$game->players[$object->enchantedPlayer]->name;
+        }
         $keywords = $game->keywords($object);
         if ($keywords !== []) {
             $notes[] = implode(', ', $keywords);

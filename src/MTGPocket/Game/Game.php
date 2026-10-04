@@ -567,6 +567,12 @@ final class Game
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
                 }
+                // Curses: "At the beginning of enchanted player's upkeep, …"
+                foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
+                    if ($object->enchantedPlayer === $this->active) {
+                        $this->trigger($object, 'enchanted_upkeep', $object->controller);
+                    }
+                }
                 break;
 
             case Step::Draw:
@@ -1558,11 +1564,17 @@ final class Game
 
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0));
-            if ($card->aura !== null || ($item['bestowed'] ?? false)) {
+            if ($card->aura !== null && str_starts_with($item['targets'][0] ?? '', 'p:')) {
+                $object->enchantedPlayer = (int) substr($item['targets'][0], 2);
+            } elseif ($card->aura !== null || ($item['bestowed'] ?? false)) {
                 $object->attachedTo = $this->targetObject($item['targets'][0])?->id;
                 $object->bestowed = (bool) ($item['bestowed'] ?? false);
             }
-            $this->log("{$object->name()} enters the battlefield".($object->attachedTo !== null ? ' attached to '.$this->objects[$object->attachedTo]->name() : '').'.');
+            $this->log("{$object->name()} enters the battlefield".match (true) {
+                $object->attachedTo !== null => ' attached to '.$this->objects[$object->attachedTo]->name(),
+                $object->enchantedPlayer !== null => ' attached to '.$this->players[$object->enchantedPlayer]->name,
+                default => '',
+            }.'.');
 
             return;
         }
@@ -1777,6 +1789,12 @@ final class Game
      */
     private function applyEffect(array $effect, GameObject $source, ?GameObject $self, int $controller, int $x, ?string $target): bool
     {
+        if ($effect['toEnchanted'] ?? false) {
+            $target = $self?->enchantedPlayer === null ? null : "p:{$self->enchantedPlayer}";
+            if ($target === null) {
+                return false;
+            }
+        }
         $amount = ($effect['amount'] ?? 0) === 'X' ? $x : (int) ($effect['amount'] ?? 0);
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {
@@ -2062,6 +2080,21 @@ final class Game
             case 'level':
                 $self?->addCounters('level', 1);
                 break;
+
+            case 'charge':
+                if ($self !== null && $amount > 0) {
+                    $self->addCounters('charge', $amount);
+                    $this->log("{$self->name()} gets {$amount} charge counters.");
+                }
+                break;
+
+            case 'class_level':
+                if ($self !== null) {
+                    $self->counters['class'] = $amount;
+                    $this->log("{$self->name()} becomes level {$amount}.");
+                    $this->trigger($self, "class_level_{$amount}", $self->controller);
+                }
+                break;
         }
 
         return false;
@@ -2261,6 +2294,9 @@ final class Game
             }
             // "Whenever this creature attacks while saddled, …"
             if (($ability['saddled'] ?? false) && ! $this->hasKeyword($source, 'saddled')) {
+                continue;
+            }
+            if (! $this->gained($source, $ability)) {
                 continue;
             }
             $this->pendingTriggers[] = [
@@ -2581,6 +2617,15 @@ final class Game
         if ($ability['sorcery'] && ! $this->sorcerySpeed($seat)) {
             return "That ability of {$card->name} can be activated only in your own main phase, when the stack is empty.";
         }
+        if (isset($ability['fromLevel']) && $this->classLevel($object) !== $ability['fromLevel']) {
+            return $this->classLevel($object) > $ability['fromLevel'] ? "{$card->name} is already past that level." : "{$card->name} must reach level {$ability['fromLevel']} first.";
+        }
+        if (! $this->gained($object, $ability)) {
+            return isset($ability['charge']) ? "{$card->name} needs {$ability['charge']} charge counters for that ability." : "{$card->name} gains that ability at level {$ability['classLevel']}.";
+        }
+        if (($ability['cost']['station'] ?? false) && $this->stationCrew($object) === null) {
+            return "{$card->name} needs another untapped creature you control to station it.";
+        }
         if ($ability['once'] && ($object->used[$index] ?? 0) === $this->turn) {
             return "You have already activated that ability of {$card->name} this turn.";
         }
@@ -2703,6 +2748,13 @@ final class Game
         foreach ($crew as $creature) {
             $this->objects[$creature]->tapped = true;
         }
+        $effects = $ability['effects'];
+        if ($cost['station'] ?? false) {
+            $station = $this->stationCrew($object);
+            $station->tapped = true;
+            $effects[0]['amount'] = $this->power($station);
+            $crew = [$station->id];
+        }
         if (isset($cost['loyalty'])) {
             $object->addCounters('loyalty', $cost['loyalty']);
         }
@@ -2720,7 +2772,7 @@ final class Game
             'source' => $object->id,
             'incarnation' => $object->incarnation,
             'controller' => $seat,
-            'effects' => $ability['effects'],
+            'effects' => $effects,
             'kinds' => $kinds,
             'label' => $label,
         ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
@@ -3684,7 +3736,8 @@ final class Game
                 if ($card->isPlaneswalker() && $object->counter('loyalty') <= 0) {
                     $toGraveyard[$id] = "{$object->name()} has no loyalty left";
                 }
-                if ($card->isAura()) {
+                // An Aura on a player stays while that player is in the game, and the game ends when either one leaves.
+                if ($card->isAura() && $object->enchantedPlayer === null) {
                     $host = $object->attachedTo === null ? null : ($this->objects[$object->attachedTo] ?? null);
                     if ($host === null || $host->zone !== GameObject::BATTLEFIELD || ! $this->matchesKind($host, $card->aura['enchant'] ?? 'permanent', $object->controller)) {
                         $toGraveyard[$id] = "{$object->name()} is not attached to anything";
@@ -3815,6 +3868,11 @@ final class Game
         if ($object->bestowed && $object->attachedTo !== null) {
             return false;
         }
+        // A Spacecraft with a power and toughness is an artifact creature at its last station threshold.
+        $bands = $object->definition()->stationBands;
+        if ($bands !== [] && $object->definition()->power !== null && $object->zone === GameObject::BATTLEFIELD && $object->counter('charge') >= max(array_column($bands, 'min'))) {
+            return true;
+        }
         if ($object->definition()->isCreature()) {
             return true;
         }
@@ -3839,6 +3897,49 @@ final class Game
         $card = $object->definition();
 
         return $card->levels === [] ? null : $card->levelBand($object->counter('level'));
+    }
+
+    /**
+     * Whether a permanent has an ability yet: a Class at its level, a
+     * Spacecraft with enough charge counters.
+     *
+     * @param GameObject $object
+     * @param array      $ability
+     *
+     * @return bool
+     */
+    private function gained(GameObject $object, array $ability): bool
+    {
+        return ($ability['classLevel'] ?? 1) <= $this->classLevel($object) && ($ability['charge'] ?? 0) <= $object->counter('charge');
+    }
+
+    /**
+     * The creature tapped to station a Spacecraft: the other untapped
+     * creature with the most power that could not attack this turn, or else
+     * the one with the most power.
+     *
+     * @param GameObject $spacecraft
+     *
+     * @return GameObject|null
+     */
+    private function stationCrew(GameObject $spacecraft): ?GameObject
+    {
+        $crew = array_values(array_filter($this->permanents($spacecraft->controller), fn (GameObject $o) => $o->id !== $spacecraft->id && $this->isCreature($o) && ! $o->tapped && $this->power($o) > 0));
+        usort($crew, fn (GameObject $a, GameObject $b) => [$b->sick && ! $this->hasKeyword($b, 'haste'), $this->power($b)] <=> [$a->sick && ! $this->hasKeyword($a, 'haste'), $this->power($a)]);
+
+        return $crew[0] ?? null;
+    }
+
+    /**
+     * A Class's level (rule 716.3): 1 until it gains another.
+     *
+     * @param GameObject $object
+     *
+     * @return int
+     */
+    private function classLevel(GameObject $object): int
+    {
+        return max(1, $object->counter('class'));
     }
 
     /**
@@ -3910,6 +4011,11 @@ final class Game
         $keywords = $object->definition()->keywords;
         if ($object->zone === GameObject::BATTLEFIELD) {
             array_push($keywords, ...($this->levelBand($object)['keywords'] ?? []));
+            foreach ($object->definition()->stationBands as $band) {
+                if ($object->counter('charge') >= $band['min']) {
+                    array_push($keywords, ...$band['keywords']);
+                }
+            }
             foreach ($this->attachments($object) as $attached) {
                 array_push($keywords, ...$this->bonusOf($attached)['keywords']);
             }
@@ -3940,10 +4046,17 @@ final class Game
         $anthems = [];
         foreach ($this->battlefield as $id) {
             $source = $this->objects[$id];
+            // "Creatures enchanted player controls get -1/-1."
+            if ($source->enchantedPlayer === $object->controller) {
+                array_push($anthems, ...array_filter($source->definition()->anthem, fn (array $anthem) => $anthem['enchantedPlayer'] ?? false));
+            }
             if ($source->controller !== $object->controller || $source->faceDown) {
                 continue;
             }
             foreach ($source->definition()->anthem as $anthem) {
+                if (($anthem['enchantedPlayer'] ?? false) || ! $this->gained($source, $anthem)) {
+                    continue;
+                }
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
                     continue;
                 }

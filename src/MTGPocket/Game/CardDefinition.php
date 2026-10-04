@@ -112,6 +112,9 @@ final class CardDefinition
     /** An unearth cost (rule 702.84). */
     public readonly ?string $unearth;
 
+    /** @var array<int, array{min: int, keywords: string[]}> A Spacecraft's station thresholds; it is a creature at the highest (rule 702.184). */
+    public readonly array $stationBands;
+
     /** `type` or `color`: what is chosen as it enters (`As this enters, choose a creature type.`). */
     public readonly ?string $chooses;
 
@@ -199,6 +202,7 @@ final class CardDefinition
         $this->unearth = $parsed['unearth'];
         $this->bestow = $parsed['bestow'];
         $this->chooses = $parsed['chooses'];
+        $this->stationBands = $parsed['stationBands'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];

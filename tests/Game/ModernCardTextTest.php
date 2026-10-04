@@ -75,6 +75,10 @@ final class ModernCardTextTest extends GameTestCase
         'Room of Refuge Lite' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped. As it enters, choose a color.\n{T}: Add one mana of the chosen color.", 'colors' => []],
         'Scuttling Death' => ['manaCost' => '{4}{B}', 'type' => 'Creature — Spirit', 'power' => '4', 'toughness' => '2', 'text' => "Sacrifice this creature: Target creature gets -1/-1 until end of turn.\nSoulshift 4 (When this creature dies, you may return target Spirit card with mana value 4 or less from your graveyard to your hand.)", 'colors' => ['B']],
         'Wicked Akuba Lite' => ['manaCost' => '{B}{B}', 'type' => 'Creature — Spirit', 'power' => '2', 'toughness' => '2', 'text' => '', 'colors' => ['B']],
+        'Curse of the Pierced Heart' => ['manaCost' => '{1}{R}', 'type' => 'Enchantment — Aura Curse', 'text' => "Enchant player\nAt the beginning of enchanted player's upkeep, Curse of the Pierced Heart deals 1 damage to that player or a planeswalker that player controls.", 'colors' => ['R']],
+        "Curse of Death's Hold" => ['manaCost' => '{3}{B}{B}', 'type' => 'Enchantment — Aura Curse', 'text' => "Enchant player\nCreatures enchanted player controls get -1/-1.", 'colors' => ['B']],
+        'Druid Class Lite' => ['manaCost' => '{1}{G}', 'type' => 'Enchantment — Class', 'text' => "(Gain the next level as a sorcery to add its ability.)\nWhenever a land you control enters, you gain 1 life.\n{2}{G}: Level 2\nCreatures you control get +1/+1.\n{4}{G}: Level 3\nWhen this Class becomes level 3, draw two cards.", 'colors' => ['G']],
+        'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -391,6 +395,76 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(GameObject::HAND, $this->zone($akuba), 'The only Spirit with mana value 4 or less; not itself (5) or the Bears.');
     }
 
+    public function testCurses(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 2);
+        $this->lands(0, 'Swamp', 5);
+        $theirs = $this->battlefield(1, 'Llanowar Elves');
+        $bears = $this->battlefield(1, 'Grizzly Bears');
+        $mine = $this->battlefield(0, 'Grizzly Bears');
+        $curse = $this->put(0, 'Curse of the Pierced Heart', GameObject::HAND);
+        $this->assertSame(['player'], self::read('Curse of the Pierced Heart')->targetKinds());
+        $game->cast(0, $curse, 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$curse]->enchantedPlayer);
+        $hold = $this->put(0, "Curse of Death's Hold", GameObject::HAND);
+        $game->cast(0, $hold, 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($theirs), 'A 1/1 dies.');
+        $this->assertSame(1, $game->power($game->objects[$bears]));
+        $this->assertSame(2, $game->power($game->objects[$mine]), 'Only their creatures.');
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertSame(1, $game->objects[$curse]->enchantedPlayer);
+
+        $this->passUntil(Step::Upkeep, 2);
+        $this->resolve();
+        $this->assertSame(19, $this->life(1));
+        $this->assertSame(20, $this->life(0));
+    }
+
+    public function testClassLevels(): void
+    {
+        $game = $this->newGame();
+        $class = $this->put(0, 'Druid Class Lite', GameObject::BATTLEFIELD);
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $this->lands(0, 'Forest', 8);
+        $this->assertSame(2, $game->power($game->objects[$bears]), 'Level 1 has no anthem.');
+        $this->assertFalse($game->canActivate(0, $class, 1), 'Level 3 needs level 2 first.');
+        $game->activate(0, $class, 0);
+        $this->resolve();
+        $this->assertSame(3, $game->power($game->objects[$bears]));
+        $this->assertFalse($game->canActivate(0, $class, 0), 'Level 2 only once.');
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $hand = count($game->players[0]->hand);
+        $game->activate(0, $class, 1);
+        $this->resolve();
+        $this->resolve();
+        $this->assertCount($hand + 2, $game->players[0]->hand, 'Its level 3 trigger draws two.');
+    }
+
+    public function testStation(): void
+    {
+        $game = $this->newGame();
+        $frigate = $this->put(0, 'Lumen-Class Frigate', GameObject::BATTLEFIELD);
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $this->assertSame([], self::read('Lumen-Class Frigate')->unsupported);
+        $this->assertFalse($game->isCreature($game->objects[$frigate]));
+        $this->assertSame(2, $game->power($game->objects[$bears]));
+        $game->activate(0, $frigate, 0);
+        $this->assertTrue($game->objects[$bears]->tapped);
+        $this->resolve();
+        $this->assertSame(2, $game->objects[$frigate]->counter('charge'));
+        $this->assertSame(3, $game->power($game->objects[$bears]), 'Its 2+ ability.');
+        $this->assertFalse($game->isCreature($game->objects[$frigate]));
+
+        $game->objects[$frigate]->addCounters('charge', 10);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertTrue($game->isCreature($game->objects[$frigate]), 'A creature at 12+.');
+        $this->assertContains('lifelink', $game->keywords($game->objects[$frigate]));
+        $this->assertFalse($game->canActivate(0, $frigate, 0), 'No other untapped creature.');
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -665,11 +739,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 
