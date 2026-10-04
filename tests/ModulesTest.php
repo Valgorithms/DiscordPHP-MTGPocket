@@ -20,10 +20,12 @@ use Discord\Parts\Interactions\Command\Command;
 use Discord\Parts\Interactions\Command\Option;
 use MTG\Helpers\CommandSignature;
 use MTG\MTG;
+use MTGPocket\Builders\DraftMessageBuilder;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Builders\ShopMessageBuilder;
 use MTGPocket\Builders\TradeMessageBuilder;
 use MTGPocket\Modules\Collection;
+use MTGPocket\Modules\Drafts;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
@@ -41,6 +43,8 @@ use MTGPocket\Modules\Trades;
  * @covers \MTGPocket\Modules\Matches
  * @covers \MTGPocket\Modules\Shop
  * @covers \MTGPocket\Modules\Trades
+ * @covers \MTGPocket\Modules\Drafts
+ * @covers \MTGPocket\Builders\DraftMessageBuilder
  * @covers \MTGPocket\Builders\ShopMessageBuilder
  * @covers \MTGPocket\Builders\TradeMessageBuilder
  * @covers \MTGPocket\Modules\PocketTrait
@@ -69,7 +73,7 @@ final class ModulesTest extends PocketTestCase
     {
         $mtg = self::offlineClient();
         $names = [];
-        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket)] as $module) {
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket), new Drafts($this->pocket)] as $module) {
             foreach ($module->commands($mtg) as $builder) {
                 $command = $builder->jsonSerialize();
                 $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
@@ -85,7 +89,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft'], array_keys($names));
     }
 
     public function testPackMessage(): void
@@ -200,6 +204,43 @@ final class ModulesTest extends PocketTestCase
 
         $done = json_encode(TradeMessageBuilder::closed($trades->accept($offer->id, '2', 'Ana', 1), $trades->cardData(...)), JSON_UNESCAPED_UNICODE);
         $this->assertStringContainsString('**Ana** accepted **Val**\'s offer.', $done);
+    }
+
+    public function testDraftMessages(): void
+    {
+        $this->importPool('TST', ['R' => self::fullColor(), 'G' => self::fullColor()]);
+        $drafts = $this->pocket->drafts;
+        foreach (['116927250145869826' => 'Val', '2' => 'Ana'] as $id => $name) {
+            $this->pocket->players->findOrCreate((string) $id, $name);
+            $this->pocket->players->modify((string) $id, fn (\MTGPocket\Models\Player $player) => $player->points = $drafts->rules->entryFee);
+        }
+        $draft = $drafts->create('116927250145869826', 'Val', 'TST', '1');
+
+        $pod = json_encode(DraftMessageBuilder::pod($draft, $drafts->rules), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Set TST booster draft', $pod);
+        $this->assertStringContainsString('taking players · 1/8 players · 1,200 points to enter', $pod);
+        $this->assertStringContainsString('Val · host', $pod);
+        $this->assertStringContainsString('"custom_id":"pocket:dj:'.$draft->id.'"', $pod);
+
+        $drafts->join('2', 'Ana');
+        $draft = $drafts->start('116927250145869826');
+        $seat = $draft->seat('2');
+        $pack = json_encode(DraftMessageBuilder::draftPack($draft, $seat, $drafts->packCards($draft, '2'), $drafts->pickDeadline($draft, '2')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Pack 1 · pick 1', $pack);
+        $this->assertStringContainsString('15 cards left', $pack);
+        $this->assertStringContainsString('"custom_id":"pocket:dp:'.$draft->id.':0"', $pack);
+        $this->assertLessThanOrEqual(100, strlen("pocket:dp:{$draft->id}:999"));
+
+        $draft = $drafts->pick('2', $draft->packFor(1)[0], 0);
+        $waiting = json_encode(DraftMessageBuilder::draftPack($draft, $draft->seat('2'), $drafts->packCards($draft, '2'), null), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Pack 1 · waiting', $waiting);
+
+        $pool = json_encode(DraftMessageBuilder::pool($draft, $draft->seat('2'), $this->pocket->deckBuilder->cardData(...), ['Too small.']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('deck 0 · side deck 1 · drafted 1', $pool);
+
+        $news = json_encode(DraftMessageBuilder::announcement($draft, $draft->news), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('has started with 2 players: <@116927250145869826>, <@2>', $news);
+        $this->assertStringContainsString('"users":["116927250145869826","2"]', $news);
     }
 
     private function assertDescription(string $description, string $where): void

@@ -22,12 +22,14 @@ use MTG\Modules\About;
 use MTG\Modules\Cards;
 use MTG\Modules\Help;
 use MTGPocket\Modules\Collection;
+use MTGPocket\Modules\Drafts;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
 use MTGPocket\Modules\Quests;
 use MTGPocket\Modules\Shop;
 use MTGPocket\Modules\Trades;
+use MTGPocket\Drafts\DraftRules;
 use MTGPocket\Economy\MatchRewards;
 use MTGPocket\Economy\PriceList;
 use MTGPocket\Modes\GameModes;
@@ -57,13 +59,14 @@ set_rejection_handler(fn (\Throwable $e) => $logger->warning("Unhandled promise 
 // Players, collections, decks and card pools, as JSON files; shop prices
 // from config/economy.php (or MTGPOCKET_ECONOMY) and game modes from
 // config/modes.php (or MTGPOCKET_MODES), quests from config/quests.php (or
-// MTGPOCKET_QUESTS).
+// MTGPOCKET_QUESTS), drafts from config/drafts.php (or MTGPOCKET_DRAFTS).
 $pocket = new Pocket(
     getenv('MTGPOCKET_DATA') ?: __DIR__.'/var/data',
     prices: PriceList::fromFile(getenv('MTGPOCKET_ECONOMY') ?: PriceList::DEFAULT_FILE),
     modes: GameModes::fromFile(getenv('MTGPOCKET_MODES') ?: GameModes::DEFAULT_FILE),
     rewards: MatchRewards::fromFile(getenv('MTGPOCKET_ECONOMY') ?: PriceList::DEFAULT_FILE),
     questBook: QuestBook::fromFile(getenv('MTGPOCKET_QUESTS') ?: QuestBook::DEFAULT_FILE),
+    draftRules: DraftRules::fromFile(getenv('MTGPOCKET_DRAFTS') ?: DraftRules::DEFAULT_FILE),
 );
 
 $mtg = new MTG([
@@ -78,12 +81,13 @@ $mtg = new MTG([
 ]);
 
 // Card lookups come from DiscordPHP-MTG; daily packs, collections, decks,
-// matches, quests, the shop and trades are the game's own.
+// matches, drafts, quests, the shop and trades are the game's own.
 $mtg
     ->addModule(new Packs($pocket))
     ->addModule(new Collection($pocket))
     ->addModule(new PlayerDecks($pocket))
     ->addModule(new Matches($pocket))
+    ->addModule(new Drafts($pocket))
     ->addModule(new Quests($pocket))
     ->addModule(new Shop($pocket))
     ->addModule(new Trades($pocket))

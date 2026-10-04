@@ -64,6 +64,9 @@ final class MatchService
     /** @var \Closure(): int */
     private \Closure $clock;
 
+    /** @var list<\Closure(MatchRecord): void> */
+    private array $finished = [];
+
     /**
      * @param MatchRepository           $matches
      * @param DeckBuilder               $decks
@@ -444,6 +447,104 @@ final class MatchService
         if (! $match->isLive()) {
             $this->release($match);
         }
+        if ($ended) {
+            $this->finished($match);
+        }
+
+        return $match;
+    }
+
+    /**
+     * Calls a function with every game that ends from now on.
+     *
+     * @param \Closure(MatchRecord): void $listener
+     *
+     * @return void
+     */
+    public function onFinished(\Closure $listener): void
+    {
+        $this->finished[] = $listener;
+    }
+
+    /**
+     * Tells the listeners a game ended. A listener that fails does not
+     * undo the game; drafts catch up with their games on their own.
+     *
+     * @param MatchRecord $match
+     *
+     * @return void
+     */
+    private function finished(MatchRecord $match): void
+    {
+        foreach ($this->finished as $listener) {
+            try {
+                $listener($match);
+            } catch (\Throwable) {
+            }
+        }
+    }
+
+    /**
+     * Starts a game of a draft round at once, between two players with
+     * the decks they built from their picks.
+     *
+     * @param string   $event The draft's id.
+     * @param array{0: array{id: string, name: string, deckName: string, cards: array[]}, 1: array{id: string, name: string, deckName: string, cards: array[]}} $seats
+     * @param GameMode $mode
+     *
+     * @throws \InvalidArgumentException When either player is in another match.
+     *
+     * @return MatchRecord
+     */
+    public function startEventGame(string $event, array $seats, GameMode $mode): MatchRecord
+    {
+        foreach ($seats as $seat) {
+            if ($this->current($seat['id']) !== null) {
+                throw new \InvalidArgumentException("**{$seat['name']}** is in another match. The game starts once they finish it (`/match leave` to leave it) and someone uses `/draft play`.");
+            }
+        }
+        $now = ($this->clock)();
+        $match = new MatchRecord(
+            substr(($this->random)(), 0, 12),
+            MatchRecord::PENDING,
+            array_map(fn (array $seat) => ['id' => $seat['id'], 'name' => $seat['name'], 'deckId' => null, 'deckName' => $seat['deckName']], array_values($seats)),
+            createdAt: $now,
+            updatedAt: $now,
+            mode: $mode->id,
+            event: $event,
+        );
+        $this->begin($match, [$seats[0]['cards'], $seats[1]['cards']], $mode);
+        $this->matches->save($match);
+        foreach ($match->players as $player) {
+            $this->matches->setLive($player['id'], $match->id);
+            $this->unqueue($player['id']);
+        }
+
+        return $match;
+    }
+
+    /**
+     * Ends a live game as a draw, for a draft round that ran out of time.
+     * A game that already ended is left as it is.
+     *
+     * @param string $matchId
+     * @param string $reason  For the game's log.
+     *
+     * @return MatchRecord|null Null when there is no such match.
+     */
+    public function stop(string $matchId, string $reason = 'Time is up.'): ?MatchRecord
+    {
+        if ($this->matches->find($matchId) === null) {
+            return null;
+        }
+        $match = $this->matches->modify($matchId, function (MatchRecord $match) use ($reason): void {
+            if ($match->isLive()) {
+                $match->game?->endInDraw($reason);
+                $match->status = MatchRecord::OVER;
+                $match->choices = [];
+            }
+        });
+        $this->release($match);
 
         return $match;
     }

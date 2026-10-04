@@ -31,6 +31,11 @@ Also in: **trading and the points shop**. Players trade cards and points with ea
 | `/match board` | The board of the game you are in. |
 | `/match leave` | Leaves the queue, calls off your challenge, or concedes your game. |
 | `/match log [match]` | The full record of your current or last game (or any game by id), as a text file. Finished boards also have a **Game record** button. |
+| `/draft create <set> [players]` · `/draft join [draft]` | Makes a booster draft pod for a set, or joins an open one; either way you pay the entry fee in points. |
+| `/draft start` · `/draft leave` · `/draft status [draft]` | Starts your pod before it is full (its host only); leaves your draft; or shows a pod's players, pairings and standings. |
+| `/draft pack` | The pack in front of you, with a menu to take a card. |
+| `/draft pool` · `/draft add <card> [count]` · `/draft remove <card> [count]` · `/draft lands` · `/draft auto` · `/draft ready` | Your picks and draft deck; move cards between deck and side deck, set basic lands, let the bot build it, and send it in. |
+| `/draft play` | Starts your game this round if it waited on someone busy, or shows it. |
 | `/quests` | Your daily and weekly quests and how far along you are. |
 | `/shop balance` | Your points, what cards cost by rarity and set age, and what each set's packs cost. |
 | `/shop price <card>` | What a card costs to buy and pays to sell. |
@@ -64,6 +69,8 @@ What the rules engine does today:
 
 **Matchmaking.** `/match queue` pairs you at once with a player waiting in the same mode whose rating is within 200 of yours, a range that widens by 50 for every minute they have waited; the closest rating goes first. A spot in the queue lasts 30 minutes. Queued games are ranked: each mode has its own Elo ladder (everyone starts at 1000). Challenges are friendly: they never move the ladder or pay points.
 
+**Booster drafts.** A player makes a pod for one set with `/draft create`, and others join; everyone pays the entry fee in points (1,200 by default), refunded if they leave before the draft starts or the pod never fills. The draft starts when the pod is full (8 players), when its host starts it (2 or more), or after 24 hours with at least 2. Everyone opens a pack of one color of the set, takes a card and passes the rest, left, then right, then left, for 3 packs; there is no waiting for the whole table, and the bot picks for anyone who takes longer than 3 minutes. Then each player builds a deck of 40 or more from their picks and free basic lands, and the games start when everyone is ready or after an hour (anyone without a deck plays one the bot builds). The rounds are Swiss, one game each, enough rounds to leave one unbeaten player; a game not finished in 24 hours is a draw. Every player keeps all the cards they drafted: they go to their collection when the event ends, when they leave it after the draft, or when the event times out 7 days after the draft starts. The pod's channel gets each stage, pairing and result as it happens. The numbers are in [`config/drafts.php`](config/drafts.php).
+
 **Commander.** Pick a legendary creature you own to lead a deck with `/decks commander`. It starts the game in the command zone, listed with your hand, and can be cast from there; each time after the first it costs {2} more. When it would go to the graveyard or exile, it returns to the command zone instead (its "dies" abilities still trigger). A player who takes 21 combat damage from one commander loses, whatever their life. The board shows each command zone, the current tax, and commander damage taken. Pools imported before this release lack color identity data; it is then worked out from each card's colors, cost and text, and `composer import-cards` fills it in.
 
 **Rental decks.** Official preconstructed decks of the sets in the Standard library (Commander decks aside), imported with the card pools. Anyone can play one with `/decks rent`, up to 3 games a day, so new players can play before they own enough cards. Rentals can't be edited or exported.
@@ -92,6 +99,8 @@ Card data comes from DiscordPHP-MTG's local copy of MTGJSON's AllPrintings SQLit
 | `ladders/{mode}.json` | A mode's ratings, wins, losses and draws. |
 | `rentals/{id}.json` | An official preconstructed deck players can rent, with its cards' data. |
 | `trades/{id}.json` | An open trade offer. The file is deleted once the offer is accepted, declined, cancelled or expired. |
+| `drafts/{id}.json` | A booster draft: its players, what each has paid and picked, their decks, the packs going round, and every round's pairings and results. |
+| `drafters/{userId}.json` | The draft a player last joined. |
 
 Writes are atomic (a temporary file renamed into place) and every read-modify-write holds a lock on its file, so nothing is lost when two changes land at once.
 
@@ -116,7 +125,7 @@ php bot.php
 
 `composer import-cards -- KTK DMU` imports just those sets, and their official decks as rentals. Re-run the import after MTGJSON adds a set.
 
-The bot reads its settings from `config/`: shop prices and match points from `economy.php`, game modes from `modes.php` and quests from `quests.php`. Set `MTGPOCKET_ECONOMY`, `MTGPOCKET_MODES` or `MTGPOCKET_QUESTS` to use copies kept elsewhere.
+The bot reads its settings from `config/`: shop prices and match points from `economy.php`, game modes from `modes.php`, quests from `quests.php` and booster drafts from `drafts.php`. Set `MTGPOCKET_ECONOMY`, `MTGPOCKET_MODES`, `MTGPOCKET_QUESTS` or `MTGPOCKET_DRAFTS` to use copies kept elsewhere.
 
 Pools imported before matches existed lack the rules data (mana costs, power and toughness, rules text). Run `composer import-cards` again before playing; a deck with such cards cannot start a match until then.
 
