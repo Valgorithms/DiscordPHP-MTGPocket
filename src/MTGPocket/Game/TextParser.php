@@ -552,6 +552,19 @@ final class TextParser
             } elseif ($word === 'extort' && ! $spell) {
                 // Extort (rule 702.101): paid whenever its controller can.
                 $found['triggered'][] = ['text' => 'Extort', 'event' => 'cast_spell', 'effects' => [['type' => 'extort']]];
+            } elseif ($word === 'riot' && ! $spell) {
+                // Riot (rule 702.136): always the counter, not haste.
+                $found['counters'] = (int) $found['counters'] + 1;
+            } elseif (preg_match('/^vanishing (\d+)$/i', $part, $m) && ! $spell) {
+                // Vanishing (rule 702.63): time counters, one removed each upkeep; sacrificed when the last goes.
+                $found['keywords'][] = "vanishing {$m[1]}";
+                $found['triggered'][] = ['text' => $part, 'event' => 'upkeep', 'effects' => [['type' => 'vanishing', 'self' => true]]];
+            } elseif ($word === 'mentor' && ! $spell) {
+                // Mentor (rule 702.134): a +1/+1 counter on an attacking creature with lesser power.
+                $found['triggered'][] = ['text' => 'Mentor', 'event' => 'attacks', 'effects' => [['type' => 'counters', 'amount' => 1, 'target' => 'attacking_lesser']]];
+            } elseif ($word === 'exploit' && ! $spell) {
+                // Exploit (rule 702.110): see Game::applyEffect().
+                $found['triggered'][] = ['text' => 'Exploit', 'event' => 'enters', 'effects' => [['type' => 'exploit', 'self' => true]]];
             } elseif (preg_match('/^saddle (\d+)$/i', $part, $m) && ! $spell) {
                 // Saddle (rule 702.171): like crew, but only as a sorcery, and it stays a creature.
                 $found['activated'][] = ['text' => $part, 'cost' => ['crew' => (int) $m[1]], 'effects' => [['type' => 'saddled', 'self' => true]], 'sorcery' => true, 'once' => false];
@@ -728,10 +741,14 @@ final class TextParser
      */
     private static function additionalCost(string $line, array &$result): bool
     {
-        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|discard a card)\.?$/', $line, $m)) {
+        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|discard a card)\.?$/', $line, $m)) {
             return false;
         }
-        $result['additionalCost'] = $m[1] === 'sacrifice a creature' ? 'sacrifice_creature' : 'discard';
+        $result['additionalCost'] = match ($m[1]) {
+            'sacrifice a creature' => 'sacrifice_creature',
+            'sacrifice an artifact or creature' => 'sacrifice_artifact_or_creature',
+            default => 'discard',
+        };
 
         return true;
     }
@@ -932,6 +949,7 @@ final class TextParser
         $events = [
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up',
+            'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous',
         ];
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell',
@@ -940,13 +958,16 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
+        } elseif (preg_match('/^At the beginning of the end step, (.+)$/', $line, $match)) {
+            $event = 'each_end_step';
+            $text = $match[1];
         } elseif (preg_match("/^At the beginning of enchanted player's upkeep, (.+)$/", $line, $match) && in_array($result['aura']['enchant'] ?? null, ['player', 'opponent'], true)) {
             // A curse: "that player" is the enchanted player.
             $effects = self::effects(str_replace(['that player or a planeswalker that player controls', 'that player'], 'target player', $match[1]));
@@ -1329,6 +1350,17 @@ final class TextParser
         $targets = implode('|', array_map(fn ($phrase) => preg_quote($phrase, '/'), array_keys(self::TARGETS)));
         $s = $sentence;
 
+        // Adapt and monstrosity (rules 701.46 and 701.37).
+        if (preg_match('/^(adapt|monstrosity) (\d+)$/i', $s, $m)) {
+            return ['type' => strtolower($m[1]), 'amount' => (int) $m[2], 'self' => true];
+        }
+        if ($s === 'sacrifice CARDNAME' || $s === 'Sacrifice CARDNAME') {
+            return ['type' => 'sacrifice', 'self' => true];
+        }
+        // Explore (rule 701.44).
+        if ($s === 'CARDNAME explores') {
+            return ['type' => 'explore', 'self' => true];
+        }
         if (preg_match("/^CARDNAME deals (\\w+) damage to ({$targets})$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
         }

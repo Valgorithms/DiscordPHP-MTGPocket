@@ -265,7 +265,7 @@ final class AutoPlayer
                     || (in_array('attach', $types, true) && $object->attachedTo === null)
                     || isset($ability['cost']['loyalty'])
                     || in_array('level', $types, true)
-                    || in_array('class_level', $types, true)
+                    || in_array('class_level', $types, true) || array_intersect(['adapt', 'monstrosity'], $types) !== []
                     || (in_array('charge', $types, true) && $game->step === Step::PrecombatMain)
                     || (isset($ability['cost']['energy']) && in_array('counters', $types, true))
                     || (in_array('saddled', $types, true) && $game->step === Step::PrecombatMain && ! $object->sick && ! $game->hasKeyword($object, 'saddled'))

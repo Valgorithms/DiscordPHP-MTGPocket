@@ -575,6 +575,10 @@ final class Game
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
                 }
+                // "At the beginning of the end step, …": every turn's.
+                foreach ($step === Step::End ? $this->permanents() : [] as $object) {
+                    $this->trigger($object, 'each_end_step', $object->controller);
+                }
                 // Curses: "At the beginning of enchanted player's upkeep, …"
                 foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
                     if ($object->enchantedPlayer === $this->active) {
@@ -1040,6 +1044,10 @@ final class Game
         if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_creature' && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) === []) {
             return "{$card->name} needs a creature to sacrifice.";
         }
+        if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_artifact_or_creature'
+            && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) || $o->definition()->is('Artifact')) === []) {
+            return "{$card->name} needs an artifact or creature to sacrifice.";
+        }
         if (! $options['faceDown'] && $card->additionalCost === 'discard' && count($player->hand) < 2) {
             return "{$card->name} needs another card in your hand to discard.";
         }
@@ -1403,16 +1411,34 @@ final class Game
      */
     private function payAdditionalCost(int $seat, CardDefinition $card): void
     {
-        if ($card->additionalCost === 'sacrifice_creature') {
-            $creatures = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)));
-            usort($creatures, fn (GameObject $a, GameObject $b) => [! $a->definition()->isToken(), $this->power($a) + $this->toughness($a)] <=> [! $b->definition()->isToken(), $this->power($b) + $this->toughness($b)]);
-            $this->log("{$this->players[$seat]->name} sacrifices {$creatures[0]->name()} to cast {$card->name}.");
-            $this->moveTo($creatures[0], GameObject::GRAVEYARD);
+        if ($card->additionalCost === 'sacrifice_creature' || $card->additionalCost === 'sacrifice_artifact_or_creature') {
+            $artifacts = $card->additionalCost === 'sacrifice_artifact_or_creature';
+            $weakest = $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) || ($artifacts && $o->definition()->is('Artifact')));
+            $this->log("{$this->players[$seat]->name} sacrifices {$weakest->name()} to cast {$card->name}.");
+            $this->moveTo($weakest, GameObject::GRAVEYARD);
         } else {
             $hand = $this->players[$seat]->hand;
             usort($hand, fn (int $a, int $b) => $this->objects[$a]->definition()->cost->manaValue() <=> $this->objects[$b]->definition()->cost->manaValue());
             $this->discardCards($seat, [$hand[0]]);
         }
+    }
+
+    /**
+     * A player's weakest permanent of some kind: tokens first, then the
+     * lowest power and toughness.
+     *
+     * @param int      $seat
+     * @param callable $filter
+     *
+     * @return GameObject|null
+     */
+    private function weakest(int $seat, callable $filter): ?GameObject
+    {
+        $permanents = array_values(array_filter($this->permanents($seat), $filter));
+        $score = fn (GameObject $o) => [! $o->definition()->isToken(), $this->isCreature($o) ? $this->power($o) + $this->toughness($o) : 0];
+        usort($permanents, fn (GameObject $a, GameObject $b) => $score($a) <=> $score($b));
+
+        return $permanents[0] ?? null;
     }
 
     /**
@@ -1845,6 +1871,60 @@ final class Game
 
             case 'gain_life':
                 $this->gainLife($controller, $amount);
+                break;
+
+            case 'sacrifice':
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $this->log("{$this->players[$affected->controller]->name} sacrifices {$affected->name()}.");
+                    $this->moveTo($affected, GameObject::GRAVEYARD);
+                }
+                break;
+
+            case 'adapt':
+                if ($affected !== null && $affected->counter('+1/+1') === 0) {
+                    $affected->addCounters('+1/+1', $amount);
+                }
+                break;
+
+            case 'monstrosity':
+                if ($affected !== null && ! $affected->monstrous) {
+                    $affected->addCounters('+1/+1', $amount);
+                    $affected->monstrous = true;
+                    $this->log("{$affected->name()} becomes monstrous.");
+                    $this->trigger($affected, 'monstrous', $affected->controller);
+                }
+                break;
+
+            case 'explore':
+                // A land goes to hand; otherwise a +1/+1 counter, and the card stays on top.
+                $top = end($this->players[$controller]->library);
+                if ($top !== false && $this->objects[$top]->definition()->isLand()) {
+                    $this->moveTo($this->objects[$top], GameObject::HAND);
+                    $this->log("{$this->players[$controller]->name} explores and puts {$this->objects[$top]->name()} into their hand.");
+                } elseif ($affected !== null) {
+                    $affected->addCounters('+1/+1', 1);
+                    $this->log("{$affected->name()} explores and gets a +1/+1 counter.");
+                }
+                break;
+
+            case 'vanishing':
+                if ($affected !== null && $affected->counter('time') > 0) {
+                    $affected->addCounters('time', -1);
+                    if ($affected->counter('time') === 0) {
+                        $this->log("The last time counter leaves {$affected->name()}.");
+                        $this->moveTo($affected, GameObject::GRAVEYARD);
+                    }
+                }
+                break;
+
+            case 'exploit':
+                // The game exploits a token or a creature with total power and toughness 2 or less.
+                $fodder = $affected === null ? null : $this->weakest($controller, fn (GameObject $o) => $o->id !== $affected->id && $this->isCreature($o));
+                if ($fodder !== null && ($fodder->definition()->isToken() || $this->power($fodder) + $this->toughness($fodder) <= 2)) {
+                    $this->log("{$affected->name()} exploits {$fodder->name()}.");
+                    $this->moveTo($fodder, GameObject::GRAVEYARD);
+                    $this->trigger($affected, 'exploits', $controller);
+                }
                 break;
 
             case 'renown':
@@ -2341,8 +2421,12 @@ final class Game
     private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $counters = 0): void
     {
         foreach ($source->definition()->triggersOn($event) as $ability) {
-            // Modular: the +1/+1 counters it had as it died.
-            $ability['effects'] = array_map(fn (array $effect) => ($effect['amount'] ?? null) === 'counters' ? ['amount' => $counters] + $effect : $effect, $ability['effects']);
+            // Modular: the +1/+1 counters it had as it died. Mentor: lesser power than it has now.
+            $ability['effects'] = array_map(fn (array $effect) => match (true) {
+                ($effect['amount'] ?? null) === 'counters' => ['amount' => $counters] + $effect,
+                ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
+                default => $effect,
+            }, $ability['effects']);
             // "When this creature enters, if it was kicked, …"
             if (($ability['kicked'] ?? false) && ! $source->kicked) {
                 continue;
@@ -2972,9 +3056,10 @@ final class Game
             'land' => $card->isLand(),
             'nonland_permanent' => ! $card->isLand(),
             'permanent' => true,
-            // Soulshift N: a Spirit card with mana value N or less.
-            default => (bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
-                && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1],
+            // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
+            default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
+                && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
+                || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1]),
         };
     }
 
@@ -3583,6 +3668,9 @@ final class Game
             $this->log("{$this->players[$controller]->name} chooses {$object->chosen} for {$object->name()}.");
         }
         // Bloodthirst (rule 702.54): if an opponent was dealt damage this turn.
+        if (($n = $this->keywordAmount($object, 'vanishing')) > 0) {
+            $object->addCounters('time', $n);
+        }
         if (($n = $this->keywordAmount($object, 'bloodthirst')) > 0) {
             foreach ($this->players as $seat => $player) {
                 if ($seat !== $controller && $player->damagedOnTurn === $this->turn) {

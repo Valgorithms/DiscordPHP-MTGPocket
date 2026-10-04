@@ -95,6 +95,15 @@ final class ModernCardTextTest extends GameTestCase
         "Ajani's Pridemate" => ['manaCost' => '{1}{W}', 'type' => 'Creature — Cat Soldier', 'power' => '2', 'toughness' => '2', 'text' => "Whenever you gain life, put a +1/+1 counter on Ajani's Pridemate.", 'colors' => ['W']],
         'Grim Return Lite' => ['manaCost' => '{2}{B}', 'type' => 'Sorcery', 'text' => 'Return up to two target creature cards from your graveyard to your hand.', 'colors' => ['B']],
         'Reverse Engineer' => ['manaCost' => '{3}{U}{U}', 'type' => 'Sorcery', 'text' => "Improvise (Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for {1}.)\nDraw three cards.", 'colors' => ['U']],
+        'Adapt Lite' => ['manaCost' => '{2}{G}', 'type' => 'Creature — Fish', 'power' => '2', 'toughness' => '2', 'text' => '{2}{G}: Adapt 2. (If this creature has no +1/+1 counters on it, put two +1/+1 counters on it.)', 'colors' => ['G']],
+        'Monster Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Hydra', 'power' => '2', 'toughness' => '2', 'text' => "{1}{R}: Monstrosity 1. (If this creature isn't monstrous, put a +1/+1 counter on it and it becomes monstrous.)\nWhen this creature becomes monstrous, it deals 2 damage to each opponent.", 'colors' => ['R']],
+        'Riot Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Goblin', 'power' => '2', 'toughness' => '1', 'text' => 'Riot (This creature enters with your choice of a +1/+1 counter or haste.)', 'colors' => ['R']],
+        'Vanishing Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Human', 'power' => '3', 'toughness' => '3', 'text' => 'Vanishing 2 (This creature enters with two time counters on it. At the beginning of your upkeep, remove a time counter from it. When the last is removed, sacrifice it.)', 'colors' => ['R']],
+        'Merfolk Branchwalker' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Merfolk Scout', 'power' => '2', 'toughness' => '1', 'text' => 'When this creature enters, it explores. (Reveal the top card of your library. Put that card into your hand if it\'s a land. Otherwise, put a +1/+1 counter on this creature, then put the card back or put it into your graveyard.)', 'colors' => ['G']],
+        'Mentor Lite' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Human Soldier', 'power' => '3', 'toughness' => '2', 'text' => 'Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)', 'colors' => ['W']],
+        'Exploit Lite' => ['manaCost' => '{2}{B}', 'type' => 'Creature — Zombie', 'power' => '2', 'toughness' => '2', 'text' => "Exploit (When this creature enters, you may sacrifice a creature.)\nWhen this creature exploits a creature, draw two cards.", 'colors' => ['B']],
+        'Ball Lightning' => ['manaCost' => '{R}{R}{R}', 'type' => 'Creature — Elemental', 'power' => '6', 'toughness' => '1', 'text' => "Trample\nHaste\nAt the beginning of the end step, sacrifice this creature.", 'colors' => ['R']],
+        'Scrap Lite' => ['manaCost' => '{1}{B}', 'type' => 'Sorcery', 'text' => "As an additional cost to cast this spell, sacrifice an artifact or creature.\nDraw two cards.", 'colors' => ['B']],
         'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
@@ -667,6 +676,86 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame($hand + 2, count($game->players[0]->hand), 'Three artifacts paid for {3}.');
     }
 
+    public function testAdaptMonstrosityRiotAndVanishing(): void
+    {
+        $game = $this->newGame();
+        $adapt = $this->put(0, 'Adapt Lite', GameObject::BATTLEFIELD);
+        $monster = $this->put(0, 'Monster Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Forest', 6);
+        $this->lands(0, 'Mountain', 10);
+        $game->activate(0, $adapt, 0);
+        $this->resolve();
+        $game->activate(0, $adapt, 0);
+        $this->resolve();
+        $this->assertSame(2, $game->objects[$adapt]->counter('+1/+1'), 'Adapt does nothing with counters already on it.');
+        $game->activate(0, $monster, 0);
+        $this->resolve();
+        $this->resolve(); // Becomes monstrous.
+        $this->assertTrue($game->objects[$monster]->monstrous);
+        $this->assertSame(18, $this->life(1));
+        $game->activate(0, $monster, 0);
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$monster]->counter('+1/+1'));
+
+        $riot = $this->put(0, 'Riot Lite', GameObject::HAND);
+        $game->cast(0, $riot, 0, []);
+        $this->resolve();
+        $this->assertSame(3, $game->power($game->objects[$riot]));
+        $vanishing = $this->put(0, 'Vanishing Lite', GameObject::HAND);
+        $game->cast(0, $vanishing, 0, []);
+        $this->resolve();
+        $this->assertSame(2, $game->objects[$vanishing]->counter('time'));
+        $this->passUntil(Step::Draw, 3);
+        $this->assertSame(1, $game->objects[$vanishing]->counter('time'));
+        $this->passUntil(Step::Draw, 5);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($vanishing));
+    }
+
+    public function testExploreMentorExploitAndEndStepSacrifice(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Forest', 2);
+        $walker = $this->put(0, 'Merfolk Branchwalker', GameObject::HAND);
+        $top = end($game->players[0]->library);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $walker, 0, []);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($top), 'The top card was a Forest.');
+        $this->assertSame($hand, count($game->players[0]->hand));
+
+        $mentor = $this->put(0, 'Mentor Lite', GameObject::BATTLEFIELD);
+        $squire = $this->put(0, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $game->objects[$mentor]->sick = $game->objects[$squire]->sick = false;
+        $this->passUntil(Step::DeclareAttackers);
+        $game->declareAttackers(0, [$mentor, $squire]);
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$squire]->counter('+1/+1'));
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Swamp', 6);
+        $fodder = $this->put(0, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $exploit = $this->put(0, 'Exploit Lite', GameObject::HAND);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $exploit, 0, []);
+        $this->resolve();
+        $this->resolve(); // Exploit: the new 1/1 Squire.
+        $this->resolve(); // Draw two.
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($fodder));
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($squire), 'The 1/1 goes first.');
+        $this->assertSame($hand + 1, count($game->players[0]->hand));
+
+        $scrap = $this->put(0, 'Scrap Lite', GameObject::HAND);
+        $this->assertSame([], self::read('Scrap Lite')->unsupported);
+        $game->cast(0, $scrap, 0, []);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($walker), 'The weakest creature.');
+
+        $ball = $this->put(1, 'Ball Lightning', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::Cleanup);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($ball), "Also at the end of Alice's turn.");
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -941,7 +1030,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
