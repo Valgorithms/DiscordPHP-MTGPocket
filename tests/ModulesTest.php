@@ -24,9 +24,11 @@ use MTGPocket\Builders\DraftMessageBuilder;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Builders\ShopMessageBuilder;
 use MTGPocket\Builders\TradeMessageBuilder;
+use MTGPocket\Collection\CollectionPages;
 use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Drafts;
 use MTGPocket\Modules\Matches;
+use MTGPocket\Modules\Menu;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
 use MTGPocket\Modules\Quests;
@@ -38,6 +40,8 @@ use MTGPocket\Modules\Trades;
  * Discord's rules, and the game's messages build and fit Discord's limits.
  *
  * @covers \MTGPocket\Modules\Packs
+ * @covers \MTGPocket\Modules\Menu
+ * @covers \MTGPocket\Collection\CollectionPages
  * @covers \MTGPocket\Modules\Collection
  * @covers \MTGPocket\Modules\PlayerDecks
  * @covers \MTGPocket\Modules\Matches
@@ -73,7 +77,7 @@ final class ModulesTest extends PocketTestCase
     {
         $mtg = self::offlineClient();
         $names = [];
-        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket), new Drafts($this->pocket)] as $module) {
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket), new Drafts($this->pocket), new Menu($this->pocket)] as $module) {
             foreach ($module->commands($mtg) as $builder) {
                 $command = $builder->jsonSerialize();
                 $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
@@ -89,7 +93,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft', 'menu'], array_keys($names));
     }
 
     public function testPackMessage(): void
@@ -131,13 +135,12 @@ final class ModulesTest extends PocketTestCase
     {
         $this->importPool('TST', ['R' => ['common' => 25]]);
         $this->pocket->inventories->addCards('116927250145869826', array_fill_keys(array_map(fn ($n) => "TST-R-common-{$n}", range(1, 25)), 2));
-        $module = new Collection($this->pocket);
-        $page = (new \ReflectionMethod($module, 'page'))->getClosure($module);
-        $encode = (new \ReflectionMethod($module, 'encode'))->getClosure(null);
-        $decode = (new \ReflectionMethod($module, 'decode'))->getClosure(null);
+        $pages = new CollectionPages($this->pocket);
+        $encode = CollectionPages::encode(...);
+        $decode = CollectionPages::decode(...);
 
         $query = ['player' => '116927250145869826', 'set' => 'TST', 'color' => 'R', 'rarity' => 'common', 'name' => 'r common'];
-        $json = json_encode($page(self::offlineClient(), $query, 2), JSON_UNESCAPED_UNICODE);
+        $json = json_encode($pages->page($query, 2), JSON_UNESCAPED_UNICODE);
 
         $this->assertStringContainsString('page 2 of 3', $json);
         $this->assertStringContainsString('50 copies', $json);
@@ -153,6 +156,9 @@ final class ModulesTest extends PocketTestCase
         $this->assertSame($unicode, $decode($encode($unicode)));
         $longest = $encode(['player' => '11692725014586982600', 'set' => 'ABCDEFGH', 'color' => 'M', 'rarity' => 'mythic', 'name' => $unicode['name']]);
         $this->assertLessThanOrEqual(100, strlen("pocket:page:{$longest}:999"), 'The longest query still fits in a custom id.');
+        $longestQuery = $decode($longest);
+        $this->assertLessThanOrEqual(100, strlen("pocket:ui:{$longestQuery['player']}:cfilt:".CollectionPages::filters($longestQuery)), 'So does the filter button.');
+        $this->assertStringContainsString('"custom_id":"pocket:ui:116927250145869826:cfilt:TST.R.c.', $json, 'Pages offer the filter form.');
     }
 
     public function testShopMessages(): void

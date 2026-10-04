@@ -13,12 +13,9 @@ declare(strict_types=1);
 
 namespace MTGPocket\Modules;
 
-use Discord\Builders\MessageBuilder;
 use Discord\Parts\Interactions\Command\Option;
 use Discord\Parts\Interactions\Interaction;
 use Discord\WebSockets\Event;
-use MTG\Builders\ListMessageBuilder;
-use MTG\Helpers\Text;
 use MTG\Modules\Cards;
 use MTG\Modules\InteractionTrait;
 use MTG\Modules\Module;
@@ -26,6 +23,7 @@ use MTG\MTG;
 use MTG\Parts\Card;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Cards\CardPool;
+use MTGPocket\Collection\CollectionPages;
 use MTGPocket\Pocket;
 use React\Promise\PromiseInterface;
 
@@ -34,9 +32,7 @@ use React\Promise\PromiseInterface;
  * owns, in pages, with a picker that opens any of them in DiscordPHP-MTG's
  * card view.
  *
- * The page buttons carry the whole query in their custom id
- * (`pocket:page:<query>:<page>`), so they keep working after a restart.
- * This module also opens the cards picked from any of the game's messages
+ * The pages are {@see CollectionPages}. This module also opens the cards picked from any of the game's messages
  * (`pocket:card`).
  *
  * @since 0.2.0
@@ -46,15 +42,11 @@ final class Collection implements Module
     use InteractionTrait;
     use PocketTrait;
 
-    /**
-     * Rarity letters for the custom id.
-     *
-     * @var array<string, string>
-     */
-    private const array RARITY_CODES = ['c' => 'common', 'u' => 'uncommon', 'r' => 'rare', 'm' => 'mythic'];
+    private CollectionPages $pages;
 
     public function __construct(protected Pocket $pocket)
     {
+        $this->pages = new CollectionPages($pocket);
     }
 
     /**
@@ -105,7 +97,7 @@ final class Collection implements Module
             $selected = (string) ($interaction->data->values[0] ?? '');
             match ($parts[1] ?? '') {
                 'card', 'open' => self::answer($mtg, $interaction, fn () => $mtg->cards->fetch($selected)->then(fn (Card $card) => Cards::view($mtg, $card))),
-                'page' => self::answer($mtg, $interaction, fn () => $this->page($mtg, self::decode($parts[2] ?? ''), (int) ($parts[3] ?? 1)), true),
+                'page' => self::answer($mtg, $interaction, fn () => $this->pages->page(CollectionPages::decode($parts[2] ?? ''), (int) ($parts[3] ?? 1)), true),
                 default => null,
             };
         });
@@ -123,110 +115,14 @@ final class Collection implements Module
     private function show(MTG $mtg, Interaction $interaction, array $args): PromiseInterface
     {
         [$caller] = self::caller($interaction);
-        $query = [
-            'player' => (string) ($args['player'] ?? $caller),
-            'set' => strtoupper(trim((string) ($args['set'] ?? ''))),
-            'color' => (string) ($args['color'] ?? ''),
-            'rarity' => (string) ($args['rarity'] ?? ''),
-            // Kept short, so the query fits in the page buttons' custom ids.
-            'name' => mb_strcut(trim((string) ($args['name'] ?? '')), 0, 24),
-        ];
-
-        return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), fn () => $this->page($mtg, $query, 1));
-    }
-
-    /**
-     * A page of a collection.
-     *
-     * @param MTG        $mtg
-     * @param array|null $query As {@see show()} builds it; null when a custom id did not parse.
-     * @param int        $page
-     *
-     * @return MessageBuilder
-     */
-    private function page(MTG $mtg, ?array $query, int $page): MessageBuilder
-    {
-        if ($query === null || $query['player'] === '') {
-            return PocketMessageBuilder::notice('This collection can no longer be shown. Run `/collection` again.');
-        }
-
-        $inventory = $this->pocket->inventories->get($query['player']);
-        $entries = $this->pocket->collection->entries($inventory, $query);
-        $owner = $this->pocket->players->find($query['player'])?->name ?: 'Player';
-
-        $filters = array_filter([
-            $query['set'],
-            PocketMessageBuilder::COLOR_NAMES[$query['color']] ?? '',
-            ucfirst($query['rarity']),
-            $query['name'] !== '' ? "“{$query['name']}”" : '',
-        ]);
-        $title = "{$owner}'s collection".($filters ? ' — '.implode(' · ', $filters) : '');
-
-        if ($entries === []) {
-            return PocketMessageBuilder::notice("### {$title}\n".($inventory->cards->total() === 0 ? 'No cards yet. Open a free pack with `/pack open`.' : 'No cards match.'));
-        }
-
-        $total = count($entries);
-        $page = min(max(1, $page), ListMessageBuilder::pages($total));
-        $copies = array_sum(array_column($entries, 'count'));
-        $lines = $choices = [];
-        foreach (array_slice($entries, ($page - 1) * ListMessageBuilder::PAGE_SIZE, ListMessageBuilder::PAGE_SIZE) as $entry) {
-            $card = $entry['card'];
-            $lines[] = "×{$entry['count']} ".PocketMessageBuilder::cardLine($card)." · `{$card['setCode']}`";
-            $choices[] = ['label' => $card['name'], 'value' => $card['uuid'], 'description' => ucfirst($card['rarity'])." · {$card['setName']}"];
-        }
-
-        return ListMessageBuilder::page(
-            PocketMessageBuilder::PREFIX,
-            self::encode($query),
-            $page,
-            $total,
-            "{$title} · ".Text::plural($copies, 'copy', 'copies'),
-            $lines,
-            $choices,
-            PocketMessageBuilder::accent($query['color'] ?: CardPool::MULTICOLOR),
-            'card',
+        $query = CollectionPages::query(
+            (string) ($args['player'] ?? $caller),
+            (string) ($args['set'] ?? ''),
+            (string) ($args['color'] ?? ''),
+            (string) ($args['rarity'] ?? ''),
+            (string) ($args['name'] ?? ''),
         );
-    }
 
-    /**
-     * A query as it rides in a custom id: `player.SET.C.r.name`, the name in
-     * URL-safe base64 (no `:` or `.`).
-     *
-     * @param array $query
-     *
-     * @return string
-     */
-    private static function encode(array $query): string
-    {
-        return implode('.', [
-            $query['player'],
-            $query['set'],
-            $query['color'],
-            (string) array_search($query['rarity'], self::RARITY_CODES, true),
-            rtrim(strtr(base64_encode($query['name']), '+/', '-_'), '='),
-        ]);
-    }
-
-    /**
-     * @param string $encoded
-     *
-     * @return array|null
-     */
-    private static function decode(string $encoded): ?array
-    {
-        $fields = explode('.', $encoded);
-        if (count($fields) !== 5 || ! ctype_digit($fields[0])) {
-            return null;
-        }
-        [$player, $set, $color, $rarity, $name] = $fields;
-
-        return [
-            'player' => $player,
-            'set' => preg_match('/^[A-Z0-9]{0,8}$/', $set) ? $set : '',
-            'color' => self::isColor($color) ? $color : '',
-            'rarity' => self::RARITY_CODES[$rarity] ?? '',
-            'name' => (string) base64_decode(strtr($name, '-_', '+/')),
-        ];
+        return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), fn () => $this->pages->page($query, 1));
     }
 }

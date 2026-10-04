@@ -17,7 +17,7 @@ use Discord\Parts\Interactions\Interaction;
 use MTG\Modules\InteractionTrait;
 use MTG\Modules\Module;
 use MTG\MTG;
-use MTGPocket\Builders\PocketMessageBuilder;
+use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
 
 /**
@@ -58,10 +58,7 @@ final class Quests implements Module
         $mtg->listenCommand('quests', function (Interaction $interaction, $options) use ($mtg) {
             [$id] = self::caller($interaction);
 
-            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => PocketMessageBuilder::quests(
-                $this->pocket->quests->board($id),
-                $this->pocket->shop->balance($id),
-            ));
+            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => (new Panels($this->pocket))->quests($id));
         });
     }
 }

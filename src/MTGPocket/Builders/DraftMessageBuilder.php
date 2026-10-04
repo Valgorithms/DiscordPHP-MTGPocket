@@ -175,6 +175,9 @@ final class DraftMessageBuilder extends PocketMessageBuilder
         }
         $message = self::panel();
         $refresh = Button::new(Button::STYLE_SECONDARY, self::PREFIX.":dq:{$draft->id}")->setLabel('Refresh');
+        $nav = fn (ActionRow $row) => $row
+            ->addComponent(MenuMessageBuilder::button($seat->id, '◀ Draft', 'draft'))
+            ->addComponent(MenuMessageBuilder::menuButton($seat->id));
 
         if ($draft->status !== Draft::DRAFTING) {
             $container->addComponent(TextDisplay::new(match ($draft->status) {
@@ -182,15 +185,19 @@ final class DraftMessageBuilder extends PocketMessageBuilder
                 Draft::BUILDING, Draft::PLAYING => "### Every pack is empty\nYou drafted ".Text::plural($seat->picks->total(), 'card').'. Build your deck: `/draft pool`.',
                 default => "### {$draft->setName} draft\nThis draft is ".(self::STAGES[$draft->status] ?? $draft->status).'.',
             }));
+            $row = ActionRow::new();
+            if ($draft->status === Draft::BUILDING || $draft->status === Draft::PLAYING) {
+                $row->addComponent(MenuMessageBuilder::styled(Button::STYLE_PRIMARY, $seat->id, '🃏 My deck', 'dpool'));
+            }
 
-            return $message->addComponent($container);
+            return $message->addComponent($container)->addComponent($nav($row));
         }
 
         $pick = count($seat->pickLog) + 1;
         if ($cards === null) {
             $container->addComponent(TextDisplay::new("### Pack {$draft->packNumber} · waiting\nYour next pack comes when your neighbor takes a card. You have ".Text::plural($seat->picks->total(), 'pick').' so far.'));
 
-            return $message->addComponent($container)->addComponent(ActionRow::new()->addComponent($refresh));
+            return $message->addComponent($container)->addComponent($nav(ActionRow::new()->addComponent($refresh)));
         }
 
         $lines = array_map(fn (array $card) => self::cardLine($card), $cards);
@@ -221,7 +228,7 @@ final class DraftMessageBuilder extends PocketMessageBuilder
             ->addComponent($container)
             ->addComponent(ActionRow::new()->addComponent($select))
             ->addComponent(ActionRow::new()->addComponent(self::cardPicker($cards)))
-            ->addComponent(ActionRow::new()->addComponent($refresh));
+            ->addComponent($nav(ActionRow::new()->addComponent($refresh)));
     }
 
     /**
@@ -264,7 +271,7 @@ final class DraftMessageBuilder extends PocketMessageBuilder
         );
         $heading .= $problems === [] ? "\n✅ Ready to play." : "\n⚠️ ".implode("\n⚠️ ", $problems);
         $help = $draft->status === Draft::BUILDING || $draft->status === Draft::PLAYING
-            ? "\n-# `/draft add` and `/draft remove` move cards between deck and side deck, `/draft lands` sets basic lands, `/draft auto` builds one for you, `/draft ready` sends it in."
+            ? "\n-# The menus below move cards between deck and side deck; **Basic lands** sets lands, **Auto-build** builds one for you, **Ready** sends it in. (`/draft add`, `remove`, `lands`, `auto` and `ready` do the same.)"
             : '';
 
         $container = Container::new()->setAccentColor(CardMessageBuilder::ACCENTS['multicolor']);
@@ -279,8 +286,34 @@ final class DraftMessageBuilder extends PocketMessageBuilder
 
         $message = self::panel()->addComponent($container);
         $cards = array_map(fn (string $uuid) => $card($uuid), array_map('strval', array_keys($seat->picks->toArray())));
+        if ($cards !== []) {
+            $message->addComponent(ActionRow::new()->addComponent(self::cardPicker($cards)));
+        }
 
-        return $cards === [] ? $message : $message->addComponent(ActionRow::new()->addComponent(self::cardPicker($cards)));
+        $row = ActionRow::new();
+        if ($draft->status === Draft::BUILDING || $draft->status === Draft::PLAYING) {
+            $sideChoices = $deckChoices = [];
+            foreach ($side as [$left, $data]) {
+                $sideChoices[$data['uuid']] = ['label' => $data['name'], 'description' => ucfirst((string) $data['rarity'])." · {$left} in the side deck"];
+            }
+            foreach ($main as [$count, $data]) {
+                $deckChoices[$data['uuid']] = ['label' => $data['name'], 'description' => (BasicLands::isBasic($data['uuid']) ? 'Basic land' : ucfirst((string) $data['rarity']))." · {$count} in the deck"];
+            }
+            uasort($sideChoices, fn (array $a, array $b) => strcasecmp($a['label'], $b['label']));
+            if (($select = MenuMessageBuilder::select(MenuMessageBuilder::id($seat->id, 'dpadd'), 'Put one copy in the deck…', $sideChoices, 25)) !== null) {
+                $message->addComponent($select);
+            }
+            if (($select = MenuMessageBuilder::select(MenuMessageBuilder::id($seat->id, 'dprem'), 'Take one copy out of the deck…', $deckChoices, 25)) !== null) {
+                $message->addComponent($select);
+            }
+            $row->addComponent(MenuMessageBuilder::button($seat->id, '🏔️ Basic lands', 'dplands'))
+                ->addComponent(MenuMessageBuilder::button($seat->id, '🤖 Auto-build', 'dpauto'))
+                ->addComponent(MenuMessageBuilder::styled(Button::STYLE_SUCCESS, $seat->id, $seat->ready ? '✅ Ready' : 'Ready', 'dpready')->setDisabled($seat->ready && $draft->status === Draft::BUILDING));
+        }
+
+        return $message->addComponent($row
+            ->addComponent(MenuMessageBuilder::button($seat->id, '◀ Draft', 'draft'))
+            ->addComponent(MenuMessageBuilder::menuButton($seat->id)));
     }
 
     /**

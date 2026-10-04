@@ -25,6 +25,7 @@ use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Matches\MatchRecord;
 use MTGPocket\Matches\MatchService;
 use MTGPocket\Matches\PanelActions;
+use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
 use React\Promise\PromiseInterface;
 
@@ -131,7 +132,9 @@ final class Matches implements Module
         }, $this->deckChoices(...));
 
         $mtg->listenCommand(['match', 'modes'], function (Interaction $interaction, $options) use ($mtg, $matches) {
-            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => MatchMessageBuilder::modes($matches->modes, $matches->queueSizes()));
+            [$id] = self::caller($interaction);
+
+            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => (new Panels($this->pocket))->play($id));
         });
 
         $mtg->listenCommand(['match', 'ladder'], function (Interaction $interaction, $options) use ($mtg, $matches) {

@@ -21,6 +21,7 @@ use MTG\Modules\Module;
 use MTG\MTG;
 use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Builders\TradeMessageBuilder;
+use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
 use MTGPocket\Trades\StaleOfferException;
 use MTGPocket\Trades\TradeOffer;
@@ -134,10 +135,10 @@ final class Trades implements Module
             ), $card, 'The offer changed. Accept buttons on earlier copies of it no longer work.'));
         }, $suggest);
 
-        $mtg->listenCommand(['trade', 'list'], function (Interaction $interaction, $options) use ($mtg, $trades, $card) {
+        $mtg->listenCommand(['trade', 'list'], function (Interaction $interaction, $options) use ($mtg) {
             [$id] = self::caller($interaction);
 
-            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => TradeMessageBuilder::list($id, $trades->forPlayer($id), $card));
+            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), fn () => (new Panels($this->pocket))->trades($id));
         });
 
         $mtg->listenCommand(['trade', 'cancel'], function (Interaction $interaction, $options) use ($mtg, $trades, $card) {
