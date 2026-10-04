@@ -108,7 +108,7 @@ final class Game
     public int $passes = 0;
 
     /** Ways in {@see plays()} that are not casting a spell. */
-    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell'];
+    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm'];
 
     /** @var array<int, true> Attacking creatures. */
     public array $attackers = [];
@@ -888,6 +888,11 @@ final class Game
             if (isset($card->altCosts['regrow']) && $this->whyNotRegrow($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'regrow'];
             }
+            foreach (['eternalize', 'embalm'] as $way) {
+                if (isset($card->altCosts[$way]) && $this->whyNotEmbalm($seat, $id, $way) === null) {
+                    $plays[] = ['id' => $id, 'how' => $way];
+                }
+            }
         }
         foreach ($this->exile as $id) {
             $exiled = $this->objects[$id];
@@ -952,7 +957,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -998,7 +1003,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1272,7 +1277,7 @@ final class Game
         $options = self::castOptions($how);
 
         return match (true) {
-            $options['faceDown'] => [],
+            $options['faceDown'], $options['alt'] === 'overload' => [],
             $options['bestowed'] => [$card->bestow['enchant']],
             default => $card->targetKinds($options['modes'], $options['kicked']),
         };
@@ -1435,11 +1440,13 @@ final class Game
             }
             $plan = ManaPayer::plan($payment, $player->manaPool, $sources);
             // `{1}, {T}: Add one mana of any color.`: each one used that way costs {1} more.
+            // A Signet's `{1}, {T}: Add {W}{U}.` works the same way, its {1} paid by other mana.
             $filters = array_keys(array_filter($sources, fn (array $source) => $source['filter'] ?? false));
-            for ($k = 1; $plan === null && $k <= count($filters); $k++) {
+            $others = array_sum(array_map(fn (array $source) => ($source['filter'] ?? false) ? 0 : $source['count'], $sources)) + $player->manaPool->total();
+            for ($k = 1; $plan === null && $k <= count($filters) && $k <= $others; $k++) {
                 $filtered = $sources;
                 foreach (array_slice($filters, 0, $k) as $id) {
-                    $filtered[$id] = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
+                    $filtered[$id] = $sources[$id]['filterAs'] ?? ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
                 }
                 $plan = ManaPayer::plan(['mana' => ['generic' => ($payment['mana']['generic'] ?? 0) + $k] + $payment['mana']] + $payment, $player->manaPool, $filtered);
             }
@@ -2317,6 +2324,57 @@ final class Game
         $this->settle();
     }
 
+    /**
+     * Embalm (rule 702.128) or eternalize (rule 702.129): exiles the card from
+     * your graveyard, as a sorcery, for a token copy that's a Zombie (4/4 and
+     * black when eternalized, white when embalmed) with no mana cost.
+     *
+     * @param int    $seat
+     * @param int    $id
+     * @param string $way  `embalm` or `eternalize`.
+     *
+     * @return void
+     */
+    public function embalm(int $seat, int $id, string $way): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotEmbalm($seat, $id, $way)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $this->pay($seat, $this->payFor($seat, $card->altCosts[$way]));
+        $this->moveTo($object, GameObject::EXILE);
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => [['type' => 'embalm', 'way' => $way]],
+            'kinds' => [],
+            'label' => "{$card->name}'s {$way}",
+        ], [], 'is activated', "{$way} {$card->name}");
+        $this->settle();
+    }
+
+    private function whyNotEmbalm(int $seat, int $id, string $way): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::GRAVEYARD || $object->owner !== $seat) {
+            return 'That card is not in your graveyard.';
+        }
+        if (! isset($object->printed()->altCosts[$way])) {
+            return "{$object->name()} has no {$way}.";
+        }
+        if (! $this->sorcerySpeed($seat)) {
+            return ucfirst($way).' only as a sorcery.';
+        }
+        if ($this->payFor($seat, $object->printed()->altCosts[$way]) === null) {
+            return "You cannot pay {$object->printed()->altCosts[$way]}.";
+        }
+
+        return null;
+    }
+
     private function whyNotRegrow(int $seat, int $id): ?string
     {
         $object = $this->objects[$id] ?? null;
@@ -2425,6 +2483,16 @@ final class Game
         $previous = null;
         foreach ($effects as $effect) {
             $target = null;
+            // Overload (rule 702.96): "target" becomes "each".
+            if (! $ability && ($item['alt'] ?? '') === 'overload' && isset($effect['target'])) {
+                foreach ($this->permanents() as $each) {
+                    if ($this->matchesKind($each, $effect['target'], $item['controller'])) {
+                        $steps[] = [$effect, "o:{$each->id}"];
+                    }
+                }
+
+                continue;
+            }
             if (isset($effect['target'])) {
                 $target = $item['targets'][$slot];
                 // A fight needs both its creatures; it keeps the first one's target, legal or not.
@@ -3089,6 +3157,19 @@ final class Game
                     $this->attackers[$source->id] = true;
                     $this->log("{$source->name()} enters tapped and attacking.");
                 }
+                break;
+
+            case 'embalm':
+                // A token copy that's a Zombie with no mana cost: 4/4 and black when eternalized, white when embalmed.
+                $printed = $source->printed();
+                $copy = $this->createToken(array_merge($printed->card, [
+                    'name' => $printed->name,
+                    'manaCost' => null,
+                    'colors' => $effect['way'] === 'eternalize' ? ['B'] : ['W'],
+                    'type' => $printed->card['type'].(in_array('Zombie', $printed->subtypes, true) ? '' : ' Zombie'),
+                    'subtypes' => array_values(array_unique([...$printed->subtypes, 'Zombie'])),
+                ], $effect['way'] === 'eternalize' ? ['power' => '4', 'toughness' => '4'] : []), $controller);
+                $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()} ({$effect['way']}).");
                 break;
 
             case 'offspring':
@@ -4262,6 +4343,20 @@ final class Game
             $this->trigger($this->objects[$id], 'attacks', $seat);
         }
 
+        // Enlist (rule 702.154): taps your weakest nonattacking creature that could attack, for its power.
+        foreach ($ids as $id) {
+            if (! $this->hasKeyword($this->objects[$id], 'enlist')) {
+                continue;
+            }
+            $helper = $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) && ! $o->tapped && ! isset($this->attackers[$o->id])
+                && (! $o->sick || $this->hasKeyword($o, 'haste')) && $this->power($o) > 0);
+            if ($helper !== null) {
+                $helper->tapped = true;
+                $this->objects[$id]->untilEndOfTurn[] = ['power' => $this->power($helper), 'toughness' => 0, 'keywords' => []];
+                $this->log("{$this->objects[$id]->name()} enlists {$helper->name()} and gets +{$this->power($helper)}/+0 until end of turn.");
+            }
+        }
+
         // Exalted (rule 702.83): each instance gives a creature attacking alone +1/+1.
         if (count($ids) === 1) {
             $exalted = count(array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'exalted')));
@@ -4855,6 +4950,9 @@ final class Game
     private function entersUntapped(GameObject $object, int $controller): bool
     {
         $unless = $object->definition()->entersTappedUnless;
+        if (isset($unless['player_life'])) {
+            return min(array_map(fn (GamePlayer $player) => $player->life, $this->players)) <= $unless['player_life'];
+        }
         if (isset($unless['life'])) {
             if ($this->active !== $controller || $this->players[$controller]->life <= 10) {
                 return false;
