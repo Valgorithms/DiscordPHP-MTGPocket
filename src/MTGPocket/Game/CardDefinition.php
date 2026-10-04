@@ -98,6 +98,9 @@ final class CardDefinition
     /** A kicker cost (rule 702.33). */
     public readonly ?string $kicker;
 
+    /** An entwine cost (rule 702.42): every mode for this much more. */
+    public readonly ?string $entwine;
+
     /** How many +1/+1 counters it enters with when kicked. */
     public readonly int $kickerCounters;
 
@@ -211,6 +214,7 @@ final class CardDefinition
         $this->choose = $parsed['choose'];
         $this->ward = $parsed['ward'];
         $this->kicker = $parsed['kicker'];
+        $this->entwine = $parsed['entwine'];
         $this->kickerCounters = $parsed['kickerCounters'];
         $this->flashback = $parsed['flashback'];
         $this->cycling = $parsed['cycling'];
