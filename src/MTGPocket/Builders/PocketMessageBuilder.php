@@ -93,12 +93,14 @@ class PocketMessageBuilder extends MessageBuilder
         $container = Container::new()
             ->setAccentColor(self::accent($pack->color))
             ->addComponent(TextDisplay::new(sprintf(
-                "### %s — %s pack\n-# %s · %d new · next free pack <t:%d:R>",
+                "### %s — %s pack\n-# %s · %d new · %s",
                 $pack->setName,
                 self::COLOR_NAMES[$pack->color] ?? $pack->color,
                 Text::plural(count($pack->cards), 'card'),
                 count(array_unique(array_filter(array_column($pack->cards, 'uuid'), $opened->isNew(...)))),
-                $opened->nextPackAt,
+                $opened->price === null
+                    ? "next free pack <t:{$opened->nextPackAt}:R>"
+                    : 'bought for '.self::points($opened->price).' · '.self::points((int) $opened->balance).' left',
             )))
             ->addComponent(Separator::new())
             ->addComponent(TextDisplay::new(Text::clip(implode("\n", $lines), 3500)));
@@ -278,6 +280,18 @@ class PocketMessageBuilder extends MessageBuilder
     public static function cardLine(array $card): string
     {
         return (Text::RARITIES[$card['rarity']] ?? '▫️')." **{$card['name']}**".(empty($card['type']) ? '' : " · {$card['type']}");
+    }
+
+    /**
+     * An amount of points, e.g. `1,250 points`.
+     *
+     * @param int $points
+     *
+     * @return string
+     */
+    public static function points(int $points): string
+    {
+        return number_format($points).' '.($points === 1 ? 'point' : 'points');
     }
 
     /**

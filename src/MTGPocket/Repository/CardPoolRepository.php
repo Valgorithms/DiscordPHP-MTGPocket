@@ -129,6 +129,33 @@ class CardPoolRepository
     }
 
     /**
+     * Cards from any pool whose name contains some text, newest set first,
+     * each with its `setCode` and `setName` added.
+     *
+     * @param string $typed
+     * @param int    $limit
+     *
+     * @return list<array>
+     */
+    public function search(string $typed, int $limit = 25): array
+    {
+        $typed = mb_strtolower(trim($typed));
+        $found = [];
+        foreach (array_reverse($this->all(), true) as $pool) {
+            foreach ($pool->cards() as $card) {
+                if ($typed === '' || str_contains(mb_strtolower($card['name']), $typed)) {
+                    $found[] = $card + ['setCode' => $pool->setCode, 'setName' => $pool->setName];
+                    if (count($found) >= $limit) {
+                        return $found;
+                    }
+                }
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * The codes of every imported set.
      *
      * @return string[]

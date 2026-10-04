@@ -21,10 +21,14 @@ use Discord\Parts\Interactions\Command\Option;
 use MTG\Helpers\CommandSignature;
 use MTG\MTG;
 use MTGPocket\Builders\PocketMessageBuilder;
+use MTGPocket\Builders\ShopMessageBuilder;
+use MTGPocket\Builders\TradeMessageBuilder;
 use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
+use MTGPocket\Modules\Shop;
+use MTGPocket\Modules\Trades;
 
 /**
  * The Discord side, without connecting: command definitions follow
@@ -34,6 +38,10 @@ use MTGPocket\Modules\PlayerDecks;
  * @covers \MTGPocket\Modules\Collection
  * @covers \MTGPocket\Modules\PlayerDecks
  * @covers \MTGPocket\Modules\Matches
+ * @covers \MTGPocket\Modules\Shop
+ * @covers \MTGPocket\Modules\Trades
+ * @covers \MTGPocket\Builders\ShopMessageBuilder
+ * @covers \MTGPocket\Builders\TradeMessageBuilder
  * @covers \MTGPocket\Modules\PocketTrait
  * @covers \MTGPocket\Builders\PocketMessageBuilder
  */
@@ -60,7 +68,7 @@ final class ModulesTest extends PocketTestCase
     {
         $mtg = self::offlineClient();
         $names = [];
-        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket)] as $module) {
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Shop($this->pocket), new Trades($this->pocket)] as $module) {
             foreach ($module->commands($mtg) as $builder) {
                 $command = $builder->jsonSerialize();
                 $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
@@ -76,7 +84,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks', 'match'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match', 'shop', 'trade'], array_keys($names));
     }
 
     public function testPackMessage(): void
@@ -140,6 +148,57 @@ final class ModulesTest extends PocketTestCase
         $this->assertSame($unicode, $decode($encode($unicode)));
         $longest = $encode(['player' => '11692725014586982600', 'set' => 'ABCDEFGH', 'color' => 'M', 'rarity' => 'mythic', 'name' => $unicode['name']]);
         $this->assertLessThanOrEqual(100, strlen("pocket:page:{$longest}:999"), 'The longest query still fits in a custom id.');
+    }
+
+    public function testShopMessages(): void
+    {
+        $this->importPool('TST', ['R' => self::fullColor()], '2026-06-01');
+        $shop = $this->pocket->shop;
+        $this->pocket->inventories->addCards('116927250145869826', ['TST-R-common-1' => 9, 'TST-R-rare-1' => 1]);
+
+        $balance = json_encode(ShopMessageBuilder::balance(0, $shop->prices, $shop->packPrices()), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('You have **0 points**', $balance);
+        $this->assertStringContainsString('×2 up to 1 year old, ×1.5 up to 3 years old, ×1 up to 10 years old, ×0.75 older', $balance);
+        $this->assertStringContainsString('`TST` Set TST — 1,000 points', $balance);
+
+        $quote = json_encode(ShopMessageBuilder::quote($shop->quote('TST-R-rare-1'), 1, 0), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Buy for **600 points** · sell for **120 points**', $quote);
+
+        $extras = ShopMessageBuilder::extras('116927250145869826', $shop->extras('116927250145869826', 4, 'common', 'TST'), $this->pocket->trades->cardData(...), 4, 'common', 'TST');
+        $json = json_encode($extras, JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Sell 5 cards for 40 points?', $json);
+        $this->assertStringContainsString('"custom_id":"pocket:sellx:116927250145869826:4:c:TST"', $json);
+        $this->assertLessThanOrEqual(100, strlen(ShopMessageBuilder::sellExtrasId('11692725014586982600', 99, 'uncommon', 'ABCDEFGH')));
+
+        $receipt = json_encode(ShopMessageBuilder::receipt($shop->sellExtras('116927250145869826', 'Val', 4, 'common', 'TST'), true), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Sold 5 cards for 40 points', $receipt);
+        $this->assertStringContainsString('You now have 40 points.', $receipt);
+
+        $bought = json_encode(PocketMessageBuilder::pack(new \MTGPocket\Packs\OpenedPack($this->pocket->dailyPacks->open('2', 'Ana')->pack, [], null, 1000, 50)), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('bought for 1,000 points · 50 points left', $bought);
+    }
+
+    public function testTradeMessages(): void
+    {
+        $this->importPool('TST', ['R' => self::fullColor()]);
+        $this->pocket->inventories->addCards('116927250145869826', ['TST-R-rare-1' => 1]);
+        $this->pocket->inventories->addCards('2', ['TST-R-mythic-1' => 1]);
+        $trades = $this->pocket->trades;
+        $offer = $trades->offer('116927250145869826', 'Val', '2', 'Ana', ['TST-R-rare-1' => 1], ['TST-R-mythic-1' => 1]);
+
+        $json = json_encode(TradeMessageBuilder::offer($offer, $trades->cardData(...)), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('<@2>, **Val** offers you a trade.', $json);
+        $this->assertStringContainsString('**Val gives**\n🟡 **TST R rare 1**', str_replace('×1 ', '', $json));
+        $this->assertStringContainsString('"users":["2"]', $json, 'Only the other player is mentioned.');
+        $this->assertStringContainsString('"custom_id":"pocket:trade:'.$offer->id.':accept:1"', $json);
+        $this->assertLessThanOrEqual(100, strlen(TradeMessageBuilder::id($offer, 'decline')));
+
+        $list = json_encode(TradeMessageBuilder::list('2', $trades->forPlayer('2'), $trades->cardData(...)), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('From **Val**: 1 card for 1 card', $list);
+        $this->assertStringContainsString('"custom_id":"pocket:tradeview"', $list);
+
+        $done = json_encode(TradeMessageBuilder::closed($trades->accept($offer->id, '2', 'Ana', 1), $trades->cardData(...)), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('**Ana** accepted **Val**\'s offer.', $done);
     }
 
     private function assertDescription(string $description, string $where): void

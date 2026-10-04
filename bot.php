@@ -25,6 +25,9 @@ use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
+use MTGPocket\Modules\Shop;
+use MTGPocket\Modules\Trades;
+use MTGPocket\Economy\PriceList;
 use MTGPocket\Pocket;
 
 use function React\Promise\set_rejection_handler;
@@ -47,8 +50,12 @@ $handler->setFormatter(new LineFormatter(null, null, true, true, true));
 $logger = new Logger('MTGPOCKET', [$handler]);
 set_rejection_handler(fn (\Throwable $e) => $logger->warning("Unhandled promise rejection: {$e->getMessage()} [{$e->getFile()}:{$e->getLine()}]"));
 
-// Players, collections, decks and card pools, as JSON files.
-$pocket = new Pocket(getenv('MTGPOCKET_DATA') ?: __DIR__.'/var/data');
+// Players, collections, decks and card pools, as JSON files; shop prices
+// from config/economy.php (or MTGPOCKET_ECONOMY).
+$pocket = new Pocket(
+    getenv('MTGPOCKET_DATA') ?: __DIR__.'/var/data',
+    prices: PriceList::fromFile(getenv('MTGPOCKET_ECONOMY') ?: PriceList::DEFAULT_FILE),
+);
 
 $mtg = new MTG([
     'logger' => $logger,
@@ -61,13 +68,15 @@ $mtg = new MTG([
     ],
 ]);
 
-// Card lookups come from DiscordPHP-MTG; daily packs, collections, decks and
-// matches are the game's own.
+// Card lookups come from DiscordPHP-MTG; daily packs, collections, decks,
+// matches, the shop and trades are the game's own.
 $mtg
     ->addModule(new Packs($pocket))
     ->addModule(new Collection($pocket))
     ->addModule(new PlayerDecks($pocket))
     ->addModule(new Matches($pocket))
+    ->addModule(new Shop($pocket))
+    ->addModule(new Trades($pocket))
     ->addModule(new Cards())
     ->addModule(new Help())
     ->addModule(new About());

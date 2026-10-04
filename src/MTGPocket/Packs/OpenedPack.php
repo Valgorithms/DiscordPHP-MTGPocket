@@ -23,12 +23,16 @@ final class OpenedPack
     /**
      * @param Pack                $pack
      * @param array<string, bool> $new         Uuids of the cards the player did not own before.
-     * @param int                 $nextPackAt  Unix time their next free pack is ready.
+     * @param int|null            $nextPackAt  Unix time their next free pack is ready; null for a bought pack.
+     * @param int|null            $price       Points a bought pack cost; null for a free one.
+     * @param int|null            $balance     Points left after buying it.
      */
     public function __construct(
         public readonly Pack $pack,
         public readonly array $new,
-        public readonly int $nextPackAt,
+        public readonly ?int $nextPackAt,
+        public readonly ?int $price = null,
+        public readonly ?int $balance = null,
     ) {
     }
 
