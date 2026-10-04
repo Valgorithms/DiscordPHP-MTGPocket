@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace MTGPocket\Game;
 
+use MTGPocket\Game\Mana\ManaCost;
 use MTGPocket\Game\Mana\ManaPayer;
 use Random\Engine\Xoshiro256StarStar;
 use Random\Randomizer;
@@ -20,8 +21,9 @@ use Random\Randomizer;
 /**
  * A two-player game of Magic under the Comprehensive Rules: the opening
  * hands and London mulligan, the turn structure, priority and the stack,
- * playing lands, casting spells with automatic mana payment, combat and
- * state-based actions.
+ * playing lands, casting spells with automatic mana payment, combat,
+ * triggered and activated abilities (loyalty and Equip included), tokens
+ * and state-based actions.
  *
  * Every action checks that the rules allow it and throws a
  * {@see GameException} (changing nothing) when they do not. After each
@@ -53,8 +55,22 @@ final class Game
     /** @var int[] Permanents, in the order they entered. */
     public array $battlefield = [];
 
-    /** @var array<int, array{id: int, object: int, incarnation: int, controller: int, x: int, targets: string[]}> Spells; the last is the top. */
+    /**
+     * Spells and abilities; the last is the top. An ability also has `kind`
+     * (`ability`), its `effects`, its target `kinds` and a `label`; its
+     * `object` is its source.
+     *
+     * @var array<int, array{id: int, object: int, incarnation: int, controller: int, x: int, targets: string[], kind?: string, effects?: array[], kinds?: string[], label?: string}>
+     */
     public array $stack = [];
+
+    /**
+     * Abilities that have triggered and wait to be put on the stack the next
+     * time a player would receive priority (rule 603.3).
+     *
+     * @var array<int, array{source: int, incarnation: int, controller: int, effects: array[], kinds: string[], label: string, text: string}>
+     */
+    public array $pendingTriggers = [];
 
     /** @var int[] */
     public array $exile = [];
@@ -144,7 +160,8 @@ final class Game
 
     /**
      * Puts a new card straight into a zone, for setting up puzzles and
-     * tests. A permanent enters untapped and without summoning sickness.
+     * tests. A permanent enters untapped and without summoning sickness,
+     * and its "enters" abilities do not trigger.
      *
      * @param int    $owner
      * @param array  $card  Card data.
@@ -158,7 +175,7 @@ final class Game
         $this->objects[$object->id] = $object;
         $this->exile[] = $object->id;
         if ($zone === GameObject::BATTLEFIELD) {
-            $this->putOntoBattlefield($object, $owner);
+            $this->putOntoBattlefield($object, $owner, false);
             $object->sick = false;
             $object->tapped = false;
         } else {
@@ -174,7 +191,8 @@ final class Game
 
     /**
      * The choice a player has to make now, if any: `mulligan`, `bottom`,
-     * `attack`, `block`, `discard` or `priority`.
+     * `trigger` (targets for a triggered ability), `attack`, `block`,
+     * `discard` or `priority`.
      *
      * @param int $seat
      *
@@ -188,6 +206,9 @@ final class Game
         }
         if ($this->stage === self::MULLIGAN) {
             return ! $player->kept ? 'mulligan' : ($player->toBottom > 0 ? 'bottom' : null);
+        }
+        if ($this->pendingTriggers !== [] && $this->priority !== null) {
+            return $seat === $this->pendingTriggers[0]['controller'] ? 'trigger' : null;
         }
         if ($this->step === Step::DeclareAttackers && ! isset($this->declared['attack'])) {
             return $seat === $this->active ? 'attack' : null;
@@ -389,8 +410,9 @@ final class Game
     }
 
     /**
-     * Checks state-based actions and passes for players who have nothing to
-     * do, until someone has a real choice or the game is over.
+     * Checks state-based actions, puts triggered abilities on the stack and
+     * passes for players who have nothing to do, until someone has a real
+     * choice or the game is over.
      *
      * @return void
      */
@@ -398,7 +420,10 @@ final class Game
     {
         for ($guard = 0; $guard < 1000 && $this->stage === self::PLAYING; $guard++) {
             $this->checkStateBasedActions();
-            if ($this->stage !== self::PLAYING || $this->priority === null || ! $this->shouldAutoPass($this->priority)) {
+            if ($this->stage !== self::PLAYING || $this->priority === null) {
+                return;
+            }
+            if ($this->flushTriggers() || ! $this->shouldAutoPass($this->priority)) {
                 return;
             }
             $this->passPriority();
@@ -414,8 +439,14 @@ final class Game
         if ($seat === $this->active && $this->step === Step::PrecombatMain && $this->stack === []) {
             return false;
         }
+        if ($this->playableCards($seat) !== []) {
+            return false;
+        }
 
-        return $this->playableCards($seat) === [];
+        // Abilities you could activate stop play only when there is something
+        // to respond to or it is your own main phase; otherwise a creature
+        // with a {T} ability would stop every step of every turn.
+        return ! (($this->stack !== [] || ($seat === $this->active && $this->step->isMain())) && $this->activatableAbilities($seat) !== []);
     }
 
     // ----------------------------------------------------------------------
@@ -473,6 +504,13 @@ final class Game
                 $this->enterStep(Step::Upkeep);
 
                 return;
+
+            case Step::Upkeep:
+            case Step::End:
+                foreach ($this->permanents($this->active) as $object) {
+                    $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
+                }
+                break;
 
             case Step::Draw:
                 // The player who plays first skips their first draw (rule 103.8a).
@@ -862,20 +900,33 @@ final class Game
     {
         $item = array_pop($this->stack);
         $object = $this->objects[$item['object']];
-        if ($object->zone !== GameObject::STACK || $object->incarnation !== $item['incarnation']) {
+        $ability = self::isAbility($item);
+        if (! $ability && ($object->zone !== GameObject::STACK || $object->incarnation !== $item['incarnation'])) {
             return;
         }
         $card = $object->definition();
-        $kinds = $card->targetKinds();
+        $kinds = $ability ? $item['kinds'] : $card->targetKinds();
+        $name = $ability ? $item['label'] : $card->name;
 
-        // A spell whose targets are all illegal does not resolve (rule 608.2b).
+        // A spell or ability whose targets are all illegal does not resolve (rule 608.2b).
         $legal = [];
         foreach ($item['targets'] as $slot => $target) {
             $legal[$slot] = $this->isLegalTarget($kinds[$slot], $target, $item['controller'], $item['id']);
         }
         if ($legal !== [] && ! in_array(true, $legal, true)) {
-            $this->log("{$card->name} has no legal targets left and does nothing.");
-            $this->moveTo($object, GameObject::GRAVEYARD);
+            $this->log("{$name} has no legal targets left and does nothing.");
+            if (! $ability) {
+                $this->moveTo($object, GameObject::GRAVEYARD);
+            }
+
+            return;
+        }
+
+        if ($ability) {
+            // "CARDNAME" effects only apply while the source is still the same permanent.
+            $self = $object->zone === GameObject::BATTLEFIELD && $object->incarnation === $item['incarnation'] ? $object : null;
+            $this->applyEffects($item['effects'], $object, $self, $item['controller'], $item['x'], $item['targets'], $legal);
+            $this->log("{$name} resolves.");
 
             return;
         }
@@ -890,17 +941,7 @@ final class Game
             return;
         }
 
-        $slot = 0;
-        foreach ($card->effects as $effect) {
-            $target = null;
-            if (isset($effect['target'])) {
-                $target = $item['targets'][$slot];
-                if (! $legal[$slot++]) {
-                    continue;
-                }
-            }
-            $this->applyEffect($effect, $object, $item['controller'], $item['x'], $target);
-        }
+        $this->applyEffects($card->effects, $object, null, $item['controller'], $item['x'], $item['targets'], $legal);
         $this->log("{$card->name} resolves.");
         if ($object->zone === GameObject::STACK) {
             $this->moveTo($object, GameObject::GRAVEYARD);
@@ -908,20 +949,51 @@ final class Game
     }
 
     /**
-     * Does one effect of a resolving instant or sorcery.
+     * Does a spell's or ability's effects in order, skipping those whose
+     * target has become illegal.
      *
-     * @param array       $effect     See {@see TextParser::effect()}.
-     * @param GameObject  $source
-     * @param int         $controller
-     * @param int         $x
-     * @param string|null $target
+     * @param array[]         $effects
+     * @param GameObject      $source
+     * @param GameObject|null $self       The permanent "CARDNAME" refers to, if it is still there.
+     * @param int             $controller
+     * @param int             $x
+     * @param string[]        $targets
+     * @param bool[]          $legal      By target slot.
      *
      * @return void
      */
-    private function applyEffect(array $effect, GameObject $source, int $controller, int $x, ?string $target): void
+    private function applyEffects(array $effects, GameObject $source, ?GameObject $self, int $controller, int $x, array $targets, array $legal): void
+    {
+        $slot = 0;
+        foreach ($effects as $effect) {
+            $target = null;
+            if (isset($effect['target'])) {
+                $target = $targets[$slot];
+                if (! $legal[$slot++]) {
+                    continue;
+                }
+            }
+            $this->applyEffect($effect, $source, $self, $controller, $x, $target);
+        }
+    }
+
+    /**
+     * Does one effect of a resolving spell or ability.
+     *
+     * @param array           $effect     See {@see TextParser::effect()}.
+     * @param GameObject      $source
+     * @param GameObject|null $self
+     * @param int             $controller
+     * @param int             $x
+     * @param string|null     $target
+     *
+     * @return void
+     */
+    private function applyEffect(array $effect, GameObject $source, ?GameObject $self, int $controller, int $x, ?string $target): void
     {
         $amount = ($effect['amount'] ?? 0) === 'X' ? $x : (int) ($effect['amount'] ?? 0);
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
+        $affected = ($effect['self'] ?? false) ? $self : ($target === null ? null : $this->targetObject($target));
 
         switch ($effect['type']) {
             case 'damage':
@@ -944,26 +1016,58 @@ final class Game
                 break;
 
             case 'lose_life':
-                $seats = isset($effect['each']) ? $opponents : [(int) substr((string) $target, 2)];
+                $seats = match (true) {
+                    isset($effect['each']) => $opponents,
+                    isset($effect['you']) => [$controller],
+                    default => [(int) substr((string) $target, 2)],
+                };
                 foreach ($seats as $seat) {
                     $this->players[$seat]->life -= $amount;
                 }
                 break;
 
             case 'destroy':
-                $this->destroy($this->targetObject((string) $target));
+                $this->destroy($affected);
                 break;
 
             case 'exile':
-                $this->moveTo($this->targetObject((string) $target), GameObject::EXILE);
+                $this->moveTo($affected, GameObject::EXILE);
                 break;
 
             case 'bounce':
-                $this->moveTo($this->targetObject((string) $target), GameObject::HAND);
+                $this->moveTo($affected, GameObject::HAND);
                 break;
 
             case 'pump':
-                $this->targetObject((string) $target)->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => $effect['keywords']];
+                if ($affected !== null) {
+                    $affected->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => $effect['keywords']];
+                }
+                break;
+
+            case 'counters':
+                $affected?->addCounters('+1/+1', $amount);
+                break;
+
+            case 'tap':
+            case 'untap':
+                if ($affected !== null) {
+                    $affected->tapped = $effect['type'] === 'tap';
+                }
+                break;
+
+            case 'token':
+                for ($i = 0; $i < $amount; $i++) {
+                    $this->createToken((array) $effect['token'], $controller);
+                }
+                $this->log("{$this->players[$controller]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
+                break;
+
+            case 'attach':
+                // Equip (rule 702.6): only while the Equipment is still on the battlefield.
+                if ($self !== null && $affected !== null && $affected->id !== $self->id) {
+                    $self->attachedTo = $affected->id;
+                    $this->log("{$self->name()} is attached to {$affected->name()}.");
+                }
                 break;
 
             case 'counter':
@@ -979,6 +1083,383 @@ final class Game
                 }
                 break;
         }
+    }
+
+    /**
+     * Creates a creature token (rule 111): it is owned by the player who
+     * created it and enters the battlefield like any permanent.
+     *
+     * @param array $token      Card data from {@see TextParser}.
+     * @param int   $controller
+     *
+     * @return GameObject
+     */
+    private function createToken(array $token, int $controller): GameObject
+    {
+        $object = new GameObject($this->nextId++, $controller, ['token' => true] + $token, GameObject::GONE);
+        $this->objects[$object->id] = $object;
+        $this->putOntoBattlefield($object, $controller);
+
+        return $object;
+    }
+
+    // ----------------------------------------------------------------------
+    // Triggered and activated abilities
+    // ----------------------------------------------------------------------
+
+    /**
+     * Whether a stack item is an ability rather than a spell.
+     *
+     * @param array $item
+     *
+     * @return bool
+     */
+    public static function isAbility(array $item): bool
+    {
+        return ($item['kind'] ?? 'spell') === 'ability';
+    }
+
+    /**
+     * The kinds of target effects need, in order.
+     *
+     * @param array[] $effects
+     *
+     * @return string[]
+     */
+    private static function targetKindsOf(array $effects): array
+    {
+        return array_values(array_map(fn (array $effect) => $effect['target'], array_filter($effects, fn (array $effect) => isset($effect['target']))));
+    }
+
+    /**
+     * Queues a permanent's abilities that trigger on an event (rule 603.2).
+     *
+     * @param GameObject $source
+     * @param string     $event       See {@see CardDefinition::triggersOn()}.
+     * @param int        $controller  Who controlled the source when the event happened.
+     * @param int|null   $incarnation The source's, if it has since changed zones.
+     *
+     * @return void
+     */
+    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null): void
+    {
+        foreach ($source->definition()->triggersOn($event) as $ability) {
+            $this->pendingTriggers[] = [
+                'source' => $source->id,
+                'incarnation' => $incarnation ?? $source->incarnation,
+                'controller' => $controller,
+                'effects' => $ability['effects'],
+                'kinds' => self::targetKindsOf($ability['effects']),
+                'label' => "{$source->name()}'s ability",
+                'text' => str_replace('CARDNAME', $source->name(), $ability['text']),
+            ];
+        }
+    }
+
+    /**
+     * Puts waiting triggered abilities on the stack, the active player's
+     * first so the other player's resolve first (rule 603.3b). Targets are
+     * chosen for the controller when there is only one choice; an ability
+     * with no legal targets is removed (rule 603.3d).
+     *
+     * @return bool Whether a player must now choose targets for one.
+     */
+    private function flushTriggers(): bool
+    {
+        usort($this->pendingTriggers, fn (array $a, array $b) => ($a['controller'] !== $this->active) <=> ($b['controller'] !== $this->active));
+        while ($this->pendingTriggers !== []) {
+            $trigger = $this->pendingTriggers[0];
+            $targets = [];
+            foreach ($trigger['kinds'] as $kind) {
+                $options = $this->targetOptions($trigger['controller'], $kind);
+                if ($options === []) {
+                    array_shift($this->pendingTriggers);
+                    $this->log("{$trigger['label']} has no legal targets and is removed.");
+
+                    continue 2;
+                }
+                if (count($options) > 1) {
+                    return true;
+                }
+                $targets[] = $options[0];
+            }
+            array_shift($this->pendingTriggers);
+            $this->pushAbility($trigger, $targets, 'triggers');
+        }
+
+        return false;
+    }
+
+    /**
+     * Choose targets for the triggered ability waiting on them.
+     *
+     * @param int      $seat
+     * @param string[] $targets One per target, as for {@see cast()}.
+     *
+     * @return void
+     */
+    public function chooseTriggerTargets(int $seat, array $targets): void
+    {
+        $this->expect($seat, 'trigger');
+        $trigger = $this->pendingTriggers[0];
+        $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label']);
+        array_shift($this->pendingTriggers);
+        $this->pushAbility($trigger, array_values($targets), 'triggers');
+        $this->settle();
+    }
+
+    /**
+     * The triggered ability waiting for its controller to choose targets.
+     *
+     * @return array{source: int, incarnation: int, controller: int, effects: array[], kinds: string[], label: string, text: string}|null
+     */
+    public function triggerAwaitingTargets(): ?array
+    {
+        return $this->pendingTriggers !== [] && $this->priority !== null ? $this->pendingTriggers[0] : null;
+    }
+
+    /**
+     * Puts an ability on the stack with its targets.
+     *
+     * @param array{source: int, incarnation: int, controller: int, effects: array[], kinds: string[], label: string} $ability
+     * @param string[] $targets Already checked.
+     * @param string   $verb    For the log: `triggers` or `is activated`.
+     *
+     * @return void
+     */
+    private function pushAbility(array $ability, array $targets, string $verb): void
+    {
+        $targets = array_map(fn (string $target) => $this->pinTarget($target), $targets);
+        $this->stack[] = [
+            'id' => $this->nextStackId++,
+            'object' => $ability['source'],
+            'incarnation' => $ability['incarnation'],
+            'controller' => $ability['controller'],
+            'x' => 0,
+            'targets' => $targets,
+            'kind' => 'ability',
+            'effects' => $ability['effects'],
+            'kinds' => $ability['kinds'],
+            'label' => $ability['label'],
+        ];
+        $this->passes = 0;
+        $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
+        $this->log("{$ability['label']} {$verb}".($named === [] ? '' : ' targeting '.implode(', ', $named)).'.');
+    }
+
+    /**
+     * Throws unless targets fit the kinds a spell or ability needs.
+     *
+     * @param string[] $kinds
+     * @param string[] $targets
+     * @param int      $seat
+     * @param string   $name
+     *
+     * @return void
+     */
+    private function checkTargets(array $kinds, array $targets, int $seat, string $name): void
+    {
+        if (count($targets) !== count($kinds)) {
+            throw new GameException("{$name} needs ".count($kinds).' target'.(count($kinds) === 1 ? '' : 's').'.');
+        }
+        foreach ($kinds as $slot => $kind) {
+            if (! $this->isLegalTarget($kind, (string) $targets[$slot], $seat)) {
+                throw new GameException("That is not a legal target for {$name}.");
+            }
+        }
+    }
+
+    /**
+     * The activated abilities a player could activate right now, as
+     * `[objectId, abilityIndex]` pairs.
+     *
+     * @param int $seat
+     *
+     * @return array<int, array{0: int, 1: int}>
+     */
+    public function activatableAbilities(int $seat): array
+    {
+        if ($this->stage !== self::PLAYING || $this->priority !== $seat) {
+            return [];
+        }
+        $abilities = [];
+        foreach ($this->permanents($seat) as $object) {
+            foreach (array_keys($object->definition()->activated) as $index) {
+                if ($this->canActivate($seat, $object->id, $index)) {
+                    $abilities[] = [$object->id, $index];
+                }
+            }
+        }
+
+        return $abilities;
+    }
+
+    /**
+     * Whether a player could activate an ability now: the timing and its
+     * limits allow it, it has legal targets and they can pay its cost.
+     *
+     * @param int $seat
+     * @param int $id
+     * @param int $index Among the card's {@see CardDefinition::$activated}.
+     *
+     * @return bool
+     */
+    public function canActivate(int $seat, int $id, int $index): bool
+    {
+        if ($this->whyNotActivate($seat, $id, $index) !== null) {
+            return false;
+        }
+        $object = $this->objects[$id];
+        $ability = $object->definition()->activated[$index];
+        foreach (self::targetKindsOf($ability['effects']) as $kind) {
+            if ($this->targetOptions($seat, $kind) === []) {
+                return false;
+            }
+        }
+
+        return $this->abilityPayment($seat, $object, $ability) !== null;
+    }
+
+    private function whyNotActivate(int $seat, int $id, int $index): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $seat) {
+            return 'You do not control that permanent.';
+        }
+        $card = $object->definition();
+        $ability = $card->activated[$index] ?? null;
+        if ($ability === null) {
+            return "{$card->name} has no such ability.";
+        }
+        if ($this->priority !== $seat) {
+            return 'You do not have priority.';
+        }
+        if ($ability['sorcery'] && ! $this->sorcerySpeed($seat)) {
+            return "That ability of {$card->name} can be activated only in your own main phase, when the stack is empty.";
+        }
+        if ($ability['once'] && ($object->used[$index] ?? 0) === $this->turn) {
+            return "You have already activated that ability of {$card->name} this turn.";
+        }
+        $cost = $ability['cost'];
+        if (isset($cost['loyalty'])) {
+            // One loyalty ability per planeswalker per turn (rule 606.3).
+            foreach ($object->used as $used => $turn) {
+                if ($turn === $this->turn && isset($card->activated[$used]['cost']['loyalty'])) {
+                    return "You have already activated a loyalty ability of {$card->name} this turn.";
+                }
+            }
+            if ($cost['loyalty'] < 0 && $object->counter('loyalty') < -$cost['loyalty']) {
+                return "{$card->name} does not have enough loyalty.";
+            }
+        }
+        if ($cost['tap'] ?? false) {
+            if ($object->tapped) {
+                return "{$card->name} is tapped.";
+            }
+            if ($this->isCreature($object) && $object->sick && ! $this->hasKeyword($object, 'haste')) {
+                return "{$card->name} has not been under your control since your turn began.";
+            }
+        }
+        if (($cost['life'] ?? 0) > $this->players[$seat]->life) {
+            return 'You do not have enough life.';
+        }
+
+        return null;
+    }
+
+    /**
+     * How a player would pay an ability's mana cost, or null when they cannot.
+     *
+     * @param int        $seat
+     * @param GameObject $object
+     * @param array      $ability
+     *
+     * @return array{life: int, pool: array<string, int>, tap: int[], float: array<string, int>}|null
+     */
+    private function abilityPayment(int $seat, GameObject $object, array $ability): ?array
+    {
+        if (! isset($ability['cost']['mana'])) {
+            return ['life' => 0, 'pool' => [], 'tap' => [], 'float' => []];
+        }
+        $player = $this->players[$seat];
+        $sources = $this->manaSources($seat);
+        if ($ability['cost']['tap'] ?? false) {
+            unset($sources[$object->id]); // It is tapped for the cost itself.
+        }
+        foreach (ManaCost::parse($ability['cost']['mana'])->payments() as $payment) {
+            if ($payment['life'] > 0 && $payment['life'] + ($ability['cost']['life'] ?? 0) > $player->life) {
+                continue;
+            }
+            $plan = ManaPayer::plan($payment, $player->manaPool, $sources);
+            if ($plan !== null) {
+                return $plan + ['life' => $payment['life']];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Activates an ability (rule 602): it goes on the stack and its costs
+     * are paid, mana automatically. The player keeps priority.
+     *
+     * @param int      $seat
+     * @param int      $id      A permanent they control.
+     * @param int      $index   Among its card's {@see CardDefinition::$activated}.
+     * @param string[] $targets One per target, as for {@see cast()}.
+     *
+     * @return void
+     */
+    public function activate(int $seat, int $id, int $index, array $targets = []): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotActivate($seat, $id, $index)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $ability = $object->definition()->activated[$index];
+        $kinds = self::targetKindsOf($ability['effects']);
+        $targets = array_values($targets);
+        $label = "{$object->name()}'s ability";
+        $this->checkTargets($kinds, $targets, $seat, $label);
+        $payment = $this->abilityPayment($seat, $object, $ability);
+        if ($payment === null) {
+            throw new GameException("You cannot pay {$ability['cost']['mana']}.");
+        }
+
+        $player = $this->players[$seat];
+        foreach ($payment['tap'] as $source) {
+            $this->objects[$source]->tapped = true;
+        }
+        foreach ($payment['pool'] as $type => $amount) {
+            $player->manaPool->remove($type, $amount);
+        }
+        foreach ($payment['float'] as $type => $amount) {
+            $player->manaPool->add($type, $amount);
+        }
+        $cost = $ability['cost'];
+        $player->life -= $payment['life'] + ($cost['life'] ?? 0);
+        if ($cost['tap'] ?? false) {
+            $object->tapped = true;
+        }
+        if (isset($cost['loyalty'])) {
+            $object->addCounters('loyalty', $cost['loyalty']);
+        }
+        $object->used[$index] = $this->turn;
+
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => $ability['effects'],
+            'kinds' => $kinds,
+            'label' => $label,
+        ], $targets, 'is activated');
+        if ($cost['sacrifice'] ?? false) {
+            $this->moveTo($object, GameObject::GRAVEYARD);
+            $this->log("{$player->name} sacrifices {$object->name()}.");
+        }
+        $this->settle();
     }
 
     // ----------------------------------------------------------------------
@@ -1029,7 +1510,7 @@ final class Game
                     return false;
                 }
                 foreach ($this->stack as $item) {
-                    if ($item['id'] === $stackId) {
+                    if ($item['id'] === $stackId && ! self::isAbility($item)) {
                         $card = $this->objects[$item['object']]->definition();
 
                         return match ($kind) {
@@ -1155,7 +1636,7 @@ final class Game
     {
         foreach ($this->stack as $item) {
             if ($item['id'] === $stackId) {
-                return $this->objects[$item['object']]->name();
+                return self::isAbility($item) ? $item['label'] : $this->objects[$item['object']]->name();
             }
         }
 
@@ -1205,6 +1686,7 @@ final class Game
             if (! $this->hasKeyword($this->objects[$id], 'vigilance')) {
                 $this->objects[$id]->tapped = true;
             }
+            $this->trigger($this->objects[$id], 'attacks', $seat);
         }
 
         if ($ids === []) {
@@ -1389,10 +1871,16 @@ final class Game
         }
 
         // All combat damage is dealt at once (rule 510.2).
-        $lines = [];
+        $lines = $hitPlayer = [];
         foreach ($assignments as [$source, $target, $amount]) {
             $this->dealDamage($source, $target, $amount);
             $lines[] = "{$source->name()} deals {$amount} to ".$this->describeTarget($target);
+            if ($target[0] === 'p') {
+                $hitPlayer[$source->id] = $source;
+            }
+        }
+        foreach ($hitPlayer as $source) {
+            $this->trigger($source, 'combat_damage', $source->controller);
         }
         if ($lines !== []) {
             $this->log(implode('; ', $lines).'.');
@@ -1472,7 +1960,14 @@ final class Game
         }
     }
 
-    private function putOntoBattlefield(GameObject $object, int $controller): void
+    /**
+     * @param GameObject $object
+     * @param int        $controller
+     * @param bool       $triggers   Whether its "enters" abilities trigger.
+     *
+     * @return void
+     */
+    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true): void
     {
         $this->removeFromZone($object);
         $object->moveTo(GameObject::BATTLEFIELD);
@@ -1484,10 +1979,15 @@ final class Game
             $object->addCounters('loyalty', $card->loyalty);
         }
         $this->battlefield[] = $object->id;
+        if ($triggers) {
+            $this->trigger($object, 'enters', $controller);
+        }
     }
 
     /**
      * Moves an object to its owner's hand, library top, graveyard, or exile.
+     * A token that leaves the battlefield ceases to exist (rules 111.7 and
+     * 111.8), though it still "dies" on its way to the graveyard.
      *
      * @param GameObject|null $object
      * @param string          $zone
@@ -1499,6 +1999,13 @@ final class Game
         if ($object === null) {
             return;
         }
+        $controller = $object->controller;
+        $incarnation = $object->incarnation;
+        $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
+        if ($object->definition()->isToken()) {
+            $zone = GameObject::GONE;
+        }
+
         $this->removeFromZone($object);
         $object->moveTo($zone);
         $owner = $this->players[$object->owner];
@@ -1507,7 +2014,11 @@ final class Game
             GameObject::GRAVEYARD => $owner->graveyard[] = $object->id,
             GameObject::LIBRARY => $owner->library[] = $object->id,
             GameObject::EXILE => $this->exile[] = $object->id,
+            GameObject::GONE => null,
         };
+        if ($dies) {
+            $this->trigger($object, 'dies', $controller, $incarnation);
+        }
     }
 
     private function removeFromZone(GameObject $object): void
@@ -1538,7 +2049,7 @@ final class Game
                 $this->exile = $remove($this->exile);
                 break;
             case GameObject::STACK:
-                $this->stack = array_values(array_filter($this->stack, fn (array $item) => $item['object'] !== $object->id));
+                $this->stack = array_values(array_filter($this->stack, fn (array $item) => self::isAbility($item) || $item['object'] !== $object->id));
                 break;
         }
     }
@@ -1598,6 +2109,14 @@ final class Game
                     $host = $object->attachedTo === null ? null : ($this->objects[$object->attachedTo] ?? null);
                     if ($host === null || $host->zone !== GameObject::BATTLEFIELD || ! $this->matchesKind($host, $card->aura['enchant'] ?? 'permanent', $object->controller)) {
                         $toGraveyard[$id] = "{$object->name()} is not attached to anything";
+                    }
+                }
+                // Equipment attached to something that is not a creature becomes unattached (rule 704.5n).
+                if ($card->isEquipment() && $object->attachedTo !== null) {
+                    $host = $this->objects[$object->attachedTo] ?? null;
+                    if ($host === null || $host->zone !== GameObject::BATTLEFIELD || ! $this->isCreature($host)) {
+                        $object->attachedTo = null;
+                        $changed = true;
                     }
                 }
                 if ($card->isLegendary()) {
@@ -1678,22 +2197,22 @@ final class Game
     }
 
     /**
-     * The Auras attached to a permanent.
+     * The Auras and Equipment attached to a permanent.
      *
      * @param GameObject $object
      *
      * @return GameObject[]
      */
-    private function auras(GameObject $object): array
+    public function attachments(GameObject $object): array
     {
-        return array_filter($this->permanents(), fn (GameObject $aura) => $aura->attachedTo === $object->id && $aura->definition()->aura !== null);
+        return array_values(array_filter($this->permanents(), fn (GameObject $attached) => $attached->attachedTo === $object->id && $attached->definition()->attachmentBonus() !== null));
     }
 
     public function power(GameObject $object): int
     {
         $power = ($object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
-        foreach ($this->auras($object) as $aura) {
-            $power += $aura->definition()->aura['power'];
+        foreach ($this->attachments($object) as $attached) {
+            $power += $attached->definition()->attachmentBonus()['power'];
         }
         foreach ($object->untilEndOfTurn as $effect) {
             $power += $effect['power'];
@@ -1705,8 +2224,8 @@ final class Game
     public function toughness(GameObject $object): int
     {
         $toughness = ($object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
-        foreach ($this->auras($object) as $aura) {
-            $toughness += $aura->definition()->aura['toughness'];
+        foreach ($this->attachments($object) as $attached) {
+            $toughness += $attached->definition()->attachmentBonus()['toughness'];
         }
         foreach ($object->untilEndOfTurn as $effect) {
             $toughness += $effect['toughness'];
@@ -1716,7 +2235,7 @@ final class Game
     }
 
     /**
-     * Its keywords: printed, from Auras, and until end of turn.
+     * Its keywords: printed, from Auras and Equipment, and until end of turn.
      *
      * @param GameObject $object
      *
@@ -1726,8 +2245,8 @@ final class Game
     {
         $keywords = $object->definition()->keywords;
         if ($object->zone === GameObject::BATTLEFIELD) {
-            foreach ($this->auras($object) as $aura) {
-                array_push($keywords, ...$aura->definition()->aura['keywords']);
+            foreach ($this->attachments($object) as $attached) {
+                array_push($keywords, ...$attached->definition()->attachmentBonus()['keywords']);
             }
             foreach ($object->untilEndOfTurn as $effect) {
                 array_push($keywords, ...$effect['keywords']);
@@ -1767,6 +2286,7 @@ final class Game
             throw new GameException(match ($decision) {
                 'priority' => 'You do not have priority right now.',
                 'mulligan' => 'You have already kept your hand.',
+                'trigger' => 'No ability of yours is waiting for targets.',
                 'bottom' => 'You have no cards to put on the bottom.',
                 'attack' => 'You cannot declare attackers now.',
                 'block' => 'You cannot declare blockers now.',
@@ -1819,6 +2339,7 @@ final class Game
             'objects' => array_values(array_map(fn (GameObject $object) => $object->toArray(), $this->objects)),
             'battlefield' => $this->battlefield,
             'stack' => $this->stack,
+            'pendingTriggers' => $this->pendingTriggers,
             'exile' => $this->exile,
             'attackers' => array_keys($this->attackers),
             'blockers' => array_map(fn ($blocker, $attacker) => [$blocker, $attacker], array_keys($this->blockers), $this->blockers),
@@ -1861,7 +2382,21 @@ final class Game
             'controller' => (int) $item['controller'],
             'x' => (int) ($item['x'] ?? 0),
             'targets' => array_values(array_map('strval', (array) ($item['targets'] ?? []))),
-        ], (array) $data['stack']));
+        ] + (self::isAbility((array) $item) ? [
+            'kind' => 'ability',
+            'effects' => array_values((array) $item['effects']),
+            'kinds' => array_values(array_map('strval', (array) $item['kinds'])),
+            'label' => (string) $item['label'],
+        ] : []), (array) $data['stack']));
+        $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
+            'source' => (int) $trigger['source'],
+            'incarnation' => (int) $trigger['incarnation'],
+            'controller' => (int) $trigger['controller'],
+            'effects' => array_values((array) $trigger['effects']),
+            'kinds' => array_values(array_map('strval', (array) $trigger['kinds'])),
+            'label' => (string) $trigger['label'],
+            'text' => (string) ($trigger['text'] ?? ''),
+        ], (array) ($data['pendingTriggers'] ?? [])));
         $game->exile = array_map('intval', (array) $data['exile']);
         $game->attackers = array_fill_keys(array_map('intval', (array) ($data['attackers'] ?? [])), true);
         foreach ((array) ($data['blockers'] ?? []) as [$blocker, $attacker]) {

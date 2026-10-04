@@ -19,8 +19,10 @@ use MTGPocket\Game\GameException;
 /**
  * What each control of a player's action panel does. A spell is cast in
  * steps (pick the card, then X, then each target), so the picks so far are
- * kept on the match until the last one casts it; attackers and blockers
- * are picked first and declared with a button.
+ * kept on the match until the last one casts it. Abilities are activated
+ * the same way (pick the ability, then each target), and so are targets
+ * picked for a triggered ability. Attackers and blockers are picked first
+ * and declared with a button.
  *
  * Kept apart from Discord so the flow can be tested without it.
  *
@@ -37,7 +39,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
@@ -65,7 +67,10 @@ final class PanelActions
             'play' => $this->play($matchId, $playerId, (int) ($values[0] ?? 0)),
             'x' => $this->castStep($matchId, $playerId, fn (array $cast) => ['x' => max(0, (int) ($values[0] ?? 0))] + $cast),
             'tgt' => $this->castStep($matchId, $playerId, fn (array $cast) => ['targets' => [...(array) ($cast['targets'] ?? []), (string) ($values[0] ?? '')]] + $cast),
-            'cancel' => $choose(fn (array $choice) => array_diff_key($choice, ['cast' => true])),
+            'ability' => $this->ability($matchId, $playerId, (string) ($values[0] ?? '')),
+            'atgt' => $this->activateStep($matchId, $playerId, (string) ($values[0] ?? '')),
+            'trig' => $this->triggerStep($matchId, $playerId, (string) ($values[0] ?? '')),
+            'cancel' => $choose(fn (array $choice) => array_diff_key($choice, ['cast' => true, 'activate' => true, 'trigger' => true])),
             'atk' => $choose(fn (array $choice) => ['attack' => $ints] + $choice),
             'atkgo' => $act(fn (Game $game, int $seat, MatchRecord $match) => $game->declareAttackers($seat, array_map('intval', (array) ($match->choice($playerId)['attack'] ?? [])))),
             'noatk' => $act(fn (Game $game, int $seat) => $game->declareAttackers($seat, [])),
@@ -145,6 +150,118 @@ final class PanelActions
         } catch (\InvalidArgumentException $e) {
             // Start over on that spell rather than leave a bad pick in place.
             $this->matches->choose($matchId, $playerId, fn (array $choice) => array_diff_key($choice, ['cast' => true]));
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Picks an ability to activate, as `objectId.abilityIndex`: it is
+     * activated at once unless it needs targets.
+     *
+     * @param string $matchId
+     * @param string $playerId
+     * @param string $value
+     *
+     * @return array{0: MatchRecord, 1: bool}
+     */
+    private function ability(string $matchId, string $playerId, string $value): array
+    {
+        [$id, $index] = array_map('intval', array_pad(explode('.', $value, 2), 2, '0'));
+        $match = $this->matches->find($matchId) ?? throw new \OutOfBoundsException('That match no longer exists.');
+        $seat = $match->game?->seatOf($playerId);
+        if ($seat === null || ! $match->game->canActivate($seat, $id, $index)) {
+            throw new GameException('You cannot activate that ability now.');
+        }
+        return $this->activateStep($matchId, $playerId, null, ['id' => $id, 'index' => $index, 'targets' => []]);
+    }
+
+    /**
+     * Records one more target for the ability being activated, and
+     * activates it once every target is picked.
+     *
+     * @param string      $matchId
+     * @param string      $playerId
+     * @param string|null $target
+     * @param array|null  $start    A new ability to start on.
+     *
+     * @return array{0: MatchRecord, 1: bool}
+     */
+    private function activateStep(string $matchId, string $playerId, ?string $target, ?array $start = null): array
+    {
+        $match = $this->matches->choose($matchId, $playerId, function (array $choice) use ($target, $start) {
+            $activate = $start ?? (array) ($choice['activate'] ?? []);
+            if ($target !== null) {
+                $activate['targets'] = [...(array) ($activate['targets'] ?? []), $target];
+            }
+            $choice['activate'] = $activate;
+
+            return $choice;
+        });
+        $activate = $match->choice($playerId)['activate'];
+        if (! isset($activate['id'])) {
+            throw new GameException('Pick the ability to activate first.');
+        }
+        $ability = $match->game->objects[(int) $activate['id']]->definition()->activated[(int) $activate['index']] ?? [];
+        $needed = count(array_filter((array) ($ability['effects'] ?? []), fn (array $effect) => isset($effect['target'])));
+        if (count($activate['targets']) < $needed) {
+            return [$match, false];
+        }
+
+        return $this->finish($matchId, $playerId, 'activate', fn (Game $game, int $seat) => $game->activate($seat, (int) $activate['id'], (int) $activate['index'], array_values($activate['targets'])));
+    }
+
+    /**
+     * Records one more target for the triggered ability waiting on them,
+     * and puts it on the stack once every target is picked.
+     *
+     * @param string $matchId
+     * @param string $playerId
+     * @param string $target
+     *
+     * @return array{0: MatchRecord, 1: bool}
+     */
+    private function triggerStep(string $matchId, string $playerId, string $target): array
+    {
+        $match = $this->matches->choose($matchId, $playerId, function (array $choice) use ($target) {
+            $choice['trigger'] = [...(array) ($choice['trigger'] ?? []), $target];
+
+            return $choice;
+        });
+        $trigger = $match->game?->triggerAwaitingTargets();
+        if ($trigger === null || $match->game->seatOf($playerId) !== $trigger['controller']) {
+            $this->matches->choose($matchId, $playerId, fn (array $choice) => array_diff_key($choice, ['trigger' => true]));
+
+            throw new GameException('No ability of yours is waiting for targets.');
+        }
+        $targets = array_values((array) $match->choice($playerId)['trigger']);
+        if (count($targets) < count($trigger['kinds'])) {
+            return [$match, false];
+        }
+
+        return $this->finish($matchId, $playerId, 'trigger', fn (Game $game, int $seat) => $game->chooseTriggerTargets($seat, $targets));
+    }
+
+    /**
+     * Does the action the picks were for; on failure the picks are
+     * dropped, so the player starts that over rather than keep a bad pick.
+     *
+     * @param string   $matchId
+     * @param string   $playerId
+     * @param string   $key      The picks: `activate` or `trigger`.
+     * @param callable $do
+     *
+     * @return array{0: MatchRecord, 1: bool}
+     */
+    private function finish(string $matchId, string $playerId, string $key, callable $do): array
+    {
+        try {
+            return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($do, $playerId): void {
+                $do($game, $seat);
+                unset($match->choices[$playerId]);
+            }), true];
+        } catch (\InvalidArgumentException $e) {
+            $this->matches->choose($matchId, $playerId, fn (array $choice) => array_diff_key($choice, [$key => true]));
 
             throw $e;
         }
