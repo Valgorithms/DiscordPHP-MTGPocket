@@ -71,6 +71,10 @@ final class TextParser
         'target artifact or enchantment' => 'artifact_or_enchantment',
         'target artifact or creature' => 'artifact_or_creature',
         'target artifact creature' => 'artifact_creature',
+        'target artifact or land' => 'artifact_or_land',
+        'target nonblack creature' => 'creature_nonblack',
+        'target nonartifact, nonblack creature' => 'creature_nonartifact_nonblack',
+        'target nonartifact creature' => 'creature_nonartifact',
         'target land' => 'land',
         'target planeswalker' => 'planeswalker',
         'target nonland permanent' => 'nonland_permanent',
@@ -621,6 +625,12 @@ final class TextParser
                 $found['kicker'] = $m[1];
                 $found['keywords'][] = 'offspring';
                 $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'kicked' => true, 'effects' => [['type' => 'offspring']]];
+            } elseif (preg_match('/^afterlife (\d+)$/i', $part, $m) && ! $spell && ($spirit = self::effect('create a 1/1 white and black Spirit creature token with flying')) !== null) {
+                // Afterlife (rule 702.135): flying Spirits when it goes to the graveyard from the battlefield.
+                $found['triggered'][] = ['text' => $part, 'event' => 'to_graveyard', 'effects' => [['amount' => (int) $m[1]] + $spirit]];
+            } elseif (preg_match('/^annihilator (\d+)$/i', $part, $m) && ! $spell) {
+                // Annihilator (rule 702.86): the defending player sacrifices that many permanents, their weakest.
+                $found['triggered'][] = ['text' => $part, 'event' => 'attacks', 'effects' => [['type' => 'edict', 'amount' => (int) $m[1]]]];
             } elseif (preg_match('/^backup (\d+)$/i', $part, $m) && ! $spell) {
                 // Backup (rule 702.165): counters on target creature; another one gains this creature's keywords until end of turn.
                 $found['keywords'][] = 'backup';
@@ -1385,6 +1395,11 @@ final class TextParser
             }
 
             return $damages !== [];
+        }
+        if ($sentence === "If that spell is countered this way, exile it instead of putting it into its owner's graveyard" && $effects[$last]['type'] === 'counter') {
+            $effects[$last]['exileCountered'] = true;
+
+            return true;
         }
         if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && $effects[$last]['type'] === 'destroy') {
             $effects[$last]['noRegen'] = true;

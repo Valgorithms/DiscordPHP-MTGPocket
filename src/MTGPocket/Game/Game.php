@@ -107,6 +107,9 @@ final class Game
     /** Players who have passed in succession with nothing happening since. */
     public int $passes = 0;
 
+    /** Ways in {@see plays()} that are not casting a spell. */
+    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow'];
+
     /** @var array<int, true> Attacking creatures. */
     public array $attackers = [];
 
@@ -2507,7 +2510,11 @@ final class Game
                         }
                         array_splice($this->stack, $index, 1);
                         $this->log("{$countered->name()} is countered.", null, "{$countered->name()} countered");
-                        $this->spellLeavesStack($countered, $item);
+                        if (($effect['exileCountered'] ?? false) && ! self::isAbility($item)) {
+                            $this->moveTo($countered, GameObject::EXILE);
+                        } else {
+                            $this->spellLeavesStack($countered, $item);
+                        }
                         break;
                     }
                 }
@@ -2595,6 +2602,16 @@ final class Game
             case 'energy':
                 $this->players[$controller]->energy += $amount;
                 $this->log("{$this->players[$controller]->name} gets {$amount} energy.");
+                break;
+
+            case 'edict':
+                // Annihilator: the defending player sacrifices their weakest permanents.
+                foreach ($opponents as $seat) {
+                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, fn () => true)) !== null; $i++) {
+                        $this->log("{$this->players[$seat]->name} sacrifices {$victim->name()}.");
+                        $this->moveTo($victim, GameObject::GRAVEYARD);
+                    }
+                }
                 break;
 
             case 'madness':
@@ -3553,6 +3570,10 @@ final class Game
             'artifact_or_enchantment' => $card->is('Artifact') || $card->is('Enchantment'),
             'artifact_or_creature' => $card->is('Artifact') || $creature,
             'artifact_creature' => $card->is('Artifact') && $creature,
+            'artifact_or_land' => $card->is('Artifact') || $card->isLand(),
+            'creature_nonblack' => $creature && ! in_array('B', $card->colors, true),
+            'creature_nonartifact' => $creature && ! $card->is('Artifact'),
+            'creature_nonartifact_nonblack' => $creature && ! $card->is('Artifact') && ! in_array('B', $card->colors, true),
             'creature_or_vehicle' => $creature || in_array('Vehicle', $card->subtypes, true),
             'attacking_or_blocking' => $creature && (isset($this->attackers[$object->id]) || isset($this->blockers[$object->id])),
             'attacking' => $creature && isset($this->attackers[$object->id]),
