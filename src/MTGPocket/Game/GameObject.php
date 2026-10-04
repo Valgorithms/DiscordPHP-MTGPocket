@@ -81,6 +81,9 @@ final class GameObject
     /** The Aura that gave its controller control of it (`You control enchanted creature.`). */
     public ?int $stolenBy = null;
 
+    /** The turn in which it is exiled instead if it would die (`If that creature would die this turn, exile it instead.`). */
+    public int $exileIfDies = 0;
+
     /** Monstrosity (rule 701.37) has made it monstrous. */
     public bool $monstrous = false;
 
@@ -183,6 +186,7 @@ final class GameObject
         $this->renowned = false;
         $this->monstrous = false;
         $this->holding = [];
+        $this->exileIfDies = 0;
         $this->stolenBy = null;
         $this->rebound = false;
         $this->bestowed = false;
@@ -235,6 +239,7 @@ final class GameObject
             'renowned' => $this->renowned,
             'monstrous' => $this->monstrous,
             'holding' => $this->holding,
+            'exileIfDies' => $this->exileIfDies,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
@@ -277,6 +282,7 @@ final class GameObject
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
+        $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
         $object->stolenBy = isset($data['stolenBy']) ? (int) $data['stolenBy'] : null;
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);

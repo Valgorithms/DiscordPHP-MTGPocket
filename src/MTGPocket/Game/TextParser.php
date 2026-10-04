@@ -157,7 +157,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -221,6 +221,12 @@ final class TextParser
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
+
+                continue;
+            }
+            $kinds = ['' => 'any', 'Instant and sorcery ' => 'instant_sorcery', 'Creature ' => 'creature', 'Noncreature ' => 'noncreature', 'Artifact ' => 'artifact', 'Enchantment ' => 'enchantment'];
+            if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?spells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
+                $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]];
 
                 continue;
             }
@@ -984,6 +990,7 @@ final class TextParser
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous',
+            'is put into a graveyard from the battlefield' => 'to_graveyard',
         ];
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell',
@@ -992,7 +999,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -1295,6 +1302,15 @@ final class TextParser
         if ($last === null) {
             return false;
         }
+        // "If that creature would die this turn, exile it instead." after damage.
+        if (preg_match('/^If (?:that creature|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
+            $damages = array_keys(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage'));
+            foreach ($damages as $i) {
+                $effects[$i]['exileIfDies'] = true;
+            }
+
+            return $damages !== [];
+        }
         if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && $effects[$last]['type'] === 'destroy') {
             $effects[$last]['noRegen'] = true;
 
@@ -1490,6 +1506,9 @@ final class TextParser
         }
         $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all'];
         $group = implode('|', array_keys($each));
+        if (preg_match('/^destroy (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
+            return ['type' => 'destroy', 'all' => strtolower($m[1])];
+        }
         if (preg_match("/^({$group}) get ([+-]\\d+)\\/([+-]\\d+)(?: and gain (.+?))? until end of turn$/i", $s, $m)
             && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]];

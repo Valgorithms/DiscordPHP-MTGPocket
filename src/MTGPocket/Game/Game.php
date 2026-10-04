@@ -1055,6 +1055,9 @@ final class Game
         if ($this->priority !== $seat) {
             return 'You do not have priority.';
         }
+        if (($split = $this->splitSecond()) !== null) {
+            return "{$split} has split second: nothing can be cast while it is on the stack.";
+        }
         if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_creature' && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) === []) {
             return "{$card->name} needs a creature to sacrifice.";
         }
@@ -1175,8 +1178,37 @@ final class Game
         if (! $options['faceDown'] && in_array('affinity for artifacts', $card->keywords, true)) {
             $tax -= count(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')));
         }
+        // `Instant and sorcery spells you cast cost {1} less to cast.`
+        foreach ($this->permanents($seat) as $permanent) {
+            foreach ($permanent->definition()->costReductions as $reduction) {
+                if (match ($reduction['kind']) {
+                    'instant_sorcery' => $card->is('Instant') || $card->is('Sorcery'),
+                    'creature' => $card->isCreature(),
+                    'noncreature' => ! $card->isCreature(),
+                    'artifact' => $card->is('Artifact'),
+                    'enchantment' => $card->is('Enchantment'),
+                    default => true,
+                }) {
+                    $tax -= $reduction['amount'];
+                }
+            }
+        }
+        $cost = self::castCost($card, $options).$wardMana;
+        $convoke = ! $options['faceDown'] && in_array('convoke', $card->keywords, true);
+        $improvise = ! $options['faceDown'] && in_array('improvise', $card->keywords, true);
+        // Delve (rule 702.66): cards exiled from your graveyard pay for generic mana, as many as can help.
+        if (! $options['faceDown'] && in_array('delve', $card->keywords, true)) {
+            $generic = max(0, (ManaCost::parse($cost)->payments($x)[0]['mana']['generic'] ?? 0) + $tax);
+            $cards = count(array_diff($this->players[$seat]->graveyard, [$id]));
+            for ($delve = min($generic, $cards); $delve > 0; $delve--) {
+                $payment = $this->payFor($seat, $cost, $wardLife, [], $x, $tax - $delve, $convoke, $improvise);
+                if ($payment !== null) {
+                    return $payment + ['delve' => $delve];
+                }
+            }
+        }
 
-        return $this->payFor($seat, self::castCost($card, $options).$wardMana, $wardLife, [], $x, $tax, ! $options['faceDown'] && in_array('convoke', $card->keywords, true), ! $options['faceDown'] && in_array('improvise', $card->keywords, true));
+        return $this->payFor($seat, $cost, $wardLife, [], $x, $tax, $convoke, $improvise);
     }
 
     /**
@@ -1368,6 +1400,13 @@ final class Game
             throw new GameException("You cannot pay {$cost}".($xCount > 0 ? " with X = {$x}" : '').($wardMana !== '' || $wardLife > 0 ? ' and ward' : '').'.');
         }
         $this->pay($seat, $payment);
+        if (($payment['delve'] ?? 0) > 0) {
+            $delved = array_slice(array_values(array_diff($this->players[$seat]->graveyard, [$id])), 0, $payment['delve']);
+            foreach ($delved as $delvedId) {
+                $this->moveTo($this->objects[$delvedId], GameObject::EXILE);
+            }
+            $this->log("{$this->players[$seat]->name} exiles {$payment['delve']} card".($payment['delve'] === 1 ? '' : 's').' from their graveyard (delve).');
+        }
 
         $player = $this->players[$seat];
         $fromCommand = $object->zone === GameObject::COMMAND;
@@ -1435,6 +1474,22 @@ final class Game
             usort($hand, fn (int $a, int $b) => $this->objects[$a]->definition()->cost->manaValue() <=> $this->objects[$b]->definition()->cost->manaValue());
             $this->discardCards($seat, [$hand[0]]);
         }
+    }
+
+    /**
+     * The name of a spell with split second on the stack (rule 702.61), if any.
+     *
+     * @return string|null
+     */
+    private function splitSecond(): ?string
+    {
+        foreach ($this->stack as $item) {
+            if (! self::isAbility($item) && in_array('split second', $this->objects[$item['object']]->definition()->keywords, true)) {
+                return $this->objects[$item['object']]->name();
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1876,6 +1931,9 @@ final class Game
                 };
                 foreach ($hits as $hit) {
                     $this->dealDamage($source, (string) $hit, $amount);
+                    if (($effect['exileIfDies'] ?? false) && ($hurt = $this->targetObject((string) $hit)) !== null) {
+                        $hurt->exileIfDies = $this->turn;
+                    }
                 }
                 break;
 
@@ -1980,6 +2038,20 @@ final class Game
                 break;
 
             case 'destroy':
+                if (isset($effect['all'])) {
+                    $doomed = array_filter($this->permanents(), fn (GameObject $o) => match ($effect['all']) {
+                        'all creatures' => $this->isCreature($o),
+                        "all creatures you don't control", 'all creatures your opponents control' => $this->isCreature($o) && $o->controller !== $controller,
+                        'all artifacts' => $o->definition()->is('Artifact'),
+                        'all enchantments' => $o->definition()->is('Enchantment'),
+                        'all artifacts and enchantments' => $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'),
+                        default => ! $o->definition()->isLand(),
+                    });
+                    foreach ($doomed as $object) {
+                        $this->destroy($object, ! ($effect['noRegen'] ?? false));
+                    }
+                    break;
+                }
                 $this->destroy($affected, ! ($effect['noRegen'] ?? false));
                 break;
 
@@ -2790,6 +2862,9 @@ final class Game
         $ability = $card->activated[$index] ?? null;
         if ($ability === null) {
             return "{$card->name} has no such ability.";
+        }
+        if (($split = $this->splitSecond()) !== null) {
+            return "{$split} has split second: no abilities can be activated while it is on the stack.";
         }
         if ($this->priority !== $seat || $this->pendingChoice !== null) {
             return 'You do not have priority.';
@@ -3630,10 +3705,35 @@ final class Game
 
     private function destroy(?GameObject $object, bool $regenerates = true): void
     {
-        if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $this->hasKeyword($object, 'indestructible') || ($regenerates && $this->regenerate($object))) {
+        if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $this->hasKeyword($object, 'indestructible') || ($regenerates && $this->regenerate($object)) || $this->umbraArmor($object)) {
             return;
         }
         $this->moveTo($object, GameObject::GRAVEYARD);
+    }
+
+    /**
+     * Umbra armor (rule 702.89): an Aura with it is destroyed instead, and
+     * the creature's damage is removed.
+     *
+     * @param GameObject $object
+     *
+     * @return bool Whether an Aura took its place.
+     */
+    private function umbraArmor(GameObject $object): bool
+    {
+        foreach ($this->permanents() as $aura) {
+            $words = $aura->definition()->keywords;
+            if ($aura->attachedTo === $object->id && (in_array('umbra armor', $words, true) || in_array('totem armor', $words, true))) {
+                $object->damage = 0;
+                $object->deathtouched = false;
+                $this->log("{$aura->name()} is destroyed instead of {$object->name()}.");
+                $this->moveTo($aura, GameObject::GRAVEYARD);
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -3871,6 +3971,10 @@ final class Game
         if ($object->unearthed && $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD) {
             $zone = GameObject::EXILE;
         }
+        if ($object->exileIfDies === $this->turn && $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object)) {
+            $zone = GameObject::EXILE;
+        }
+        $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
         $plusCounters = $object->counter('+1/+1');
         // Persist and undying (rules 702.79 and 702.93) look at its counters as it died.
@@ -3897,6 +4001,9 @@ final class Game
         };
         if ($dies) {
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
+        }
+        if ($toGraveyard) {
+            $this->trigger($object, 'to_graveyard', $controller, $incarnation);
         }
         // What it exiled "until this leaves the battlefield" returns.
         foreach ($held as $id) {
@@ -3996,7 +4103,7 @@ final class Game
                     if ($toughness <= 0) {
                         $toGraveyard[$id] = "{$object->name()} has 0 toughness";
                     } elseif (($object->damage >= $toughness || $object->deathtouched) && ! $this->hasKeyword($object, 'indestructible')) {
-                        if ($this->regenerate($object)) {
+                        if ($this->regenerate($object) || $this->umbraArmor($object)) {
                             $changed = true;
                         } else {
                             $toGraveyard[$id] = "{$object->name()} dies";
