@@ -179,6 +179,23 @@ final class AutoPlayer
             }
         }
 
+        // Cast a card exiled with rebound, for free.
+        if ($mine && $game->step === Step::Upkeep && $game->stack === []) {
+            foreach ($game->plays($seat) as $play) {
+                if (! str_starts_with($play['how'], 'rb')) {
+                    continue;
+                }
+                $card = $game->objects[$play['id']]->printed();
+                $options = Game::castOptions($play['how']);
+                $targets = self::targets($game, $seat, $card->targetKinds($options['modes']), $card->spellEffects($options['modes']));
+                if ($targets !== null) {
+                    $game->cast($seat, $play['id'], 0, $targets, $play['how']);
+
+                    return true;
+                }
+            }
+        }
+
         if ($mine && $game->step->isMain() && $game->stack === []) {
             // A land first, then the most expensive spell that has good targets.
             // Only plays as cast or played: a land with cycling can still be cycled after the land drop.
@@ -198,7 +215,7 @@ final class AutoPlayer
                     return true;
                 }
             }
-            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => $play['how'] !== 'cycle' && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
+            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => ! in_array($play['how'], ['cycle', 'unearth'], true) && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
             $cost = fn (array $play) => ManaCost::parse(Game::castCost($game->objects[$play['id']]->printed(), $play['how']))->manaValue();
             usort($plays, fn (array $a, array $b) => $cost($b) <=> $cost($a));
             foreach ($plays as $play) {
@@ -227,6 +244,13 @@ final class AutoPlayer
                 }
 
                 return true;
+            }
+            foreach ($game->plays($seat) as $play) {
+                if ($play['how'] === 'unearth') {
+                    $game->unearth($seat, $play['id']);
+
+                    return true;
+                }
             }
             foreach ($game->activatableAbilities($seat) as [$id, $index]) {
                 $object = $game->objects[$id];

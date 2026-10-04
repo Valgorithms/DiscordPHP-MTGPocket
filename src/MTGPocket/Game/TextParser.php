@@ -150,7 +150,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -424,6 +424,8 @@ final class TextParser
                 $found['kicker'] = $m[1];
             } elseif (preg_match('/^flashback '.self::COST.'$/i', $part, $m) && $spell) {
                 $found['flashback'] = $m[1];
+            } elseif (preg_match('/^unearth '.self::COST.'$/i', $part, $m) && ! $spell) {
+                $found['unearth'] = $m[1];
             } elseif (preg_match('/^cycling '.self::COST.'$/i', $part, $m)) {
                 $found['cycling'] = $m[1];
             } elseif (preg_match('/^(basic land|plains|island|swamp|mountain|forest)cycling '.self::COST.'$/i', $part, $m)) {
@@ -442,7 +444,7 @@ final class TextParser
                 return false;
             }
         }
-        foreach (['kicker', 'flashback', 'cycling', 'morph'] as $cost) {
+        foreach (['kicker', 'flashback', 'cycling', 'morph', 'unearth'] as $cost) {
             if ($found[$cost] !== null && str_contains(is_array($found[$cost]) ? $found[$cost]['cost'] : $found[$cost], 'X')) {
                 return false;
             }
@@ -644,7 +646,16 @@ final class TextParser
             $found[] = "abilities can't be activated";
             $text = $match[1];
         }
+        if (preg_match('/^(.*?),? and (can\'t be blocked by creatures with power \d+ or (?:greater|less)|can block only creatures with flying)$/', $text, $match)) {
+            $text = $match[1];
+            $found = [...$found, ...(self::restrictions($match[2]) ?? [null])];
+        }
+        if (preg_match('/^can\'t be blocked by creatures with power (\d+) or (greater|less)$/', $text, $match)) {
+            // Read by Game::canBlock().
+            return [...$found, "can't be blocked by power {$match[1]} or {$match[2]}"];
+        }
         $found = [...$found, ...match ($text) {
+            'can block only creatures with flying' => ['can block only creatures with flying'],
             "can't attack" => ["can't attack"],
             "can't block" => ["can't block"],
             "can't attack or block", "can't attack, block, or crew Vehicles" => ["can't attack", "can't block"],
@@ -799,6 +810,9 @@ final class TextParser
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
+        } elseif (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), (.+)$/', $line, $match)) {
+            $event = 'landfall';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
@@ -1201,6 +1215,9 @@ final class TextParser
         }
         if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
             return ['type' => 'control', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        if (preg_match('/^attach (?:it|CARDNAME) to target creature you control$/', $s)) {
+            return ['type' => 'attach', 'target' => 'creature_you_control'];
         }
         if (preg_match('/^untap (that creature|that permanent|it)$/i', $s)) {
             return ['type' => 'untap', 'sameTarget' => true];

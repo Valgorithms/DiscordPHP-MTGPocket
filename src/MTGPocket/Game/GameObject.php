@@ -69,6 +69,12 @@ final class GameObject
     /** Who gets it back at end of turn, when another player gained control of it until then. */
     public ?int $borrowedFrom = null;
 
+    /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
+    public bool $unearthed = false;
+
+    /** Exiled by rebound: its owner may cast it in their next upkeep (rule 702.88a). */
+    public bool $rebound = false;
+
     public int $incarnation = 0;
 
     /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
@@ -148,6 +154,8 @@ final class GameObject
         $this->kicked = false;
         $this->shields = 0;
         $this->borrowedFrom = null;
+        $this->unearthed = false;
+        $this->rebound = false;
         $this->incarnation++;
     }
 
@@ -190,6 +198,8 @@ final class GameObject
             'faceDown' => $this->faceDown,
             'kicked' => $this->kicked,
             'shields' => $this->shields,
+            'unearthed' => $this->unearthed,
+            'rebound' => $this->rebound,
         ];
         // Seat 0 is a real value here.
         if ($this->borrowedFrom !== null) {
@@ -218,6 +228,8 @@ final class GameObject
         $object->faceDown = (bool) ($data['faceDown'] ?? false);
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
+        $object->unearthed = (bool) ($data['unearthed'] ?? false);
+        $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;

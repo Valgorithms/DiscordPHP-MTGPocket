@@ -637,7 +637,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
             case 'priority':
                 $cast = $choice['cast'] ?? null;
-                if ($cast !== null && in_array((int) $cast['id'], [...$player->hand, ...$game->commandCards($seat), ...$player->graveyard], true)) {
+                if ($cast !== null && in_array((int) $cast['id'], [...$player->hand, ...$game->commandCards($seat), ...$player->graveyard, ...$game->exile], true)) {
                     self::castControls($message, $match, $seat, $cast);
                     break;
                 }
@@ -829,10 +829,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
     {
         $object = $game->objects[$id];
         $card = $object->printed();
-        $options = $how === 'cycle' ? null : Game::castOptions($how);
-        $way = $options === null ? "cycle {$card->cycling}" : implode(', ', array_filter([
+        $options = in_array($how, ['cycle', 'unearth'], true) ? null : Game::castOptions($how);
+        $way = $options === null ? ($how === 'cycle' ? "cycle {$card->cycling}" : "unearth {$card->unearth}") : implode(', ', array_filter([
             $options['faceDown'] ? 'face down for {3}' : '',
             $options['flashback'] ? "flashback {$card->flashback}" : '',
+            $options['rebound'] ? 'rebound, free' : '',
             $options['kicked'] ? "kicked +{$card->kicker}" : '',
             $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
         ]));

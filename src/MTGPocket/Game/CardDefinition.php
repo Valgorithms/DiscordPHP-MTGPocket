@@ -37,7 +37,7 @@ final class CardDefinition
         'flying', 'reach', 'first strike', 'double strike', 'deathtouch', 'lifelink', 'trample',
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
-        'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke',
+        'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound',
     ];
 
     /**
@@ -108,6 +108,9 @@ final class CardDefinition
 
     /** What landcycling finds instead of drawing: `basic land` or a basic land type (rule 702.29e). */
     public readonly ?string $cyclingFinds;
+
+    /** An unearth cost (rule 702.84). */
+    public readonly ?string $unearth;
 
     /** @var array<int, array{power: int, toughness: int, keywords: string[], other: bool}> What it gives the creatures its controller controls (`other`: but itself). */
     public readonly array $anthem;
@@ -187,6 +190,7 @@ final class CardDefinition
         $this->flashback = $parsed['flashback'];
         $this->cycling = $parsed['cycling'];
         $this->cyclingFinds = $parsed['cyclingFinds'];
+        $this->unearth = $parsed['unearth'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];

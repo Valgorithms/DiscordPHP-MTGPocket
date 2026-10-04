@@ -556,6 +556,14 @@ final class Game
 
             case Step::Upkeep:
             case Step::End:
+                if ($step === Step::End) {
+                    foreach ($this->permanents() as $object) {
+                        if ($object->unearthed) {
+                            $this->moveTo($object, GameObject::EXILE);
+                            $this->log("{$object->name()} is exiled (unearth).");
+                        }
+                    }
+                }
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
                 }
@@ -732,7 +740,8 @@ final class Game
      * Every way a player could play a card right now, as the card and how:
      * `''` (play the land or cast the spell), `m0+2` (choosing those modes),
      * `kick` (paying its kicker), `fb` (with flashback, from the graveyard),
-     * `morph` (face down) or `cycle`; combined with commas, e.g. `fb,m1`.
+     * `rb` (free from exile, with rebound), `morph` (face down), `cycle` or
+     * `unearth`; combined with commas, e.g. `fb,m1`.
      *
      * @param int $seat
      *
@@ -759,6 +768,19 @@ final class Game
             if ($card->flashback !== null) {
                 foreach (self::castWays($card, true) as $how) {
                     if ($this->canCast($seat, $id, $how)) {
+                        $plays[] = ['id' => $id, 'how' => $how];
+                    }
+                }
+            }
+            if ($card->unearth !== null && $this->whyNotUnearth($seat, $id) === null) {
+                $plays[] = ['id' => $id, 'how' => 'unearth'];
+            }
+        }
+        foreach ($this->exile as $id) {
+            if ($this->objects[$id]->rebound && $this->objects[$id]->owner === $seat) {
+                foreach (self::castWays($this->objects[$id]->printed(), false) as $how) {
+                    $how = implode(',', array_filter(['rb', $how]));
+                    if (! str_contains($how, 'kick') && $this->canCast($seat, $id, $how)) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -800,11 +822,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -813,6 +835,8 @@ final class Game
                 $options['kicked'] = true;
             } elseif ($part === 'fb') {
                 $options['flashback'] = true;
+            } elseif ($part === 'rb') {
+                $options['rebound'] = true;
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (preg_match('/^m\d+(?:\+\d+)*$/', $part)) {
@@ -954,6 +978,13 @@ final class Game
             if ($object === null || ! in_array($id, $player->graveyard, true)) {
                 return 'That card is not in your graveyard.';
             }
+        } elseif ($options['rebound']) {
+            if ($object === null || ! $object->rebound || $object->zone !== GameObject::EXILE || $object->owner !== $seat) {
+                return 'That card was not exiled with rebound.';
+            }
+            if ($this->step !== Step::Upkeep || $this->active !== $seat) {
+                return 'A card exiled with rebound is cast in your upkeep.';
+            }
         } elseif ($object === null || ! (in_array($id, $player->hand, true) || in_array($id, $this->commandCards($seat), true))) {
             return 'That card is not in your hand.';
         }
@@ -974,7 +1005,7 @@ final class Game
             return $card->choose === null ? "{$card->name} has no modes." : "Choose {$card->choose['min']}".($card->choose['max'] > $card->choose['min'] ? " to {$card->choose['max']}" : '')." of {$card->name}'s modes.";
         }
         // A card with no mana cost at all cannot be cast for mana (rule 202.1b).
-        if (! $options['faceDown'] && ! $options['flashback'] && $card->cost->isEmpty() && array_key_exists('manaCost', $card->card)) {
+        if (! $options['faceDown'] && ! $options['flashback'] && ! $options['rebound'] && $card->cost->isEmpty() && array_key_exists('manaCost', $card->card)) {
             return "{$card->name} has no mana cost, so it cannot be cast.";
         }
         if ($this->priority !== $seat) {
@@ -987,7 +1018,7 @@ final class Game
             return "{$card->name} needs another card in your hand to discard.";
         }
         // Face down it is a 2/2 creature spell with no abilities, flash included.
-        if (($options['faceDown'] || ! $card->hasInstantSpeed()) && ! $this->sorcerySpeed($seat)) {
+        if (! $options['rebound'] && ($options['faceDown'] || ! $card->hasInstantSpeed()) && ! $this->sorcerySpeed($seat)) {
             return "{$card->name} can be cast only in your own main phase, when the stack is empty.";
         }
 
@@ -1019,6 +1050,10 @@ final class Game
     public static function castCost(CardDefinition $card, string|array $how): string
     {
         $options = self::castOptions($how);
+        if ($options['rebound']) {
+            // Without paying its mana cost (rule 118.9): X is 0.
+            return '';
+        }
         $cost = $options['faceDown'] ? '{3}' : ($options['flashback'] ? (string) $card->flashback : (string) $card->cost);
 
         return $cost.($options['kicked'] ? (string) $card->kicker : '');
@@ -1065,6 +1100,10 @@ final class Game
         $tax = $this->objects[$id]->zone === GameObject::COMMAND ? $this->commanderTax($id) : 0;
 
         $card = $this->objects[$id]->printed();
+        // Affinity for artifacts (rule 702.41): {1} less for each artifact you control.
+        if (! $options['faceDown'] && in_array('affinity for artifacts', $card->keywords, true)) {
+            $tax -= count(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')));
+        }
 
         return $this->payFor($seat, self::castCost($card, $options).$wardMana, $wardLife, [], $x, $tax, ! $options['faceDown'] && in_array('convoke', $card->keywords, true));
     }
@@ -1078,7 +1117,7 @@ final class Game
      * @param int    $life    Life paid on top, e.g. for `Pay 2 life`.
      * @param int[]  $without Sources that cannot be tapped for it.
      * @param int    $x
-     * @param int    $tax     Generic mana added, for commander tax.
+     * @param int    $tax     Generic mana added, for commander tax, or taken off for affinity.
      * @param bool   $convoke Untapped creatures can be tapped for {1} or one mana of their color (rule 702.51).
      *
      * @return array{life: int, pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null
@@ -1095,8 +1134,8 @@ final class Game
             }
         }
         foreach (ManaCost::parse($mana)->payments($x) as $payment) {
-            if ($tax > 0) {
-                $payment['mana']['generic'] = ($payment['mana']['generic'] ?? 0) + $tax;
+            if ($tax !== 0) {
+                $payment['mana']['generic'] = max(0, ($payment['mana']['generic'] ?? 0) + $tax);
             }
             $total = $payment['life'] + $life;
             if ($total > 0 && $total > $player->life) {
@@ -1250,6 +1289,7 @@ final class Game
 
         $player = $this->players[$seat];
         $fromCommand = $object->zone === GameObject::COMMAND;
+        $fromHand = $object->zone === GameObject::HAND;
         if ($fromCommand) {
             $tax = $this->commanderTax($id);
             $this->commanders[$id]++;
@@ -1268,13 +1308,14 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown']]);
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand]);
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
         $ways = array_filter([
             $fromCommand ? 'from the command zone'.($tax > 0 ? " (tax {{$tax}})" : '') : '',
             $options['flashback'] ? 'with flashback' : '',
+            $options['rebound'] ? 'from exile with rebound' : '',
             $options['kicked'] ? 'kicked' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['modes'] === [] ? '' : 'choosing '.implode(' and ', array_map(fn (int $mode) => '"'.rtrim(str_replace('CARDNAME', $card->name, $card->modes[$mode]['text']), '.').'"', $options['modes'])),
@@ -1390,6 +1431,55 @@ final class Game
     }
 
     /**
+     * Unearths a creature card (rule 702.84): pays the cost and puts the
+     * ability on the stack. It returns with haste and is exiled at the end
+     * step, or whenever it would leave the battlefield.
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return void
+     */
+    public function unearth(int $seat, int $id): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotUnearth($seat, $id)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $this->pay($seat, $this->payFor($seat, (string) $card->unearth));
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => [['type' => 'unearth']],
+            'kinds' => [],
+            'label' => "{$card->name}'s unearth",
+        ], [], 'is activated', "unearth {$card->name}");
+        $this->settle();
+    }
+
+    private function whyNotUnearth(int $seat, int $id): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::GRAVEYARD || $object->owner !== $seat) {
+            return 'That card is not in your graveyard.';
+        }
+        if ($object->printed()->unearth === null) {
+            return "{$object->name()} has no unearth.";
+        }
+        if (! $this->sorcerySpeed($seat)) {
+            return 'Unearth only as a sorcery.';
+        }
+        if ($this->payFor($seat, (string) $object->printed()->unearth) === null) {
+            return "You cannot pay {$object->printed()->unearth}.";
+        }
+
+        return null;
+    }
+
+    /**
      * Resolves the top of the stack (rule 608).
      *
      * @return void
@@ -1490,21 +1580,30 @@ final class Game
 
         $this->log((self::isAbility($item) ? $item['label'] : $source->name()).' resolves.');
         if (! self::isAbility($item) && $source->zone === GameObject::STACK) {
-            $this->spellLeavesStack($source, $item);
+            $this->spellLeavesStack($source, $item, true);
         }
     }
 
     /**
      * Puts a spell that has resolved or been countered into its owner's
-     * graveyard, or exile when it was cast with flashback (rule 702.34a).
+     * graveyard, or exile when it was cast with flashback (rule 702.34a), or
+     * resolved after being cast from its owner's hand with rebound (rule 702.88a).
      *
      * @param GameObject $object
      * @param array      $item
+     * @param bool       $resolved
      *
      * @return void
      */
-    private function spellLeavesStack(GameObject $object, array $item): void
+    private function spellLeavesStack(GameObject $object, array $item, bool $resolved = false): void
     {
+        if ($resolved && ($item['fromHand'] ?? false) && in_array('rebound', $object->printed()->keywords, true)) {
+            $this->moveTo($object, GameObject::EXILE);
+            $object->rebound = true;
+            $this->log("{$object->name()} is exiled with rebound.");
+
+            return;
+        }
         $this->moveTo($object, ($item['flashback'] ?? false) ? GameObject::EXILE : GameObject::GRAVEYARD);
     }
 
@@ -1826,6 +1925,15 @@ final class Game
                         $this->dealDamage($affected, "o:{$fighter->id}", $this->power($affected));
                     }
                     $this->log("{$fighter->name()} ".($effect['mutual'] ? 'fights' : 'deals damage equal to its power to')." {$affected->name()}.");
+                }
+                break;
+
+            case 'unearth':
+                if ($source->zone === GameObject::GRAVEYARD) {
+                    $this->putOntoBattlefield($source, $controller);
+                    $source->unearthed = true;
+                    $source->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
+                    $this->log("{$source->name()} returns to the battlefield with haste.");
                 }
                 break;
 
@@ -2910,8 +3018,31 @@ final class Game
             $this->hasKeyword($attacker, 'intimidate') && ! $artifact && array_intersect($colors, $attacker->definition()->colors) === [] => true,
             // Skulk (702.118): not by creatures with greater power.
             $this->hasKeyword($attacker, 'skulk') && $this->power($blocker) > $this->power($attacker) => true,
+            $this->hasKeyword($blocker, 'can block only creatures with flying') && ! $this->hasKeyword($attacker, 'flying') => true,
+            $this->evadesByPower($attacker, $this->power($blocker)) => true,
             default => false,
         };
+    }
+
+    /**
+     * Whether an attacker can't be blocked by creatures with this power
+     * (`can't be blocked by creatures with power 2 or greater`).
+     *
+     * @param GameObject $attacker
+     * @param int        $power
+     *
+     * @return bool
+     */
+    private function evadesByPower(GameObject $attacker, int $power): bool
+    {
+        foreach ($this->keywords($attacker) as $keyword) {
+            if (preg_match("/^can't be blocked by power (\\d+) or (greater|less)$/", $keyword, $m)
+                && ($m[2] === 'greater' ? $power >= (int) $m[1] : $power <= (int) $m[1])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -3228,6 +3359,11 @@ final class Game
         $this->battlefield[] = $object->id;
         if ($triggers) {
             $this->trigger($object, 'enters', $controller);
+            if ($card->isLand()) {
+                foreach ($this->permanents($controller) as $permanent) {
+                    $this->trigger($permanent, 'landfall', $controller);
+                }
+            }
         }
     }
 
@@ -3292,6 +3428,9 @@ final class Game
         }
         $controller = $object->controller;
         $incarnation = $object->incarnation;
+        if ($object->unearthed && $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD) {
+            $zone = GameObject::EXILE;
+        }
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
         // Persist and undying (rules 702.79 and 702.93) look at its counters as it died.
         $returns = ! $dies ? null : match (true) {
@@ -3877,6 +4016,7 @@ final class Game
             'kicked' => (bool) ($item['kicked'] ?? false),
             'flashback' => (bool) ($item['flashback'] ?? false),
             'faceDown' => (bool) ($item['faceDown'] ?? false),
+            'fromHand' => (bool) ($item['fromHand'] ?? false),
         ])), (array) $data['stack']));
         $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
             'source' => (int) $trigger['source'],

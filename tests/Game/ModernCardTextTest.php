@@ -55,6 +55,13 @@ final class ModernCardTextTest extends GameTestCase
         'Impulse' => ['manaCost' => '{1}{U}', 'type' => 'Instant', 'text' => 'Look at the top four cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order.', 'colors' => ['U']],
         'Commune with Nature' => ['manaCost' => '{G}', 'type' => 'Sorcery', 'text' => 'Look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in any order.', 'colors' => ['G']],
         'Mode Sprite' => ['manaCost' => '{1}{W}', 'type' => 'Creature — Faerie', 'power' => '2', 'toughness' => '2', 'text' => "When this creature enters, choose one —\n• Draw a card.\n• Destroy target artifact.", 'colors' => ['W']],
+        'Steppe Lynx Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Cat', 'power' => '0', 'toughness' => '1', 'text' => 'Landfall — Whenever a land you control enters, this creature gets +2/+2 until end of turn.', 'colors' => ['W']],
+        'Sword Lite' => ['manaCost' => '{2}', 'type' => 'Artifact — Equipment', 'text' => "When this Equipment enters, attach it to target creature you control.\nEquipped creature gets +2/+0.\nEquip {3}", 'colors' => []],
+        'Amrou Kithkin' => ['manaCost' => '{W}{W}', 'type' => 'Creature — Kithkin', 'power' => '1', 'toughness' => '1', 'text' => "This creature can't be blocked by creatures with power 3 or greater.", 'colors' => ['W']],
+        'Wall of Air Lite' => ['manaCost' => '{1}{U}', 'type' => 'Creature — Wall', 'power' => '0', 'toughness' => '5', 'text' => "Defender\nThis creature can block only creatures with flying.", 'colors' => ['U']],
+        'Frogmite' => ['manaCost' => '{4}', 'type' => 'Artifact Creature — Frog', 'power' => '2', 'toughness' => '2', 'text' => 'Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)', 'colors' => []],
+        'Hellspark Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Elemental', 'power' => '3', 'toughness' => '1', 'text' => "Trample\nUnearth {R} ({R}: Return this card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield. Unearth only as a sorcery.)", 'colors' => ['R']],
+        'Staggershock' => ['manaCost' => '{2}{R}', 'type' => 'Instant', 'text' => "Staggershock deals 2 damage to any target.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)", 'colors' => ['R']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -164,6 +171,102 @@ final class ModernCardTextTest extends GameTestCase
         $game->cast(1, $verdict, 0, ["o:{$wraith}"]);
         $this->resolve();
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($wraith));
+    }
+
+    public function testLandfallAndAttachOnEnter(): void
+    {
+        $game = $this->newGame();
+        $lynx = $this->put(0, 'Steppe Lynx Lite', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::PrecombatMain, 3);
+        $forest = $this->hand(0, 'Plains');
+        $game->playLand(0, $forest);
+        $this->resolve();
+        $this->assertSame(2, $game->power($game->objects[$lynx]));
+
+        $this->lands(0, 'Plains', 2);
+        $sword = $this->put(0, 'Sword Lite', GameObject::HAND);
+        $game->cast(0, $sword);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame($lynx, $game->objects[$sword]->attachedTo);
+        $this->assertSame(4, $game->power($game->objects[$lynx]));
+    }
+
+    public function testBlockingByPowerAndOnlyFlyers(): void
+    {
+        $game = $this->newGame();
+        $kithkin = $this->put(0, 'Amrou Kithkin', GameObject::BATTLEFIELD);
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $giant = $this->battlefield(1, 'Hill Giant');
+        $elves = $this->battlefield(1, 'Llanowar Elves');
+        $wall = $this->put(1, 'Wall of Air Lite', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $game->declareAttackers(0, [$kithkin, $bears]);
+        $this->assertFalse($game->canBlock($game->objects[$giant], $game->objects[$kithkin]));
+        $this->assertTrue($game->canBlock($game->objects[$elves], $game->objects[$kithkin]));
+        $this->assertTrue($game->canBlock($game->objects[$giant], $game->objects[$bears]));
+        $this->assertFalse($game->canBlock($game->objects[$wall], $game->objects[$bears]));
+    }
+
+    public function testAffinityForArtifacts(): void
+    {
+        $game = $this->newGame();
+        $this->put(0, 'Ornithopter', GameObject::BATTLEFIELD);
+        $this->put(0, 'Ornithopter', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Island', 2);
+        $frogmite = $this->put(0, 'Frogmite', GameObject::HAND);
+        $this->assertTrue($game->canCast(0, $frogmite), 'Two artifacts and two lands pay {4}.');
+        $game->cast(0, $frogmite);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($frogmite));
+    }
+
+    public function testUnearth(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 1);
+        $hellspark = $game->addCard(0, self::more('Hellspark Lite'), GameObject::GRAVEYARD)->id;
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->assertContains(['id' => $hellspark, 'how' => 'unearth'], $game->plays(0));
+        $game->unearth(0, $hellspark);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($hellspark));
+        $this->assertContains('haste', $game->keywords($game->objects[$hellspark]));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::End, 3);
+        $this->assertSame(GameObject::EXILE, $this->zone($hellspark), 'Exiled at the end step.');
+
+        // Exiled instead of dying, too.
+        $again = $game->addCard(0, self::more('Hellspark Lite'), GameObject::GRAVEYARD)->id;
+        $this->lands(0, 'Mountain', 1);
+        $this->passUntil(Step::PrecombatMain, 5);
+        $game->unearth(0, $again);
+        $this->resolve();
+        $this->lands(0, 'Mountain', 1);
+        $bolt = $this->hand(0, 'Lightning Bolt');
+        $game->cast(0, $bolt, 0, ["o:{$again}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::EXILE, $this->zone($again));
+    }
+
+    public function testRebound(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 3);
+        $shock = $this->put(0, 'Staggershock', GameObject::HAND);
+        $game->cast(0, $shock, 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(18, $this->life(1));
+        $this->assertSame(GameObject::EXILE, $this->zone($shock));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertSame([], array_filter($game->plays(0), fn (array $play) => $play['id'] === $shock), 'Not until your next upkeep.');
+
+        $this->passUntil(Step::Upkeep, 3);
+        $this->assertContains(['id' => $shock, 'how' => 'rb'], $game->plays(0));
+        $game->cast(0, $shock, 0, ['p:1'], 'rb');
+        $this->resolve();
+        $this->assertSame(16, $this->life(1));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($shock), 'Rebound only from the hand.');
     }
 
     public function testAnthems(): void
@@ -397,11 +500,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 

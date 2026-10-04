@@ -109,7 +109,7 @@ final class PanelActions
         $id = (int) $id;
         $match = $this->matches->find($matchId) ?? throw new \OutOfBoundsException('That match no longer exists.');
         $card = ($match->game?->objects[$id] ?? throw new GameException('That card is not in your hand.'))->printed();
-        $options = $how === 'cycle' ? null : Game::castOptions($how);
+        $options = in_array($how, ['cycle', 'unearth'], true) ? null : Game::castOptions($how);
 
         if ($options !== null && ! $card->isLand() && (self::xCount($card, $options) > 0 || ($options['faceDown'] ? 0 : $card->targetCount($options['modes'], $options['kicked'])) > 0)) {
             $seat = $match->game->seatOf($playerId);
@@ -123,6 +123,7 @@ final class PanelActions
         return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($id, $how, $card, $playerId): void {
             match (true) {
                 $how === 'cycle' => $game->cycle($seat, $id),
+                $how === 'unearth' => $game->unearth($seat, $id),
                 $card->isLand() => $game->playLand($seat, $id),
                 default => $game->cast($seat, $id, 0, [], $how),
             };
