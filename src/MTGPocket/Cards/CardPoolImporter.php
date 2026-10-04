@@ -102,7 +102,8 @@ class CardPoolImporter
             throw new \OutOfBoundsException("The MTGJSON build has no set {$setCode}.");
         }
 
-        $rarities = CardPool::RARITIES;
+        // `special`: Time Spiral Timeshifted and the like, sets of nothing but special cards.
+        $rarities = [...CardPool::RARITIES, 'special'];
         $rules = array_values(array_intersect(self::RULES_COLUMNS, array_keys($this->database->getColumns('cards'))));
         $rows = $this->database->select(
             'SELECT "c"."uuid", "c"."name", "c"."number", "c"."rarity", "c"."colors", "c"."manaValue", "c"."type", "c"."boosterTypes", "i"."scryfallId"'
@@ -117,6 +118,9 @@ class CardPoolImporter
             [$setCode, ...$rarities]
         );
         $rows = array_map(fn (array $row) => $this->database->decode('cards', $row), $rows);
+        // Special cards in a normal set are left out; a set of only special cards counts them as rares.
+        $regular = array_filter($rows, fn (array $row) => $row['rarity'] !== 'special');
+        $rows = $regular !== [] ? $regular : array_map(fn (array $row) => ['rarity' => 'rare'] + $row, $rows);
 
         $inBoosters = array_filter($rows, fn (array $row) => in_array('default', $row['boosterTypes'] ?? [], true));
         if ($inBoosters !== []) {
