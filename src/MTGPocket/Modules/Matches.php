@@ -31,7 +31,7 @@ use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 /**
- * Matches between two players: `/match queue|challenge|board|leave|modes|ladder`,
+ * Matches between two players: `/match queue|challenge|board|leave|modes|ladder|log`,
  * the challenge's **Accept** and **Decline**, the board's buttons, and
  * each player's private action panel.
  *
@@ -43,6 +43,9 @@ use function React\Promise\resolve;
  * hand and choices are only ever in their own panel, a hidden reply to
  * **Your hand & actions**. Acting in the panel updates the panel and posts
  * a fresh board that mentions whoever the game now waits on.
+ *
+ * Every game keeps a full record, turn by turn; `/match log` (or the
+ * finished board's **Game record** button) sends it as a text file.
  *
  * @since 0.3.0
  */
@@ -87,7 +90,14 @@ final class Matches implements Module
             ->addOption(self::subcommand($mtg, 'modes', 'The game modes, their deck rules and who is waiting.', self::hidden($mtg)))
             ->addOption(self::subcommand($mtg, 'ladder', 'A game mode\'s ratings.', $mode('Which mode; defaults to your active deck\'s format.'), self::hidden($mtg)))
             ->addOption(self::subcommand($mtg, 'board', 'Show the board of your current game.', self::hidden($mtg)))
-            ->addOption(self::subcommand($mtg, 'leave', 'Leave the queue, call off your challenge, or concede your game.'))];
+            ->addOption(self::subcommand($mtg, 'leave', 'Leave the queue, call off your challenge, or concede your game.'))
+            ->addOption(self::subcommand(
+                $mtg,
+                'log',
+                'The full record of a game, turn by turn, to review.',
+                self::option($mtg, Option::STRING, 'match', 'Which game; defaults to your current or last one.', false, true),
+                self::hidden($mtg),
+            ))];
     }
 
     /**
@@ -163,6 +173,13 @@ final class Matches implements Module
             });
         });
 
+        $mtg->listenCommand(['match', 'log'], function (Interaction $interaction, $options) use ($mtg, $matches) {
+            $args = self::values($options);
+            [$id] = self::caller($interaction);
+
+            return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), fn () => MatchMessageBuilder::log($matches->forReview($id, $args['match'] ?? null)));
+        }, $this->historyChoices(...));
+
         $mtg->on(Event::INTERACTION_CREATE, function (Interaction $interaction) use ($mtg): void {
             if ($interaction->type !== Interaction::TYPE_MESSAGE_COMPONENT) {
                 return;
@@ -199,6 +216,7 @@ final class Matches implements Module
             // Board buttons.
             'refresh' => self::answer($mtg, $interaction, fn () => MatchMessageBuilder::board($this->find($matchId)), true),
             'hand' => self::answer($mtg, $interaction, fn () => MatchMessageBuilder::actions($this->find($matchId), $id)),
+            'log' => self::answer($mtg, $interaction, fn () => MatchMessageBuilder::log($this->find($matchId))),
             'bpass' => self::answer($mtg, $interaction, fn () => MatchMessageBuilder::board($this->actions->run($matchId, $id, 'pass')[0]), true),
 
             // Everything else comes from a player's own panel.
@@ -262,6 +280,36 @@ final class Matches implements Module
             }
         }
         $choices += $this->pocket->rentals->suggest($typed);
+
+        return self::choices($choices);
+    }
+
+    /**
+     * Autocomplete for `match`: the caller's live game, then the games they finished.
+     *
+     * @param Interaction $interaction
+     * @param mixed       $option
+     *
+     * @return array
+     */
+    private function historyChoices(Interaction $interaction, $option): array
+    {
+        if (($option->name ?? '') !== 'match') {
+            return [];
+        }
+        [$id] = self::caller($interaction);
+        $typed = trim((string) ($option->value ?? ''));
+        $matches = $this->pocket->matches->history($id);
+        if (($live = $this->pocket->matches->current($id)) !== null && $live->game !== null) {
+            array_unshift($matches, $live);
+        }
+        $choices = [];
+        foreach ($matches as $match) {
+            $label = MatchMessageBuilder::historyLine($match, $id);
+            if ($typed === '' || stripos($label, $typed) !== false || str_starts_with($match->id, strtolower($typed))) {
+                $choices[$match->id] = $label;
+            }
+        }
 
         return self::choices($choices);
     }

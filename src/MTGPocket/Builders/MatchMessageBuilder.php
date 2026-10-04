@@ -26,6 +26,7 @@ use MTG\Helpers\Text;
 use MTGPocket\Game\Game;
 use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Game\GameObject;
+use MTGPocket\Game\GameRecord;
 use MTGPocket\Matches\Ladder;
 use MTGPocket\Matches\MatchRecord;
 use MTGPocket\Modes\GameMode;
@@ -41,6 +42,7 @@ use MTGPocket\Modes\GameModes;
  * - each player's own action panel, {@see actions()} (only they see it): their hand and the
  *   choice in front of them, from keeping a hand to choosing blockers,
  *   with the abilities they can activate and targets for their triggers
+ * - a game's full record for review, {@see log()}, as a text file
  *
  * Custom ids: `pocket:m:<matchId>:<action>[:<arg>]`.
  *
@@ -262,7 +264,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $message->addComponent($container);
 
         if ($game->stage === Game::OVER) {
-            return $message;
+            return $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, self::id($match->id, 'log'))->setLabel('📜 Game record')));
         }
 
         $row = ActionRow::new()->addComponent(Button::new(Button::STYLE_PRIMARY, self::id($match->id, 'hand'))->setLabel('🃏 Your hand & actions'));
@@ -272,6 +274,51 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $row->addComponent(Button::new(Button::STYLE_SECONDARY, self::id($match->id, 'refresh'))->setLabel('Refresh'));
 
         return $message->addComponent($row);
+    }
+
+    /**
+     * A game's full record, turn by turn, as an attached text file.
+     *
+     * @param MatchRecord $match A match whose game has started.
+     *
+     * @return static
+     */
+    public static function log(MatchRecord $match): static
+    {
+        $game = $match->game;
+        $names = array_map(fn ($player) => $player->name, $game->players);
+        $state = $game->stage === Game::OVER
+            ? GameRecord::result($game)." after {$game->turn} turn".($game->turn === 1 ? '' : 's').($game->winner === null ? ', a draw' : ", won by **{$names[$game->winner]}**")
+            : ($game->stage === Game::MULLIGAN ? 'opening hands' : "in progress, turn {$game->turn}");
+
+        return static::new()
+            ->setAllowedMentions(AllowedMentions::none())
+            ->setContent("📜 **{$names[0]} vs {$names[1]}** · ".self::modeLabel($match).($match->ranked ? ' (ranked)' : '')." · {$state}\n-# Match `{$match->id}`. The record has a score sheet with every move by turn, then the full log with each player's position at the end of every turn.")
+            ->addFileFromContent("match-{$match->id}.txt", (string) $match->transcript());
+    }
+
+    /**
+     * A finished game as a short line, for picking it from a list.
+     *
+     * @param MatchRecord $match
+     * @param string      $playerId Whose point of view: won or lost.
+     *
+     * @return string
+     */
+    public static function historyLine(MatchRecord $match, string $playerId): string
+    {
+        $game = $match->game;
+        $seat = $game->seatOf($playerId);
+        $opponent = $seat === null ? "{$game->players[0]->name} vs {$game->players[1]->name}" : 'vs '.$game->players[$game->opponent($seat)]->name;
+        $result = match (true) {
+            $game->stage !== Game::OVER => 'in progress',
+            $game->winner === null => 'draw',
+            $game->winner === $seat => 'won',
+            $seat === null => "{$game->players[$game->winner]->name} won",
+            default => 'lost',
+        };
+
+        return "{$opponent} · {$result} · {$game->turn} turn".($game->turn === 1 ? '' : 's').' · '.self::modeLabel($match).($match->createdAt > 0 ? ' · '.gmdate('M j', $match->createdAt) : '');
     }
 
     /**
