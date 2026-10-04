@@ -675,6 +675,16 @@ final class TextParser
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif ($word === 'enlist' && ! $spell) {
                 $found['keywords'][] = 'enlist';
+            } elseif (preg_match('/^protection from (white|blue|black|red|green)$/', $word) && ! $spell) {
+                // Protection from a color (rule 702.16): see Game::protectedFrom().
+                $found['keywords'][] = $word;
+            } elseif (preg_match('/^prototype '.self::COST.' — (\d+)\/(\d+)$/iu', $part, $m) && ! $spell) {
+                // Prototype (rule 702.160): cast smaller for less, see Game::prototype().
+                $found['altCosts']['prototype'] = $m[1];
+                $found['keywords'][] = "prototype {$m[2]}/{$m[3]}";
+            } elseif (preg_match('/^tribute (\d+)$/', $word, $m) && ! $spell) {
+                // Tribute (rule 702.104): the opponent never pays it, so `if tribute wasn't paid` always happens.
+                $found['keywords'][] = "tribute {$m[1]}";
             } elseif (preg_match('/^(dash|evoke|warp|plot) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
@@ -1238,6 +1248,9 @@ final class TextParser
             $text = $match[2];
         } else {
             return false;
+        }
+        if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {
+            $text = $match[1];
         }
         $kicked = false;
         if ($event === 'enters' && $result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)) {
@@ -1821,6 +1834,9 @@ final class TextParser
         // `Copy target instant or sorcery spell. You may choose new targets for the copy.`: the copy keeps its targets.
         if (preg_match("/^copy ({$targets})$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])] ?? null, ['instant_sorcery_spell', 'instant_sorcery_spell_yours'], true)) {
             return ['type' => 'copy_spell', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        if (preg_match('/^proliferate$/i', $s)) {
+            return ['type' => 'proliferate'];
         }
         if (preg_match("/^return CARDNAME to its owner's hand$/i", $s)) {
             return ['type' => 'bounce', 'self' => true];

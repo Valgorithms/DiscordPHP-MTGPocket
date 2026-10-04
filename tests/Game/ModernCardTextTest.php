@@ -184,6 +184,11 @@ final class ModernCardTextTest extends GameTestCase
         'Enlist Lite' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Human Soldier', 'power' => '2', 'toughness' => '2', 'text' => "Enlist (As this creature attacks, you may tap a nonattacking creature you control without summoning sickness. When you do, add its power to this creature's until end of turn.)", 'colors' => ['W']],
         'Life Land Lite' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped unless a player has 13 or less life.\n{T}: Add {B} or {R}.", 'colors' => []],
         'Azorius Signet' => ['manaCost' => '{2}', 'type' => 'Artifact', 'text' => '{1}, {T}: Add {W}{U}.', 'colors' => []],
+        'Pro Black Lite' => ['manaCost' => '{1}{W}', 'type' => 'Creature — Human Knight', 'power' => '2', 'toughness' => '2', 'text' => 'Protection from black', 'colors' => ['W']],
+        'Battle Cry Lite' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Goblin', 'power' => '2', 'toughness' => '2', 'text' => 'Battle cry (Whenever this creature attacks, each other attacking creature gets +1/+0 until end of turn.)', 'colors' => ['W']],
+        'Proliferate Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => "Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nDraw a card.", 'colors' => ['U']],
+        'Prototype Lite' => ['manaCost' => '{6}', 'type' => 'Artifact Creature — Construct', 'power' => '6', 'toughness' => '6', 'text' => "Prototype {1}{R} — 2/2 (You can cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nTrample", 'colors' => []],
+        'Tribute Lite' => ['manaCost' => '{1}{B}{R}', 'type' => 'Creature — Minotaur', 'power' => '3', 'toughness' => '3', 'text' => "Tribute 1 (As this creature enters, an opponent of your choice may put a +1/+1 counter on it.)\nWhen Tribute Lite enters, if tribute wasn't paid, draw a card.", 'colors' => ['B', 'R']],
         'Ascend Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '1', 'text' => "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)", 'colors' => ['W']],
     ];
 
@@ -1055,6 +1060,61 @@ final class ModernCardTextTest extends GameTestCase
         $second = $this->put(0, 'Life Land Lite', GameObject::HAND);
         $game->playLand(0, $second);
         $this->assertFalse($game->objects[$second]->tapped, 'A player has 13 or less life.');
+    }
+
+    public function testProtectionBattleCryAndProliferate(): void
+    {
+        $game = $this->newGame();
+        $knight = $this->put(0, 'Pro Black Lite', GameObject::BATTLEFIELD);
+        $this->lands(1, 'Swamp', 2);
+        $this->passUntil(Step::PrecombatMain, 2);
+        try {
+            $game->cast(1, $this->put(1, 'Murder Lite', GameObject::HAND), 0, ["o:{$knight}"]);
+            $this->fail('Protection from black: a black spell cannot target it.');
+        } catch (GameException) {
+        }
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $cry = $this->put(0, 'Battle Cry Lite', GameObject::BATTLEFIELD);
+        $zombie = $this->put(1, 'Ward Discard Lite', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $game->declareAttackers(0, [$knight, $cry]);
+        $this->assertSame(3, $game->power($game->objects[$knight]), 'Battle cry: +1/+0.');
+        $this->assertSame(2, $game->power($game->objects[$cry]), 'Not itself.');
+        $this->assertFalse($game->canBlock($game->objects[$zombie], $game->objects[$knight]), 'A black creature cannot block it.');
+        $this->assertTrue($game->canBlock($game->objects[$zombie], $game->objects[$cry]));
+
+        $this->passUntil(Step::PrecombatMain, 5);
+        $game->objects[$knight]->addCounters('+1/+1', 1);
+        $game->objects[$zombie]->addCounters('-1/-1', 1);
+        $game->players[1]->poison = 2;
+        $this->lands(0, 'Island', 2);
+        $game->cast(0, $this->put(0, 'Proliferate Lite', GameObject::HAND), 0, []);
+        $this->resolve();
+        $this->assertSame(2, $game->objects[$knight]->counter('+1/+1'));
+        $this->assertSame(2, $game->objects[$zombie]->counter('-1/-1'));
+        $this->assertSame(3, $game->players[1]->poison);
+    }
+
+    public function testPrototypeAndTribute(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 2);
+        $construct = $this->put(0, 'Prototype Lite', GameObject::HAND);
+        $this->assertContains(['id' => $construct, 'how' => 'prototype'], $game->plays(0));
+        $game->cast(0, $construct, 0, [], 'prototype');
+        $this->resolve();
+        $this->assertSame([2, 2], [$game->power($game->objects[$construct]), $game->toughness($game->objects[$construct])]);
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Swamp', 1);
+        $this->lands(0, 'Mountain', 2);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $this->put(0, 'Tribute Lite', GameObject::HAND), 0, []);
+        while ($game->stack !== [] || $game->pendingTriggers !== []) {
+            $this->resolve();
+        }
+        $this->assertSame($hand + 1, count($game->players[0]->hand), 'Tribute was not paid: draw a card.');
     }
 
     public function testUnearth(): void
@@ -1965,11 +2025,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2, 'Foretell Lite' => 2, 'Thallid' => 2, 'Reverberate' => 1, 'Casualty Lite' => 2, 'Mirran Lite' => 1, 'Molimo Lite' => 2, 'Bounce Lite' => 2, 'Overload Lite' => 1, 'Eternalize Lite' => 2, 'Azorius Signet' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2, 'Foretell Lite' => 2, 'Thallid' => 2, 'Reverberate' => 1, 'Casualty Lite' => 2, 'Mirran Lite' => 1, 'Molimo Lite' => 2, 'Bounce Lite' => 2, 'Overload Lite' => 1, 'Eternalize Lite' => 2, 'Azorius Signet' => 1, 'Battle Cry Lite' => 2, 'Proliferate Lite' => 1, 'Prototype Lite' => 2,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 

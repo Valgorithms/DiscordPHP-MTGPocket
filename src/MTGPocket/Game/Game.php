@@ -957,7 +957,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1003,7 +1003,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1585,7 +1585,7 @@ final class Game
             throw new GameException("{$card->name} needs ".count($kinds).' target'.(count($kinds) === 1 ? '' : 's').'.');
         }
         foreach ($kinds as $slot => $kind) {
-            if (! $this->isLegalTarget($kind, $targets[$slot], $seat)) {
+            if (! $this->isLegalTarget($kind, $targets[$slot], $seat) || $this->protectedFrom($this->targetObject($targets[$slot]), $object)) {
                 throw new GameException('That is not a legal target for '.$card->name.'.');
             }
             $targets[$slot] = $this->pinTarget($targets[$slot]);
@@ -2423,7 +2423,7 @@ final class Game
         $legal = [];
         $chosen = [];
         foreach ($item['targets'] as $slot => $target) {
-            $legal[$slot] = $target !== '-' && $this->isLegalTarget($kinds[$slot], $target, $item['controller'], $item['id']);
+            $legal[$slot] = $target !== '-' && $this->isLegalTarget($kinds[$slot], $target, $item['controller'], $item['id']) && ! $this->protectedFrom($this->targetObject($target), $object);
             if ($target !== '-') {
                 $chosen[] = $legal[$slot];
             }
@@ -3159,6 +3159,24 @@ final class Game
                 }
                 break;
 
+            case 'proliferate':
+                // Proliferate (rule 701.27): your permanents' counters grow (not -1/-1, stun or age); your opponents' -1/-1 and stun counters,
+                // and each player's poison (opponents) or energy (you).
+                foreach ($this->permanents() as $object) {
+                    $yours = $object->controller === $controller;
+                    foreach (array_keys($object->counters) as $kind) {
+                        if ($yours !== in_array($kind, ['-1/-1', 'stun', 'age'], true)) {
+                            $object->addCounters($kind, 1);
+                        }
+                    }
+                }
+                foreach ($opponents as $seat) {
+                    $this->players[$seat]->poison += $this->players[$seat]->poison > 0 ? 1 : 0;
+                }
+                $this->players[$controller]->energy += $this->players[$controller]->energy > 0 ? 1 : 0;
+                $this->log("{$this->players[$controller]->name} proliferates.");
+                break;
+
             case 'embalm':
                 // A token copy that's a Zombie with no mana cost: 4/4 and black when eternalized, white when embalmed.
                 $printed = $source->printed();
@@ -3662,7 +3680,7 @@ final class Game
     {
         $this->expect($seat, 'trigger');
         $trigger = $this->pendingTriggers[0];
-        $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label']);
+        $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label'], $this->objects[$trigger['source']] ?? null);
         array_shift($this->pendingTriggers);
         $this->pushTriggered($trigger, array_values($targets));
         $this->settle();
@@ -3745,13 +3763,13 @@ final class Game
      *
      * @return void
      */
-    private function checkTargets(array $kinds, array $targets, int $seat, string $name): void
+    private function checkTargets(array $kinds, array $targets, int $seat, string $name, ?GameObject $source = null): void
     {
         if (count($targets) !== count($kinds)) {
             throw new GameException("{$name} needs ".count($kinds).' target'.(count($kinds) === 1 ? '' : 's').'.');
         }
         foreach ($kinds as $slot => $kind) {
-            if (! $this->isLegalTarget($kind, (string) $targets[$slot], $seat)) {
+            if (! $this->isLegalTarget($kind, (string) $targets[$slot], $seat) || $this->protectedFrom($this->targetObject((string) $targets[$slot]), $source)) {
                 throw new GameException("That is not a legal target for {$name}.");
             }
         }
@@ -3965,7 +3983,7 @@ final class Game
         $kinds = self::targetKindsOf($ability['effects']);
         $targets = array_values($targets);
         $label = "{$object->name()}'s ability";
-        $this->checkTargets($kinds, $targets, $seat, $label);
+        $this->checkTargets($kinds, $targets, $seat, $label, $object);
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat);
         if ($wardDiscard > count($this->players[$seat]->hand)) {
             throw new GameException('You need a card in your hand to discard for ward.');
@@ -4343,6 +4361,18 @@ final class Game
             $this->trigger($this->objects[$id], 'attacks', $seat);
         }
 
+        // Battle cry (rule 702.91): each other attacking creature gets +1/+0.
+        foreach ($ids as $id) {
+            if ($this->hasKeyword($this->objects[$id], 'battle cry') && count($ids) > 1) {
+                foreach ($ids as $other) {
+                    if ($other !== $id) {
+                        $this->objects[$other]->untilEndOfTurn[] = ['power' => 1, 'toughness' => 0, 'keywords' => []];
+                    }
+                }
+                $this->log("Battle cry: each other attacking creature gets +1/+0 until end of turn.");
+            }
+        }
+
         // Enlist (rule 702.154): taps your weakest nonattacking creature that could attack, for its power.
         foreach ($ids as $id) {
             if (! $this->hasKeyword($this->objects[$id], 'enlist')) {
@@ -4407,6 +4437,29 @@ final class Game
      *
      * @return bool
      */
+    /**
+     * Protection from a color (rule 702.16): no damage, blocking or targeting by sources of that color.
+     *
+     * @param GameObject|null $object
+     * @param GameObject|null $source
+     *
+     * @return bool
+     */
+    private function protectedFrom(?GameObject $object, ?GameObject $source): bool
+    {
+        if ($object === null || $source === null || $object->zone !== GameObject::BATTLEFIELD) {
+            return false;
+        }
+        $colors = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'];
+        foreach ($this->keywords($object) as $keyword) {
+            if (preg_match('/^protection from (white|blue|black|red|green)$/', $keyword, $m) && in_array($colors[$m[1]], $source->definition()->colors, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function canBlock(GameObject $blocker, GameObject $attacker): bool
     {
         if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block")
@@ -4417,6 +4470,9 @@ final class Game
             return false;
         }
         if ($this->hasKeyword($attacker, 'flying') && ! $this->hasKeyword($blocker, 'flying') && ! $this->hasKeyword($blocker, 'reach')) {
+            return false;
+        }
+        if ($this->protectedFrom($attacker, $blocker)) {
             return false;
         }
         $artifact = $blocker->definition()->is('Artifact');
@@ -4676,6 +4732,11 @@ final class Game
         } else {
             $object = $this->targetObject($target);
             if ($object === null || $object->zone !== GameObject::BATTLEFIELD) {
+                return;
+            }
+            if ($this->protectedFrom($object, $source)) {
+                $this->log("Protection prevents the damage {$source->name()} would deal to {$object->name()}.");
+
                 return;
             }
             if ($object->definition()->isPlaneswalker() && ! $this->isCreature($object)) {
@@ -5466,6 +5527,27 @@ final class Game
      *
      * @return int|null
      */
+    /**
+     * Prototype (rule 702.160): the smaller power and toughness when cast for its prototype cost.
+     *
+     * @param GameObject $object
+     *
+     * @return array{0: int, 1: int}|array{}
+     */
+    private function prototype(GameObject $object): array
+    {
+        if ($object->alt !== 'prototype') {
+            return [];
+        }
+        foreach ($object->definition()->keywords as $keyword) {
+            if (preg_match('/^prototype (\d+)\/(\d+)$/', $keyword, $m)) {
+                return [(int) $m[1], (int) $m[2]];
+            }
+        }
+
+        return [];
+    }
+
     private function counted(GameObject $object, string $stat): ?int
     {
         $counts = $object->definition()->countsAs;
@@ -5484,7 +5566,7 @@ final class Game
 
     public function power(GameObject $object): int
     {
-        $power = ($this->levelBand($object)['power'] ?? $this->counted($object, 'power') ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $power = ($this->levelBand($object)['power'] ?? $this->counted($object, 'power') ?? $this->prototype($object)[0] ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         $power += $this->maxSpeedBonus($object)['power'] ?? 0;
         foreach ($this->attachments($object) as $attached) {
             $power += $this->bonusOf($attached)['power'];
@@ -5501,7 +5583,7 @@ final class Game
 
     public function toughness(GameObject $object): int
     {
-        $toughness = ($this->levelBand($object)['toughness'] ?? $this->counted($object, 'toughness') ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $toughness = ($this->levelBand($object)['toughness'] ?? $this->counted($object, 'toughness') ?? $this->prototype($object)[1] ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         $toughness += $this->maxSpeedBonus($object)['toughness'] ?? 0;
         foreach ($this->attachments($object) as $attached) {
             $toughness += $this->bonusOf($attached)['toughness'];
