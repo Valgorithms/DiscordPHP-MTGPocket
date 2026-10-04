@@ -38,7 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound',
-        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve',
+        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number',
     ];
 
     /**
@@ -118,6 +118,9 @@ final class CardDefinition
 
     /** @var array{power: int, toughness: int, keywords: string[]}|null What it gets and has while its controller is at max speed. */
     public readonly ?array $maxSpeed;
+
+    /** @var array<string, string> Other ways to cast it: `dash`, `evoke`, `warp` or `plot` => cost. */
+    public readonly array $altCosts;
 
     /** @var array<int, array{kind: string, amount: int}> Spells its controller casts cost less (`Instant and sorcery spells you cast cost {1} less to cast.`). */
     public readonly array $costReductions;
@@ -220,6 +223,7 @@ final class CardDefinition
         $this->yourTurnKeywords = $parsed['yourTurnKeywords'];
         $this->entersWithOther = $parsed['otherCounters'];
         $this->costReductions = $parsed['costReductions'];
+        $this->altCosts = $parsed['altCosts'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];

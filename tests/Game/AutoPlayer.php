@@ -215,7 +215,7 @@ final class AutoPlayer
                     return true;
                 }
             }
-            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => ! in_array($play['how'], ['cycle', 'unearth'], true) && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
+            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => ! in_array($play['how'], ['cycle', 'unearth', 'plot'], true) && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
             $cost = fn (array $play) => ManaCost::parse(Game::castCost($game->objects[$play['id']]->printed(), $play['how']))->manaValue();
             usort($plays, fn (array $a, array $b) => $cost($b) <=> $cost($a));
             foreach ($plays as $play) {
@@ -249,8 +249,8 @@ final class AutoPlayer
                 return true;
             }
             foreach ($game->plays($seat) as $play) {
-                if ($play['how'] === 'unearth') {
-                    $game->unearth($seat, $play['id']);
+                if ($play['how'] === 'unearth' || $play['how'] === 'plot') {
+                    $play['how'] === 'unearth' ? $game->unearth($seat, $play['id']) : $game->plot($seat, $play['id']);
 
                     return true;
                 }

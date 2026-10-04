@@ -157,7 +157,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -218,6 +218,7 @@ final class TextParser
             $statics = [
                 'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land',
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
+                'A deck can have any number of cards named CARDNAME.' => 'any number',
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -565,6 +566,12 @@ final class TextParser
             } elseif ($word === 'extort' && ! $spell) {
                 // Extort (rule 702.101): paid whenever its controller can.
                 $found['triggered'][] = ['text' => 'Extort', 'event' => 'cast_spell', 'effects' => [['type' => 'extort']]];
+            } elseif (preg_match('/^(dash|evoke|warp|plot) '.self::COST.'$/i', $part, $m)) {
+                // Other ways to cast it: see Game::castOptions().
+                $found['altCosts'][strtolower($m[1])] = $m[2];
+            } elseif (preg_match('/^mobilize (\d+)$/i', $part, $m) && ! $spell) {
+                // Mobilize (rule 702.181): attacking Warrior tokens, sacrificed at the end step.
+                $found['triggered'][] = ['text' => $part, 'event' => 'attacks', 'effects' => [['type' => 'mobilize', 'amount' => (int) $m[1]]]];
             } elseif (preg_match('/^firebending (\d+)$/i', $part, $m) && ! $spell) {
                 // Firebending (rule 702.188): {R} for each, when it attacks.
                 $found['triggered'][] = ['text' => $part, 'event' => 'attacks', 'effects' => [['type' => 'add_mana', 'color' => 'R', 'amount' => (int) $m[1]]]];
@@ -599,6 +606,11 @@ final class TextParser
             } elseif (preg_match('/^level up '.self::COST.'$/i', $part, $m) && ! $spell) {
                 $found['activated'][] = ['text' => $part, 'cost' => ['mana' => $m[1]], 'effects' => [['type' => 'level', 'self' => true]], 'sorcery' => true, 'once' => false];
             } else {
+                return false;
+            }
+        }
+        foreach ($found['altCosts'] as $cost) {
+            if (str_contains($cost, 'X')) {
                 return false;
             }
         }
@@ -843,6 +855,7 @@ final class TextParser
             "can't attack or block", "can't attack, block, or crew Vehicles" => ["can't attack", "can't block"],
             "doesn't untap during its controller's untap step", "doesn't untap during your untap step" => ["doesn't untap"],
             "can't be blocked" => ["can't be blocked"],
+            "can't be blocked by more than one creature" => ["can't be blocked by more than one creature"],
             "attacks each combat if able" => ["attacks each combat if able"],
             "can't be countered" => ["can't be countered"],
             '' => [],
@@ -1021,6 +1034,12 @@ final class TextParser
             return true;
         } elseif (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), (.+)$/', $line, $match)) {
             $event = 'landfall';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever another creature you control enters(?: the battlefield)?, (.+)$/', $line, $match)) {
+            $event = 'creature_enters_other';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever you draw your second card each turn, (.+)$/', $line, $match)) {
+            $event = 'second_draw';
             $text = $match[1];
         } elseif (preg_match('/^Whenever you gain life, (.+)$/', $line, $match)) {
             $event = 'gain_life';
