@@ -17,6 +17,7 @@ use MTG\Database\Database;
 use MTG\Http\Http;
 use MTGPocket\Cards\CardPool;
 use MTGPocket\Cards\CardPoolImporter;
+use MTGPocket\Game\CardDefinition;
 use MTGPocket\Pocket;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
@@ -68,6 +69,12 @@ final class CardPoolImporterTest extends StorageTestCase
             $card->execute($row);
             $identifier->execute([$row[0], 'scry-'.$row[0]]);
         }
+        // Rules columns, as the real build has them.
+        foreach (['manaCost', 'power', 'toughness', 'text', 'types', 'subtypes', 'keywords'] as $column) {
+            $pdo->exec("ALTER TABLE \"cards\" ADD COLUMN \"{$column}\" TEXT");
+        }
+        $pdo->exec('UPDATE "cards" SET "manaCost" = \'{3}{W}{W}\', "power" = \'4\', "toughness" = \'4\', "text" = \'Flying, vigilance\', "types" = \'Creature\', "subtypes" = \'Angel\', "keywords" = \'Flying, Vigilance\' WHERE "uuid" = \'angel\'');
+        $pdo->exec('UPDATE "cards" SET "manaCost" = \'{R}\', "text" = \'Lightning Bolt deals 3 damage to any target.\', "types" = \'Instant\' WHERE "uuid" = \'bolt\'');
         $pdo = null;
 
         $loop = Loop::get();
@@ -105,6 +112,12 @@ final class CardPoolImporterTest extends StorageTestCase
         $this->assertSame(['ring'], $pool->uuids(CardPool::COLORLESS));
         $this->assertSame(['W', 'U', 'R', 'M', 'C'], $pool->colors());
         $this->assertSame('scry-dragon', $pool->card('dragon')['scryfallId']);
+
+        $angel = $pool->card('angel');
+        $this->assertSame(['{3}{W}{W}', '4', '4', ['Creature'], ['Angel']], [$angel['manaCost'], $angel['power'], $angel['toughness'], $angel['types'], $angel['subtypes']]);
+        $this->assertSame(['flying', 'vigilance'], (new CardDefinition($angel))->keywords, 'The rules engine can read it.');
+        $this->assertArrayHasKey('manaCost', $pool->card('ring'), 'No mana cost is kept as null: it cannot be cast.');
+        $this->assertNull($pool->card('ring')['manaCost']);
 
         $this->assertTrue($pool->hasRareSlot('R'));
         $this->assertFalse($pool->hasRareSlot('W'));

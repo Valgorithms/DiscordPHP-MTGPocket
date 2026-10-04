@@ -1,0 +1,577 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * This file is a part of the DiscordPHP-MTGPocket project.
+ *
+ * Copyright (c) 2026-present Valithor Obsidion <valithor@discordphp.org>
+ *
+ * This file is subject to the MIT license that is bundled
+ * with this source code in the LICENSE.md file.
+ */
+
+namespace MTGPocket\Builders;
+
+use Discord\Builders\Components\ActionRow;
+use Discord\Builders\Components\Button;
+use Discord\Builders\Components\Container;
+use Discord\Builders\Components\Option;
+use Discord\Builders\Components\Separator;
+use Discord\Builders\Components\StringSelect;
+use Discord\Builders\Components\TextDisplay;
+use Discord\Parts\Channel\Message\AllowedMentions;
+use MTG\Builders\CardMessageBuilder;
+use MTG\Helpers\Text;
+use MTGPocket\Game\Game;
+use MTGPocket\Game\GameObject;
+use MTGPocket\Matches\MatchRecord;
+
+/**
+ * The messages of a match:
+ *
+ * - the challenge, with **Accept** and **Decline**
+ * - the board everyone sees: life, cards in each zone, the battlefield,
+ *   the stack and what just happened
+ * - each player's own action panel, {@see actions()} (only they see it): their hand and the
+ *   choice in front of them, from keeping a hand to choosing blockers
+ *
+ * Custom ids: `pocket:m:<matchId>:<action>[:<arg>]`.
+ *
+ * @since 0.3.0
+ */
+class MatchMessageBuilder extends PocketMessageBuilder
+{
+    /**
+     * Attackers shown in the block panel, one picker each.
+     */
+    public const int MAX_BLOCK_PICKERS = 8;
+
+    /**
+     * A custom id for a match action.
+     *
+     * @param string $matchId
+     * @param string $action
+     * @param string ...$args
+     *
+     * @return string
+     */
+    public static function id(string $matchId, string $action, string ...$args): string
+    {
+        return implode(':', [self::PREFIX, 'm', $matchId, $action, ...$args]);
+    }
+
+    /**
+     * An open challenge.
+     *
+     * @param MatchRecord $match
+     *
+     * @return static
+     */
+    public static function challenge(MatchRecord $match): static
+    {
+        $challenger = $match->challenger();
+        $opponent = $match->opponent();
+
+        return static::panel()
+            ->setAllowedMentions(AllowedMentions::none()->addUser($opponent['id']))
+            ->addComponent(Container::new()
+                ->setAccentColor(CardMessageBuilder::ACCENTS['R'])
+                ->addComponent(TextDisplay::new(sprintf(
+                    "### ⚔️ A challenge!\n<@%s>, **%s** challenges you to a game of Magic with **%s**.\n-# You play your active deck (`/decks use` to change it). Matches use full Magic rules; spells the engine cannot read yet still resolve without those parts.",
+                    $opponent['id'],
+                    $challenger['name'],
+                    $challenger['deckName'],
+                ))))
+            ->addComponent(ActionRow::new()
+                ->addComponent(Button::new(Button::STYLE_SUCCESS, self::id($match->id, 'accept'))->setLabel('Accept'))
+                ->addComponent(Button::new(Button::STYLE_DANGER, self::id($match->id, 'decline'))->setLabel('Decline')));
+    }
+
+    /**
+     * A match that ended before it started.
+     *
+     * @param MatchRecord $match
+     *
+     * @return static
+     */
+    public static function closed(MatchRecord $match): static
+    {
+        $text = $match->status === MatchRecord::CANCELLED
+            ? "**{$match->challenger()['name']}** called off the challenge."
+            : "**{$match->opponent()['name']}** declined the challenge.";
+
+        return static::notice($text);
+    }
+
+    /**
+     * The board everyone sees.
+     *
+     * @param MatchRecord $match
+     * @param bool        $ping  Mention the players the game is waiting on.
+     *
+     * @return static
+     */
+    public static function board(MatchRecord $match, bool $ping = false): static
+    {
+        $game = $match->game;
+        $message = static::panel();
+        if ($game === null) {
+            return $message->addComponent(Container::new()->addComponent(TextDisplay::new('This game has not started.')));
+        }
+
+        $names = array_map(fn ($player) => $player->name, $game->players);
+        $heading = "### ⚔️ {$names[0]} vs {$names[1]}\n-# ".match ($game->stage) {
+            Game::MULLIGAN => 'Opening hands',
+            Game::OVER => "Game over after turn {$game->turn}",
+            default => "Turn {$game->turn} · {$names[$game->active]}'s turn · {$game->step->label()}",
+        };
+
+        $container = Container::new()
+            ->setAccentColor(CardMessageBuilder::ACCENTS[$game->stage === Game::OVER ? 'multicolor' : 'colorless'])
+            ->addComponent(TextDisplay::new($heading))
+            ->addComponent(Separator::new());
+
+        // Each player's side, the opponent of the active player first.
+        foreach ([$game->opponent($game->active), $game->active] as $seat) {
+            $container->addComponent(TextDisplay::new(Text::clip(self::side($game, $seat), 1800)));
+        }
+
+        if ($game->stack !== []) {
+            $lines = [];
+            foreach (array_reverse($game->stack) as $index => $item) {
+                $object = $game->objects[$item['object']];
+                $targets = array_map(fn (string $target) => $game->describeTarget($target), $item['targets']);
+                $lines[] = ($index + 1).'. **'.$object->name().'**'.($item['x'] > 0 ? " (X = {$item['x']})" : '').($targets === [] ? '' : ' → '.implode(', ', $targets))." · {$names[$item['controller']]}";
+            }
+            $container->addComponent(Separator::new())->addComponent(TextDisplay::new("**Stack** (top first)\n".implode("\n", $lines)));
+        }
+
+        $container->addComponent(Separator::new())
+            ->addComponent(TextDisplay::new(Text::clip(implode("\n", array_map(fn ($line) => "-# {$line}", array_slice($game->log, -6))), 1200)));
+
+        $waiting = self::waiting($match);
+        $container->addComponent(Separator::new())->addComponent(TextDisplay::new($waiting['text']));
+        if ($ping && $waiting['ids'] !== []) {
+            $mentions = AllowedMentions::none();
+            foreach ($waiting['ids'] as $id) {
+                $mentions->addUser($id);
+            }
+            $message->setAllowedMentions($mentions);
+        }
+        $message->addComponent($container);
+
+        if ($game->stage === Game::OVER) {
+            return $message;
+        }
+
+        $row = ActionRow::new()->addComponent(Button::new(Button::STYLE_PRIMARY, self::id($match->id, 'hand'))->setLabel('🃏 Your hand & actions'));
+        if ($game->stage === Game::PLAYING) {
+            $row->addComponent(Button::new(Button::STYLE_SECONDARY, self::id($match->id, 'bpass'))->setLabel('Pass priority')->setDisabled($game->priority === null));
+        }
+        $row->addComponent(Button::new(Button::STYLE_SECONDARY, self::id($match->id, 'refresh'))->setLabel('Refresh'));
+
+        return $message->addComponent($row);
+    }
+
+    /**
+     * Who the game waits on, as a line for the board.
+     *
+     * @param MatchRecord $match
+     *
+     * @return array{text: string, ids: string[]}
+     */
+    public static function waiting(MatchRecord $match): array
+    {
+        $game = $match->game;
+        if ($game->stage === Game::OVER) {
+            return ['text' => $game->winner === null ? '🤝 The game is a draw.' : "🏆 **{$game->players[$game->winner]->name}** wins!", 'ids' => []];
+        }
+
+        $lines = [];
+        $ids = [];
+        foreach ($game->waitingOn() as $seat) {
+            $player = $game->players[$seat];
+            $what = match ($game->decision($seat)) {
+                'mulligan' => 'keep or mulligan',
+                'bottom' => 'put cards on the bottom',
+                'attack' => 'declare attackers',
+                'block' => 'declare blockers',
+                'discard' => 'discard down to seven',
+                default => $game->stack === [] ? 'act or pass' : 'respond or pass',
+            };
+            $lines[] = "<@{$player->id}> to {$what}";
+            $ids[] = $player->id;
+        }
+
+        return ['text' => '⏳ Waiting on '.implode(' and ', $lines).'.', 'ids' => $ids];
+    }
+
+    /**
+     * One player's side of the board.
+     *
+     * @param Game $game
+     * @param int  $seat
+     *
+     * @return string
+     */
+    private static function side(Game $game, int $seat): string
+    {
+        $player = $game->players[$seat];
+        $line = sprintf(
+            '**%s** · ❤️ %d · ✋ %d · 📚 %d · 🪦 %d',
+            $player->name,
+            $player->life,
+            count($player->hand),
+            count($player->library),
+            count($player->graveyard),
+        );
+        if ($player->poison > 0) {
+            $line .= " · ☠️ {$player->poison}";
+        }
+        if ($player->manaPool->total() > 0) {
+            $line .= " · floating {$player->manaPool}";
+        }
+        if ($player->lost) {
+            $line .= ' · ❌ '.$player->lossReason;
+        }
+
+        $lands = [];
+        $others = [];
+        foreach ($game->permanents($seat) as $object) {
+            if ($object->definition()->isLand() && ! $game->isCreature($object)) {
+                $name = $object->name();
+                $lands[$name] ??= [0, 0];
+                $lands[$name][0]++;
+                $lands[$name][1] += $object->tapped ? 1 : 0;
+            } elseif ($object->definition()->isAura() && $object->attachedTo !== null) {
+                continue; // Shown with what it enchants.
+            } else {
+                $others[] = '• '.self::permanent($game, $object);
+            }
+        }
+
+        $parts = [$line];
+        if ($lands !== []) {
+            $parts[] = 'Lands: '.implode(', ', array_map(
+                fn (string $name, array $count) => $name.($count[0] > 1 ? " ×{$count[0]}" : '').($count[1] > 0 ? " ({$count[1]} tapped)" : ''),
+                array_keys($lands),
+                $lands,
+            ));
+        }
+        array_push($parts, ...$others);
+
+        return implode("\n", $parts);
+    }
+
+    /**
+     * A permanent on the board, with its state.
+     *
+     * @param Game       $game
+     * @param GameObject $object
+     *
+     * @return string
+     */
+    public static function permanent(Game $game, GameObject $object): string
+    {
+        $card = $object->definition();
+        $text = "**{$object->name()}**";
+        if ($game->isCreature($object)) {
+            $text .= " {$game->power($object)}/{$game->toughness($object)}";
+        }
+        if ($card->isPlaneswalker()) {
+            $text .= ' ◇'.$object->counter('loyalty');
+        }
+
+        $notes = [];
+        $keywords = $game->keywords($object);
+        if ($keywords !== []) {
+            $notes[] = implode(', ', $keywords);
+        }
+        foreach ($object->counters as $kind => $count) {
+            if ($kind !== 'loyalty') {
+                $notes[] = "{$kind} ×{$count}";
+            }
+        }
+        if ($object->tapped) {
+            $notes[] = 'tapped';
+        }
+        if ($object->sick && $game->isCreature($object) && ! $game->hasKeyword($object, 'haste')) {
+            $notes[] = 'summoning sick';
+        }
+        if ($object->damage > 0) {
+            $notes[] = "{$object->damage} damage";
+        }
+        if (isset($game->attackers[$object->id])) {
+            $notes[] = '⚔️ attacking';
+        }
+        if (isset($game->blockers[$object->id])) {
+            $notes[] = '🛡️ blocking '.$game->objects[$game->blockers[$object->id]]->name();
+        }
+        foreach ($game->permanents() as $aura) {
+            if ($aura->attachedTo === $object->id) {
+                $notes[] = "enchanted by {$aura->name()}";
+            }
+        }
+
+        return $text.($notes === [] ? '' : ' · '.implode(' · ', $notes));
+    }
+
+    /**
+     * A player's own action panel.
+     *
+     * @param MatchRecord $match
+     * @param string      $playerId
+     * @param string|null $note     What just happened, or why an action failed.
+     *
+     * @return static
+     */
+    public static function actions(MatchRecord $match, string $playerId, ?string $note = null): static
+    {
+        $message = static::panel();
+        $game = $match->game;
+        $seat = $game?->seatOf($playerId);
+        if ($game === null || $seat === null) {
+            return $message->addComponent(Container::new()->addComponent(TextDisplay::new('You are not playing in this game.')));
+        }
+
+        $player = $game->players[$seat];
+        $decision = $game->decision($seat);
+        $choice = $match->choice($playerId);
+        $playable = $decision === 'priority' ? $game->playableCards($seat) : [];
+
+        $container = Container::new()->setAccentColor(CardMessageBuilder::ACCENTS['colorless']);
+        if ($note !== null) {
+            $container->addComponent(TextDisplay::new($note))->addComponent(Separator::new());
+        }
+        $sources = count($game->manaSources($seat));
+        $container->addComponent(TextDisplay::new(sprintf(
+            "### 🃏 Your hand (%d)\n-# ❤️ %d · %s%s",
+            count($player->hand),
+            $player->life,
+            Text::plural($sources, 'untapped mana source'),
+            $player->manaPool->total() > 0 ? " · floating {$player->manaPool}" : '',
+        )));
+        $hand = [];
+        foreach ($player->hand as $id) {
+            $card = $game->objects[$id]->definition();
+            $hand[] = (in_array($id, $playable, true) ? '✅ ' : '▫️ ').self::cardLabel($game->objects[$id]);
+            foreach ($card->unsupported as $text) {
+                $hand[] = '-# ⚠️ Not applied yet: '.Text::clip($text, 120);
+            }
+        }
+        $container->addComponent(TextDisplay::new($hand === [] ? '*Your hand is empty.*' : Text::clip(implode("\n", $hand), 2500)));
+        $container->addComponent(Separator::new())->addComponent(TextDisplay::new(self::prompt($game, $seat, $decision, $choice)));
+        $message->addComponent($container);
+
+        $id = fn (string $action, string ...$args) => self::id($match->id, $action, ...$args);
+        $cardOption = fn (int $objectId) => Option::new(Text::clip($game->objects[$objectId]->name(), 100), (string) $objectId)
+            ->setDescription(Text::clip(self::cardDescription($game->objects[$objectId]), 100));
+
+        switch ($decision) {
+            case 'mulligan':
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SUCCESS, $id('keep'))->setLabel('Keep'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mull'))->setLabel('Mulligan')->setDisabled($player->mulligans >= Game::OPENING_HAND)));
+                break;
+
+            case 'bottom':
+                $message->addComponent(self::cardSelect($id('bottom'), "Put {$player->toBottom} on the bottom", $player->hand, $cardOption, $player->toBottom, $player->toBottom));
+                break;
+
+            case 'discard':
+                $count = count($player->hand) - 7;
+                $message->addComponent(self::cardSelect($id('disc'), "Discard {$count}", $player->hand, $cardOption, $count, $count));
+                break;
+
+            case 'attack':
+                $candidates = $game->attackCandidates();
+                $chosen = array_values(array_intersect(array_map('intval', $choice['attack'] ?? []), $candidates));
+                $select = self::cardSelect($id('atk'), 'Choose attackers', $candidates, fn (int $object) => self::permanentOption($game, $object)->setDefault(in_array($object, $chosen, true)), 0, count($candidates));
+                $message->addComponent($select);
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_DANGER, $id('atkgo'))->setLabel($chosen === [] ? 'Attack' : 'Attack with '.count($chosen))->setDisabled($chosen === []))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('noatk'))->setLabel('No attack')));
+                break;
+
+            case 'block':
+                $blocks = (array) ($choice['blocks'] ?? []);
+                foreach (array_slice(array_keys($game->attackers), 0, self::MAX_BLOCK_PICKERS) as $attackerId) {
+                    $attacker = $game->objects[$attackerId];
+                    $able = array_values(array_filter($game->blockCandidates(), fn (int $blocker) => $game->canBlock($game->objects[$blocker], $attacker)));
+                    if ($able === []) {
+                        continue;
+                    }
+                    $chosen = array_map('intval', (array) ($blocks[$attackerId] ?? []));
+                    $message->addComponent(self::cardSelect(
+                        $id('blk', (string) $attackerId),
+                        Text::clip("Block {$attacker->name()} {$game->power($attacker)}/{$game->toughness($attacker)} with…", 100),
+                        $able,
+                        fn (int $object) => self::permanentOption($game, $object)->setDefault(in_array($object, $chosen, true)),
+                        0,
+                        count($able),
+                    ));
+                }
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_PRIMARY, $id('blkgo'))->setLabel('Confirm blocks'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('noblk'))->setLabel('No blocks')));
+                break;
+
+            case 'priority':
+                $cast = $choice['cast'] ?? null;
+                if ($cast !== null && in_array((int) $cast['id'], $player->hand, true)) {
+                    self::castControls($message, $match, $seat, $cast);
+                    break;
+                }
+                if ($playable !== []) {
+                    $message->addComponent(self::cardSelect($id('play'), 'Play a land or cast a spell', $playable, $cardOption, 1, 1));
+                }
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_PRIMARY, $id('pass'))->setLabel($game->stack === [] ? 'Pass priority' : 'Let it resolve'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('auto'))->setLabel(($game->autoPass[$seat] ?? true) ? 'Auto-pass: on' : 'Auto-pass: off'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('panel'))->setLabel('Refresh')));
+                break;
+
+            default:
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('panel'))->setLabel('Refresh'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('auto'))->setLabel(($game->autoPass[$seat] ?? true) ? 'Auto-pass: on' : 'Auto-pass: off')));
+        }
+
+        return $message;
+    }
+
+    /**
+     * The X and target pickers for a spell being cast.
+     *
+     * @param MatchMessageBuilder $message
+     * @param MatchRecord         $match
+     * @param int                 $seat
+     * @param array               $cast    `id`, `x` (null until chosen) and `targets` chosen so far.
+     *
+     * @return void
+     */
+    private static function castControls(self $message, MatchRecord $match, int $seat, array $cast): void
+    {
+        $game = $match->game;
+        $object = $game->objects[(int) $cast['id']];
+        $card = $object->definition();
+
+        if ($card->cost->xCount > 0 && ! isset($cast['x'])) {
+            $max = min(24, $game->maxX($seat, $object->id));
+            $select = StringSelect::new(self::id($match->id, 'x'))->setPlaceholder("Choose X for {$card->name}");
+            for ($x = 0; $x <= $max; $x++) {
+                $select->addOption(Option::new("X = {$x}", (string) $x));
+            }
+            $message->addComponent(ActionRow::new()->addComponent($select));
+        } else {
+            $kinds = $card->targetKinds();
+            $slot = count((array) ($cast['targets'] ?? []));
+            if (isset($kinds[$slot])) {
+                $options = $game->targetOptions($seat, $kinds[$slot]);
+                $select = StringSelect::new(self::id($match->id, 'tgt'))->setPlaceholder(Text::clip('Choose a target for '.$card->name.(count($kinds) > 1 ? ' ('.($slot + 1).' of '.count($kinds).')' : ''), 150));
+                foreach (array_slice($options, 0, 25) as $target) {
+                    $select->addOption(Option::new(Text::clip(self::targetLabel($game, $target, $seat), 100), $target));
+                }
+                if ($options !== []) {
+                    $message->addComponent(ActionRow::new()->addComponent($select));
+                }
+            }
+        }
+
+        $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, self::id($match->id, 'cancel'))->setLabel('Cancel')));
+    }
+
+    /**
+     * What the player is being asked to do.
+     *
+     * @param Game        $game
+     * @param int         $seat
+     * @param string|null $decision
+     * @param array       $choice
+     *
+     * @return string
+     */
+    private static function prompt(Game $game, int $seat, ?string $decision, array $choice): string
+    {
+        $player = $game->players[$seat];
+
+        return match ($decision) {
+            'mulligan' => $player->mulligans === 0
+                ? 'Keep this hand, or shuffle it away and draw a new seven?'
+                : "Mulligan {$player->mulligans}: if you keep, you put {$player->mulligans} card".($player->mulligans === 1 ? '' : 's').' on the bottom.',
+            'bottom' => "Choose {$player->toBottom} card".($player->toBottom === 1 ? '' : 's').' to put on the bottom of your library.',
+            'attack' => 'Choose your attackers, then **Attack**. They attack '.$game->players[$game->defender()]->name.'.',
+            'block' => 'For each attacker, choose the creatures that block it, then **Confirm blocks**. Each creature blocks one attacker.',
+            'discard' => 'You have more than seven cards. Choose what to discard.',
+            'priority' => isset($choice['cast']) ? 'Finish casting your spell, or cancel.' : ($game->stack === [] ? "You have priority ({$game->step->label()})." : 'A spell is on the stack: respond, or let it resolve.'),
+            default => $game->stage === Game::OVER ? 'The game is over.' : 'Nothing to do right now; the game is waiting on your opponent.',
+        };
+    }
+
+    /**
+     * @param string                   $customId
+     * @param string                   $placeholder
+     * @param int[]                    $objects
+     * @param callable(int): Option    $option
+     * @param int                      $min
+     * @param int                      $max
+     *
+     * @return ActionRow
+     */
+    private static function cardSelect(string $customId, string $placeholder, array $objects, callable $option, int $min, int $max): ActionRow
+    {
+        $objects = array_slice(array_values($objects), 0, 25);
+        $select = StringSelect::new($customId)
+            ->setPlaceholder(Text::clip($placeholder, 150))
+            ->setMinValues(min($min, count($objects)))
+            ->setMaxValues(max(1, min($max, count($objects))));
+        foreach ($objects as $object) {
+            $select->addOption($option($object));
+        }
+
+        return ActionRow::new()->addComponent($select);
+    }
+
+    private static function permanentOption(Game $game, int $id): Option
+    {
+        $object = $game->objects[$id];
+        $card = $object->definition();
+        $stats = $game->isCreature($object) ? "{$game->power($object)}/{$game->toughness($object)}" : $card->typeLine;
+        $keywords = $game->keywords($object);
+
+        return Option::new(Text::clip($object->name(), 100), (string) $id)
+            ->setDescription(Text::clip($stats.($keywords === [] ? '' : ' · '.implode(', ', $keywords)), 100));
+    }
+
+    /**
+     * A card in hand: name, cost and type line.
+     *
+     * @param GameObject $object
+     *
+     * @return string
+     */
+    public static function cardLabel(GameObject $object): string
+    {
+        return "**{$object->name()}** ".self::cardDescription($object);
+    }
+
+    private static function cardDescription(GameObject $object): string
+    {
+        $card = $object->definition();
+        $stats = $card->power !== null ? " {$card->power}/{$card->toughness}" : '';
+
+        return trim(((string) $card->cost).' · '.$card->typeLine.$stats, ' ·');
+    }
+
+    private static function targetLabel(Game $game, string $target, int $seat): string
+    {
+        $parts = explode(':', $target);
+
+        return match ($parts[0]) {
+            'p' => (int) $parts[1] === $seat ? "You ({$game->players[$seat]->name})" : $game->players[(int) $parts[1]]->name,
+            'o' => str_replace('**', '', self::permanent($game, $game->objects[(int) $parts[1]])).($game->objects[(int) $parts[1]]->controller === $seat ? ' (yours)' : ''),
+            default => 'Spell: '.$game->describeTarget($target),
+        };
+    }
+}

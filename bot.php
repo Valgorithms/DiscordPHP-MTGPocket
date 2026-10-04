@@ -22,6 +22,7 @@ use MTG\Modules\About;
 use MTG\Modules\Cards;
 use MTG\Modules\Help;
 use MTGPocket\Modules\Collection;
+use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
 use MTGPocket\Pocket;
@@ -60,12 +61,13 @@ $mtg = new MTG([
     ],
 ]);
 
-// Card lookups come from DiscordPHP-MTG; daily packs, collections and decks
-// are the game's own. Matches are added here as they are built.
+// Card lookups come from DiscordPHP-MTG; daily packs, collections, decks and
+// matches are the game's own.
 $mtg
     ->addModule(new Packs($pocket))
     ->addModule(new Collection($pocket))
     ->addModule(new PlayerDecks($pocket))
+    ->addModule(new Matches($pocket))
     ->addModule(new Cards())
     ->addModule(new Help())
     ->addModule(new About());
