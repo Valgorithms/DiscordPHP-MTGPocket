@@ -171,6 +171,13 @@ final class ModernCardTextTest extends GameTestCase
         'Thallid' => ['manaCost' => '{G}', 'type' => 'Creature — Fungus', 'power' => '1', 'toughness' => '1', 'text' => "At the beginning of your upkeep, put a spore counter on Thallid.\nRemove three spore counters from Thallid: Create a 1/1 green Saproling creature token.", 'colors' => ['G']],
         'Murder Lite' => ['manaCost' => '{1}{B}', 'type' => 'Instant', 'text' => 'Destroy target creature. Its controller loses 2 life.', 'colors' => ['B']],
         'Bloodbraid Elf' => ['manaCost' => '{2}{R}{G}', 'type' => 'Creature — Elf Berserker', 'power' => '3', 'toughness' => '2', 'text' => "Cascade (When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom of your library in a random order.)\nHaste", 'colors' => ['R', 'G']],
+        'Reverberate' => ['manaCost' => '{R}{R}', 'type' => 'Instant', 'text' => 'Copy target instant or sorcery spell. You may choose new targets for the copy.', 'colors' => ['R']],
+        'Casualty Lite' => ['manaCost' => '{1}{R}', 'type' => 'Sorcery', 'text' => "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell.)\nCasualty Lite deals 2 damage to any target.", 'colors' => ['R']],
+        'Mirran Lite' => ['manaCost' => '{2}{R}', 'type' => 'Artifact — Equipment', 'text' => "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +1/+0.\nEquip {2}", 'colors' => ['R']],
+        'Ward Discard Lite' => ['manaCost' => '{2}{B}', 'type' => 'Creature — Horror', 'power' => '3', 'toughness' => '3', 'text' => 'Ward—Discard a card.', 'colors' => ['B']],
+        'Molimo Lite' => ['manaCost' => '{2}{G}', 'type' => 'Creature — Elemental', 'power' => '*', 'toughness' => '*', 'text' => "Molimo Lite's power and toughness are each equal to the number of lands you control.", 'colors' => ['G']],
+        'Bounce Lite' => ['manaCost' => '{1}{U}', 'type' => 'Creature — Faerie', 'power' => '2', 'toughness' => '2', 'text' => "Flying\n{1}{U}: Return Bounce Lite to its owner's hand.", 'colors' => ['U']],
+        'Search Lite' => ['manaCost' => '{2}{G}', 'type' => 'Creature — Elf Scout', 'power' => '2', 'toughness' => '2', 'text' => 'When Search Lite enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.', 'colors' => ['G']],
         'Ascend Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '1', 'text' => "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)", 'colors' => ['W']],
     ];
 
@@ -912,6 +919,77 @@ final class ModernCardTextTest extends GameTestCase
         }
         $this->assertSame(GameObject::LIBRARY, $this->zone($missed));
         $this->assertSame($missed, $game->players[0]->library[0]);
+    }
+
+    public function testCopyCasualtyAndForMirrodin(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 4);
+        $game->cast(0, $this->hand(0, 'Lightning Bolt'), 0, ['p:1']);
+        $bolt = end($game->stack)['id'];
+        $game->cast(0, $this->put(0, 'Reverberate', GameObject::HAND), 0, ["s:{$bolt}"]);
+        while ($game->stack !== []) {
+            $this->resolve();
+        }
+        $this->assertSame(14, $this->life(1), 'Bolt and its copy.');
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $squire = $this->put(0, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $casualty = $this->put(0, 'Casualty Lite', GameObject::HAND);
+        $this->assertContains(['id' => $casualty, 'how' => 'casualty'], $game->plays(0));
+        $game->cast(0, $casualty, 0, ['p:1'], 'casualty');
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($squire));
+        while ($game->stack !== []) {
+            $this->resolve();
+        }
+        $this->assertSame(10, $this->life(1), 'The spell and its copy.');
+        $this->assertNotContains(['id' => $this->put(0, 'Casualty Lite', GameObject::HAND), 'how' => 'casualty'], $game->plays(0), 'No creature to sacrifice.');
+
+        $this->lands(0, 'Mountain', 3);
+        $mirran = $this->put(0, 'Mirran Lite', GameObject::HAND);
+        $game->cast(0, $mirran, 0, []);
+        while ($game->stack !== []) {
+            $this->resolve();
+        }
+        $rebel = $game->objects[$game->objects[$mirran]->attachedTo];
+        $this->assertSame('Rebel Token', $rebel->name());
+        $this->assertSame(3, $game->power($rebel));
+    }
+
+    public function testWardDiscardLandCountReturnAndSearch(): void
+    {
+        $game = $this->newGame();
+        $horror = $this->put(1, 'Ward Discard Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Mountain', 1);
+        foreach ($game->players[0]->hand as $card) {
+            $game->objects[$card]->moveTo(GameObject::EXILE);
+            $game->exile[] = $card;
+        }
+        $game->players[0]->hand = [];
+        $bolt = $this->hand(0, 'Lightning Bolt');
+        try {
+            $game->cast(0, $bolt, 0, ["o:{$horror}"]);
+            $this->fail('No card to discard for ward.');
+        } catch (GameException) {
+        }
+        $forest = $this->hand(0, 'Forest');
+        $game->cast(0, $bolt, 0, ["o:{$horror}"]);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($forest), 'Discarded for ward.');
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($horror), 'Ward paid, so the Bolt resolves.');
+
+        $molimo = $this->put(0, 'Molimo Lite', GameObject::BATTLEFIELD);
+        $this->assertSame(1, $game->power($game->objects[$molimo]));
+        $this->lands(0, 'Forest', 2);
+        $this->assertSame(3, $game->toughness($game->objects[$molimo]));
+
+        $faerie = $this->put(0, 'Bounce Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Island', 2);
+        $game->activate(0, $faerie, 0);
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($faerie));
+
+        $this->assertSame([], self::read('Search Lite')->unsupported);
     }
 
     public function testUnearth(): void
@@ -1822,11 +1900,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2, 'Foretell Lite' => 2, 'Thallid' => 2,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2, 'Foretell Lite' => 2, 'Thallid' => 2, 'Reverberate' => 1, 'Casualty Lite' => 2, 'Mirran Lite' => 1, 'Molimo Lite' => 2, 'Bounce Lite' => 2,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 

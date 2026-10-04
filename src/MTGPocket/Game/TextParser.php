@@ -100,6 +100,8 @@ final class TextParser
         'target spell' => 'spell',
         'target creature spell' => 'creature_spell',
         'target noncreature spell' => 'noncreature_spell',
+        'target instant or sorcery spell' => 'instant_sorcery_spell',
+        'target instant or sorcery spell you control' => 'instant_sorcery_spell_yours',
     ];
 
     /**
@@ -161,7 +163,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'entwine' => null, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'entwine' => null, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'countsAs' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -287,6 +289,12 @@ final class TextParser
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
+
+                continue;
+            }
+            // A characteristic-defining ability (rule 604.3): `CARDNAME's power and toughness are each equal to the number of lands you control.`
+            if (! $spell && preg_match("/^CARDNAME's (power and toughness are each|power is|toughness is) equal to the number of (lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control\\.$/", $line, $match)) {
+                $result['countsAs'] = ['of' => strtolower($match[2]), 'power' => $match[1] !== 'toughness is', 'toughness' => $match[1] !== 'power is'];
 
                 continue;
             }
@@ -599,6 +607,8 @@ final class TextParser
                 $found['ward'] = ['mana' => $m[1]];
             } elseif (preg_match('/^ward—pay (\d+) life\.?$/iu', $part, $m)) {
                 $found['ward'] = ['life' => (int) $m[1]];
+            } elseif (preg_match('/^ward—discard a card\.?$/iu', $part)) {
+                $found['ward'] = ['discard' => 1];
             } elseif (preg_match('/^kicker '.self::COST.'$/i', $part, $m)) {
                 $found['kicker'] = $m[1];
             } elseif (preg_match('/^entwine '.self::COST.'$/i', $part, $m) && $spell) {
@@ -645,6 +655,12 @@ final class TextParser
                 // Evolve (rule 702.100): see Game::putOntoBattlefield().
                 $found['keywords'][] = 'evolve';
                 $found['triggered'][] = ['text' => 'Evolve', 'event' => 'evolve', 'effects' => [['type' => 'counters', 'amount' => 1, 'self' => true]]];
+            } elseif ($word === 'for mirrodin!' && ! $spell) {
+                // For Mirrodin! (rule 702.163): a 2/2 red Rebel token to carry it.
+                $found['triggered'][] = ['text' => 'For Mirrodin!', 'event' => 'enters', 'effects' => [['type' => 'for_mirrodin', 'self' => true]]];
+            } elseif (preg_match('/^casualty (\d+)$/', $word, $m) && $spell) {
+                // Casualty (rule 702.153): see Game::castOptions().
+                $found['keywords'][] = "casualty {$m[1]}";
             } elseif ($word === 'living weapon' && ! $spell) {
                 // Living weapon (rule 702.92): a 0/0 Germ token to carry it.
                 $found['triggered'][] = ['text' => 'Living weapon', 'event' => 'enters', 'effects' => [['type' => 'living_weapon', 'self' => true]]];
@@ -1510,6 +1526,9 @@ final class TextParser
 
             return true;
         }
+        if ($effects[$last]['type'] === 'copy_spell' && $sentence === 'You may choose new targets for the copy') {
+            return true;
+        }
         // "Destroy target creature. Its controller loses 2 life."
         if (isset($effects[$last]['target']) && in_array($effects[$last]['target'], self::CREATURE_KINDS, true)
             && preg_match('/^Its controller loses (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
@@ -1773,7 +1792,14 @@ final class TextParser
         if (preg_match('/^empower jace (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'empower', 'amount' => $n];
         }
-        if (preg_match('/^search your library for an? (basic land|plains|island|swamp|mountain|forest) card, (?:reveal it, )?put it (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
+        // `Copy target instant or sorcery spell. You may choose new targets for the copy.`: the copy keeps its targets.
+        if (preg_match("/^copy ({$targets})$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])] ?? null, ['instant_sorcery_spell', 'instant_sorcery_spell_yours'], true)) {
+            return ['type' => 'copy_spell', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        if (preg_match("/^return CARDNAME to its owner's hand$/i", $s)) {
+            return ['type' => 'bounce', 'self' => true];
+        }
+        if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, (?:reveal it, )?put it (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => match (strtolower($m[2])) {
                 'into your hand' => 'hand',
                 'onto the battlefield tapped' => 'tapped',
@@ -1852,6 +1878,6 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'creature_card_yours', 'card_yours'], true);
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours'], true);
     }
 }

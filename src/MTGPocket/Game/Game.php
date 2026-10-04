@@ -939,6 +939,9 @@ final class Game
             if (in_array('bargain', $card->keywords, true)) {
                 $ways[] = implode(',', [...$base, 'bargain']);
             }
+            if (self::casualty($card) > 0) {
+                $ways[] = implode(',', [...$base, 'casualty']);
+            }
         }
         if ($card->entwine !== null && $card->modes !== []) {
             $ways[] = implode(',', array_filter([$flashback ? 'fb' : '', 'm'.implode('+', array_keys($card->modes)), 'entwine']));
@@ -965,11 +968,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -984,6 +987,9 @@ final class Game
                 $options['bestowed'] = true;
             } elseif ($part === 'entwine') {
                 $options['entwined'] = true;
+            } elseif ($part === 'casualty') {
+                // Casualty (rule 702.153): sacrifice a creature with enough power, and the spell is copied.
+                $options['casualty'] = true;
             } elseif ($part === 'bargain') {
                 // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
                 $options['kicked'] = $options['bargained'] = true;
@@ -1192,6 +1198,9 @@ final class Game
         }
         if ($options['bargained'] && (! in_array('bargain', $card->keywords, true) || $this->bargainFodder($seat) === null)) {
             return "{$card->name} cannot be bargained now.";
+        }
+        if ($options['casualty'] && (self::casualty($card) === 0 || $this->casualtyFodder($seat, self::casualty($card)) === null)) {
+            return "{$card->name} needs a creature with power ".self::casualty($card).' or greater to sacrifice.';
         }
         if ($options['faceDown'] && $card->morph === null) {
             return "{$card->name} cannot be cast face down.";
@@ -1491,7 +1500,7 @@ final class Game
     private function wardCost(array $targets, int $seat): array
     {
         $mana = '';
-        $life = 0;
+        $life = $discard = 0;
         foreach ($targets as $target) {
             $object = $this->targetObject($target);
             if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller === $seat || ($ward = $object->definition()->ward) === null) {
@@ -1499,9 +1508,10 @@ final class Game
             }
             $mana .= $ward['mana'] ?? '';
             $life += $ward['life'] ?? 0;
+            $discard += $ward['discard'] ?? 0;
         }
 
-        return [$mana, $life];
+        return [$mana, $life, $discard];
     }
 
     /**
@@ -1574,7 +1584,10 @@ final class Game
             $targets[$slot] = $this->pinTarget($targets[$slot]);
         }
 
-        [$wardMana, $wardLife] = $this->wardCost($targets, $seat);
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($targets, $seat);
+        if ($wardDiscard > count($this->players[$seat]->hand) - (in_array($id, $this->players[$seat]->hand, true) ? 1 : 0)) {
+            throw new GameException('You need a card in your hand to discard for ward.');
+        }
         $payment = $this->paymentFor($seat, $id, $x, $options, $wardMana, $wardLife);
         if ($payment === null) {
             $cost = ManaCost::parse(self::castCost($card, $options));
@@ -1596,6 +1609,13 @@ final class Game
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
         }
+        $casualty = $options['casualty'] ? $this->casualtyFodder($seat, self::casualty($card)) : null;
+        if ($casualty !== null) {
+            $this->log("{$this->players[$seat]->name} sacrifices {$casualty->name()} (casualty).");
+            $this->moveTo($casualty, GameObject::GRAVEYARD);
+        }
+        // Ward—Discard a card: the cheapest other cards in hand.
+        $this->discardCheapest($seat, $wardDiscard, $id);
 
         $player = $this->players[$seat];
         $fromCommand = $object->zone === GameObject::COMMAND;
@@ -1642,6 +1662,9 @@ final class Game
             $seat,
             $object->name().($options['kicked'] ? ' kicked' : '').($options['flashback'] ? ' fb' : '').($options['modes'] === [] ? '' : ' m'.implode('+', array_map(fn (int $mode) => $mode + 1, $options['modes']))).($xCount > 0 ? " X={$x}" : '').self::targetNotation($named),
         );
+        if ($casualty !== null) {
+            $this->copySpell(end($this->stack), $seat, 'casualty');
+        }
         $this->castTriggers($seat, $object);
         $this->targetedTriggers($targets);
         $this->settle();
@@ -1735,6 +1758,73 @@ final class Game
      *
      * @return GameObject|null
      */
+    private function casualtyFodder(int $seat, int $power): ?GameObject
+    {
+        return $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) && $this->power($o) >= $power);
+    }
+
+    /** The N of `casualty N`, or 0. */
+    private static function casualty(CardDefinition $card): int
+    {
+        foreach ($card->keywords as $keyword) {
+            if (preg_match('/^casualty (\d+)$/', $keyword, $m)) {
+                return (int) $m[1];
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Discards a player's cheapest cards, such as for `Ward—Discard a card`.
+     *
+     * @param int $seat
+     * @param int $count
+     * @param int $except A card that is not discarded: the spell being cast.
+     *
+     * @return void
+     */
+    private function discardCheapest(int $seat, int $count, int $except = 0): void
+    {
+        if ($count <= 0) {
+            return;
+        }
+        $hand = array_values(array_diff($this->players[$seat]->hand, [$except]));
+        usort($hand, fn (int $a, int $b) => $this->objects[$a]->definition()->cost->manaValue() <=> $this->objects[$b]->definition()->cost->manaValue());
+        $this->discardCards($seat, array_slice($hand, 0, $count));
+    }
+
+    /**
+     * Puts a copy of a spell on the stack, with the same modes and targets
+     * (storm, casualty, `Copy target instant or sorcery spell`).
+     *
+     * @param array|false $item       The spell's stack item.
+     * @param int         $controller
+     * @param string      $why
+     *
+     * @return void
+     */
+    private function copySpell(array|false $item, int $controller, string $why): void
+    {
+        if ($item === false || self::isAbility($item)) {
+            return;
+        }
+        $spell = $this->objects[$item['object']];
+        $card = $spell->definition();
+        $effects = $card->isPermanentCard() ? [] : $card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false);
+        if ($effects === []) {
+            return;
+        }
+        $this->pushAbility([
+            'source' => $spell->id,
+            'incarnation' => $spell->incarnation,
+            'controller' => $controller,
+            'effects' => $effects,
+            'kinds' => self::targetKindsOf($effects),
+            'label' => "A copy of {$card->name}",
+        ], $item['targets'], "is put on the stack ({$why})");
+    }
+
     private function bargainFodder(int $seat): ?GameObject
     {
         return $this->weakest($seat, fn (GameObject $o) => $o->definition()->isToken() || $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'));
@@ -1816,14 +1906,7 @@ final class Game
         $before = $this->spellsCast++;
         $item = end($this->stack);
         for ($i = 0; $i < $before && in_array('storm', $card->keywords, true) && $item !== false && $item['object'] === $spell->id; $i++) {
-            $this->pushAbility([
-                'source' => $spell->id,
-                'incarnation' => $spell->incarnation,
-                'controller' => $seat,
-                'effects' => $card->effects,
-                'kinds' => self::targetKindsOf($card->effects),
-                'label' => "A copy of {$card->name}",
-            ], $item['targets'], 'is put on the stack (storm)');
+            $this->copySpell($item, $seat, 'storm');
         }
         if (in_array('cascade', $card->keywords, true)) {
             $this->cascade($seat, $spell);
@@ -2653,6 +2736,24 @@ final class Game
                     $affected->addCounters('+1/+1', $amount);
                     $affected->renowned = true;
                     $this->log("{$affected->name()} becomes renowned.");
+                }
+                break;
+
+            case 'copy_spell':
+                foreach ($this->stack as $copied) {
+                    if ($copied['id'] === (int) substr((string) $target, 2)) {
+                        $this->copySpell($copied, $controller, $source->name());
+                        break;
+                    }
+                }
+                break;
+
+            case 'for_mirrodin':
+                // For Mirrodin! (rule 702.163): a 2/2 red Rebel token to carry it.
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
+                    $rebel = $this->createToken(['name' => 'Rebel Token', 'type' => 'Token Creature — Rebel', 'types' => ['Creature'], 'subtypes' => ['Rebel'], 'colors' => ['R'], 'power' => '2', 'toughness' => '2', 'text' => '', 'manaCost' => null], $controller);
+                    $self->attachedTo = $rebel->id;
+                    $this->log("{$self->name()} is attached to a Rebel token.");
                 }
                 break;
 
@@ -3498,15 +3599,16 @@ final class Game
      */
     private function pushTriggered(array $trigger, array $targets): void
     {
-        [$wardMana, $wardLife] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $trigger['controller']);
-        if ($wardMana !== '' || $wardLife > 0) {
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $trigger['controller']);
+        if ($wardMana !== '' || $wardLife > 0 || $wardDiscard > 0) {
             $payment = $this->payFor($trigger['controller'], $wardMana, $wardLife);
-            if ($payment === null) {
+            if ($payment === null || $wardDiscard > count($this->players[$trigger['controller']]->hand)) {
                 $this->log("{$trigger['label']} is countered by ward.", $trigger['controller']);
 
                 return;
             }
             $this->pay($trigger['controller'], $payment);
+            $this->discardCheapest($trigger['controller'], $wardDiscard);
         }
         $this->pushAbility($trigger, $targets, 'triggers');
     }
@@ -3783,7 +3885,10 @@ final class Game
         $targets = array_values($targets);
         $label = "{$object->name()}'s ability";
         $this->checkTargets($kinds, $targets, $seat, $label);
-        [$wardMana, $wardLife] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat);
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat);
+        if ($wardDiscard > count($this->players[$seat]->hand)) {
+            throw new GameException('You need a card in your hand to discard for ward.');
+        }
         $payment = $this->abilityPayment($seat, $object, $ability, $wardMana, $wardLife);
         if ($payment === null) {
             throw new GameException('You cannot pay '.(($ability['cost']['mana'] ?? '').$wardMana ?: 'that cost').'.');
@@ -3810,6 +3915,7 @@ final class Game
             $object->addCounters('loyalty', $cost['loyalty']);
         }
         $player->energy -= $cost['energy'] ?? 0;
+        $this->discardCheapest($seat, $wardDiscard);
         if (isset($cost['remove'])) {
             $object->addCounters($cost['remove'][0], -$cost['remove'][1]);
         }
@@ -3929,6 +4035,8 @@ final class Game
                             'spell' => true,
                             'creature_spell' => $card->isCreature(),
                             'noncreature_spell' => ! $card->isCreature(),
+                            'instant_sorcery_spell' => ! $card->isPermanentCard(),
+                            'instant_sorcery_spell_yours' => ! $card->isPermanentCard() && $item['controller'] === $controller,
                             default => false,
                         };
                     }
@@ -5252,9 +5360,33 @@ final class Game
         return array_values(array_filter($this->permanents(), fn (GameObject $attached) => $attached->attachedTo === $object->id && $this->bonusOf($attached) !== null));
     }
 
+    /**
+     * `Its power and toughness are each equal to the number of lands you control.`
+     *
+     * @param GameObject $object
+     * @param string     $stat   `power` or `toughness`.
+     *
+     * @return int|null
+     */
+    private function counted(GameObject $object, string $stat): ?int
+    {
+        $counts = $object->definition()->countsAs;
+        if ($counts === null || ! $counts[$stat] || $object->zone !== GameObject::BATTLEFIELD) {
+            return null;
+        }
+
+        return count(array_filter($this->permanents($object->controller), fn (GameObject $o) => match ($counts['of']) {
+            'lands' => $o->definition()->isLand(),
+            'creatures' => $this->isCreature($o),
+            'artifacts' => $o->definition()->is('Artifact'),
+            'enchantments' => $o->definition()->is('Enchantment'),
+            default => in_array(ucfirst(rtrim($counts['of'], 's')), $o->definition()->subtypes, true) || ($counts['of'] === 'plains' && in_array('Plains', $o->definition()->subtypes, true)),
+        }));
+    }
+
     public function power(GameObject $object): int
     {
-        $power = ($this->levelBand($object)['power'] ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $power = ($this->levelBand($object)['power'] ?? $this->counted($object, 'power') ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         $power += $this->maxSpeedBonus($object)['power'] ?? 0;
         foreach ($this->attachments($object) as $attached) {
             $power += $this->bonusOf($attached)['power'];
@@ -5271,7 +5403,7 @@ final class Game
 
     public function toughness(GameObject $object): int
     {
-        $toughness = ($this->levelBand($object)['toughness'] ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $toughness = ($this->levelBand($object)['toughness'] ?? $this->counted($object, 'toughness') ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         $toughness += $this->maxSpeedBonus($object)['toughness'] ?? 0;
         foreach ($this->attachments($object) as $attached) {
             $toughness += $this->bonusOf($attached)['toughness'];
