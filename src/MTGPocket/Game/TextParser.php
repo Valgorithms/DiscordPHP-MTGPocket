@@ -71,6 +71,10 @@ final class TextParser
         'target artifact or enchantment' => 'artifact_or_enchantment',
         'target artifact or creature' => 'artifact_or_creature',
         'target artifact creature' => 'artifact_creature',
+        'target artifact or land' => 'artifact_or_land',
+        'target nonblack creature' => 'creature_nonblack',
+        'target nonartifact, nonblack creature' => 'creature_nonartifact_nonblack',
+        'target nonartifact creature' => 'creature_nonartifact',
         'target land' => 'land',
         'target planeswalker' => 'planeswalker',
         'target nonland permanent' => 'nonland_permanent',
@@ -157,7 +161,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'entwine' => null, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -213,7 +217,36 @@ final class TextParser
 
                 continue;
             }
-            // `Max speed — …`: an ability that works while its controller's speed is 4.
+            // Spree (rule 702.172): `+ {1} — …` modes, each an additional cost; one or more of them.
+            if ($spell && preg_match('/^Spree\.?$/', $line)) {
+                [$modes, $read] = [[], true];
+                while (isset($lines[$i + 1]) && preg_match('/^\+ '.self::COST.' — (.+)$/u', $lines[$i + 1], $match)) {
+                    $i++;
+                    if (str_contains($match[1], 'X') || ($effects = self::effects($match[2])) === null) {
+                        $result['unsupported'][] = $lines[$i];
+                        $read = false;
+                    } else {
+                        $modes[] = ['text' => $match[2], 'effects' => $effects, 'cost' => $match[1]];
+                    }
+                }
+                if (! $read) {
+                    continue;
+                }
+                if (count($modes) >= 2 && $result['modes'] === []) {
+                    $result['modes'] = $modes;
+                    $result['choose'] = ['min' => 1, 'max' => count($modes)];
+                } else {
+                    $result['unsupported'][] = 'Spree';
+                }
+
+                continue;
+            }
+            // `{2}{B}: Return CARDNAME from your graveyard to your hand.`: see Game::regrow().
+            if (preg_match('/^'.self::COST.': Return CARDNAME from your graveyard to your hand\.$/', $line, $match) && ! str_contains($match[1], 'X')) {
+                $result['altCosts']['regrow'] = $match[1];
+
+                continue;
+            }
             // Static lines that work like keywords.
             $statics = [
                 'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land',
@@ -342,6 +375,10 @@ final class TextParser
             $result['bestow'] += ($result['aura'] ?? []) + ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
             $result['bestow']['enchant'] = 'creature';
             $result['aura'] = null;
+        }
+        // Backup grants only keywords; other abilities it would grant are not read yet.
+        if (in_array('backup', $result['keywords'], true) && (count($result['triggered']) > 1 || $result['activated'] !== [] || $result['anthem'] !== [] || in_array('prowess', $result['keywords'], true))) {
+            $result['unsupported'][] = 'Backup N';
         }
         if (in_array('prowess', $result['keywords'], true)) {
             $result['triggered'][] = ['text' => 'Prowess', 'event' => 'cast_noncreature', 'effects' => [['type' => 'pump', 'power' => 1, 'toughness' => 1, 'keywords' => [], 'self' => true]]];
@@ -519,6 +556,9 @@ final class TextParser
                 $found['ward'] = ['life' => (int) $m[1]];
             } elseif (preg_match('/^kicker '.self::COST.'$/i', $part, $m)) {
                 $found['kicker'] = $m[1];
+            } elseif (preg_match('/^entwine '.self::COST.'$/i', $part, $m) && $spell) {
+                // Entwine (rule 702.42): every mode, for this much more.
+                $found['entwine'] = $m[1];
             } elseif (preg_match('/^flashback '.self::COST.'$/i', $part, $m) && $spell) {
                 $found['flashback'] = $m[1];
             } elseif (preg_match('/^bestow '.self::COST.'$/i', $part, $m) && ! $spell) {
@@ -569,6 +609,32 @@ final class TextParser
             } elseif (preg_match('/^(dash|evoke|warp|plot) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
+            } elseif (preg_match('/^madness '.self::COST.'$/i', $part, $m)) {
+                // Madness (rule 702.35): discarded, it is exiled and may be cast for this while its trigger waits.
+                $found['altCosts']['madness'] = $m[1];
+                $found['triggered'][] = ['text' => 'Madness', 'event' => 'madness', 'effects' => [['type' => 'madness']]];
+            } elseif (preg_match('/^suspend (\d+)—'.self::COST.'$/iu', $part, $m)) {
+                // Suspend (rule 702.62): see Game::suspend().
+                $found['altCosts']['suspend'] = $m[2];
+                $found['keywords'][] = "suspend {$m[1]}";
+            } elseif (preg_match('/^ninjutsu '.self::COST.'$/i', $part, $m) && ! $spell) {
+                // Ninjutsu (rule 702.49): see Game::ninjutsu().
+                $found['altCosts']['ninjutsu'] = $m[1];
+            } elseif (preg_match('/^offspring '.self::COST.'$/i', $part, $m) && ! $spell && $found['kicker'] === null) {
+                // Offspring (rule 702.175): an optional additional cost, like kicker; a 1/1 token copy when it enters.
+                $found['kicker'] = $m[1];
+                $found['keywords'][] = 'offspring';
+                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'kicked' => true, 'effects' => [['type' => 'offspring']]];
+            } elseif (preg_match('/^afterlife (\d+)$/i', $part, $m) && ! $spell && ($spirit = self::effect('create a 1/1 white and black Spirit creature token with flying')) !== null) {
+                // Afterlife (rule 702.135): flying Spirits when it goes to the graveyard from the battlefield.
+                $found['triggered'][] = ['text' => $part, 'event' => 'to_graveyard', 'effects' => [['amount' => (int) $m[1]] + $spirit]];
+            } elseif (preg_match('/^annihilator (\d+)$/i', $part, $m) && ! $spell) {
+                // Annihilator (rule 702.86): the defending player sacrifices that many permanents, their weakest.
+                $found['triggered'][] = ['text' => $part, 'event' => 'attacks', 'effects' => [['type' => 'edict', 'amount' => (int) $m[1]]]];
+            } elseif (preg_match('/^backup (\d+)$/i', $part, $m) && ! $spell) {
+                // Backup (rule 702.165): counters on target creature; another one gains this creature's keywords until end of turn.
+                $found['keywords'][] = 'backup';
+                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'backup', 'amount' => (int) $m[1], 'target' => 'creature']]];
             } elseif (preg_match('/^mobilize (\d+)$/i', $part, $m) && ! $spell) {
                 // Mobilize (rule 702.181): attacking Warrior tokens, sacrificed at the end step.
                 $found['triggered'][] = ['text' => $part, 'event' => 'attacks', 'effects' => [['type' => 'mobilize', 'amount' => (int) $m[1]]]];
@@ -614,7 +680,7 @@ final class TextParser
                 return false;
             }
         }
-        foreach (['kicker', 'flashback', 'cycling', 'morph', 'unearth', 'bestow'] as $cost) {
+        foreach (['kicker', 'entwine', 'flashback', 'cycling', 'morph', 'unearth', 'bestow'] as $cost) {
             if ($found[$cost] !== null && str_contains(is_array($found[$cost]) ? $found[$cost]['cost'] : $found[$cost], 'X')) {
                 return false;
             }
@@ -1329,6 +1395,11 @@ final class TextParser
             }
 
             return $damages !== [];
+        }
+        if ($sentence === "If that spell is countered this way, exile it instead of putting it into its owner's graveyard" && $effects[$last]['type'] === 'counter') {
+            $effects[$last]['exileCountered'] = true;
+
+            return true;
         }
         if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && $effects[$last]['type'] === 'destroy') {
             $effects[$last]['noRegen'] = true;

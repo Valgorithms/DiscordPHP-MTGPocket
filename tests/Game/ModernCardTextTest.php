@@ -134,6 +134,20 @@ final class ModernCardTextTest extends GameTestCase
         'Draw Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => 'Draw two cards.', 'colors' => ['U']],
         'Goblin War Drums Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Goblin', 'power' => '3', 'toughness' => '3', 'text' => "This creature can't be blocked by more than one creature.", 'colors' => ['R']],
         'Relentless Rats' => ['manaCost' => '{1}{B}{B}', 'type' => 'Creature — Rat', 'power' => '2', 'toughness' => '2', 'text' => 'A deck can have any number of cards named Relentless Rats.', 'colors' => ['B']],
+        'Ninja Lite' => ['manaCost' => '{2}{U}', 'type' => 'Creature — Human Ninja', 'power' => '2', 'toughness' => '2', 'text' => 'Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)', 'colors' => ['U']],
+        'Murderous Compulsion' => ['manaCost' => '{1}{B}', 'type' => 'Sorcery', 'text' => "Destroy target tapped creature.\nMadness {1}{B} (If you discard this card, discard it into exile. When you do, cast it for its madness cost or put it into your graveyard.)", 'colors' => ['B']],
+        'Spree Lite' => ['manaCost' => '{R}', 'type' => 'Instant', 'text' => "Spree (Choose one or more additional costs.)\n+ {1} — Spree Lite deals 2 damage to any target.\n+ {2} — Draw a card.", 'colors' => ['R']],
+        'Flourishing Strike' => ['manaCost' => '{1}{G}', 'type' => 'Instant', 'text' => "Choose one —\n• Flourishing Strike deals 5 damage to target creature with flying.\n• Target creature gets +3/+3 until end of turn.\nEntwine {2}{G} (Choose both if you pay the entwine cost.)", 'colors' => ['G']],
+        'Boon-Bringer Valkyrie' => ['manaCost' => '{3}{W}{W}', 'type' => 'Creature — Angel Warrior', 'power' => '4', 'toughness' => '4', 'text' => "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following abilities until end of turn.)\nFlying, first strike, lifelink", 'colors' => ['W']],
+        'Bola Slinger' => ['manaCost' => '{3}{W}', 'type' => 'Creature — Cat Soldier', 'power' => '2', 'toughness' => '3', 'text' => "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhenever this creature attacks, tap target artifact or creature an opponent controls.", 'colors' => ['W']],
+        'Offspring Lite' => ['manaCost' => '{1}{W}', 'type' => 'Creature — Rabbit Soldier', 'power' => '2', 'toughness' => '2', 'text' => 'Offspring {2} (You may pay an additional {2} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)', 'colors' => ['W']],
+        'Rift Sower' => ['manaCost' => '{2}{G}', 'type' => 'Creature — Elf Druid', 'power' => '1', 'toughness' => '3', 'text' => "{T}: Add one mana of any color.\nSuspend 2—{G} (Rather than cast this card from your hand, you may pay {G} and exile it with two time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without paying its mana cost. It has haste.)", 'colors' => ['G']],
+        'Blessed Ghoul' => ['manaCost' => '{W/B}', 'type' => 'Creature — Zombie Cleric', 'power' => '1', 'toughness' => '1', 'text' => "Lifelink\n{2}{W/B}: Return this card from your graveyard to your hand.", 'colors' => ['W', 'B']],
+        'Terror' => ['manaCost' => '{1}{B}', 'type' => 'Instant', 'text' => "Destroy target nonartifact, nonblack creature. It can't be regenerated.", 'colors' => ['B']],
+        'Pillage' => ['manaCost' => '{1}{R}{R}', 'type' => 'Sorcery', 'text' => "Destroy target artifact or land. It can't be regenerated.", 'colors' => ['R']],
+        'Syndicate Messenger' => ['manaCost' => '{3}{W}', 'type' => 'Creature — Bird', 'power' => '2', 'toughness' => '3', 'text' => "Flying\nAfterlife 1 (When this creature dies, create a 1/1 white and black Spirit creature token with flying.)", 'colors' => ['W']],
+        'Annihilator Lite' => ['manaCost' => '{5}', 'type' => 'Creature — Eldrazi', 'power' => '4', 'toughness' => '4', 'text' => 'Annihilator 1 (Whenever this creature attacks, defending player sacrifices a permanent of their choice.)', 'colors' => []],
+        'No More Lies' => ['manaCost' => '{W}{U}', 'type' => 'Instant', 'text' => "Counter target spell unless its controller pays {3}. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.", 'colors' => ['W', 'U']],
     ];
 
     private function put(int $seat, string $name, string $zone): int
@@ -159,7 +173,7 @@ final class ModernCardTextTest extends GameTestCase
 
     public function testEveryCardHereIsReadWhole(): void
     {
-        foreach (array_keys(self::MORE) as $name) {
+        foreach (array_diff(array_keys(self::MORE), ['Bola Slinger']) as $name) {
             $this->assertSame([], self::read($name)->unsupported, $name);
         }
         $this->assertContains('convoke', self::read('Ghostly Flicker Lite')->keywords, 'A keyword with a period reads like one without.');
@@ -410,6 +424,171 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(1, $game->objects[$sage]->counter('+1/+1'), 'The draw step, then the second card.');
 
         $this->assertContains('any number', self::read('Relentless Rats')->keywords);
+    }
+
+    public function testNinjutsuBackupAndOffspring(): void
+    {
+        $game = $this->newGame();
+        $squire = $this->put(0, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $ninja = $this->put(0, 'Ninja Lite', GameObject::HAND);
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $this->lands(0, 'Island', 2);
+        $this->assertNotContains(['id' => $ninja, 'how' => 'ninjutsu'], $game->plays(0), 'Not before blockers.');
+        $game->declareAttackers(0, [$squire]);
+        $this->passUntil(Step::DeclareBlockers, 3);
+        $this->assertContains(['id' => $ninja, 'how' => 'ninjutsu'], $game->plays(0));
+        $game->ninjutsu(0, $ninja);
+        $this->assertSame(GameObject::HAND, $this->zone($squire));
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($ninja));
+        $this->assertTrue($game->objects[$ninja]->tapped);
+        $this->passUntil(Step::PostcombatMain, 3);
+        $this->assertSame(18, $this->life(1));
+
+        // Backup: the counter on another creature, and the Valkyrie's keywords with it.
+        $this->lands(0, 'Plains', 5);
+        $valkyrie = $this->put(0, 'Boon-Bringer Valkyrie', GameObject::HAND);
+        $game->cast(0, $valkyrie, 0, []);
+        $this->resolve();
+        $game->chooseTriggerTargets(0, ["o:{$ninja}"]);
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$ninja]->counter('+1/+1'));
+        $this->assertContains('lifelink', $game->keywords($game->objects[$ninja]));
+        $this->assertNotContains('backup', $game->keywords($game->objects[$ninja]));
+        $this->assertNotSame([], self::read('Bola Slinger')->unsupported, 'Only keywords are granted.');
+
+        // Offspring: kicked, a 1/1 token copy.
+        $this->passUntil(Step::PrecombatMain, 5);
+        $this->lands(0, 'Plains', 4);
+        $rabbit = $this->put(0, 'Offspring Lite', GameObject::HAND);
+        $this->assertContains(['id' => $rabbit, 'how' => 'kick'], $game->plays(0));
+        $game->cast(0, $rabbit, 0, [], 'kick');
+        $this->resolve();
+        $this->resolve();
+        $copies = array_values(array_filter($game->permanents(0), fn (GameObject $o) => $o->name() === 'Offspring Lite' && $o->definition()->isToken()));
+        $this->assertCount(1, $copies);
+        $this->assertSame(1, $game->power($copies[0]));
+    }
+
+    public function testMadnessSpreeAndEntwine(): void
+    {
+        $game = $this->newGame();
+        $bears = $this->battlefield(1, 'Grizzly Bears');
+        $game->objects[$bears]->tapped = true;
+        $this->lands(0, 'Mountain', 2);
+        $this->lands(0, 'Swamp', 2);
+        $compulsion = $this->put(0, 'Murderous Compulsion', GameObject::HAND);
+        $game->cast(0, $this->put(0, 'Tormenting Voice', GameObject::HAND), 0, []);
+        $this->assertSame(GameObject::EXILE, $this->zone($compulsion), 'Discarded into exile.');
+        $this->assertContains(['id' => $compulsion, 'how' => 'md'], $game->plays(0), 'Cast it at instant speed while the trigger waits.');
+        $game->cast(0, $compulsion, 0, ["o:{$bears}"], 'md');
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($bears));
+        for ($i = 0; $i < 3 && $game->stack !== []; $i++) {
+            $this->resolve();
+        }
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($compulsion));
+
+        // Not cast: the trigger puts it into the graveyard.
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Mountain', 2);
+        foreach ($game->players[0]->hand as $id) {
+            $game->objects[$id]->moveTo(GameObject::EXILE);
+            $game->exile[] = $id;
+        }
+        $game->players[0]->hand = [];
+        $again = $this->put(0, 'Murderous Compulsion', GameObject::HAND);
+        $game->cast(0, $this->put(0, 'Tormenting Voice', GameObject::HAND), 0, []);
+        for ($i = 0; $i < 3 && $game->stack !== []; $i++) {
+            $this->resolve();
+        }
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($again));
+
+        // Spree: each mode adds its cost.
+        $this->passUntil(Step::PrecombatMain, 5);
+        $spree = self::read('Spree Lite');
+        $this->assertSame([], $spree->unsupported);
+        $this->assertSame('{R}{1}{2}', Game::castCost($spree, 'm0+1'));
+        $this->lands(0, 'Mountain', 4);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $this->put(0, 'Spree Lite', GameObject::HAND), 0, ['p:1'], 'm0+1');
+        $this->resolve();
+        $this->assertSame(18, $this->life(1));
+        $this->assertSame($hand + 1, count($game->players[0]->hand));
+
+        // Entwine: both modes.
+        $this->passUntil(Step::PrecombatMain, 7);
+        $this->lands(0, 'Forest', 5);
+        $bird = $this->put(1, 'Ornithopter', GameObject::BATTLEFIELD);
+        $strike = $this->put(0, 'Flourishing Strike', GameObject::HAND);
+        $this->assertContains(['id' => $strike, 'how' => 'm0+1,entwine'], $game->plays(0));
+        $this->assertNotContains(['id' => $strike, 'how' => 'm0+1'], $game->plays(0));
+        $game->cast(0, $strike, 0, ["o:{$bird}", "o:{$this->put(0, 'Akrasan Squire', GameObject::BATTLEFIELD)}"], 'm0+1,entwine');
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($bird));
+    }
+
+    public function testSuspendRegrowAfterlifeAndAnnihilator(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Forest', 1);
+        $sower = $this->put(0, 'Rift Sower', GameObject::HAND);
+        $this->assertContains(['id' => $sower, 'how' => 'suspend'], $game->plays(0));
+        $game->suspend(0, $sower);
+        $this->assertSame(2, $game->objects[$sower]->counter('time'));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::Upkeep, 3);
+        $this->assertSame(1, $game->objects[$sower]->counter('time'));
+        $this->passUntil(Step::Upkeep, 5);
+        $this->assertContains(['id' => $sower, 'how' => 'sp'], $game->plays(0));
+        $game->cast(0, $sower, 0, [], 'sp');
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($sower));
+        $this->assertContains('haste', $game->keywords($game->objects[$sower]));
+
+        // Return from the graveyard to hand.
+        $this->passUntil(Step::PrecombatMain, 5);
+        $ghoul = $this->put(0, 'Blessed Ghoul', GameObject::GRAVEYARD);
+        $this->lands(0, 'Plains', 3);
+        $this->assertContains(['id' => $ghoul, 'how' => 'regrow'], $game->plays(0));
+        $game->regrow(0, $ghoul);
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($ghoul));
+
+        // Terror and afterlife.
+        $messenger = $this->put(1, 'Syndicate Messenger', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Swamp', 2);
+        $this->assertSame([], self::read('Terror')->unsupported);
+        $this->assertSame([], self::read('Pillage')->unsupported);
+        $game->cast(0, $this->put(0, 'Terror', GameObject::HAND), 0, ["o:{$messenger}"]);
+        $this->resolve();
+        $this->resolve();
+        $spirits = array_filter($game->permanents(1), fn (GameObject $o) => $o->name() === 'Spirit Token');
+        $this->assertCount(1, $spirits);
+        $this->assertContains('flying', $game->keywords(reset($spirits)));
+
+        // Annihilator: the weakest permanent, the Spirit token.
+        $eldrazi = $this->put(0, 'Annihilator Lite', GameObject::BATTLEFIELD);
+        $this->passUntil(Step::DeclareAttackers, 7);
+        $game->declareAttackers(0, [$eldrazi]);
+        $this->resolve();
+        $this->assertSame([], array_filter($game->permanents(1), fn (GameObject $o) => $o->name() === 'Spirit Token'));
+    }
+
+    public function testCounteredSpellIsExiled(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 1);
+        $this->lands(1, 'Plains', 1);
+        $this->lands(1, 'Island', 1);
+        $bolt = $this->hand(0, 'Lightning Bolt');
+        $game->cast(0, $bolt, 0, ['p:1']);
+        $game->pass(0);
+        $lies = $this->put(1, 'No More Lies', GameObject::HAND);
+        $game->cast(1, $lies, 0, ["s:{$game->stack[0]['id']}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::EXILE, $this->zone($bolt));
+        $this->assertSame(20, $this->life(1));
     }
 
     public function testUnearth(): void
@@ -1320,11 +1499,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 

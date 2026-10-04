@@ -107,6 +107,9 @@ final class Game
     /** Players who have passed in succession with nothing happening since. */
     public int $passes = 0;
 
+    /** Ways in {@see plays()} that are not casting a spell. */
+    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow'];
+
     /** @var array<int, true> Attacking creatures. */
     public array $attackers = [];
 
@@ -578,6 +581,18 @@ final class Game
             case Step::Upkeep:
             case Step::End:
                 $this->updateControl();
+                // Suspend: a time counter off each of the active player's suspended cards; with the last, it can be cast free this upkeep.
+                foreach ($step === Step::Upkeep ? $this->exile : [] as $id) {
+                    $object = $this->objects[$id];
+                    if ($object->exiledBy === 'suspend' && $object->owner === $this->active) {
+                        $object->addCounters('time', -1);
+                        if ($object->counter('time') === 0) {
+                            $object->exiledBy = 'suspended';
+                            $object->exiledOn = $this->turn;
+                            $this->log("The last time counter is removed from {$object->name()}; it can be cast without paying its mana cost.");
+                        }
+                    }
+                }
                 if ($step === Step::End) {
                     foreach ($this->permanents() as $object) {
                         if ($object->unearthed) {
@@ -761,11 +776,21 @@ final class Game
         if ($ids === []) {
             return;
         }
-        foreach ($ids as $id) {
-            $this->moveTo($this->objects[$id], GameObject::GRAVEYARD);
-        }
         $discarded = implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids));
         $this->log("{$this->players[$seat]->name} discards {$discarded}.", $seat, "discard {$discarded}");
+        foreach ($ids as $id) {
+            $object = $this->objects[$id];
+            if (isset($object->printed()->altCosts['madness'])) {
+                // Madness: exiled instead, castable while its trigger waits.
+                $this->moveTo($object, GameObject::EXILE);
+                $object->exiledBy = 'madness';
+                $object->exiledOn = $this->turn;
+                $this->trigger($object, 'madness', $object->owner);
+                $this->log("{$object->name()} is exiled (madness).");
+            } else {
+                $this->moveTo($object, GameObject::GRAVEYARD);
+            }
+        }
     }
 
     // ----------------------------------------------------------------------
@@ -814,6 +839,12 @@ final class Game
             if (isset($card->altCosts['plot']) && $this->whyNotPlot($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'plot'];
             }
+            if (isset($card->altCosts['suspend']) && $this->whyNotSuspend($seat, $id) === null) {
+                $plays[] = ['id' => $id, 'how' => 'suspend'];
+            }
+            if (isset($card->altCosts['ninjutsu']) && $this->whyNotNinjutsu($seat, $id) === null) {
+                $plays[] = ['id' => $id, 'how' => 'ninjutsu'];
+            }
         }
         foreach ($this->players[$seat]->graveyard as $id) {
             $card = $this->objects[$id]->printed();
@@ -827,15 +858,18 @@ final class Game
             if ($card->unearth !== null && $this->whyNotUnearth($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'unearth'];
             }
+            if (isset($card->altCosts['regrow']) && $this->whyNotRegrow($seat, $id) === null) {
+                $plays[] = ['id' => $id, 'how' => 'regrow'];
+            }
         }
         foreach ($this->exile as $id) {
             $exiled = $this->objects[$id];
-            if ($exiled->exiledBy !== null && $exiled->owner === $seat) {
+            if (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
                     if (preg_match('/kick|dash|evoke|warp|morph|bestow/', $how)) {
                         continue;
                     }
-                    $how = implode(',', array_filter([$exiled->exiledBy === 'plot' ? 'pl' : 'wx', $how]));
+                    $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp'][$exiled->exiledBy] ?? null, $how]));
                     if ($this->canCast($seat, $id, $how)) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
@@ -872,6 +906,9 @@ final class Game
                 $ways[] = implode(',', [...$base, 'kick']);
             }
         }
+        if ($card->entwine !== null && $card->modes !== []) {
+            $ways[] = implode(',', array_filter([$flashback ? 'fb' : '', 'm'.implode('+', array_keys($card->modes)), 'entwine']));
+        }
         if (! $flashback && $card->morph !== null) {
             $ways[] = 'morph';
         }
@@ -894,11 +931,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => ''];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -911,13 +948,15 @@ final class Game
                 $options['rebound'] = true;
             } elseif ($part === 'bestow') {
                 $options['bestowed'] = true;
+            } elseif ($part === 'entwine') {
+                $options['entwined'] = true;
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp'], true)) {
                 $options['alt'] = $part;
-            } elseif ($part === 'pl' || $part === 'wx') {
-                // Cast from exile after plotting it, or after warp exiled it.
-                $options['exiled'] = $part === 'pl' ? 'plot' : 'warp';
+            } elseif (in_array($part, ['pl', 'wx', 'md', 'sp'], true)) {
+                // Cast from exile after plotting it, after warp exiled it, discarded with madness, or its last time counter removed.
+                $options['exiled'] = ['pl' => 'plot', 'wx' => 'warp', 'md' => 'madness', 'sp' => 'suspended'][$part];
             } elseif (preg_match('/^m\d+(?:\+\d+)*$/', $part)) {
                 $options['modes'] = array_map('intval', explode('+', substr($part, 1)));
             } else {
@@ -1068,7 +1107,10 @@ final class Game
             if ($object === null || $object->exiledBy !== $options['exiled'] || $object->zone !== GameObject::EXILE || $object->owner !== $seat) {
                 return "That card was not exiled with {$options['exiled']}.";
             }
-            if ($object->exiledOn >= $this->turn) {
+            if ($options['exiled'] === 'suspended' && ($this->step !== Step::Upkeep || $this->active !== $seat || $object->exiledOn !== $this->turn)) {
+                return 'A suspended card is cast in the upkeep its last time counter is removed.';
+            }
+            if (! in_array($options['exiled'], ['madness', 'suspended'], true) && $object->exiledOn >= $this->turn) {
                 return 'It can be cast from exile on a later turn.';
             }
         } elseif ($object === null || ! (in_array($id, $player->hand, true) || in_array($id, $this->commandCards($seat), true))) {
@@ -1093,11 +1135,14 @@ final class Game
         if ($options['bestowed'] && $card->bestow === null) {
             return "{$card->name} has no bestow.";
         }
-        if (! $options['faceDown'] && ! in_array(array_values(array_unique(array_map('intval', $options['modes']))), $card->modeChoices(), true)) {
+        if ($options['entwined'] && ($card->entwine === null || array_values(array_unique(array_map('intval', $options['modes']))) !== array_keys($card->modes))) {
+            return "{$card->name} has no entwine.";
+        }
+        if (! $options['faceDown'] && ! $options['entwined'] && ! in_array(array_values(array_unique(array_map('intval', $options['modes']))), $card->modeChoices(), true)) {
             return $card->choose === null ? "{$card->name} has no modes." : "Choose {$card->choose['min']}".($card->choose['max'] > $card->choose['min'] ? " to {$card->choose['max']}" : '')." of {$card->name}'s modes.";
         }
         // A card with no mana cost at all cannot be cast for mana (rule 202.1b).
-        if (! $options['faceDown'] && ! $options['flashback'] && ! $options['rebound'] && $options['alt'] === '' && $options['exiled'] !== 'plot' && $card->cost->isEmpty() && array_key_exists('manaCost', $card->card)) {
+        if (! $options['faceDown'] && ! $options['flashback'] && ! $options['rebound'] && $options['alt'] === '' && ! in_array($options['exiled'], ['plot', 'madness', 'suspended'], true) && $card->cost->isEmpty() && array_key_exists('manaCost', $card->card)) {
             return "{$card->name} has no mana cost, so it cannot be cast.";
         }
         if ($this->priority !== $seat) {
@@ -1118,7 +1163,8 @@ final class Game
         }
         // Face down it is a 2/2 creature spell with no abilities, flash included.
         // A plotted card is cast as a sorcery (rule 702.170d).
-        if (! $options['rebound'] && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
+        // Madness casts it whenever its trigger waits (rule 702.35c).
+        if (! $options['rebound'] && ! in_array($options['exiled'], ['madness', 'suspended'], true) && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
             return "{$card->name} can be cast only in your own main phase, when the stack is empty.";
         }
 
@@ -1170,19 +1216,25 @@ final class Game
     public static function castCost(CardDefinition $card, string|array $how): string
     {
         $options = self::castOptions($how);
-        if ($options['rebound'] || $options['exiled'] === 'plot') {
-            // Without paying its mana cost (rule 118.9): X is 0.
-            return '';
+        // Additional costs: kicker, entwine and each Spree mode's.
+        $more = ($options['kicked'] ? (string) $card->kicker : '').($options['entwined'] ? (string) $card->entwine : '')
+            .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']));
+        if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended'], true)) {
+            // Without paying its mana cost (rule 118.9), but still its additional costs: X is 0.
+            return $more;
         }
         if ($options['alt'] !== '') {
-            return $card->altCosts[$options['alt']].($options['kicked'] ? (string) $card->kicker : '');
+            return $card->altCosts[$options['alt']].$more;
+        }
+        if ($options['exiled'] === 'madness') {
+            return $card->altCosts['madness'].$more;
         }
         if ($options['bestowed']) {
             return $card->bestow['cost'];
         }
         $cost = $options['faceDown'] ? '{3}' : ($options['flashback'] ? (string) $card->flashback : (string) $card->cost);
 
-        return $cost.($options['kicked'] ? (string) $card->kicker : '');
+        return $cost.$more;
     }
 
     /**
@@ -1481,7 +1533,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['alt']]);
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt']]);
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
@@ -1727,6 +1779,193 @@ final class Game
         }
         if ($this->payFor($seat, (string) $object->printed()->unearth) === null) {
             return "You cannot pay {$object->printed()->unearth}.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Ninjutsu (rule 702.49): pays the cost and returns an unblocked attacker
+     * to its owner's hand, the weakest unless one is named; the ability puts
+     * this card onto the battlefield tapped and attacking.
+     *
+     * @param int      $seat
+     * @param int      $id
+     * @param int|null $returned The unblocked attacker to return.
+     *
+     * @return void
+     */
+    public function ninjutsu(int $seat, int $id, ?int $returned = null): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotNinjutsu($seat, $id)) !== null) {
+            throw new GameException($reason);
+        }
+        $unblocked = $this->unblockedAttackers($seat);
+        if ($returned !== null && ! in_array($returned, array_map(fn (GameObject $o) => $o->id, $unblocked), true)) {
+            throw new GameException('Return an unblocked attacker you control.');
+        }
+        usort($unblocked, fn (GameObject $a, GameObject $b) => [! $a->definition()->isToken(), $this->power($a) + $this->toughness($a), $a->id] <=> [! $b->definition()->isToken(), $this->power($b) + $this->toughness($b), $b->id]);
+        $back = $returned === null ? $unblocked[0] : $this->objects[$returned];
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $this->pay($seat, $this->payFor($seat, $card->altCosts['ninjutsu']));
+        $this->moveTo($back, GameObject::HAND);
+        $this->log("{$this->players[$seat]->name} returns {$back->name()} to hand for ninjutsu.");
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => [['type' => 'ninjutsu']],
+            'kinds' => [],
+            'label' => "{$card->name}'s ninjutsu",
+        ], [], 'is activated', "ninjutsu {$card->name}");
+        $this->settle();
+    }
+
+    /**
+     * @param int $seat
+     *
+     * @return GameObject[] A player's attackers that no creature blocked.
+     */
+    private function unblockedAttackers(int $seat): array
+    {
+        return array_values(array_filter(
+            array_map(fn (int $id) => $this->objects[$id], array_keys($this->attackers)),
+            fn (GameObject $o) => $o->controller === $seat && $o->zone === GameObject::BATTLEFIELD && ! isset($this->blocked[$o->id]) && ! in_array($o->id, $this->blockers, true)
+        ));
+    }
+
+    private function whyNotNinjutsu(int $seat, int $id): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::HAND || $object->owner !== $seat) {
+            return 'That card is not in your hand.';
+        }
+        if (! isset($object->printed()->altCosts['ninjutsu'])) {
+            return "{$object->name()} has no ninjutsu.";
+        }
+        if ($this->priority !== $seat || $this->step !== Step::DeclareBlockers) {
+            return 'Ninjutsu once blockers are declared.';
+        }
+        if ($this->splitSecond() !== null) {
+            return 'Nothing can be activated while a spell with split second is on the stack.';
+        }
+        if ($this->unblockedAttackers($seat) === []) {
+            return 'You have no unblocked attacker to return.';
+        }
+        if ($this->payFor($seat, $object->printed()->altCosts['ninjutsu']) === null) {
+            return "You cannot pay {$object->printed()->altCosts['ninjutsu']}.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Suspends a card (rule 702.62): a special action that exiles it from
+     * your hand with N time counters, any time you could cast it.
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return void
+     */
+    public function suspend(int $seat, int $id): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotSuspend($seat, $id)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $this->pay($seat, $this->payFor($seat, $card->altCosts['suspend']));
+        $this->moveTo($object, GameObject::EXILE);
+        $object->exiledBy = 'suspend';
+        $object->exiledOn = $this->turn;
+        $object->addCounters('time', self::suspendTime($card));
+        $this->log("{$this->players[$seat]->name} suspends {$object->name()} with {$object->counter('time')} time counters.", $seat, "suspend {$object->name()}");
+        $this->settle();
+    }
+
+    private static function suspendTime(CardDefinition $card): int
+    {
+        foreach ($card->keywords as $keyword) {
+            if (preg_match('/^suspend (\d+)$/', $keyword, $m)) {
+                return (int) $m[1];
+            }
+        }
+
+        return 0;
+    }
+
+    private function whyNotSuspend(int $seat, int $id): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::HAND || $object->owner !== $seat) {
+            return 'That card is not in your hand.';
+        }
+        $card = $object->printed();
+        if (! isset($card->altCosts['suspend'])) {
+            return "{$object->name()} has no suspend.";
+        }
+        if ($this->priority !== $seat || $this->splitSecond() !== null) {
+            return 'You cannot suspend a card now.';
+        }
+        if (! $card->hasInstantSpeed() && ! $this->sorcerySpeed($seat)) {
+            return 'Suspend it when you could cast it.';
+        }
+        if ($this->payFor($seat, $card->altCosts['suspend']) === null) {
+            return "You cannot pay {$card->altCosts['suspend']}.";
+        }
+
+        return null;
+    }
+
+    /**
+     * `{2}{B}: Return this card from your graveyard to your hand.`
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return void
+     */
+    public function regrow(int $seat, int $id): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotRegrow($seat, $id)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $this->pay($seat, $this->payFor($seat, $card->altCosts['regrow']));
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => [['type' => 'regrow']],
+            'kinds' => [],
+            'label' => "{$card->name}'s ability",
+        ], [], 'is activated', "return {$card->name}");
+        $this->settle();
+    }
+
+    private function whyNotRegrow(int $seat, int $id): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::GRAVEYARD || $object->owner !== $seat) {
+            return 'That card is not in your graveyard.';
+        }
+        if (! isset($object->printed()->altCosts['regrow'])) {
+            return "{$object->name()} cannot return from your graveyard.";
+        }
+        if ($this->priority !== $seat) {
+            return 'You do not have priority.';
+        }
+        if ($this->splitSecond() !== null) {
+            return 'Nothing can be activated while a spell with split second is on the stack.';
+        }
+        if ($this->payFor($seat, $object->printed()->altCosts['regrow']) === null) {
+            return "You cannot pay {$object->printed()->altCosts['regrow']}.";
         }
 
         return null;
@@ -2271,7 +2510,11 @@ final class Game
                         }
                         array_splice($this->stack, $index, 1);
                         $this->log("{$countered->name()} is countered.", null, "{$countered->name()} countered");
-                        $this->spellLeavesStack($countered, $item);
+                        if (($effect['exileCountered'] ?? false) && ! self::isAbility($item)) {
+                            $this->moveTo($countered, GameObject::EXILE);
+                        } else {
+                            $this->spellLeavesStack($countered, $item);
+                        }
                         break;
                     }
                 }
@@ -2359,6 +2602,56 @@ final class Game
             case 'energy':
                 $this->players[$controller]->energy += $amount;
                 $this->log("{$this->players[$controller]->name} gets {$amount} energy.");
+                break;
+
+            case 'edict':
+                // Annihilator: the defending player sacrifices their weakest permanents.
+                foreach ($opponents as $seat) {
+                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, fn () => true)) !== null; $i++) {
+                        $this->log("{$this->players[$seat]->name} sacrifices {$victim->name()}.");
+                        $this->moveTo($victim, GameObject::GRAVEYARD);
+                    }
+                }
+                break;
+
+            case 'madness':
+                // Not cast while the trigger waited: into the graveyard.
+                if ($source->zone === GameObject::EXILE && $source->exiledBy === 'madness') {
+                    $this->moveTo($source, GameObject::GRAVEYARD);
+                    $this->log("{$source->name()} goes to the graveyard.");
+                }
+                break;
+
+            case 'regrow':
+                if ($source->zone === GameObject::GRAVEYARD) {
+                    $this->moveTo($source, GameObject::HAND);
+                    $this->log("{$source->name()} returns to {$this->players[$source->owner]->name}'s hand.");
+                }
+                break;
+
+            case 'ninjutsu':
+                if ($source->zone === GameObject::HAND && in_array($this->step, [Step::DeclareBlockers, Step::CombatDamage, Step::FirstStrikeDamage], true)) {
+                    $this->putOntoBattlefield($source, $controller);
+                    $source->tapped = true;
+                    $this->attackers[$source->id] = true;
+                    $this->log("{$source->name()} enters tapped and attacking.");
+                }
+                break;
+
+            case 'offspring':
+                // A 1/1 token copy of the creature (rule 702.175).
+                $copy = $this->createToken(['power' => '1', 'toughness' => '1', 'name' => $source->printed()->name] + $source->printed()->card, $controller);
+                $this->log("{$this->players[$controller]->name} creates a 1/1 token copy of {$copy->name()}.");
+                break;
+
+            case 'backup':
+                if ($affected !== null) {
+                    $affected->addCounters('+1/+1', $amount);
+                    if ($affected->id !== $source->id) {
+                        $keywords = array_values(array_diff($source->definition()->keywords, ['backup']));
+                        $affected->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => $keywords];
+                    }
+                }
                 break;
 
             case 'unearth':
@@ -3277,6 +3570,10 @@ final class Game
             'artifact_or_enchantment' => $card->is('Artifact') || $card->is('Enchantment'),
             'artifact_or_creature' => $card->is('Artifact') || $creature,
             'artifact_creature' => $card->is('Artifact') && $creature,
+            'artifact_or_land' => $card->is('Artifact') || $card->isLand(),
+            'creature_nonblack' => $creature && ! in_array('B', $card->colors, true),
+            'creature_nonartifact' => $creature && ! $card->is('Artifact'),
+            'creature_nonartifact_nonblack' => $creature && ! $card->is('Artifact') && ! in_array('B', $card->colors, true),
             'creature_or_vehicle' => $creature || in_array('Vehicle', $card->subtypes, true),
             'attacking_or_blocking' => $creature && (isset($this->attackers[$object->id]) || isset($this->blockers[$object->id])),
             'attacking' => $creature && isset($this->attackers[$object->id]),
@@ -4604,7 +4901,7 @@ final class Game
             if ($this->active === $object->controller) {
                 array_push($keywords, ...$object->definition()->yourTurnKeywords);
             }
-            if ($object->alt === 'dash') {
+            if ($object->alt === 'dash' || ($object->alt === 'suspend' && $this->isCreature($object))) {
                 $keywords[] = 'haste';
             }
             foreach ($object->definition()->stationBands as $band) {

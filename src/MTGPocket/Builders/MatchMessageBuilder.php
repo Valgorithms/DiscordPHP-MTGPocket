@@ -845,20 +845,24 @@ class MatchMessageBuilder extends PocketMessageBuilder
     {
         $object = $game->objects[$id];
         $card = $object->printed();
-        $options = in_array($how, ['cycle', 'unearth', 'plot'], true) ? null : Game::castOptions($how);
+        $options = in_array($how, Game::SPECIAL_PLAYS, true) ? null : Game::castOptions($how);
         $way = $options === null ? match ($how) {
             'cycle' => "cycle {$card->cycling}",
             'unearth' => "unearth {$card->unearth}",
-            default => "plot {$card->altCosts['plot']}",
+            'regrow' => "return to hand for {$card->altCosts['regrow']}",
+            default => "{$how} {$card->altCosts[$how]}",
         } : implode(', ', array_filter([
             $options['exiled'] === 'plot' ? 'plotted, free' : '',
+            $options['exiled'] === 'suspended' ? 'suspended, free' : '',
             $options['exiled'] === 'warp' ? 'from exile' : '',
+            $options['exiled'] === 'madness' ? "madness {$card->altCosts['madness']}" : '',
+            $options['entwined'] ? "entwined +{$card->entwine}" : '',
             $options['alt'] === '' ? '' : "{$options['alt']} {$card->altCosts[$options['alt']]}",
             $options['faceDown'] ? 'face down for {3}' : '',
             $options['flashback'] ? "flashback {$card->flashback}" : '',
             $options['rebound'] ? 'rebound, free' : '',
             $options['bestowed'] ? "bestow {$card->bestow['cost']}" : '',
-            $options['kicked'] ? "kicked +{$card->kicker}" : '',
+            $options['kicked'] ? (in_array('offspring', $card->keywords, true) ? "offspring +{$card->kicker}" : "kicked +{$card->kicker}") : '',
             $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
         ]));
         $description = $options !== null && $options['modes'] !== []
