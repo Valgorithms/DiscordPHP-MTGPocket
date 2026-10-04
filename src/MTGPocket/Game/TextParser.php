@@ -256,7 +256,7 @@ final class TextParser
      */
     private static function equipment(string $line, array &$result): bool
     {
-        if (preg_match('/^Equip (\{[^:]+\})$/', $line, $match)) {
+        if (preg_match('/^Equip ((?:\{[0-9WUBRGC\/P]+\})+)$/', $line, $match)) {
             $result['activated'][] = [
                 'text' => $line,
                 'cost' => ['mana' => $match[1]],

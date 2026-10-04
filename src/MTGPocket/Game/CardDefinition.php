@@ -101,9 +101,16 @@ final class CardDefinition
         $this->subtypes = isset($card['subtypes']) ? array_values((array) $card['subtypes']) : $subtypes;
         $this->colors = array_values((array) ($card['colors'] ?? []));
 
-        $this->cost = array_key_exists('manaCost', $card)
-            ? ManaCost::parse($card['manaCost'])
-            : ManaCost::generic((int) ($card['manaValue'] ?? 0));
+        // Playtest and Un- cards print symbols that are not mana, such as {D} for a land drop: pay their mana value as generic.
+        $costUnsupported = [];
+        try {
+            $this->cost = array_key_exists('manaCost', $card)
+                ? ManaCost::parse($card['manaCost'])
+                : ManaCost::generic((int) ($card['manaValue'] ?? 0));
+        } catch (\InvalidArgumentException) {
+            $this->cost = ManaCost::generic((int) ($card['manaValue'] ?? 0));
+            $costUnsupported[] = "Mana cost {$card['manaCost']} (paid as generic mana)";
+        }
 
         $this->power = self::stat($card['power'] ?? null);
         $this->toughness = self::stat($card['toughness'] ?? null);
@@ -119,7 +126,7 @@ final class CardDefinition
         $this->equipment = $parsed['equipment'];
         $this->triggered = $parsed['triggered'];
         $this->activated = $parsed['activated'];
-        $this->unsupported = $parsed['unsupported'];
+        $this->unsupported = [...$costUnsupported, ...$parsed['unsupported']];
     }
 
     /**
