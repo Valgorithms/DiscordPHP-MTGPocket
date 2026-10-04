@@ -148,7 +148,7 @@ final class RentalsAndQuestsTest extends PocketTestCase
         $this->assertSame([], $this->pocket->matches->problems($deck), 'Printed basic lands are not held to the copy limit.');
         $json = json_encode(PocketMessageBuilder::deck($deck, $rental->card(...), true, null, [], false), JSON_UNESCAPED_UNICODE);
         $this->assertStringContainsString('Burn (rental)', $json);
-        $this->assertStringNotContainsString('Export decklist', $json, 'Rentals cannot be exported.');
+        $this->assertStringNotContainsString('Export for', $json, 'Rentals cannot be exported.');
 
         // Dave, who owns no cards, plays a ranked Standard game.
         $this->pocket->rentals->rent(self::BOB, 'Bob', 'rental:new-burn');

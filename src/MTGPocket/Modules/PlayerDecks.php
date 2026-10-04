@@ -14,10 +14,8 @@ declare(strict_types=1);
 namespace MTGPocket\Modules;
 
 use Discord\Builders\MessageBuilder;
-use Discord\Parts\Channel\Message\AllowedMentions;
 use Discord\Parts\Interactions\Command\Option;
 use Discord\Parts\Interactions\Interaction;
-use Discord\WebSockets\Event;
 use MTG\Modules\InteractionTrait;
 use MTG\Modules\Module;
 use MTG\MTG;
@@ -39,7 +37,7 @@ use React\Promise\PromiseInterface;
  * looks up preconstructed decks. Edits answer only the player; `list` and
  * `show` take `hidden` like every other command.
  *
- * Custom id: `pocket:export:<playerId>:<deckId>` for **Export decklist**.
+ * The deck view's **Export** picker is answered by {@see Exports}.
  *
  * @since 0.2.0
  */
@@ -164,29 +162,6 @@ final class PlayerDecks implements Module
             $builder->activate($id, $name, (string) $args['deck']),
             'You now play with this deck.'
         )), $suggest);
-
-        $mtg->on(Event::INTERACTION_CREATE, function (Interaction $interaction) use ($mtg, $builder): void {
-            if ($interaction->type !== Interaction::TYPE_MESSAGE_COMPONENT) {
-                return;
-            }
-
-            $parts = explode(':', (string) ($interaction->data->custom_id ?? ''));
-            if ($parts[0] !== PocketMessageBuilder::PREFIX || ($parts[1] ?? '') !== 'export') {
-                return;
-            }
-
-            self::answer($mtg, $interaction, function () use ($builder, $parts) {
-                $deck = $this->pocket->decks->find((string) ($parts[2] ?? ''), (string) ($parts[3] ?? ''));
-                if ($deck === null) {
-                    return PocketMessageBuilder::notice('This deck no longer exists.');
-                }
-
-                return MessageBuilder::new()
-                    ->setAllowedMentions(AllowedMentions::none())
-                    ->setContent("**{$deck->name}**, ready to paste into MTG Arena, Moxfield or Archidekt.")
-                    ->addFileFromContent(preg_replace('/[^A-Za-z0-9_-]+/', '-', $deck->name).'.txt', PocketMessageBuilder::export($deck, $builder->cardData(...)));
-            });
-        });
     }
 
     /**
