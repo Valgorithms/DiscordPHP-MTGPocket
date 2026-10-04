@@ -75,6 +75,9 @@ final class GameObject
     /** Renown (rule 702.112): it has dealt combat damage to a player since it entered. */
     public bool $renowned = false;
 
+    /** Monstrosity (rule 701.37) has made it monstrous. */
+    public bool $monstrous = false;
+
     /** Doesn't untap during its controller's next untap step. */
     public bool $frozen = false;
 
@@ -172,6 +175,7 @@ final class GameObject
         $this->unearthed = false;
         $this->frozen = false;
         $this->renowned = false;
+        $this->monstrous = false;
         $this->rebound = false;
         $this->bestowed = false;
         $this->chosen = null;
@@ -221,6 +225,7 @@ final class GameObject
             'unearthed' => $this->unearthed,
             'frozen' => $this->frozen,
             'renowned' => $this->renowned,
+            'monstrous' => $this->monstrous,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
@@ -258,6 +263,7 @@ final class GameObject
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
         $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->renowned = (bool) ($data['renowned'] ?? false);
+        $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
         $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
