@@ -104,6 +104,16 @@ final class ModernCardTextTest extends GameTestCase
         'Exploit Lite' => ['manaCost' => '{2}{B}', 'type' => 'Creature — Zombie', 'power' => '2', 'toughness' => '2', 'text' => "Exploit (When this creature enters, you may sacrifice a creature.)\nWhen this creature exploits a creature, draw two cards.", 'colors' => ['B']],
         'Ball Lightning' => ['manaCost' => '{R}{R}{R}', 'type' => 'Creature — Elemental', 'power' => '6', 'toughness' => '1', 'text' => "Trample\nHaste\nAt the beginning of the end step, sacrifice this creature.", 'colors' => ['R']],
         'Scrap Lite' => ['manaCost' => '{1}{B}', 'type' => 'Sorcery', 'text' => "As an additional cost to cast this spell, sacrifice an artifact or creature.\nDraw two cards.", 'colors' => ['B']],
+        'Firebending Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Human Warrior', 'power' => '2', 'toughness' => '2', 'text' => 'Firebending 2 (Whenever this creature attacks, add {R}{R}. This mana lasts until end of combat.)', 'colors' => ['R']],
+        'Banisher Lite' => ['manaCost' => '{1}{W}{W}', 'type' => 'Enchantment', 'text' => 'When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield.', 'colors' => ['W']],
+        'Mind Control' => ['manaCost' => '{3}{U}{U}', 'type' => 'Enchantment — Aura', 'text' => "Enchant creature\nYou control enchanted creature.", 'colors' => ['U']],
+        'Leyline Lite' => ['manaCost' => '{2}{W}{W}', 'type' => 'Enchantment', 'text' => 'If this card is in your opening hand, you may begin the game with it on the battlefield.', 'colors' => ['W']],
+        'Simic Initiate' => ['manaCost' => '{G}', 'type' => 'Creature — Human Mutant', 'power' => '0', 'toughness' => '0', 'text' => 'Graft 1 (This creature enters with a +1/+1 counter on it. Whenever another creature enters, you may move a +1/+1 counter from this creature onto it.)', 'colors' => ['G']],
+        'Devour Lite' => ['manaCost' => '{2}{R}', 'type' => 'Creature — Dragon', 'power' => '2', 'toughness' => '2', 'text' => 'Devour 2 (As this creature enters, you may sacrifice any number of creatures. This creature enters with twice that many +1/+1 counters on it.)', 'colors' => ['R']],
+        'Rakdos Cackler' => ['manaCost' => '{B/R}', 'type' => 'Creature — Devil', 'power' => '1', 'toughness' => '1', 'text' => "Unleash (You may have this creature enter with a +1/+1 counter on it. It can't block as long as it has a +1/+1 counter on it.)", 'colors' => ['B', 'R']],
+        'Fog' => ['manaCost' => '{G}', 'type' => 'Instant', 'text' => 'Prevent all combat damage that would be dealt this turn.', 'colors' => ['G']],
+        'Naturalize Lite' => ['manaCost' => '{G}', 'type' => 'Instant', 'text' => 'Destroy target artifact or enchantment.', 'colors' => ['G']],
+        'Oil Lite' => ['manaCost' => '{2}', 'type' => 'Artifact', 'text' => 'This artifact enters with three oil counters on it.', 'colors' => []],
         'Lumen-Class Frigate' => ['manaCost' => '{1}{W}', 'type' => 'Artifact — Spacecraft', 'power' => '3', 'toughness' => '5', 'text' => "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.)\n2+ | Other creatures you control get +1/+1.\n12+ | Flying, lifelink", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
@@ -756,6 +766,94 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($ball), "Also at the end of Alice's turn.");
     }
 
+    public function testExileUntilLeavesAndControlMagic(): void
+    {
+        $game = $this->newGame();
+        $bears = $this->battlefield(1, 'Grizzly Bears');
+        $other = $this->battlefield(1, 'Grizzly Bears');
+        $this->lands(0, 'Plains', 3);
+        $this->lands(0, 'Island', 5);
+        $banisher = $this->put(0, 'Banisher Lite', GameObject::HAND);
+        $game->cast(0, $banisher, 0, []);
+        $this->resolve();
+        $game->chooseTriggerTargets(0, ["o:{$bears}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::EXILE, $this->zone($bears));
+        $control = $this->put(0, 'Mind Control', GameObject::HAND);
+        $game->cast(0, $control, 0, ["o:{$other}"]);
+        $this->resolve();
+        $this->assertSame(0, $game->objects[$other]->controller);
+
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->lands(1, 'Forest', 2);
+        $this->passUntil(Step::PrecombatMain, 2);
+        $game->cast(1, $this->put(1, 'Naturalize Lite', GameObject::HAND), 0, ["o:{$banisher}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($bears), 'Back when the Banisher leaves.');
+        $this->assertSame(1, $game->objects[$bears]->controller);
+        $game->cast(1, $this->put(1, 'Naturalize Lite', GameObject::HAND), 0, ["o:{$control}"]);
+        $this->resolve();
+        $this->assertSame(1, $game->objects[$other]->controller, 'Back to its owner when the Aura leaves.');
+    }
+
+    public function testFirebendingGraftDevourUnleashFogAndOil(): void
+    {
+        $game = $this->newGame();
+        $bender = $this->put(0, 'Firebending Lite', GameObject::BATTLEFIELD);
+        $game->objects[$bender]->sick = false;
+        $this->passUntil(Step::DeclareAttackers);
+        $game->declareAttackers(0, [$bender]);
+        $this->resolve();
+        $this->assertSame(2, $game->players[0]->manaPool->total());
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Forest', 6);
+        $this->lands(0, 'Plains', 1);
+        $initiate = $this->put(0, 'Simic Initiate', GameObject::BATTLEFIELD);
+        $this->assertSame(1, $game->power($game->objects[$initiate]));
+        $squire = $this->put(0, 'Akrasan Squire', GameObject::HAND);
+        $game->cast(0, $squire, 0, []);
+        $this->resolve();
+        $this->resolve(); // Graft.
+        $this->assertSame(1, $game->objects[$squire]->counter('+1/+1'));
+        $this->assertSame(0, $game->power($game->objects[$initiate]));
+
+        $this->put(0, 'Rakdos Cackler', GameObject::BATTLEFIELD);
+        $oil = $this->put(0, 'Oil Lite', GameObject::BATTLEFIELD);
+        $this->assertSame(3, $game->objects[$oil]->counter('oil'));
+        $this->lands(0, 'Mountain', 3);
+        $devour = $this->put(0, 'Devour Lite', GameObject::HAND);
+        $game->cast(0, $devour, 0, []);
+        $this->resolve();
+        $this->assertSame(0, $game->objects[$devour]->counter('+1/+1'), 'Devour eats only tokens.');
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($squire));
+
+        $fog = $this->put(0, 'Fog', GameObject::HAND);
+        $game->cast(0, $fog, 0, []);
+        $this->resolve();
+        $this->assertSame($game->turn, $game->fogTurn);
+    }
+
+    public function testUnleashCantBlockAndLeylines(): void
+    {
+        $game = $this->newGame();
+        $this->assertSame(1, self::read('Rakdos Cackler')->entersWithCounters);
+        $cackler = $this->put(1, 'Rakdos Cackler', GameObject::BATTLEFIELD);
+        $attacker = $this->battlefield(0, 'Grizzly Bears');
+        $game->objects[$attacker]->sick = false;
+        $this->passUntil(Step::DeclareAttackers);
+        $game->declareAttackers(0, [$attacker]);
+        $this->assertSame(2, $game->power($game->objects[$cackler]));
+        $this->assertFalse($game->canBlock($game->objects[$cackler], $game->objects[$attacker]));
+
+        $deck = array_fill(0, 27, self::more('Leyline Lite'));
+        $game = Game::start('game-2', [['id' => '1', 'name' => 'Alice', 'cards' => $deck], ['id' => '2', 'name' => 'Bob', 'cards' => $deck]], 'leyline');
+        $game->keep(0);
+        $game->keep(1);
+        $this->assertCount(7, $game->permanents(0));
+        $this->assertSame([], $game->players[0]->hand);
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -1030,7 +1128,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

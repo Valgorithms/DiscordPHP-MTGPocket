@@ -233,7 +233,7 @@ final class AutoPlayer
                 } elseif ($card->aura !== null) {
                     // Pacifism and the like go on the opponent's creatures.
                     $harmful = array_intersect($card->aura['keywords'], ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"]) !== [] || $card->aura['power'] < 0
-                        || in_array($card->aura['enchant'], ['player', 'opponent'], true);
+                        || in_array($card->aura['enchant'], ['player', 'opponent'], true) || ($card->aura['control'] ?? false);
                     $effects = [['type' => $harmful ? 'destroy' : 'pump']];
                 }
                 $targets = self::targets($game, $seat, $kinds, $effects);

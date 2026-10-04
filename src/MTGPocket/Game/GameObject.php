@@ -75,6 +75,12 @@ final class GameObject
     /** Renown (rule 702.112): it has dealt combat damage to a player since it entered. */
     public bool $renowned = false;
 
+    /** @var int[] Objects it exiled `until this leaves the battlefield`. */
+    public array $holding = [];
+
+    /** The Aura that gave its controller control of it (`You control enchanted creature.`). */
+    public ?int $stolenBy = null;
+
     /** Monstrosity (rule 701.37) has made it monstrous. */
     public bool $monstrous = false;
 
@@ -176,6 +182,8 @@ final class GameObject
         $this->frozen = false;
         $this->renowned = false;
         $this->monstrous = false;
+        $this->holding = [];
+        $this->stolenBy = null;
         $this->rebound = false;
         $this->bestowed = false;
         $this->chosen = null;
@@ -226,6 +234,7 @@ final class GameObject
             'frozen' => $this->frozen,
             'renowned' => $this->renowned,
             'monstrous' => $this->monstrous,
+            'holding' => $this->holding,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
@@ -236,6 +245,9 @@ final class GameObject
         }
         if ($this->enchantedPlayer !== null) {
             $data['enchantedPlayer'] = $this->enchantedPlayer;
+        }
+        if ($this->stolenBy !== null) {
+            $data['stolenBy'] = $this->stolenBy;
         }
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
@@ -264,6 +276,8 @@ final class GameObject
         $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
+        $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
+        $object->stolenBy = isset($data['stolenBy']) ? (int) $data['stolenBy'] : null;
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
         $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
