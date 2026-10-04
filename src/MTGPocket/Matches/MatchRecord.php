@@ -43,6 +43,7 @@ final class MatchRecord
      * @param string                $mode      A {@see \MTGPocket\Modes\GameMode} id.
      * @param bool                  $ranked    Paired by matchmaking; the result moves ratings.
      * @param list<array{id: string, points: int, quests: list<array{label: string, points: int}>}> $rewards Points the finished game paid, and the quests it completed.
+     * @param string|null           $event     The draft whose round this game is part of.
      */
     public function __construct(
         public readonly string $id,
@@ -55,6 +56,7 @@ final class MatchRecord
         public string $mode = 'casual',
         public bool $ranked = false,
         public array $rewards = [],
+        public ?string $event = null,
     ) {
     }
 
@@ -113,8 +115,11 @@ final class MatchRecord
         }
         $tags = [
             'Match' => $this->id,
-            'Mode' => ucfirst($this->mode).($this->ranked ? ' (ranked)' : ' (friendly)'),
+            'Mode' => ucfirst($this->mode).($this->ranked ? ' (ranked)' : ($this->event !== null ? ' (draft)' : ' (friendly)')),
         ];
+        if ($this->event !== null) {
+            $tags['Draft'] = $this->event;
+        }
         if ($this->createdAt > 0) {
             $tags['Date'] = gmdate('Y.m.d H:i', $this->createdAt).' UTC';
         }
@@ -141,6 +146,7 @@ final class MatchRecord
             'mode' => $this->mode,
             'ranked' => $this->ranked,
             'rewards' => $this->rewards,
+            'event' => $this->event,
         ];
     }
 
@@ -162,6 +168,7 @@ final class MatchRecord
                 'points' => (int) $reward['points'],
                 'quests' => array_values(array_map(fn ($quest) => ['label' => (string) $quest['label'], 'points' => (int) $quest['points']], (array) ($reward['quests'] ?? []))),
             ], (array) ($data['rewards'] ?? []))),
+            isset($data['event']) ? (string) $data['event'] : null,
         );
     }
 }

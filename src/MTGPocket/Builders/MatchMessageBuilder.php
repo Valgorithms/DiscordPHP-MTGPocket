@@ -228,7 +228,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             Game::MULLIGAN => 'Opening hands',
             Game::OVER => "Game over after turn {$game->turn}",
             default => "Turn {$game->turn} · {$names[$game->active]}'s turn · {$game->step->label()}",
-        }.' · '.self::modeLabel($match).($match->ranked ? ' (ranked)' : '');
+        }.' · '.self::modeLabel($match).($match->ranked ? ' (ranked)' : ($match->event !== null ? ' (draft)' : ''));
 
         $container = Container::new()
             ->setAccentColor(CardMessageBuilder::ACCENTS[$game->stage === Game::OVER ? 'multicolor' : 'colorless'])
@@ -294,7 +294,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
         return static::new()
             ->setAllowedMentions(AllowedMentions::none())
-            ->setContent("📜 **{$names[0]} vs {$names[1]}** · ".self::modeLabel($match).($match->ranked ? ' (ranked)' : '')." · {$state}\n-# Match `{$match->id}`. The record has a score sheet with every move by turn, then the full log with each player's position at the end of every turn.")
+            ->setContent("📜 **{$names[0]} vs {$names[1]}** · ".self::modeLabel($match).($match->ranked ? ' (ranked)' : ($match->event !== null ? ' (draft)' : ''))." · {$state}\n-# Match `{$match->id}`. The record has a score sheet with every move by turn, then the full log with each player's position at the end of every turn.")
             ->addFileFromContent("match-{$match->id}.txt", (string) $match->transcript());
     }
 

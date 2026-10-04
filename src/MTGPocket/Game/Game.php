@@ -2837,6 +2837,26 @@ final class Game
         $this->checkStateBasedActions();
     }
 
+    /**
+     * Ends the game as a draw from outside it, as when a tournament round
+     * runs out of time (rule 104.4b). A game already over is left as it is.
+     *
+     * @param string $reason For the log.
+     *
+     * @return void
+     */
+    public function endInDraw(string $reason): void
+    {
+        if ($this->stage === self::OVER) {
+            return;
+        }
+        $this->stage = self::OVER;
+        $this->priority = null;
+        $this->winner = null;
+        $this->log("{$reason} The game is a draw.");
+        $this->recordPosition();
+    }
+
     // ----------------------------------------------------------------------
     // Characteristics
     // ----------------------------------------------------------------------

@@ -15,6 +15,8 @@ namespace MTGPocket;
 
 use MTGPocket\Collection\CollectionQuery;
 use MTGPocket\Decks\DeckBuilder;
+use MTGPocket\Drafts\DraftRules;
+use MTGPocket\Drafts\DraftService;
 use MTGPocket\Economy\MatchRewards;
 use MTGPocket\Economy\PriceList;
 use MTGPocket\Economy\Shop;
@@ -25,6 +27,7 @@ use MTGPocket\Packs\DailyPacks;
 use MTGPocket\Packs\PackGenerator;
 use MTGPocket\Repository\CardPoolRepository;
 use MTGPocket\Repository\DeckRepository;
+use MTGPocket\Repository\DraftRepository;
 use MTGPocket\Repository\InventoryRepository;
 use MTGPocket\Repository\MatchRepository;
 use MTGPocket\Quests\QuestBook;
@@ -49,10 +52,13 @@ use MTGPocket\Trades\TradeService;
  * - `ladders/{mode}.json`: a mode's ratings and records
  * - `rentals/{id}.json`: an official preconstructed deck players can borrow
  * - `trades/{id}.json`: an open trade offer
+ * - `drafts/{id}.json`: a booster draft event, from sign-up to its last round
+ * - `drafters/{userId}.json`: the draft a player last joined
  *
  * On top of them sit the game's services: free daily packs, collection
  * listings, the deck builder, rental decks, matches and matchmaking in each
- * game mode, daily and weekly quests, the points shop and trades.
+ * game mode, booster drafts, daily and weekly quests, the points shop and
+ * trades.
  *
  * @since 0.1.0
  */
@@ -73,6 +79,7 @@ class Pocket
     public readonly MatchService $matches;
     public readonly Shop $shop;
     public readonly TradeService $trades;
+    public readonly DraftService $drafts;
 
     /**
      * @param string                 $dataDirectory Where the JSON files are kept, e.g. `var/data`.
@@ -83,8 +90,9 @@ class Pocket
      * @param GameModes|null         $modes         The game modes; defaults to `config/modes.php`.
      * @param MatchRewards|null      $rewards       Match points and rental limits; defaults to `config/economy.php`.
      * @param QuestBook|null         $questBook     Daily and weekly quests; defaults to `config/quests.php`.
+     * @param DraftRules|null        $draftRules    Booster drafts; defaults to `config/drafts.php`.
      */
-    public function __construct(string $dataDirectory, ?PackGenerator $generator = null, ?\Closure $clock = null, ?\Closure $random = null, ?PriceList $prices = null, ?GameModes $modes = null, ?MatchRewards $rewards = null, ?QuestBook $questBook = null)
+    public function __construct(string $dataDirectory, ?PackGenerator $generator = null, ?\Closure $clock = null, ?\Closure $random = null, ?PriceList $prices = null, ?GameModes $modes = null, ?MatchRewards $rewards = null, ?QuestBook $questBook = null, ?DraftRules $draftRules = null)
     {
         $generator ??= new PackGenerator();
         $this->store = new JsonStore($dataDirectory);
@@ -102,5 +110,6 @@ class Pocket
         $this->matches = new MatchService(new MatchRepository($this->store), $this->deckBuilder, $this->inventories, $this->modes, $this->pools, new Ladder($this->store), $this->rentals, $this->players, $this->quests, $random, $clock);
         $this->shop = new Shop($this->players, $this->inventories, $this->pools, $this->deckBuilder, $this->dailyPacks, $generator, $prices ?? PriceList::fromFile(), $clock, $this->quests);
         $this->trades = new TradeService(new TradeRepository($this->store), $this->players, $this->inventories, $this->pools, $this->deckBuilder, $clock, $random);
+        $this->drafts = new DraftService(new DraftRepository($this->store), $this->players, $this->inventories, $this->pools, $this->deckBuilder, $this->matches, $generator, $draftRules ?? DraftRules::fromFile(), $clock, $random);
     }
 }
