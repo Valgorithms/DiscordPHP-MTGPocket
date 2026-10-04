@@ -23,6 +23,7 @@ use MTG\Modules\Cards;
 use MTG\Modules\Help;
 use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Drafts;
+use MTGPocket\Modules\Exports;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Menu;
 use MTGPocket\Modules\Packs;
@@ -88,6 +89,7 @@ $mtg
     ->addModule(new Packs($pocket))
     ->addModule(new Collection($pocket))
     ->addModule(new PlayerDecks($pocket))
+    ->addModule(new Exports($pocket))
     ->addModule(new Matches($pocket))
     ->addModule(new Drafts($pocket))
     ->addModule(new Quests($pocket))
