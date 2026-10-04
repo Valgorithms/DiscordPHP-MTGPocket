@@ -72,6 +72,9 @@ final class GameObject
     /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
     public bool $unearthed = false;
 
+    /** The player an Aura with enchant player is attached to. */
+    public ?int $enchantedPlayer = null;
+
     /** The creature type or color chosen as it entered. */
     public ?string $chosen = null;
 
@@ -164,6 +167,7 @@ final class GameObject
         $this->rebound = false;
         $this->bestowed = false;
         $this->chosen = null;
+        $this->enchantedPlayer = null;
         $this->incarnation++;
     }
 
@@ -215,6 +219,9 @@ final class GameObject
         if ($this->borrowedFrom !== null) {
             $data['borrowedFrom'] = $this->borrowedFrom;
         }
+        if ($this->enchantedPlayer !== null) {
+            $data['enchantedPlayer'] = $this->enchantedPlayer;
+        }
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
     }
@@ -242,6 +249,7 @@ final class GameObject
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
         $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
+        $object->enchantedPlayer = isset($data['enchantedPlayer']) ? (int) $data['enchantedPlayer'] : null;
         $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;

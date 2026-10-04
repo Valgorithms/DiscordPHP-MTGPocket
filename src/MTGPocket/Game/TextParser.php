@@ -111,6 +111,8 @@ final class TextParser
         'artifact or creature' => 'artifact_or_creature',
         'land you control' => 'land_you_control',
         'creature or vehicle' => 'creature_or_vehicle',
+        'player' => 'player',
+        'opponent' => 'opponent',
     ];
 
     /** Predefined artifact tokens (rule 111.10). */
@@ -150,12 +152,13 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
         $spell = ! $card->isPermanentCard();
         $lines = self::lines($card);
+        $classLevel = 1;
 
         for ($i = 0; $i < count($lines); $i++) {
             $line = $lines[$i];
@@ -194,6 +197,48 @@ final class TextParser
                     }
                 }
                 $result['levels'][] = $band;
+
+                continue;
+            }
+
+            // A Class's `{2}{G}: Level 2`, then the abilities it gains at that level (rule 716).
+            if (! $spell && in_array('Class', $card->subtypes, true) && preg_match('/^((?:\{[0-9WUBRGC\/]+\})+): Level (\d+)$/', $line, $match)) {
+                $classLevel = (int) $match[2];
+                $result['activated'][] = ['text' => $line, 'cost' => ['mana' => $match[1]], 'effects' => [['type' => 'class_level', 'amount' => $classLevel, 'self' => true]], 'sorcery' => true, 'once' => false, 'fromLevel' => $classLevel - 1];
+
+                continue;
+            }
+            // A Spacecraft's `12+ | Flying, lifelink`: what it has with that many charge counters.
+            if (! $spell && preg_match('/^(\d+)\+ \| (.+)$/', $line, $match)) {
+                $before = $result;
+                if (($keywords = self::keywordList(rtrim($match[2], '.'))) !== null) {
+                    $result['stationBands'][] = ['min' => (int) $match[1], 'keywords' => $keywords];
+                } elseif (self::triggered($match[2], $result) || self::activated($match[2], $result) || self::anthem($match[2], $result)) {
+                    foreach (['triggered', 'activated', 'anthem'] as $key) {
+                        foreach (array_slice(array_keys($result[$key]), count($before[$key])) as $index) {
+                            $result[$key][$index]['charge'] = (int) $match[1];
+                        }
+                    }
+                    $result['stationBands'][] = ['min' => (int) $match[1], 'keywords' => []];
+                } else {
+                    $result = $before;
+                    $result['unsupported'][] = $line;
+                }
+
+                continue;
+            }
+            if ($classLevel > 1) {
+                $before = $result;
+                if (! $spell && (self::triggered($line, $result) || self::activated($line, $result) || self::anthem($line, $result))) {
+                    foreach (['triggered', 'activated', 'anthem'] as $key) {
+                        foreach (array_slice(array_keys($result[$key]), count($before[$key])) as $index) {
+                            $result[$key][$index]['classLevel'] = $classLevel;
+                        }
+                    }
+                } else {
+                    $result = $before;
+                    $result['unsupported'][] = $line;
+                }
 
                 continue;
             }
@@ -446,6 +491,9 @@ final class TextParser
                 $found['morph'] = ['kind' => strtolower($m[1]), 'cost' => $m[2]];
             } elseif (preg_match('/^crew (\d+)$/i', $part, $m) && ! $spell) {
                 $found['activated'][] = ['text' => $part, 'cost' => ['crew' => (int) $m[1]], 'effects' => [['type' => 'crewed', 'self' => true]], 'sorcery' => false, 'once' => false];
+            } elseif (strtolower($part) === 'station' && ! $spell) {
+                // Station (rule 702.184): tap another creature for charge counters equal to its power, as a sorcery.
+                $found['activated'][] = ['text' => 'Station', 'cost' => ['station' => true], 'effects' => [['type' => 'charge', 'amount' => 0, 'self' => true]], 'sorcery' => true, 'once' => false];
             } elseif (preg_match('/^soulshift (\d+)$/i', $part, $m) && ! $spell) {
                 // Soulshift (rule 702.46): when it dies, return a Spirit card with mana value N or less.
                 $found['triggered'][] = ['text' => $part, 'event' => 'dies', 'effects' => [['type' => 'bounce', 'target' => "spirit_card_yours_{$m[1]}"]]];
@@ -594,6 +642,11 @@ final class TextParser
      */
     private static function anthem(string $line, array &$result): bool
     {
+        if (preg_match('/^Creatures enchanted player controls get ([+-]\d+)\/([+-]\d+)\.?$/', $line, $m) && in_array($result['aura']['enchant'] ?? null, ['player', 'opponent'], true)) {
+            $result['anthem'][] = ['power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'other' => false, 'enchantedPlayer' => true];
+
+            return true;
+        }
         if (preg_match('/^(Other )?[Cc]reatures you control( of the chosen type)? get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?\.?$/', $line, $m)) {
             [$power, $toughness, $keywords] = [(int) $m[3], (int) $m[4], self::keywordList($m[5] ?? '')];
         } elseif (preg_match('/^(Other )?[Cc]reatures you control( of the chosen type)? have (.+?)\.?$/', $line, $m)) {
@@ -829,13 +882,26 @@ final class TextParser
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell',
         ];
         $saddled = false;
-        if (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up)( while saddled)?, (.+)$/', $line, $match)) {
+        if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
+            $event = "class_level_{$match[1]}";
+            $text = $match[2];
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
+        } elseif (preg_match("/^At the beginning of enchanted player's upkeep, (.+)$/", $line, $match) && in_array($result['aura']['enchant'] ?? null, ['player', 'opponent'], true)) {
+            // A curse: "that player" is the enchanted player.
+            $effects = self::effects(str_replace(['that player or a planeswalker that player controls', 'that player'], 'target player', $match[1]));
+            if ($effects === null || array_filter($effects, fn (array $effect) => ($effect['target'] ?? 'player') !== 'player') !== []) {
+                return false;
+            }
+            $effects = array_map(fn (array $effect) => isset($effect['target']) ? ['toEnchanted' => true] + array_diff_key($effect, ['target' => true]) : $effect, $effects);
+            $result['triggered'][] = ['text' => $line, 'event' => 'enchanted_upkeep', 'effects' => $effects];
+
+            return true;
         } elseif (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), (.+)$/', $line, $match)) {
             $event = 'landfall';
             $text = $match[1];

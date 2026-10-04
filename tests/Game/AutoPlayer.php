@@ -232,7 +232,8 @@ final class AutoPlayer
                     $effects = [['type' => 'pump']];
                 } elseif ($card->aura !== null) {
                     // Pacifism and the like go on the opponent's creatures.
-                    $harmful = array_intersect($card->aura['keywords'], ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"]) !== [] || $card->aura['power'] < 0;
+                    $harmful = array_intersect($card->aura['keywords'], ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"]) !== [] || $card->aura['power'] < 0
+                        || in_array($card->aura['enchant'], ['player', 'opponent'], true);
                     $effects = [['type' => $harmful ? 'destroy' : 'pump']];
                 }
                 $targets = self::targets($game, $seat, $kinds, $effects);
@@ -264,6 +265,8 @@ final class AutoPlayer
                     || (in_array('attach', $types, true) && $object->attachedTo === null)
                     || isset($ability['cost']['loyalty'])
                     || in_array('level', $types, true)
+                    || in_array('class_level', $types, true)
+                    || (in_array('charge', $types, true) && $game->step === Step::PrecombatMain)
                     || (isset($ability['cost']['energy']) && in_array('counters', $types, true))
                     || (in_array('saddled', $types, true) && $game->step === Step::PrecombatMain && ! $object->sick && ! $game->hasKeyword($object, 'saddled'))
                     || in_array('face_up', $types, true)
