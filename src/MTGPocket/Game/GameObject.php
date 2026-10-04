@@ -33,6 +33,9 @@ final class GameObject
     public const string STACK = 'stack';
     public const string EXILE = 'exile';
 
+    /** Where a token goes when it leaves the battlefield: it has ceased to exist (rule 111.7). */
+    public const string GONE = 'gone';
+
     public bool $tapped = false;
 
     /** Came under its controller's control since their most recent turn began (rule 302.6). */
@@ -52,6 +55,9 @@ final class GameObject
     public array $untilEndOfTurn = [];
 
     public int $incarnation = 0;
+
+    /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
+    public array $used = [];
 
     private ?CardDefinition $definition = null;
 
@@ -102,6 +108,7 @@ final class GameObject
         $this->counters = [];
         $this->attachedTo = null;
         $this->untilEndOfTurn = [];
+        $this->used = [];
         $this->incarnation++;
     }
 
@@ -140,6 +147,7 @@ final class GameObject
             'attachedTo' => $this->attachedTo,
             'untilEndOfTurn' => $this->untilEndOfTurn,
             'incarnation' => $this->incarnation,
+            'used' => $this->used,
         ];
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
@@ -161,6 +169,9 @@ final class GameObject
         $object->attachedTo = isset($data['attachedTo']) ? (int) $data['attachedTo'] : null;
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
         $object->incarnation = (int) ($data['incarnation'] ?? 0);
+        foreach ((array) ($data['used'] ?? []) as $index => $turn) {
+            $object->used[(int) $index] = (int) $turn;
+        }
 
         return $object;
     }

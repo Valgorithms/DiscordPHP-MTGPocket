@@ -217,6 +217,59 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$blocker]->zone);
     }
 
+    public function testAbilitiesThroughThePanel(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        $ids = [self::ALICE, self::BOB];
+        $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $active = $match->game->active;
+        $player = $ids[$active];
+        $opponent = $match->game->opponent($active);
+
+        $match = $this->modifyGame($match, function (Game $game) use ($active, $opponent, &$pyromancer, &$kavu, &$bears): void {
+            $pyromancer = $game->addCard($active, ['uuid' => 'pyro', 'name' => 'Prodigal Pyromancer', 'type' => 'Creature — Human Wizard', 'manaCost' => '{2}{R}', 'power' => '1', 'toughness' => '1', 'text' => '{T}: This creature deals 1 damage to any target.'], GameObject::BATTLEFIELD)->id;
+            $kavu = $game->addCard($active, ['uuid' => 'kavu', 'name' => 'Flametongue Kavu', 'type' => 'Creature — Kavu', 'manaCost' => '{3}{R}', 'power' => '4', 'toughness' => '2', 'text' => 'When this creature enters, it deals 4 damage to target creature.'], GameObject::HAND)->id;
+            foreach (range(1, 4) as $n) {
+                $game->addCard($active, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+            $bears = $game->addCard($opponent, $this->pocket->deckBuilder->cardData('bears'), GameObject::BATTLEFIELD)->id;
+        });
+
+        // An ability with a target: pick it, then its target.
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Use an ability', $json);
+        $this->assertStringContainsString('"value":"'.$pyromancer.'.0"', $json);
+        $this->assertStringContainsString('Prodigal Pyromancer deals 1 damage to any target.', $json);
+        [$match, $changed] = $panel->run($match->id, $player, 'ability', [], ["{$pyromancer}.0"]);
+        $this->assertFalse($changed);
+        $this->assertStringContainsString("Choose a target for Prodigal Pyromancer's ability", json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE));
+        [$match, $changed] = $panel->run($match->id, $player, 'atgt', [], ["p:{$opponent}"]);
+        $this->assertTrue($changed);
+        $this->assertSame([], $match->choice($player));
+        $this->assertStringContainsString("Prodigal Pyromancer's ability", json_encode(MatchMessageBuilder::board($match), JSON_UNESCAPED_UNICODE));
+        while ($match->game->stack !== []) {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $this->assertSame(19, $match->game->players[$opponent]->life);
+
+        // A triggered ability's target is picked in the panel of its controller.
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $kavu]);
+        while ($match->game->decision($active) !== 'trigger') {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $this->assertStringContainsString('which just triggered', json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString("to choose targets for Flametongue Kavu's ability", json_encode(MatchMessageBuilder::board($match), JSON_UNESCAPED_UNICODE));
+        $this->assertException(fn () => $panel->run($match->id, $ids[$opponent], 'trig', [], ["o:{$kavu}"]), 'No ability of yours');
+        [$match, $changed] = $panel->run($match->id, $player, 'trig', [], ["o:{$bears}"]);
+        $this->assertTrue($changed);
+        while ($match->game->stack !== []) {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$bears]->zone);
+    }
+
     public function testMessagesFitDiscord(): void
     {
         $match = $this->pocket->matches->challenge(self::ALICE, 'Alice', self::BOB, 'Bob');

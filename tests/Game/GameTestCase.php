@@ -57,6 +57,25 @@ abstract class GameTestCase extends TestCase
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
         'Gitaxian Probe' => ['manaCost' => '{U/P}', 'type' => 'Sorcery', 'text' => 'Look at target player\'s hand.', 'colors' => ['U']],
         'Ancestral Vision' => ['manaCost' => null, 'type' => 'Sorcery', 'text' => 'Suspend 4—{U}', 'colors' => ['U']],
+        // Abilities.
+        'Elvish Visionary' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Elf Shaman', 'power' => '1', 'toughness' => '1', 'text' => 'When this creature enters, draw a card.', 'colors' => ['G']],
+        'Flametongue Kavu' => ['manaCost' => '{3}{R}', 'type' => 'Creature — Kavu', 'power' => '4', 'toughness' => '2', 'text' => 'When this creature enters, it deals 4 damage to target creature.', 'colors' => ['R']],
+        'Doomed Traveler' => ['manaCost' => '{W}', 'type' => 'Creature — Human Soldier', 'power' => '1', 'toughness' => '1', 'text' => 'When this creature dies, create a 1/1 white Spirit creature token with flying.', 'colors' => ['W']],
+        'Bloodfell Caves' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped.
+When this land enters, you gain 1 life.
+{T}: Add {B} or {R}.", 'colors' => []],
+        'Raid Leader' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Human Soldier', 'power' => '2', 'toughness' => '2', 'text' => "Whenever this creature attacks, you gain 1 life.
+Whenever this creature deals combat damage to a player, draw a card.", 'colors' => ['W']],
+        'Dark Tutelage' => ['manaCost' => '{2}{B}', 'type' => 'Enchantment', 'text' => 'At the beginning of your upkeep, draw a card. You lose 1 life.', 'colors' => ['B']],
+        'Prodigal Pyromancer' => ['manaCost' => '{2}{R}', 'type' => 'Creature — Human Wizard', 'power' => '1', 'toughness' => '1', 'text' => '{T}: This creature deals 1 damage to any target.', 'colors' => ['R']],
+        'Bottle Gnomes' => ['manaCost' => '{3}', 'type' => 'Artifact Creature — Gnome', 'power' => '1', 'toughness' => '3', 'text' => 'Sacrifice this creature: You gain 3 life.', 'colors' => []],
+        'Wild Cub' => ['manaCost' => '{G}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '1', 'text' => '{G}: This creature gets +1/+1 until end of turn. Activate only once each turn.', 'colors' => ['G']],
+        'Chandra, Pyrogenius' => ['manaCost' => '{4}{R}{R}', 'type' => 'Legendary Planeswalker — Chandra', 'supertypes' => ['Legendary'], 'types' => ['Planeswalker'], 'subtypes' => ['Chandra'], 'loyalty' => '5', 'text' => "+2: Chandra, Pyrogenius deals 2 damage to each opponent.
+−3: Chandra, Pyrogenius deals 4 damage to target creature.
+−10: Chandra, Pyrogenius deals 6 damage to target player and each creature that player controls.", 'colors' => ['R']],
+        'Bonesplitter' => ['manaCost' => '{1}', 'type' => 'Artifact — Equipment', 'text' => "Equipped creature gets +2/+0.
+Equip {1}", 'colors' => []],
+        'Raise the Alarm' => ['manaCost' => '{1}{W}', 'type' => 'Instant', 'text' => 'Create two 1/1 white Soldier creature tokens.', 'colors' => ['W']],
     ];
 
     protected Game $game;

@@ -34,7 +34,8 @@ use MTGPocket\Matches\MatchRecord;
  * - the board everyone sees: life, cards in each zone, the battlefield,
  *   the stack and what just happened
  * - each player's own action panel, {@see actions()} (only they see it): their hand and the
- *   choice in front of them, from keeping a hand to choosing blockers
+ *   choice in front of them, from keeping a hand to choosing blockers,
+ *   with the abilities they can activate and targets for their triggers
  *
  * Custom ids: `pocket:m:<matchId>:<action>[:<arg>]`.
  *
@@ -140,9 +141,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if ($game->stack !== []) {
             $lines = [];
             foreach (array_reverse($game->stack) as $index => $item) {
-                $object = $game->objects[$item['object']];
+                $name = Game::isAbility($item) ? $item['label'] : $game->objects[$item['object']]->name();
                 $targets = array_map(fn (string $target) => $game->describeTarget($target), $item['targets']);
-                $lines[] = ($index + 1).'. **'.$object->name().'**'.($item['x'] > 0 ? " (X = {$item['x']})" : '').($targets === [] ? '' : ' → '.implode(', ', $targets))." · {$names[$item['controller']]}";
+                $lines[] = ($index + 1).'. **'.$name.'**'.($item['x'] > 0 ? " (X = {$item['x']})" : '').($targets === [] ? '' : ' → '.implode(', ', $targets))." · {$names[$item['controller']]}";
             }
             $container->addComponent(Separator::new())->addComponent(TextDisplay::new("**Stack** (top first)\n".implode("\n", $lines)));
         }
@@ -195,6 +196,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $what = match ($game->decision($seat)) {
                 'mulligan' => 'keep or mulligan',
                 'bottom' => 'put cards on the bottom',
+                'trigger' => 'choose targets for '.$game->triggerAwaitingTargets()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
                 'discard' => 'discard down to seven',
@@ -244,8 +246,8 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $lands[$name] ??= [0, 0];
                 $lands[$name][0]++;
                 $lands[$name][1] += $object->tapped ? 1 : 0;
-            } elseif ($object->definition()->isAura() && $object->attachedTo !== null) {
-                continue; // Shown with what it enchants.
+            } elseif ($object->attachedTo !== null && $object->definition()->attachmentBonus() !== null) {
+                continue; // Shown with what it is attached to.
             } else {
                 $others[] = '• '.self::permanent($game, $object);
             }
@@ -308,10 +310,8 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if (isset($game->blockers[$object->id])) {
             $notes[] = '🛡️ blocking '.$game->objects[$game->blockers[$object->id]]->name();
         }
-        foreach ($game->permanents() as $aura) {
-            if ($aura->attachedTo === $object->id) {
-                $notes[] = "enchanted by {$aura->name()}";
-            }
+        foreach ($game->attachments($object) as $attached) {
+            $notes[] = ($attached->definition()->isAura() ? 'enchanted by ' : 'equipped with ').$attached->name();
         }
 
         return $text.($notes === [] ? '' : ' · '.implode(' · ', $notes));
@@ -417,14 +417,45 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('noblk'))->setLabel('No blocks')));
                 break;
 
+            case 'trigger':
+                $trigger = $game->triggerAwaitingTargets();
+                $slot = count((array) ($choice['trigger'] ?? []));
+                $kind = $trigger['kinds'][$slot] ?? $trigger['kinds'][0];
+                $message->addComponent(self::targetSelect($id('trig'), $game, $seat, $game->targetOptions($seat, $kind), 'Choose a target for '.$trigger['label'], $slot, count($trigger['kinds'])));
+                if ($slot > 0) {
+                    $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('cancel'))->setLabel('Start over')));
+                }
+                break;
+
             case 'priority':
                 $cast = $choice['cast'] ?? null;
                 if ($cast !== null && in_array((int) $cast['id'], $player->hand, true)) {
                     self::castControls($message, $match, $seat, $cast);
                     break;
                 }
+                $activate = $choice['activate'] ?? null;
+                if ($activate !== null && $game->canActivate($seat, (int) $activate['id'], (int) $activate['index'])) {
+                    $object = $game->objects[(int) $activate['id']];
+                    $kinds = array_values(array_filter(array_map(fn (array $effect) => $effect['target'] ?? null, $object->definition()->activated[(int) $activate['index']]['effects'])));
+                    $slot = count((array) ($activate['targets'] ?? []));
+                    if (isset($kinds[$slot])) {
+                        $message->addComponent(self::targetSelect($id('atgt'), $game, $seat, $game->targetOptions($seat, $kinds[$slot]), "Choose a target for {$object->name()}'s ability", $slot, count($kinds)));
+                    }
+                    $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('cancel'))->setLabel('Cancel')));
+                    break;
+                }
                 if ($playable !== []) {
                     $message->addComponent(self::cardSelect($id('play'), 'Play a land or cast a spell', $playable, $cardOption, 1, 1));
+                }
+                $abilities = array_slice($game->activatableAbilities($seat), 0, 25);
+                if ($abilities !== []) {
+                    $select = StringSelect::new($id('ability'))->setPlaceholder('Use an ability');
+                    foreach ($abilities as [$objectId, $index]) {
+                        $object = $game->objects[$objectId];
+                        $select->addOption(Option::new(Text::clip($object->name(), 100), "{$objectId}.{$index}")
+                            ->setDescription(Text::clip(str_replace('CARDNAME', $object->name(), $object->definition()->activated[$index]['text']), 100)));
+                    }
+                    $message->addComponent(ActionRow::new()->addComponent($select));
                 }
                 $message->addComponent(ActionRow::new()
                     ->addComponent(Button::new(Button::STYLE_PRIMARY, $id('pass'))->setLabel($game->stack === [] ? 'Pass priority' : 'Let it resolve'))
@@ -468,18 +499,34 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $kinds = $card->targetKinds();
             $slot = count((array) ($cast['targets'] ?? []));
             if (isset($kinds[$slot])) {
-                $options = $game->targetOptions($seat, $kinds[$slot]);
-                $select = StringSelect::new(self::id($match->id, 'tgt'))->setPlaceholder(Text::clip('Choose a target for '.$card->name.(count($kinds) > 1 ? ' ('.($slot + 1).' of '.count($kinds).')' : ''), 150));
-                foreach (array_slice($options, 0, 25) as $target) {
-                    $select->addOption(Option::new(Text::clip(self::targetLabel($game, $target, $seat), 100), $target));
-                }
-                if ($options !== []) {
-                    $message->addComponent(ActionRow::new()->addComponent($select));
-                }
+                $message->addComponent(self::targetSelect(self::id($match->id, 'tgt'), $game, $seat, $game->targetOptions($seat, $kinds[$slot]), 'Choose a target for '.$card->name, $slot, count($kinds)));
             }
         }
 
         $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, self::id($match->id, 'cancel'))->setLabel('Cancel')));
+    }
+
+    /**
+     * A menu of targets for one target slot of a spell or ability.
+     *
+     * @param string   $customId
+     * @param Game     $game
+     * @param int      $seat
+     * @param string[] $options
+     * @param string   $placeholder
+     * @param int      $slot
+     * @param int      $count       How many targets it needs in all.
+     *
+     * @return ActionRow
+     */
+    private static function targetSelect(string $customId, Game $game, int $seat, array $options, string $placeholder, int $slot, int $count): ActionRow
+    {
+        $select = StringSelect::new($customId)->setPlaceholder(Text::clip($placeholder.($count > 1 ? ' ('.($slot + 1)." of {$count})" : ''), 150));
+        foreach (array_slice($options, 0, 25) as $target) {
+            $select->addOption(Option::new(Text::clip(self::targetLabel($game, $target, $seat), 100), $target));
+        }
+
+        return ActionRow::new()->addComponent($select);
     }
 
     /**
@@ -504,7 +551,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'attack' => 'Choose your attackers, then **Attack**. They attack '.$game->players[$game->defender()]->name.'.',
             'block' => 'For each attacker, choose the creatures that block it, then **Confirm blocks**. Each creature blocks one attacker.',
             'discard' => 'You have more than seven cards. Choose what to discard.',
-            'priority' => isset($choice['cast']) ? 'Finish casting your spell, or cancel.' : ($game->stack === [] ? "You have priority ({$game->step->label()})." : 'A spell is on the stack: respond, or let it resolve.'),
+            'trigger' => 'Choose targets for **'.$game->triggerAwaitingTargets()['label'].'**, which just triggered: '.$game->triggerAwaitingTargets()['text'],
+            'priority' => match (true) {
+                isset($choice['cast']) => 'Finish casting your spell, or cancel.',
+                isset($choice['activate']) => 'Choose targets for the ability, or cancel.',
+                $game->stack === [] => "You have priority ({$game->step->label()}).",
+                default => 'Something is on the stack: respond, or let it resolve.',
+            },
             default => $game->stage === Game::OVER ? 'The game is over.' : 'Nothing to do right now; the game is waiting on your opponent.',
         };
     }

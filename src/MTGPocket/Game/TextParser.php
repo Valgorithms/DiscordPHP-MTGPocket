@@ -19,13 +19,19 @@ namespace MTGPocket\Game;
  * - keyword lines, e.g. `Flying, vigilance` ({@see CardDefinition::KEYWORDS})
  * - simple mana abilities: `{T}: Add {G}.`, `{T}: Add {W} or {U}.`, `{T}: Add {C}{C}.`, `{T}: Add one mana of any color.`
  * - `This land enters tapped.`
- * - an Aura's `Enchant …` line and `Enchanted creature gets +N/+N` / `has …`
- * - the most common instant and sorcery effects: damage, card draw, life
- *   gain and loss, destroy, exile, return to hand, counter, and
- *   `Target creature gets +N/+N until end of turn`
+ * - an Aura's `Enchant …` line and `Enchanted creature gets +N/+N` / `has …`,
+ *   and the same for Equipment (`Equipped creature …`) with `Equip {N}`
+ * - the most common effects: damage, card draw, life gain and loss,
+ *   destroy, exile, return to hand, counter, tap and untap, +N/+N until end
+ *   of turn, +1/+1 counters and creature tokens
+ * - those effects as triggered abilities (`When CARDNAME enters, …`,
+ *   `… dies, …`, `Whenever CARDNAME attacks, …`, `… deals combat damage to a
+ *   player, …`, `At the beginning of your upkeep / end step, …`), as
+ *   activated abilities (`{2}, {T}, Sacrifice CARDNAME: …`) and as a
+ *   planeswalker's loyalty abilities (`+1: …`)
  *
- * Everything else is reported as unsupported. Triggered and other
- * activated abilities come in later releases.
+ * An ability is applied whole or not at all: if any sentence of it is not
+ * understood, the line is reported as unsupported.
  *
  * @since 0.3.0
  */
@@ -80,18 +86,22 @@ final class TextParser
     /**
      * @param CardDefinition $card With its name, types and text set.
      *
-     * @return array{keywords: string[], mana: array|null, entersTapped: bool, effects: array[], aura: array|null, unsupported: string[]}
+     * @return array{keywords: string[], mana: array|null, entersTapped: bool, effects: array[], aura: array|null, equipment: array|null, triggered: array[], activated: array[], unsupported: string[]}
      */
     public static function parse(CardDefinition $card): array
     {
-        $result = ['keywords' => [], 'mana' => null, 'entersTapped' => false, 'effects' => [], 'aura' => null, 'unsupported' => []];
+        $result = ['keywords' => [], 'mana' => null, 'entersTapped' => false, 'effects' => [], 'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [], 'unsupported' => []];
         $spell = ! $card->isPermanentCard();
 
         foreach (self::lines($card) as $line) {
             if (self::keywords($line, $result)
                 || self::manaAbility($line, $result)
                 || self::entersTapped($line, $result)
-                || ($card->isAura() && self::aura($line, $result))) {
+                || ($card->isAura() && self::aura($line, $result))
+                || ($card->isEquipment() && self::equipment($line, $result))
+                || ($card->isPlaneswalker() && self::loyalty($line, $result))
+                || (! $spell && self::triggered($line, $result))
+                || (! $spell && self::activated($line, $result))) {
                 continue;
             }
 
@@ -137,7 +147,7 @@ final class TextParser
         foreach (array_unique($names) as $name) {
             $text = str_replace($name, 'CARDNAME', $text);
         }
-        $text = preg_replace('/\b[Tt]his (spell|creature|land|artifact|enchantment|card|permanent|aura)\b/', 'CARDNAME', $text);
+        $text = preg_replace('/\b[Tt]his (spell|creature|land|artifact|enchantment|card|permanent|aura|equipment|planeswalker)\b/', 'CARDNAME', $text);
         $text = preg_replace('/\s*\([^)]*\)/', '', $text);
 
         return array_values(array_filter(array_map('trim', explode("\n", $text)), fn ($line) => $line !== ''));
@@ -234,6 +244,176 @@ final class TextParser
         }
 
         return false;
+    }
+
+    /**
+     * `Equipped creature gets +N/+N (and has …)` and `Equip {N}`.
+     *
+     * @param string $line
+     * @param array  $result
+     *
+     * @return bool
+     */
+    private static function equipment(string $line, array &$result): bool
+    {
+        if (preg_match('/^Equip (\{[^:]+\})$/', $line, $match)) {
+            $result['activated'][] = [
+                'text' => $line,
+                'cost' => ['mana' => $match[1]],
+                'effects' => [['type' => 'attach', 'target' => 'creature_you_control']],
+                'sorcery' => true,
+                'once' => false,
+            ];
+
+            return true;
+        }
+        if (preg_match('/^Equipped creature gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))?\.?$/', $line, $match)
+            || preg_match('/^Equipped creature (has) (.+?)\.?$/', $line, $match)) {
+            $keywords = self::keywordList($match[1] === 'has' ? $match[2] : ($match[3] ?? ''));
+            if ($keywords === null) {
+                return false;
+            }
+            $bonus = $result['equipment'] ?? ['power' => 0, 'toughness' => 0, 'keywords' => []];
+            if ($match[1] !== 'has') {
+                $bonus['power'] += (int) $match[1];
+                $bonus['toughness'] += (int) $match[2];
+            }
+            $bonus['keywords'] = array_values(array_unique([...$bonus['keywords'], ...$keywords]));
+            $result['equipment'] = $bonus;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * A planeswalker's loyalty ability, e.g. `+1: You gain 2 life.` or
+     * `−3: Destroy target creature.`
+     *
+     * @param string $line
+     * @param array  $result
+     *
+     * @return bool
+     */
+    private static function loyalty(string $line, array &$result): bool
+    {
+        if (! preg_match('/^([+−-]?)(\d+): (.+)$/u', $line, $match) || ($effects = self::effects($match[3])) === null) {
+            return false;
+        }
+        $result['activated'][] = [
+            'text' => $line,
+            'cost' => ['loyalty' => ($match[1] === '+' || $match[1] === '' ? 1 : -1) * (int) $match[2]],
+            'effects' => $effects,
+            'sorcery' => true,
+            'once' => true,
+        ];
+
+        return true;
+    }
+
+    /**
+     * A triggered ability (rule 603) this engine knows the event of.
+     *
+     * @param string $line
+     * @param array  $result
+     *
+     * @return bool
+     */
+    private static function triggered(string $line, array &$result): bool
+    {
+        $events = [
+            'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
+            'deals combat damage to a player' => 'combat_damage',
+        ];
+        if (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player), (.+)$/', $line, $match)) {
+            $event = $events[$match[1]];
+            $text = $match[2];
+        } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
+            $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
+            $text = $match[2];
+        } else {
+            return false;
+        }
+        $effects = self::effects($text);
+        if ($effects === null) {
+            return false;
+        }
+        $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+
+        return true;
+    }
+
+    /**
+     * An activated ability: a cost of mana, `{T}`, `Sacrifice CARDNAME`
+     * and `Pay N life`, then its effect, then optionally `Activate only as
+     * a sorcery.` or `Activate only once each turn.`
+     *
+     * @param string $line
+     * @param array  $result
+     *
+     * @return bool
+     */
+    private static function activated(string $line, array &$result): bool
+    {
+        if (! preg_match('/^([^:"]+): (.+)$/', $line, $match)) {
+            return false;
+        }
+        $cost = [];
+        foreach (array_map('trim', explode(',', $match[1])) as $part) {
+            if ($part === '{T}') {
+                $cost['tap'] = true;
+            } elseif (preg_match('/^(\{[0-9WUBRGCX\/P]+\})+$/', $part)) {
+                $cost['mana'] = ($cost['mana'] ?? '').$part;
+            } elseif ($part === 'Sacrifice CARDNAME') {
+                $cost['sacrifice'] = true;
+            } elseif (preg_match('/^Pay (\d+) life$/', $part, $life)) {
+                $cost['life'] = (int) $life[1];
+            } else {
+                return false;
+            }
+        }
+        if (str_contains($cost['mana'] ?? '', 'X')) {
+            return false;
+        }
+
+        $text = $match[2];
+        $sorcery = $once = false;
+        if (preg_match('/^(.+?)\s*Activate only as a sorcery\.$/', $text, $limit)) {
+            [$text, $sorcery] = [$limit[1], true];
+        } elseif (preg_match('/^(.+?)\s*Activate only once each turn\.$/', $text, $limit)) {
+            [$text, $once] = [$limit[1], true];
+        }
+        $effects = self::effects($text);
+        if ($effects === null) {
+            return false;
+        }
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery, 'once' => $once];
+
+        return true;
+    }
+
+    /**
+     * Every sentence of an ability's text as effects, or null when any is
+     * not understood.
+     *
+     * @param string $text
+     *
+     * @return array[]|null
+     */
+    public static function effects(string $text): ?array
+    {
+        $effects = [];
+        foreach (self::sentences($text) as $sentence) {
+            // In an ability, "it" at the start means the card itself: "When CARDNAME enters, it deals 4 damage …".
+            $effect = self::effect(preg_replace('/^it /', 'CARDNAME ', $sentence));
+            if ($effect === null) {
+                return null;
+            }
+            $effects[] = $effect;
+        }
+
+        return $effects === [] ? null : $effects;
     }
 
     /**
@@ -335,6 +515,30 @@ final class TextParser
                 return ['type' => 'pump', 'power' => $power, 'toughness' => $toughness, 'keywords' => $keywords, 'target' => self::TARGETS[strtolower($m[1])]];
             }
         }
+        if (preg_match('/^CARDNAME gets ([+-]\d+)\/([+-]\d+)(?: and gains (.+?))? until end of turn$/i', $s, $m)
+            && ($keywords = self::keywordList($m[3] ?? '')) !== null) {
+            return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => $keywords, 'self' => true];
+        }
+        if (preg_match('/^CARDNAME gains (.+?) until end of turn$/i', $s, $m) && ($keywords = self::keywordList($m[1])) !== null) {
+            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'self' => true];
+        }
+        if (preg_match('/^you lose (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'lose_life', 'amount' => $n, 'you' => true];
+        }
+        if (preg_match("/^put (\w+) \+1\/\+1 counters? on ({$targets}|CARDNAME)$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
+            if ($m[2] === 'CARDNAME') {
+                return ['type' => 'counters', 'amount' => $n, 'self' => true];
+            }
+            if (in_array(self::TARGETS[strtolower($m[2])], ['creature', 'creature_you_control', 'creature_opponent'], true)) {
+                return ['type' => 'counters', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
+            }
+        }
+        if (preg_match("/^(tap|untap) ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[2])) {
+            return ['type' => strtolower($m[1]), 'target' => self::TARGETS[strtolower($m[2])]];
+        }
+        if (($token = self::token($s)) !== null) {
+            return $token;
+        }
         if (preg_match("/^({$targets}) gains (.+?) until end of turn$/i", $s, $m)
             && in_array(self::TARGETS[strtolower($m[1])], ['creature', 'creature_you_control', 'creature_opponent'], true)
             && ($keywords = self::keywordList($m[2])) !== null) {
@@ -342,6 +546,46 @@ final class TextParser
         }
 
         return null;
+    }
+
+    /**
+     * `Create two 1/1 white Soldier creature tokens with flying` as an effect.
+     *
+     * @param string $sentence
+     *
+     * @return array|null
+     */
+    private static function token(string $sentence): ?array
+    {
+        $colors = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G', 'colorless' => null];
+        $color = implode('|', array_keys($colors));
+        if (! preg_match("/^create (\\w+) (\\d+)\\/(\\d+) ((?:{$color})(?:(?:, | and )(?:{$color}))*) ([A-Z][A-Za-z' ]*?) (artifact )?creature tokens?(?: with (.+))?$/i", $sentence, $m)
+            || ($count = self::amount($m[1])) === null || $count === 'X') {
+            return null;
+        }
+        $keywords = self::keywordList($m[7] ?? '');
+        if ($keywords === null) {
+            return null;
+        }
+        $tokenColors = array_values(array_filter(array_map(fn ($word) => $colors[strtolower($word)] ?? null, preg_split('/, | and /', $m[4]))));
+        $subtypes = preg_split('/\s+/', trim($m[5]));
+        $artifact = ($m[6] ?? '') !== '';
+
+        return [
+            'type' => 'token',
+            'amount' => $count,
+            'token' => [
+                'name' => implode(' ', $subtypes).' Token',
+                'type' => 'Token '.($artifact ? 'Artifact ' : '').'Creature — '.implode(' ', $subtypes),
+                'types' => $artifact ? ['Artifact', 'Creature'] : ['Creature'],
+                'subtypes' => $subtypes,
+                'colors' => $tokenColors,
+                'power' => $m[2],
+                'toughness' => $m[3],
+                'text' => implode(', ', array_map('ucfirst', $keywords)),
+                'manaCost' => null,
+            ],
+        ];
     }
 
     /**

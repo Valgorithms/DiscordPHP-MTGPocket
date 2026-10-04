@@ -74,6 +74,15 @@ final class CardDefinition
     /** @var array{enchant: string, power: int, toughness: int, keywords: string[]}|null An Aura's restriction and what it gives. */
     public readonly ?array $aura;
 
+    /** @var array{power: int, toughness: int, keywords: string[]}|null What Equipment gives the creature it is attached to. */
+    public readonly ?array $equipment;
+
+    /** @var array<int, array{text: string, event: string, effects: array[]}> Triggered abilities; see {@see TextParser}. */
+    public readonly array $triggered;
+
+    /** @var array<int, array{text: string, cost: array, effects: array[], sorcery: bool, once: bool}> Activated abilities other than mana abilities, loyalty and Equip included. */
+    public readonly array $activated;
+
     /** @var string[] Rules text the engine does not apply yet. */
     public readonly array $unsupported;
 
@@ -107,6 +116,9 @@ final class CardDefinition
         $this->entersTapped = $parsed['entersTapped'];
         $this->effects = $parsed['effects'];
         $this->aura = $parsed['aura'];
+        $this->equipment = $parsed['equipment'];
+        $this->triggered = $parsed['triggered'];
+        $this->activated = $parsed['activated'];
         $this->unsupported = $parsed['unsupported'];
     }
 
@@ -192,6 +204,38 @@ final class CardDefinition
     public function isAura(): bool
     {
         return $this->is('Enchantment') && in_array('Aura', $this->subtypes, true);
+    }
+
+    public function isEquipment(): bool
+    {
+        return $this->is('Artifact') && in_array('Equipment', $this->subtypes, true);
+    }
+
+    public function isToken(): bool
+    {
+        return (bool) ($this->card['token'] ?? false);
+    }
+
+    /**
+     * What an Aura or Equipment gives the permanent it is attached to.
+     *
+     * @return array{power: int, toughness: int, keywords: string[]}|null
+     */
+    public function attachmentBonus(): ?array
+    {
+        return $this->aura ?? $this->equipment;
+    }
+
+    /**
+     * The triggered abilities for an event.
+     *
+     * @param string $event `enters`, `dies`, `attacks`, `combat_damage`, `upkeep` or `end_step`.
+     *
+     * @return array[]
+     */
+    public function triggersOn(string $event): array
+    {
+        return array_values(array_filter($this->triggered, fn (array $ability) => $ability['event'] === $event));
     }
 
     public function isLegendary(): bool
