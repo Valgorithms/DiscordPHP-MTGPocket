@@ -69,8 +69,8 @@ final class CardTextTest extends GameTestCase
         $this->assertSame([], $rats->unsupported);
 
         $knight = new CardDefinition(self::card('White Knight'));
-        $this->assertSame(['first strike'], $knight->keywords);
-        $this->assertSame(['Protection from black'], $knight->unsupported);
+        $this->assertSame(['first strike', 'protection from black'], $knight->keywords);
+        $this->assertSame([], $knight->unsupported);
 
         $nighthawk = new CardDefinition(self::card('Vampire Nighthawk'));
         $this->assertSame(['flying', 'deathtouch', 'lifelink'], $nighthawk->keywords);
@@ -101,12 +101,12 @@ final class CardTextTest extends GameTestCase
             $this->assertSame($effect, TextParser::effect($sentence), $sentence);
         }
         $this->assertNull(TextParser::effect('Destroy target player'));
-        $this->assertNull(TextParser::effect('Proliferate'));
+        $this->assertNull(TextParser::effect('Clash with an opponent'));
 
-        $charm = new CardDefinition(['name' => 'Twin Bolt', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'Twin Bolt deals 2 damage to target creature. You gain 2 life. Proliferate.']);
+        $charm = new CardDefinition(['name' => 'Twin Bolt', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'Twin Bolt deals 2 damage to target creature. You gain 2 life. Clash with an opponent.']);
         $this->assertSame(['creature'], $charm->targetKinds());
         $this->assertCount(2, $charm->effects);
-        $this->assertSame(['Proliferate.'], $charm->unsupported);
+        $this->assertSame(['Clash with an opponent.'], $charm->unsupported);
     }
 
     public function testAuras(): void
