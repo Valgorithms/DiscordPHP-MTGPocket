@@ -34,7 +34,7 @@ final class ManaPayer
      * @param ManaPool                                                 $pool
      * @param array<int, array{count: int, colors: string[]}>          $sources Untapped mana sources by object id: each makes `count` mana of one of `colors`.
      *
-     * @return array{pool: array<string, int>, tap: int[], float: array<string, int>}|null What to take from the pool, which sources to tap, and the mana they make beyond the cost (it stays in the pool). Null when it cannot be paid.
+     * @return array{pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null What to take from the pool, which sources to tap, the mana they make beyond the cost (it stays in the pool) and the type each tapped source made. Null when it cannot be paid.
      */
     public static function plan(array $payment, ManaPool $pool, array $sources): ?array
     {
@@ -104,11 +104,13 @@ final class ManaPayer
 
         $fromPool = [];
         $tap = [];
+        $made = [];
         foreach ($used as $unit => $type) {
             if ($units[$unit]['source'] === null) {
                 $fromPool[$type] = ($fromPool[$type] ?? 0) + 1;
             } else {
                 $tap[$units[$unit]['source']] = true;
+                $made[$units[$unit]['source']] ??= $type;
             }
         }
 
@@ -120,7 +122,7 @@ final class ManaPayer
             }
         }
 
-        return ['pool' => $fromPool, 'tap' => array_keys($tap), 'float' => $float];
+        return ['pool' => $fromPool, 'tap' => array_keys($tap), 'float' => $float, 'made' => $made];
     }
 
     /**

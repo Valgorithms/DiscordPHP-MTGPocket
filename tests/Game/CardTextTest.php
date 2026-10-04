@@ -101,12 +101,12 @@ final class CardTextTest extends GameTestCase
             $this->assertSame($effect, TextParser::effect($sentence), $sentence);
         }
         $this->assertNull(TextParser::effect('Destroy target player'));
-        $this->assertNull(TextParser::effect('Scry 2'));
+        $this->assertNull(TextParser::effect('Proliferate'));
 
-        $charm = new CardDefinition(['name' => 'Twin Bolt', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'Twin Bolt deals 2 damage to target creature. You gain 2 life. Scry 1.']);
+        $charm = new CardDefinition(['name' => 'Twin Bolt', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'Twin Bolt deals 2 damage to target creature. You gain 2 life. Investigate.']);
         $this->assertSame(['creature'], $charm->targetKinds());
         $this->assertCount(2, $charm->effects);
-        $this->assertSame(['Scry 1.'], $charm->unsupported);
+        $this->assertSame(['Investigate.'], $charm->unsupported);
     }
 
     public function testAuras(): void
@@ -117,7 +117,8 @@ final class CardTextTest extends GameTestCase
         $this->assertSame(['creature'], $aura->targetKinds());
 
         $pacifism = new CardDefinition(['name' => 'Pacifism', 'type' => 'Enchantment — Aura', 'manaCost' => '{1}{W}', 'text' => "Enchant creature\nEnchanted creature can't attack or block."]);
-        $this->assertSame(['Enchanted creature can\'t attack or block.'], $pacifism->unsupported);
+        $this->assertSame([], $pacifism->unsupported);
+        $this->assertSame(["can't attack", "can't block"], $pacifism->aura['keywords']);
     }
 
     public function testNewTemplatingThisCreature(): void
