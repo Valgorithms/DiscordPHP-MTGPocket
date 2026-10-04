@@ -132,6 +132,16 @@ class CardPool implements \JsonSerializable
     }
 
     /**
+     * Every card's data, by uuid.
+     *
+     * @return array<string, array>
+     */
+    public function cards(): array
+    {
+        return $this->cards;
+    }
+
+    /**
      * Uuids of the cards of a color, optionally of one rarity.
      *
      * @param string      $color  One of {@see COLORS}.

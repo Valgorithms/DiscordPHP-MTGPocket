@@ -87,6 +87,31 @@ class DeckBuilder
     }
 
     /**
+     * The copies of each card the player's decks need: for each card, the
+     * most any one deck uses (main and side deck together), since the same
+     * cards may go in many decks. Selling or trading cards away never takes
+     * these. Basic lands are left out.
+     *
+     * @param string $playerId
+     *
+     * @return array<string, array{count: int, deck: string}> Uuid => copies and the name of the deck that needs the most.
+     */
+    public function copiesInUse(string $playerId): array
+    {
+        $used = [];
+        foreach ($this->decks->forPlayer($playerId) as $deck) {
+            foreach ($deck->allCards() as $key => $count) {
+                $key = (string) $key;
+                if (! BasicLands::isBasic($key) && $count > ($used[$key]['count'] ?? 0)) {
+                    $used[$key] = ['count' => $count, 'deck' => $deck->name];
+                }
+            }
+        }
+
+        return $used;
+    }
+
+    /**
      * Starts an empty deck. A player's first deck becomes their active one.
      *
      * @param string $playerId

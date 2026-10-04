@@ -161,7 +161,7 @@ class DailyPacks
 
     /**
      * Resolves the set and color asked for, choosing at random what was left
-     * open.
+     * open. The shop picks the packs it sells the same way.
      *
      * @param string|null $set
      * @param string|null $color
@@ -170,7 +170,7 @@ class DailyPacks
      *
      * @return array{0: CardPool, 1: string}
      */
-    protected function pick(?string $set, ?string $color): array
+    public function pick(?string $set, ?string $color): array
     {
         $choices = $this->choices();
         if ($choices === []) {

@@ -105,4 +105,26 @@ trait PocketTrait
     {
         return in_array($color, CardPool::COLORS, true);
     }
+
+    /**
+     * A user's display name from the command's resolved data.
+     *
+     * @param Interaction $interaction
+     * @param string      $userId
+     * @param string      $fallback    When the name is not there.
+     *
+     * @return string
+     */
+    protected static function userName(Interaction $interaction, string $userId, string $fallback = 'Player'): string
+    {
+        try {
+            $resolved = $interaction->data->resolved ?? null;
+            $member = $resolved?->members?->get('id', $userId);
+            $user = $resolved?->users?->get('id', $userId);
+
+            return (string) ($member?->nick ?? $user?->global_name ?? $user?->username ?? $fallback);
+        } catch (\Throwable) {
+            return $fallback;
+        }
+    }
 }

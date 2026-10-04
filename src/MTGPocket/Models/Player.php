@@ -14,9 +14,10 @@ declare(strict_types=1);
 namespace MTGPocket\Models;
 
 /**
- * A Discord user who plays: their profile and when they last opened their
- * free daily pack. Their cards are an {@see Inventory} and their decks are
- * {@see Deck}s, each stored on its own.
+ * A Discord user who plays: their profile, when they last opened their
+ * free daily pack, and the points they have to spend in the shop. Their
+ * cards are an {@see Inventory} and their decks are {@see Deck}s, each
+ * stored on its own.
  *
  * @since 0.1.0
  */
@@ -28,6 +29,7 @@ class Player implements \JsonSerializable
      * @param int         $createdAt       Unix time the player first played.
      * @param int|null    $lastDailyPackAt Unix time of the last free daily pack, or null if never.
      * @param string|null $activeDeckId    The deck the player queues with.
+     * @param int         $points          Shop points, earned by selling cards and spent on cards and packs.
      */
     public function __construct(
         public readonly string $id,
@@ -35,6 +37,7 @@ class Player implements \JsonSerializable
         public int $createdAt = 0,
         public ?int $lastDailyPackAt = null,
         public ?string $activeDeckId = null,
+        public int $points = 0,
     ) {
         if ($this->createdAt === 0) {
             $this->createdAt = time();
@@ -54,6 +57,7 @@ class Player implements \JsonSerializable
             (int) ($data['createdAt'] ?? 0),
             isset($data['lastDailyPackAt']) ? (int) $data['lastDailyPackAt'] : null,
             isset($data['activeDeckId']) ? (string) $data['activeDeckId'] : null,
+            (int) ($data['points'] ?? 0),
         );
     }
 
@@ -68,6 +72,7 @@ class Player implements \JsonSerializable
             'createdAt' => $this->createdAt,
             'lastDailyPackAt' => $this->lastDailyPackAt,
             'activeDeckId' => $this->activeDeckId,
+            'points' => $this->points,
         ];
     }
 }

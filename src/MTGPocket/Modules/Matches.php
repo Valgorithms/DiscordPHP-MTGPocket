@@ -90,7 +90,7 @@ final class Matches implements Module
             $opponentId = (string) ($args['opponent'] ?? '');
 
             return self::reply($mtg, $interaction, false, fn () => MatchMessageBuilder::challenge(
-                $matches->challenge($id, $name, $opponentId, self::userName($interaction, $opponentId), $args['deck'] ?? null)
+                $matches->challenge($id, $name, $opponentId, self::userName($interaction, $opponentId, 'Opponent'), $args['deck'] ?? null)
             ));
         }, function (Interaction $interaction, $option): array {
             if (($option->name ?? '') !== 'deck') {
@@ -208,26 +208,5 @@ final class Matches implements Module
     private function find(string $matchId): MatchRecord
     {
         return $this->pocket->matches->find($matchId) ?? throw new \OutOfBoundsException('That match no longer exists.');
-    }
-
-    /**
-     * A user's display name from the command's resolved data.
-     *
-     * @param Interaction $interaction
-     * @param string      $userId
-     *
-     * @return string
-     */
-    private static function userName(Interaction $interaction, string $userId): string
-    {
-        try {
-            $resolved = $interaction->data->resolved ?? null;
-            $member = $resolved?->members?->get('id', $userId);
-            $user = $resolved?->users?->get('id', $userId);
-
-            return (string) ($member?->nick ?? $user?->global_name ?? $user?->username ?? 'Opponent');
-        } catch (\Throwable) {
-            return 'Opponent';
-        }
     }
 }
