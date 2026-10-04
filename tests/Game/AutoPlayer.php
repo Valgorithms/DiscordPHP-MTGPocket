@@ -107,6 +107,20 @@ final class AutoPlayer
         return $game->objects[$id]->definition()->cost->manaValue();
     }
 
+    /**
+     * The cards that can be played or cast the plain way, without a mode,
+     * kicker, flashback, morph or cycling.
+     *
+     * @param Game $game
+     * @param int  $seat
+     *
+     * @return int[]
+     */
+    private static function plainPlays(Game $game, int $seat): array
+    {
+        return array_column(array_filter($game->plays($seat), fn (array $play) => $play['how'] === ''), 'id');
+    }
+
     private static function arrange(Game $game, int $seat): bool
     {
         $game->arrange($seat, []);
@@ -142,7 +156,8 @@ final class AutoPlayer
 
         if ($mine && $game->step->isMain() && $game->stack === []) {
             // A land first, then the most expensive spell that has good targets.
-            foreach ($game->playableCards($seat) as $id) {
+            // Only plays as cast or played: a land with cycling can still be cycled after the land drop.
+            foreach (self::plainPlays($game, $seat) as $id) {
                 if ($game->objects[$id]->definition()->isLand()) {
                     $game->playLand($seat, $id);
 
@@ -207,7 +222,7 @@ final class AutoPlayer
 
         // A pump spell on a blocked attacker or a blocker in the declare blockers step.
         if ($game->step === Step::DeclareBlockers && $game->stack === []) {
-            foreach ($game->playableCards($seat) as $id) {
+            foreach (self::plainPlays($game, $seat) as $id) {
                 $card = $game->objects[$id]->definition();
                 if (! in_array('pump', array_column($card->effects, 'type'), true) || $card->isPermanentCard() || $card->targetCount() !== 1) {
                     continue;

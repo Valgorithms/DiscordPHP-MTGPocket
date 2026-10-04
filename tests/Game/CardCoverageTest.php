@@ -44,6 +44,7 @@ final class CardCoverageTest extends GameTestCase
         'Gnarlid Colony' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Beast', 'power' => '2', 'toughness' => '2', 'text' => "Kicker {2}{G}\nIf this creature was kicked, it enters with two +1/+1 counters on it."],
         'Benalish Emissary' => ['manaCost' => '{2}{W}', 'type' => 'Creature — Human Wizard', 'power' => '1', 'toughness' => '4', 'text' => "Kicker {1}{G}\nWhen this creature enters, if it was kicked, destroy target land."],
         'Think Twice' => ['manaCost' => '{1}{U}', 'type' => 'Instant', 'text' => "Draw a card.\nFlashback {2}{U}"],
+        'Lonely Sandbar' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped.\n{T}: Add {U}.\nCycling {U}"],
         'Tolarian Scholar' => ['manaCost' => '{2}{U}', 'type' => 'Creature — Human Wizard', 'power' => '2', 'toughness' => '3', 'text' => 'Cycling {2}'],
         'Den Protector' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Human Warrior', 'power' => '2', 'toughness' => '1', 'text' => "Megamorph {1}{G}\nWhen this creature is turned face up, you gain 2 life."],
         'Iridescent Drake' => ['manaCost' => '{3}{U}', 'type' => 'Creature — Drake', 'power' => '2', 'toughness' => '2', 'text' => "Flying, ward {2}"],
@@ -255,6 +256,19 @@ final class CardCoverageTest extends GameTestCase
         $this->assertCount(1, $game->players[0]->hand);
     }
 
+    public function testALandWithCyclingCanBeCycledAfterTheLandDrop(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Island', 1);
+        $first = $this->put(0, 'Lonely Sandbar', GameObject::HAND);
+        $second = $this->put(0, 'Lonely Sandbar', GameObject::HAND);
+        $this->assertSame([['id' => $first, 'how' => ''], ['id' => $first, 'how' => 'cycle'], ['id' => $second, 'how' => ''], ['id' => $second, 'how' => 'cycle']], $game->plays(0));
+        $game->playLand(0, $first);
+        $this->assertSame([['id' => $second, 'how' => 'cycle']], $game->plays(0));
+        $this->assertSame([$second], $game->playableCards(0));
+        $this->assertTrue(AutoPlayer::act($game, 0), 'The test player does not try a second land.');
+    }
+
     public function testMorphAndMegamorph(): void
     {
         $game = $this->newGame();
@@ -438,6 +452,7 @@ final class CardCoverageTest extends GameTestCase
         };
         $izzet = $deck(['Island' => 7, 'Mountain' => 6], [
             'Shivan Reef' => 4, 'Fiery Charm' => 3, 'Double Cleave' => 2, 'Burst Lightning' => 3, 'Into the Roil' => 2, 'Think Twice' => 2,
+            'Lonely Sandbar' => 2,
             'Tolarian Scholar' => 2, 'Iridescent Drake' => 2, 'Monastery Swiftspear' => 3, 'Opt' => 3, 'Consider' => 2, 'Claustrophobia' => 2,
             'Smuggler\'s Copter' => 2, 'Fling Lite' => 1, 'Goblin Bully' => 2,
         ], ['Counterspell' => 1]);
