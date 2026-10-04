@@ -26,6 +26,7 @@ use MTGPocket\Builders\ShopMessageBuilder;
 use MTGPocket\Builders\TradeMessageBuilder;
 use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Drafts;
+use MTGPocket\Modules\Exports;
 use MTGPocket\Modules\Matches;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
@@ -44,6 +45,7 @@ use MTGPocket\Modules\Trades;
  * @covers \MTGPocket\Modules\Shop
  * @covers \MTGPocket\Modules\Trades
  * @covers \MTGPocket\Modules\Drafts
+ * @covers \MTGPocket\Modules\Exports
  * @covers \MTGPocket\Builders\DraftMessageBuilder
  * @covers \MTGPocket\Builders\ShopMessageBuilder
  * @covers \MTGPocket\Builders\TradeMessageBuilder
@@ -73,7 +75,7 @@ final class ModulesTest extends PocketTestCase
     {
         $mtg = self::offlineClient();
         $names = [];
-        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket), new Drafts($this->pocket)] as $module) {
+        foreach ([new Packs($this->pocket), new Collection($this->pocket), new PlayerDecks($this->pocket), new Matches($this->pocket), new Quests($this->pocket), new Shop($this->pocket), new Trades($this->pocket), new Drafts($this->pocket), new Exports($this->pocket)] as $module) {
             foreach ($module->commands($mtg) as $builder) {
                 $command = $builder->jsonSerialize();
                 $this->assertSame(Command::CHAT_INPUT, (int) $command['type']);
@@ -89,7 +91,7 @@ final class ModulesTest extends PocketTestCase
         }
 
         // None clashes with DiscordPHP-MTG's own commands.
-        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft'], array_keys($names));
+        $this->assertSame(['pack', 'collection', 'decks', 'match', 'quests', 'shop', 'trade', 'draft', 'export'], array_keys($names));
     }
 
     public function testPackMessage(): void
@@ -121,7 +123,8 @@ final class ModulesTest extends PocketTestCase
         $this->assertStringContainsString('**Creatures** (4)', $json);
         $this->assertStringContainsString('pocket:export:1:'.$deck->id, $json);
 
-        $this->assertSame("Deck\n4 TST R common 1 (TST) 1\n16 Mountain\n\nSideboard\n1 TST R rare 1 (TST) 1\n", PocketMessageBuilder::export($deck, $builder->cardData(...)));
+        $this->assertStringContainsString('Export for…', $json);
+        $this->assertStringContainsString('"value":"tts"', $json);
 
         $list = json_encode(PocketMessageBuilder::deckList($builder->list('1'), $deck->id), JSON_UNESCAPED_UNICODE);
         $this->assertStringContainsString('**Burn** · Standard · 20 + 1 · ✅ active', $list);

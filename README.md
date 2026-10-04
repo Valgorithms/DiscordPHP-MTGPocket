@@ -21,7 +21,9 @@ Also in: **trading and the points shop**. Players trade cards and points with ea
 | `/decks create <name> [format]` | Starts an empty deck. Your first deck becomes your active one. |
 | `/decks add <deck> <card> [count] [side]` | Puts cards you own, or basic lands, in the main deck or the side deck. |
 | `/decks remove <deck> <card> [count] [side]` | Takes cards out. |
-| `/decks show [deck]` · `/decks list` | A deck with its cards grouped by type and **Export decklist** for MTG Arena or Moxfield; or all your decks. |
+| `/decks show [deck]` · `/decks list` | A deck with its cards grouped by type and an **Export for…** picker; or all your decks. |
+| `/export deck [deck] [format]` | A deck as a file for MTG Arena (also Moxfield and Archidekt), Tabletop Simulator (a saved object with Scryfall card images) or Frogtown (also Cockatrice and Forge). Defaults to your active deck and Arena. |
+| `/export collection [format] [set] [color] [rarity] [player]` | The cards you (or another player) own as a file in the same formats. |
 | `/decks rename` · `/decks format` · `/decks delete` · `/decks use` | Rename a deck, change its format, delete it, or make it the one you play with. |
 | `/decks commander <deck> [card]` | Makes a legendary creature you own the commander of a Commander deck, or takes it out. |
 | `/decks rentals` · `/decks rent <rental>` | The official decks you can play without owning the cards; or plays with one until you pick your own deck with `/decks use`. |

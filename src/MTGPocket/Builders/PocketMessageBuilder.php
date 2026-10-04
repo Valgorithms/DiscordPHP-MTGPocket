@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace MTGPocket\Builders;
 
 use Discord\Builders\Components\ActionRow;
-use Discord\Builders\Components\Button;
 use Discord\Builders\Components\Container;
 use Discord\Builders\Components\MediaGallery;
 use Discord\Builders\Components\Option;
@@ -28,6 +27,7 @@ use MTG\Helpers\Text;
 use MTGPocket\Cards\BasicLands;
 use MTGPocket\Cards\CardPool;
 use MTGPocket\Decks\DeckBuilder;
+use MTGPocket\Exports\Exporter;
 use MTGPocket\Models\Deck;
 use MTGPocket\Packs\OpenedPack;
 use MTGPocket\Quests\Quest;
@@ -39,7 +39,8 @@ use MTGPocket\Rentals\RentalDeck;
  * Collection pages use DiscordPHP-MTG's {@see \MTG\Builders\ListMessageBuilder}.
  *
  * Custom ids: `pocket:card` (a picker valued with a card uuid, which opens
- * DiscordPHP-MTG's card view) and `pocket:export:<playerId>:<deckId>`.
+ * DiscordPHP-MTG's card view) and `pocket:export:<playerId>:<deckId>` (a
+ * picker valued with an {@see Exporter} format).
  *
  * @since 0.2.0
  */
@@ -162,7 +163,7 @@ class PocketMessageBuilder extends MessageBuilder
      * @param bool                    $active Whether it is the player's active deck.
      * @param string|null             $note     What just changed, shown above the deck.
      * @param string[]|null           $problems What keeps it from being played in its format; null when not checked.
-     * @param bool                    $export   Whether to offer **Export decklist** (not for rental decks).
+     * @param bool                    $export   Whether to offer the **Export for…** picker (not for rental decks).
      *
      * @return static
      */
@@ -230,9 +231,12 @@ class PocketMessageBuilder extends MessageBuilder
             return $message;
         }
 
-        return $message->addComponent(ActionRow::new()->addComponent(
-            Button::new(Button::STYLE_SECONDARY, self::PREFIX.":export:{$deck->playerId}:{$deck->id}")->setLabel('Export decklist')
-        ));
+        $picker = StringSelect::new(self::PREFIX.":export:{$deck->playerId}:{$deck->id}")->setPlaceholder('Export for…');
+        foreach (Exporter::FORMATS as $format => $label) {
+            $picker->addOption(Option::new($label, $format));
+        }
+
+        return $message->addComponent(ActionRow::new()->addComponent($picker));
     }
 
     /**
@@ -341,34 +345,6 @@ class PocketMessageBuilder extends MessageBuilder
             )))
             ->addComponent(Separator::new())
             ->addComponent(TextDisplay::new($lines === [] ? 'No rental decks yet: none have been imported for the current sets.' : Text::clip(implode("\n", $lines), 3500))));
-    }
-
-    /**
-     * A decklist as text: `3 Name (SET) 123`, the side deck after a blank
-     * line, as MTG Arena and most deck sites import it.
-     *
-     * @param Deck                    $deck
-     * @param callable(string): array $card Card data by deck key.
-     *
-     * @return string
-     */
-    public static function export(Deck $deck, callable $card): string
-    {
-        $line = function (string $key, int $count) use ($card): string {
-            $data = $card($key);
-
-            return trim("{$count} {$data['name']}".(isset($data['setCode']) ? " ({$data['setCode']}) ".($data['number'] ?? '') : ''));
-        };
-
-        $main = $side = [];
-        foreach ($deck->main as $key => $count) {
-            $main[] = $line((string) $key, $count);
-        }
-        foreach ($deck->side as $key => $count) {
-            $side[] = $line((string) $key, $count);
-        }
-
-        return "Deck\n".implode("\n", $main).($side ? "\n\nSideboard\n".implode("\n", $side) : '')."\n";
     }
 
     /**
