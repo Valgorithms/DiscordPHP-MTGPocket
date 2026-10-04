@@ -31,7 +31,7 @@ use MTGPocket\Game\Step;
 final class AutoPlayer
 {
     /** Effects aimed at the opponent's side; anything else helps your own. */
-    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life'];
+    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life', 'discard', 'control', 'mill'];
 
     /**
      * Makes this seat's next move, if the game is waiting on it.
@@ -48,6 +48,8 @@ final class AutoPlayer
             'bottom' => self::bottom($game, $seat),
             'trigger' => self::trigger($game, $seat),
             'scry', 'surveil' => self::arrange($game, $seat),
+            'look' => self::look($game, $seat),
+            'mode' => self::mode($game, $seat),
             'attack' => self::attack($game, $seat),
             'block' => self::block($game, $seat),
             'discard' => self::discard($game, $seat),
@@ -77,10 +79,33 @@ final class AutoPlayer
         return true;
     }
 
+    private static function look(Game $game, int $seat): bool
+    {
+        $choice = $game->choiceAwaiting();
+        // The most expensive eligible cards.
+        $game->take($seat, array_slice(array_reverse(self::worstFirst($game, $choice['eligible'])), 0, $choice['take']));
+
+        return true;
+    }
+
+    private static function mode(Game $game, int $seat): bool
+    {
+        $game->chooseMode($seat, 0);
+
+        return true;
+    }
+
     private static function discard(Game $game, int $seat): bool
     {
+        $choice = $game->choiceAwaiting();
+        if (($choice['from'] ?? $seat) !== $seat) {
+            // Their best card: the most expensive.
+            $game->discard($seat, [array_reverse(self::worstFirst($game, $choice['cards']))[0]]);
+
+            return true;
+        }
         $hand = $game->players[$seat]->hand;
-        $game->discard($seat, array_slice(self::worstFirst($game, $hand), 0, count($hand) - 7));
+        $game->discard($seat, array_slice(self::worstFirst($game, $hand), 0, $game->discardCount()));
 
         return true;
     }
@@ -105,6 +130,20 @@ final class AutoPlayer
     private static function cost(Game $game, int $id): int
     {
         return $game->objects[$id]->definition()->cost->manaValue();
+    }
+
+    /**
+     * The cards that can be played or cast the plain way, without a mode,
+     * kicker, flashback, morph or cycling.
+     *
+     * @param Game $game
+     * @param int  $seat
+     *
+     * @return int[]
+     */
+    private static function plainPlays(Game $game, int $seat): array
+    {
+        return array_column(array_filter($game->plays($seat), fn (array $play) => $play['how'] === ''), 'id');
     }
 
     private static function arrange(Game $game, int $seat): bool
@@ -140,16 +179,43 @@ final class AutoPlayer
             }
         }
 
+        // Cast a card exiled with rebound, for free.
+        if ($mine && $game->step === Step::Upkeep && $game->stack === []) {
+            foreach ($game->plays($seat) as $play) {
+                if (! str_starts_with($play['how'], 'rb')) {
+                    continue;
+                }
+                $card = $game->objects[$play['id']]->printed();
+                $options = Game::castOptions($play['how']);
+                $targets = self::targets($game, $seat, $card->targetKinds($options['modes']), $card->spellEffects($options['modes']));
+                if ($targets !== null) {
+                    $game->cast($seat, $play['id'], 0, $targets, $play['how']);
+
+                    return true;
+                }
+            }
+        }
+
         if ($mine && $game->step->isMain() && $game->stack === []) {
             // A land first, then the most expensive spell that has good targets.
-            foreach ($game->playableCards($seat) as $id) {
+            // Only plays as cast or played: a land with cycling can still be cycled after the land drop.
+            foreach (self::plainPlays($game, $seat) as $id) {
                 if ($game->objects[$id]->definition()->isLand()) {
                     $game->playLand($seat, $id);
 
                     return true;
                 }
             }
-            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => $play['how'] !== 'cycle' && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
+            // Landcycle when there is no land to play.
+            $lands = array_filter($game->players[$seat]->hand, fn (int $id) => $game->objects[$id]->definition()->isLand());
+            foreach ($game->plays($seat) as $play) {
+                if ($lands === [] && $play['how'] === 'cycle' && $game->objects[$play['id']]->printed()->cyclingFinds !== null) {
+                    $game->cycle($seat, $play['id']);
+
+                    return true;
+                }
+            }
+            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => ! in_array($play['how'], ['cycle', 'unearth'], true) && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
             $cost = fn (array $play) => ManaCost::parse(Game::castCost($game->objects[$play['id']]->printed(), $play['how']))->manaValue();
             usort($plays, fn (array $a, array $b) => $cost($b) <=> $cost($a));
             foreach ($plays as $play) {
@@ -158,11 +224,13 @@ final class AutoPlayer
                 $options = Game::castOptions($play['how']);
                 $effects = $options['faceDown'] ? [] : $card->spellEffects($options['modes'], $options['kicked']);
                 // Pump spells are for combat; the main phase is too early.
-                if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true)) {
+                if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true) && array_intersect(array_column($effects, 'type'), self::HARMFUL) === []) {
                     continue;
                 }
-                $kinds = $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);
-                if ($card->aura !== null) {
+                $kinds = Game::castTargetKinds($card, $options);
+                if ($options['bestowed']) {
+                    $effects = [['type' => 'pump']];
+                } elseif ($card->aura !== null) {
                     // Pacifism and the like go on the opponent's creatures.
                     $harmful = array_intersect($card->aura['keywords'], ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"]) !== [] || $card->aura['power'] < 0;
                     $effects = [['type' => $harmful ? 'destroy' : 'pump']];
@@ -179,6 +247,13 @@ final class AutoPlayer
 
                 return true;
             }
+            foreach ($game->plays($seat) as $play) {
+                if ($play['how'] === 'unearth') {
+                    $game->unearth($seat, $play['id']);
+
+                    return true;
+                }
+            }
             foreach ($game->activatableAbilities($seat) as [$id, $index]) {
                 $object = $game->objects[$id];
                 $ability = $object->definition()->activated[$index];
@@ -189,6 +264,8 @@ final class AutoPlayer
                     || (in_array('attach', $types, true) && $object->attachedTo === null)
                     || isset($ability['cost']['loyalty'])
                     || in_array('level', $types, true)
+                    || (isset($ability['cost']['energy']) && in_array('counters', $types, true))
+                    || (in_array('saddled', $types, true) && $game->step === Step::PrecombatMain && ! $object->sick && ! $game->hasKeyword($object, 'saddled'))
                     || in_array('face_up', $types, true)
                     || (in_array('crewed', $types, true) && $game->step === Step::PrecombatMain && ! $game->isCreature($object))
                 );
@@ -207,7 +284,7 @@ final class AutoPlayer
 
         // A pump spell on a blocked attacker or a blocker in the declare blockers step.
         if ($game->step === Step::DeclareBlockers && $game->stack === []) {
-            foreach ($game->playableCards($seat) as $id) {
+            foreach (self::plainPlays($game, $seat) as $id) {
                 $card = $game->objects[$id]->definition();
                 if (! in_array('pump', array_column($card->effects, 'type'), true) || $card->isPermanentCard() || $card->targetCount() !== 1) {
                     continue;
@@ -244,7 +321,10 @@ final class AutoPlayer
     {
         $harmful = array_intersect(array_column($effects, 'type'), self::HARMFUL) !== [];
         $targets = [];
+        $spellHarmful = $harmful;
         foreach ($kinds as $kind) {
+            // A fight picks one of your creatures and one of theirs.
+            $harmful = str_ends_with($kind, '_you_control') ? false : (str_ends_with($kind, '_opponent') ? true : $spellHarmful);
             $best = null;
             $bestScore = PHP_INT_MIN;
             foreach ($game->targetOptions($seat, $kind) as $option) {

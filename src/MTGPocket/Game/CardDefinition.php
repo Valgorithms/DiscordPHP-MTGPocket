@@ -36,6 +36,8 @@ final class CardDefinition
     public const array KEYWORDS = [
         'flying', 'reach', 'first strike', 'double strike', 'deathtouch', 'lifelink', 'trample',
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
+        'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
+        'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound',
     ];
 
     /**
@@ -45,7 +47,7 @@ final class CardDefinition
      *
      * @var string[]
      */
-    public const array RESTRICTIONS = ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"];
+    public const array RESTRICTIONS = ["can't attack", "can't block", "doesn't untap", "abilities can't be activated", "can't be blocked", 'attacks each combat if able', "can't be countered"];
 
     public readonly string $key;
     public readonly string $name;
@@ -77,8 +79,8 @@ final class CardDefinition
 
     public readonly bool $entersTapped;
 
-    /** How many +1/+1 counters it enters with. */
-    public readonly int $entersWithCounters;
+    /** How many +1/+1 counters it enters with, or `X` for the X it was cast with. */
+    public readonly int|string $entersWithCounters;
 
     /** @var array[] What an instant or sorcery does, in order; see {@see TextParser}. Effects marked `kicked` are done only when it was kicked. */
     public readonly array $effects;
@@ -103,6 +105,30 @@ final class CardDefinition
 
     /** A cycling cost (rule 702.29). */
     public readonly ?string $cycling;
+
+    /** What landcycling finds instead of drawing: `basic land` or a basic land type (rule 702.29e). */
+    public readonly ?string $cyclingFinds;
+
+    /** An unearth cost (rule 702.84). */
+    public readonly ?string $unearth;
+
+    /** `type` or `color`: what is chosen as it enters (`As this enters, choose a creature type.`). */
+    public readonly ?string $chooses;
+
+    /** @var array{cost: string, enchant: string, power: int, toughness: int, keywords: string[]}|null Its bestow cost and what it gives as an Aura (rule 702.103). */
+    public readonly ?array $bestow;
+
+    /** @var array<int, array{power: int, toughness: int, keywords: string[], other: bool}> What it gives the creatures its controller controls (`other`: but itself). */
+    public readonly array $anthem;
+
+    /** `sacrifice_creature` or `discard`: an additional cost to cast it. */
+    public readonly ?string $additionalCost;
+
+    /** How many -1/-1 counters it enters with. */
+    public readonly int $entersWithMinusCounters;
+
+    /** @var array{life?: int, lands_min?: int, lands_max?: int, any?: string[]}|null What keeps a land from entering tapped: paying life, or controlling something. */
+    public readonly ?array $entersTappedUnless;
 
     /** @var array{kind: string, cost: string}|null Morph, megamorph or disguise, and the cost to turn it face up (rule 702.37). */
     public readonly ?array $morph;
@@ -169,6 +195,14 @@ final class CardDefinition
         $this->kickerCounters = $parsed['kickerCounters'];
         $this->flashback = $parsed['flashback'];
         $this->cycling = $parsed['cycling'];
+        $this->cyclingFinds = $parsed['cyclingFinds'];
+        $this->unearth = $parsed['unearth'];
+        $this->bestow = $parsed['bestow'];
+        $this->chooses = $parsed['chooses'];
+        $this->entersWithMinusCounters = $parsed['minusCounters'];
+        $this->entersTappedUnless = $parsed['tappedUnless'];
+        $this->anthem = $parsed['anthem'];
+        $this->additionalCost = $parsed['additionalCost'];
         $this->morph = $parsed['morph'];
         $this->levels = $parsed['levels'];
         $this->aura = $parsed['aura'];
@@ -361,16 +395,26 @@ final class CardDefinition
      */
     public function modeChoices(): array
     {
-        if ($this->choose === null) {
-            return [[]];
-        }
+        return $this->choose === null ? [[]] : self::choices(count($this->modes), $this->choose);
+    }
+
+    /**
+     * Every set of modes that could be chosen, fewest first.
+     *
+     * @param int                         $count  How many modes there are.
+     * @param array{min: int, max: int}   $choose
+     *
+     * @return int[][]
+     */
+    public static function choices(int $count, array $choose): array
+    {
         $choices = [[]];
-        foreach (array_keys($this->modes) as $mode) {
+        for ($mode = 0; $mode < $count; $mode++) {
             foreach ($choices as $choice) {
                 $choices[] = [...$choice, $mode];
             }
         }
-        $choices = array_values(array_filter($choices, fn (array $choice) => count($choice) >= $this->choose['min'] && count($choice) <= $this->choose['max']));
+        $choices = array_values(array_filter($choices, fn (array $choice) => count($choice) >= $choose['min'] && count($choice) <= $choose['max']));
         usort($choices, fn (array $a, array $b) => [count($a), $a] <=> [count($b), $b]);
 
         return $choices;

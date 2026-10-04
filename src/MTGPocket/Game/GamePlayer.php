@@ -29,6 +29,9 @@ final class GamePlayer
     public int $life = self::STARTING_LIFE;
     public int $poison = 0;
 
+    /** Energy counters (rule 107.14). */
+    public int $energy = 0;
+
     /** @var int[] Object ids; the last is the top. */
     public array $library = [];
 
@@ -43,6 +46,9 @@ final class GamePlayer
     public int $landsPlayed = 0;
 
     public int $mulligans = 0;
+
+    /** The last turn they were dealt damage, for bloodthirst. */
+    public int $damagedOnTurn = 0;
 
     /** Kept an opening hand. */
     public bool $kept = false;
@@ -81,12 +87,14 @@ final class GamePlayer
             'name' => $this->name,
             'life' => $this->life,
             'poison' => $this->poison,
+            'energy' => $this->energy,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
             'manaPool' => $this->manaPool->toArray(),
             'landsPlayed' => $this->landsPlayed,
             'mulligans' => $this->mulligans,
+            'damagedOnTurn' => $this->damagedOnTurn,
             'kept' => $this->kept,
             'toBottom' => $this->toBottom,
             'drewFromEmpty' => $this->drewFromEmpty,
@@ -101,12 +109,14 @@ final class GamePlayer
         $player = new self((int) $data['seat'], (string) $data['id'], (string) $data['name']);
         $player->life = (int) $data['life'];
         $player->poison = (int) ($data['poison'] ?? 0);
+        $player->energy = (int) ($data['energy'] ?? 0);
         $player->library = array_map('intval', (array) $data['library']);
         $player->hand = array_map('intval', (array) $data['hand']);
         $player->graveyard = array_map('intval', (array) $data['graveyard']);
         $player->manaPool = new ManaPool((array) ($data['manaPool'] ?? []));
         $player->landsPlayed = (int) ($data['landsPlayed'] ?? 0);
         $player->mulligans = (int) ($data['mulligans'] ?? 0);
+        $player->damagedOnTurn = (int) ($data['damagedOnTurn'] ?? 0);
         $player->kept = (bool) ($data['kept'] ?? false);
         $player->toBottom = (int) ($data['toBottom'] ?? 0);
         $player->drewFromEmpty = (bool) ($data['drewFromEmpty'] ?? false);

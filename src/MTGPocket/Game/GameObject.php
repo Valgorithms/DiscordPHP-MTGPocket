@@ -66,6 +66,21 @@ final class GameObject
     /** Regeneration shields until end of turn (rule 701.15). */
     public int $shields = 0;
 
+    /** Who gets it back at end of turn, when another player gained control of it until then. */
+    public ?int $borrowedFrom = null;
+
+    /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
+    public bool $unearthed = false;
+
+    /** The creature type or color chosen as it entered. */
+    public ?string $chosen = null;
+
+    /** Cast for its bestow cost: an Aura while attached (rule 702.103). */
+    public bool $bestowed = false;
+
+    /** Exiled by rebound: its owner may cast it in their next upkeep (rule 702.88a). */
+    public bool $rebound = false;
+
     public int $incarnation = 0;
 
     /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
@@ -144,6 +159,11 @@ final class GameObject
         $this->faceDown = false;
         $this->kicked = false;
         $this->shields = 0;
+        $this->borrowedFrom = null;
+        $this->unearthed = false;
+        $this->rebound = false;
+        $this->bestowed = false;
+        $this->chosen = null;
         $this->incarnation++;
     }
 
@@ -186,7 +206,15 @@ final class GameObject
             'faceDown' => $this->faceDown,
             'kicked' => $this->kicked,
             'shields' => $this->shields,
+            'unearthed' => $this->unearthed,
+            'rebound' => $this->rebound,
+            'bestowed' => $this->bestowed,
+            'chosen' => $this->chosen,
         ];
+        // Seat 0 is a real value here.
+        if ($this->borrowedFrom !== null) {
+            $data['borrowedFrom'] = $this->borrowedFrom;
+        }
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
     }
@@ -210,6 +238,11 @@ final class GameObject
         $object->faceDown = (bool) ($data['faceDown'] ?? false);
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
+        $object->unearthed = (bool) ($data['unearthed'] ?? false);
+        $object->rebound = (bool) ($data['rebound'] ?? false);
+        $object->bestowed = (bool) ($data['bestowed'] ?? false);
+        $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
+        $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;
         }
