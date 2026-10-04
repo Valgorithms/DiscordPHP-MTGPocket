@@ -25,6 +25,7 @@ use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Cards\BasicLands;
 use MTGPocket\Cards\CardPool;
 use MTGPocket\Drafts\Draft;
+use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
 use React\Promise\PromiseInterface;
 
@@ -124,7 +125,6 @@ final class Drafts implements Module
     public function boot(MTG $mtg): void
     {
         $drafts = $this->pocket->drafts;
-        $rules = $drafts->rules;
 
         $mtg->listenCommand(['draft', 'create'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id, string $name, array $args) => $this->podMessage(
             $drafts->create($id, $name, (string) $args['set'], $i->channel_id === null ? null : (string) $i->channel_id, isset($args['players']) ? (int) $args['players'] : null),
@@ -179,7 +179,7 @@ final class Drafts implements Module
             return $this->pool($id, $draft->status === Draft::PLAYING ? 'Your deck is in. Round '.count($draft->rounds).' has started; see `/draft status`.' : 'Your deck is in. Rounds start when everyone is ready.');
         }));
         $mtg->listenCommand(['draft', 'play'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => MatchMessageBuilder::board($drafts->play($id), true), false));
-        $mtg->listenCommand(['draft', 'status'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($drafts, $rules) {
+        $mtg->listenCommand(['draft', 'status'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($drafts) {
             if (($args['draft'] ?? '') !== '') {
                 return $this->status(strtolower(trim((string) $args['draft'])));
             }
@@ -188,7 +188,7 @@ final class Drafts implements Module
             }
             $open = $drafts->open();
             if ($open === []) {
-                return PocketMessageBuilder::notice('No draft pod is open. Make one with `/draft create`; it costs '.PocketMessageBuilder::points($rules->entryFee).' to enter.');
+                return (new Panels($this->pocket))->draft($id);
             }
 
             return $this->podMessage($open[0]);

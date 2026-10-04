@@ -23,6 +23,7 @@ use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Builders\ShopMessageBuilder;
 use MTGPocket\Cards\CardPool;
 use MTGPocket\Economy\Shop as PointsShop;
+use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
 use React\Promise\PromiseInterface;
 
@@ -119,11 +120,7 @@ final class Shop implements Module
         $shop = $this->pocket->shop;
         $suggest = fn (Interaction $interaction, $option) => $this->suggest($interaction, $option);
 
-        $mtg->listenCommand(['shop', 'balance'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => ShopMessageBuilder::balance(
-            $shop->balance($id),
-            $shop->prices,
-            $shop->packPrices(),
-        ), false));
+        $mtg->listenCommand(['shop', 'balance'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, fn (string $id) => (new Panels($this->pocket))->shop($id), false));
         $mtg->listenCommand(['shop', 'price'], fn (Interaction $i, $options) => $this->run($mtg, $i, $options, function (string $id, string $name, array $args) use ($shop) {
             $quote = $shop->quote((string) $args['card']);
 

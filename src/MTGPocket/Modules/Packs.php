@@ -18,8 +18,8 @@ use Discord\Parts\Interactions\Interaction;
 use MTG\Modules\InteractionTrait;
 use MTG\Modules\Module;
 use MTG\MTG;
-use MTGPocket\Builders\PocketMessageBuilder;
 use MTGPocket\Packs\DailyPackUnavailableException;
+use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
 use React\Promise\PromiseInterface;
 
@@ -33,8 +33,11 @@ final class Packs implements Module
     use InteractionTrait;
     use PocketTrait;
 
+    private Panels $panels;
+
     public function __construct(protected Pocket $pocket)
     {
+        $this->panels = new Panels($pocket);
     }
 
     /**
@@ -104,9 +107,9 @@ final class Packs implements Module
 
         return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), function () use ($id, $name, $args) {
             try {
-                return PocketMessageBuilder::pack($this->pocket->dailyPacks->open($id, $name, $args['set'] ?? null, $args['color'] ?? null));
+                return $this->panels->opened($id, $this->pocket->dailyPacks->open($id, $name, $args['set'] ?? null, $args['color'] ?? null), '', '');
             } catch (DailyPackUnavailableException $e) {
-                return PocketMessageBuilder::notice('⏳ '.$e->getMessage());
+                return $this->panels->packs($id, (string) ($args['set'] ?? ''), (string) ($args['color'] ?? ''), '⏳ '.$e->getMessage());
             }
         });
     }
@@ -124,9 +127,6 @@ final class Packs implements Module
     {
         [$id] = self::caller($interaction);
 
-        return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), fn () => PocketMessageBuilder::packList(
-            $this->pocket->dailyPacks->choices(),
-            $this->pocket->dailyPacks->nextPackAt($this->pocket->players->find($id)),
-        ));
+        return self::reply($mtg, $interaction, (bool) ($args['hidden'] ?? false), fn () => $this->panels->packs($id));
     }
 }

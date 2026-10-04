@@ -25,6 +25,7 @@ use MTGPocket\Modules\Collection;
 use MTGPocket\Modules\Drafts;
 use MTGPocket\Modules\Exports;
 use MTGPocket\Modules\Matches;
+use MTGPocket\Modules\Menu;
 use MTGPocket\Modules\Packs;
 use MTGPocket\Modules\PlayerDecks;
 use MTGPocket\Modules\Quests;
@@ -84,6 +85,7 @@ $mtg = new MTG([
 // Card lookups come from DiscordPHP-MTG; daily packs, collections, decks,
 // matches, drafts, quests, the shop and trades are the game's own.
 $mtg
+    ->addModule(new Menu($pocket))
     ->addModule(new Packs($pocket))
     ->addModule(new Collection($pocket))
     ->addModule(new PlayerDecks($pocket))
