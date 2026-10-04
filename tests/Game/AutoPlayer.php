@@ -14,7 +14,9 @@ declare(strict_types=1);
 namespace MTGPocket\Tests\Game;
 
 use MTGPocket\Game\Game;
+use MTGPocket\Game\GameException;
 use MTGPocket\Game\GameObject;
+use MTGPocket\Game\Mana\ManaCost;
 use MTGPocket\Game\Step;
 
 /**
@@ -22,7 +24,9 @@ use MTGPocket\Game\Step;
  * public moves a person makes in their panel. It is not clever: it plays a
  * land, then its most expensive spell it can afford, attacks when no
  * blocker would kill its creature for free, and blocks when it survives,
- * trades evenly or would otherwise take lethal damage.
+ * trades evenly or would otherwise take lethal damage. It casts modal
+ * spells with the first modes it can, kicks what it can afford, levels up
+ * and crews, and keeps every card it scries on top.
  */
 final class AutoPlayer
 {
@@ -43,6 +47,7 @@ final class AutoPlayer
             'mulligan' => self::mulligan($game, $seat),
             'bottom' => self::bottom($game, $seat),
             'trigger' => self::trigger($game, $seat),
+            'scry', 'surveil' => self::arrange($game, $seat),
             'attack' => self::attack($game, $seat),
             'block' => self::block($game, $seat),
             'discard' => self::discard($game, $seat),
@@ -102,6 +107,13 @@ final class AutoPlayer
         return $game->objects[$id]->definition()->cost->manaValue();
     }
 
+    private static function arrange(Game $game, int $seat): bool
+    {
+        $game->arrange($seat, []);
+
+        return true;
+    }
+
     private static function trigger(Game $game, int $seat): bool
     {
         $trigger = $game->triggerAwaitingTargets();
@@ -117,10 +129,11 @@ final class AutoPlayer
         // Counter the opponent's spell on top of the stack.
         $top = end($game->stack) ?: null;
         if ($top !== null && $top['controller'] !== $seat && ! Game::isAbility($top)) {
-            foreach ($game->playableCards($seat) as $id) {
-                $card = $game->objects[$id]->definition();
-                if (in_array('counter', array_column($card->effects, 'type'), true)) {
-                    $game->cast($seat, $id, 0, ["s:{$top['id']}"]);
+            foreach ($game->plays($seat) as $play) {
+                $card = $game->objects[$play['id']]->printed();
+                if ($play['how'] === '' && $card->targetCount() === 1 && in_array('counter', array_column($card->effects, 'type'), true)
+                    && $game->isLegalTarget($card->targetKinds()[0], "s:{$top['id']}", $seat)) {
+                    $game->cast($seat, $play['id'], 0, ["s:{$top['id']}"]);
 
                     return true;
                 }
@@ -136,21 +149,33 @@ final class AutoPlayer
                     return true;
                 }
             }
-            $spells = array_values(array_filter($game->playableCards($seat), fn (int $id) => ! in_array('counter', array_column($game->objects[$id]->definition()->effects, 'type'), true)));
-            usort($spells, fn (int $a, int $b) => self::cost($game, $b) <=> self::cost($game, $a));
-            foreach ($spells as $id) {
-                $card = $game->objects[$id]->definition();
+            $plays = array_values(array_filter($game->plays($seat), fn (array $play) => $play['how'] !== 'cycle' && ! in_array('counter', array_column($game->objects[$play['id']]->printed()->effects, 'type'), true)));
+            $cost = fn (array $play) => ManaCost::parse(Game::castCost($game->objects[$play['id']]->printed(), $play['how']))->manaValue();
+            usort($plays, fn (array $a, array $b) => $cost($b) <=> $cost($a));
+            foreach ($plays as $play) {
+                $id = $play['id'];
+                $card = $game->objects[$id]->printed();
+                $options = Game::castOptions($play['how']);
+                $effects = $options['faceDown'] ? [] : $card->spellEffects($options['modes'], $options['kicked']);
                 // Pump spells are for combat; the main phase is too early.
-                if (! $card->isPermanentCard() && in_array('pump', array_column($card->effects, 'type'), true)) {
+                if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true)) {
                     continue;
                 }
-                $kinds = $card->aura !== null ? [$card->aura['enchant'] ?? 'creature'] : $card->targetKinds();
-                $effects = $card->aura !== null ? [['type' => 'pump']] : $card->effects;
+                $kinds = $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);
+                if ($card->aura !== null) {
+                    // Pacifism and the like go on the opponent's creatures.
+                    $harmful = array_intersect($card->aura['keywords'], ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"]) !== [] || $card->aura['power'] < 0;
+                    $effects = [['type' => $harmful ? 'destroy' : 'pump']];
+                }
                 $targets = self::targets($game, $seat, $kinds, $effects);
                 if ($targets === null) {
                     continue;
                 }
-                $game->cast($seat, $id, $card->cost->xCount > 0 ? $game->maxX($seat, $id) : 0, $targets);
+                try {
+                    $game->cast($seat, $id, ! $options['faceDown'] && ! $options['flashback'] && $card->cost->xCount > 0 ? $game->maxX($seat, $id, 20, $play['how']) : 0, $targets, $play['how']);
+                } catch (GameException) {
+                    continue; // Ward it cannot pay on top.
+                }
 
                 return true;
             }
@@ -163,6 +188,9 @@ final class AutoPlayer
                     in_array('damage', $types, true)
                     || (in_array('attach', $types, true) && $object->attachedTo === null)
                     || isset($ability['cost']['loyalty'])
+                    || in_array('level', $types, true)
+                    || in_array('face_up', $types, true)
+                    || (in_array('crewed', $types, true) && $game->step === Step::PrecombatMain && ! $game->isCreature($object))
                 );
                 if (! $useful || ($object->used[$index] ?? null) === $game->turn) {
                     continue;

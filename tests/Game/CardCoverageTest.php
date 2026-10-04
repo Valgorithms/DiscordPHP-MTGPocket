@@ -416,6 +416,53 @@ final class CardCoverageTest extends GameTestCase
         $this->assertFalse($game->isCreature($game->objects[$copter]), 'Crewed only until end of turn.');
     }
 
+    /**
+     * Whole games of decks full of these cards, saved and loaded after every
+     * move. Set MTGPOCKET_SIM_GAMES to play more.
+     */
+    public function testDecksOfTheseCardsPlayToTheEnd(): void
+    {
+        $deck = function (array $basics, array $more, array $base): array {
+            $cards = [];
+            foreach ($basics as $name => $count) {
+                array_push($cards, ...array_fill(0, $count, self::card($name)));
+            }
+            foreach ($more as $name => $count) {
+                array_push($cards, ...array_fill(0, $count, self::more($name)));
+            }
+            foreach ($base as $name => $count) {
+                array_push($cards, ...array_fill(0, $count, self::card($name)));
+            }
+
+            return $cards;
+        };
+        $izzet = $deck(['Island' => 7, 'Mountain' => 6], [
+            'Shivan Reef' => 4, 'Fiery Charm' => 3, 'Double Cleave' => 2, 'Burst Lightning' => 3, 'Into the Roil' => 2, 'Think Twice' => 2,
+            'Tolarian Scholar' => 2, 'Iridescent Drake' => 2, 'Monastery Swiftspear' => 3, 'Opt' => 3, 'Consider' => 2, 'Claustrophobia' => 2,
+            'Smuggler\'s Copter' => 2, 'Fling Lite' => 1, 'Goblin Bully' => 2,
+        ], ['Counterspell' => 1]);
+        $selesnya = $deck(['Forest' => 7, 'Plains' => 7], [
+            'Mana Confluence' => 2, 'Pacifism' => 3, 'Arrest' => 1, 'Gnarlid Colony' => 3, 'Benalish Emissary' => 2, 'Den Protector' => 3,
+            'River Boa' => 3, 'Student of Warfare' => 3, 'Walking Ballista Lite' => 2, 'Drudge Skeletons' => 2,
+        ], ['Grizzly Bears' => 2, 'Serra Angel' => 2, 'Giant Growth' => 2, 'Bonesplitter' => 1]);
+
+        $games = (int) (getenv('MTGPOCKET_SIM_GAMES') ?: 10);
+        for ($seed = 0; $seed < $games; $seed++) {
+            $game = Game::start("cov-{$seed}", [
+                ['id' => '1', 'name' => 'Alice', 'cards' => $izzet],
+                ['id' => '2', 'name' => 'Bob', 'cards' => $selesnya],
+            ], "cov-{$seed}");
+            for ($moves = 0; $game->stage !== Game::OVER; $moves++) {
+                $this->assertLessThan(5000, $moves, "Seed {$seed} never ended.");
+                $waiting = $game->waitingOn();
+                $this->assertNotSame([], $waiting, "Seed {$seed}: nobody can move in {$game->step->label()} of turn {$game->turn}.");
+                $this->assertTrue(AutoPlayer::act($game, $waiting[0]), "Seed {$seed}: seat {$waiting[0]} could not make a {$game->decision($waiting[0])} move.");
+                $game = Game::fromArray(json_decode(json_encode($game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
+            }
+            $this->assertSame(Game::OVER, $game->stage);
+        }
+    }
+
     public function testEntersWithCounters(): void
     {
         $game = $this->newGame();

@@ -40,6 +40,7 @@
     "scripts": {
         "pint": "./vendor/bin/pint --config ./pint.json ./src ./tests",
         "unit": "phpunit",
-        "import-cards": "php bin/import-cards.php"
+        "import-cards": "php bin/import-cards.php",
+        "card-coverage": "php bin/card-coverage.php"
     }
 }

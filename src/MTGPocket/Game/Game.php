@@ -960,12 +960,13 @@ final class Game
      * cost or {3} face down, plus its kicker.
      *
      * @param CardDefinition $card
-     * @param array          $options
+     * @param string|array   $how  See {@see plays()}.
      *
      * @return string
      */
-    private static function castCost(CardDefinition $card, array $options): string
+    public static function castCost(CardDefinition $card, string|array $how): string
     {
+        $options = self::castOptions($how);
         $cost = $options['faceDown'] ? '{3}' : ($options['flashback'] ? (string) $card->flashback : (string) $card->cost);
 
         return $cost.($options['kicked'] ? (string) $card->kicker : '');

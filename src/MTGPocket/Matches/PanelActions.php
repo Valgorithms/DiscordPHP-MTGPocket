@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace MTGPocket\Matches;
 
+use MTGPocket\Game\CardDefinition;
 use MTGPocket\Game\Game;
 use MTGPocket\Game\GameException;
 
 /**
  * What each control of a player's action panel does. A spell is cast in
- * steps (pick the card, then X, then each target), so the picks so far are
+ * steps (pick the card and how to play it, then X, then each target), so the picks so far are
  * kept on the match until the last one casts it. Abilities are activated
  * the same way (pick the ability, then each target), and so are targets
  * picked for a triggered ability. Attackers and blockers are picked first
@@ -39,7 +40,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
@@ -62,9 +63,11 @@ final class PanelActions
             'mull' => $act(fn (Game $game, int $seat) => $game->mulligan($seat)),
             'bottom' => $act(fn (Game $game, int $seat) => $game->bottom($seat, $ints)),
             'disc' => $act(fn (Game $game, int $seat) => $game->discard($seat, $ints)),
+            'away' => $act(fn (Game $game, int $seat) => $game->arrange($seat, $ints)),
+            'keepall' => $act(fn (Game $game, int $seat) => $game->arrange($seat, [])),
             'pass' => $act(fn (Game $game, int $seat) => $game->pass($seat)),
             'auto' => [$this->matches->act($matchId, $playerId, fn (Game $game, int $seat) => $game->setAutoPass($seat, ! ($game->autoPass[$seat] ?? true))), false],
-            'play' => $this->play($matchId, $playerId, (int) ($values[0] ?? 0)),
+            'play' => $this->play($matchId, $playerId, ...array_pad(explode(':', (string) ($values[0] ?? '0'), 2), 2, '')),
             'x' => $this->castStep($matchId, $playerId, fn (array $cast) => ['x' => max(0, (int) ($values[0] ?? 0))] + $cast),
             'tgt' => $this->castStep($matchId, $playerId, fn (array $cast) => ['targets' => [...(array) ($cast['targets'] ?? []), (string) ($values[0] ?? '')]] + $cast),
             'ability' => $this->ability($matchId, $playerId, (string) ($values[0] ?? '')),
@@ -87,33 +90,54 @@ final class PanelActions
     }
 
     /**
-     * Picks a card to play: a land is played at once; a spell is cast at
-     * once unless it needs X or targets.
+     * Picks a card to play and how (see {@see Game::plays()}), as
+     * `id:how`: a land is played, a card cycled, and a spell cast at once
+     * unless it needs X or targets.
      *
      * @param string $matchId
      * @param string $playerId
-     * @param int    $id
+     * @param string $id
+     * @param string $how
      *
      * @return array{0: MatchRecord, 1: bool}
      */
-    private function play(string $matchId, string $playerId, int $id): array
+    private function play(string $matchId, string $playerId, string $id, string $how): array
     {
+        $id = (int) $id;
         $match = $this->matches->find($matchId) ?? throw new \OutOfBoundsException('That match no longer exists.');
-        $card = ($match->game?->objects[$id] ?? throw new GameException('That card is not in your hand.'))->definition();
+        $card = ($match->game?->objects[$id] ?? throw new GameException('That card is not in your hand.'))->printed();
+        $options = $how === 'cycle' ? null : Game::castOptions($how);
 
-        if (! $card->isLand() && ($card->cost->xCount > 0 || $card->targetCount() > 0)) {
+        if ($options !== null && ! $card->isLand() && (self::xCount($card, $options) > 0 || ($options['faceDown'] ? 0 : $card->targetCount($options['modes'], $options['kicked'])) > 0)) {
             $seat = $match->game->seatOf($playerId);
-            if ($seat === null || ! in_array($id, [...$match->game->players[$seat]->hand, ...$match->game->commandCards($seat)], true) || ! $match->game->canCast($seat, $id)) {
-                throw new GameException("You cannot cast {$card->name} now.");
+            if ($seat === null || ! $match->game->canCast($seat, $id, $how)) {
+                throw new GameException("You cannot cast {$card->name} that way now.");
             }
 
-            return $this->castStep($matchId, $playerId, fn () => ['id' => $id, 'targets' => []] + ($card->cost->xCount > 0 ? [] : ['x' => 0]));
+            return $this->castStep($matchId, $playerId, fn () => ['id' => $id, 'how' => $how, 'targets' => []] + (self::xCount($card, $options) > 0 ? [] : ['x' => 0]));
         }
 
-        return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($id, $card, $playerId): void {
-            $card->isLand() ? $game->playLand($seat, $id) : $game->cast($seat, $id);
+        return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($id, $how, $card, $playerId): void {
+            match (true) {
+                $how === 'cycle' => $game->cycle($seat, $id),
+                $card->isLand() => $game->playLand($seat, $id),
+                default => $game->cast($seat, $id, 0, [], $how),
+            };
             unset($match->choices[$playerId]);
         }), true];
+    }
+
+    /**
+     * How many X a spell's cost has, cast a given way.
+     *
+     * @param CardDefinition $card
+     * @param array                           $options
+     *
+     * @return int
+     */
+    public static function xCount(CardDefinition $card, array $options): int
+    {
+        return $options['faceDown'] ? 0 : ($options['flashback'] ? 0 : $card->cost->xCount);
     }
 
     /**
@@ -137,14 +161,15 @@ final class PanelActions
         if (! isset($cast['id'])) {
             throw new GameException('Pick the spell to cast first.');
         }
-        $card = $match->game->objects[(int) $cast['id']]->definition();
-        if (! isset($cast['x']) || count($cast['targets']) < $card->targetCount()) {
+        $card = $match->game->objects[(int) $cast['id']]->printed();
+        $options = Game::castOptions((string) ($cast['how'] ?? ''));
+        if (! isset($cast['x']) || count($cast['targets']) < ($options['faceDown'] ? 0 : $card->targetCount($options['modes'], $options['kicked']))) {
             return [$match, false];
         }
 
         try {
             return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($cast, $playerId): void {
-                $game->cast($seat, (int) $cast['id'], (int) $cast['x'], array_values($cast['targets']));
+                $game->cast($seat, (int) $cast['id'], (int) $cast['x'], array_values($cast['targets']), (string) ($cast['how'] ?? ''));
                 unset($match->choices[$playerId]);
             }), true];
         } catch (\InvalidArgumentException $e) {
