@@ -749,7 +749,11 @@ final class Game
                 throw new GameException($from === $seat ? 'You can only discard cards from your hand.' : 'Choose one of the cards you may choose.');
             }
         }
-        $this->discardCards($from, $ids);
+        if ($this->pendingChoice['exile'] ?? false) {
+            $this->exileFromHand($from, $ids);
+        } else {
+            $this->discardCards($from, $ids);
+        }
         $choice = $this->pendingChoice;
         if ($choice === null) {
             $this->cleanup();
@@ -771,6 +775,14 @@ final class Game
      *
      * @return void
      */
+    private function exileFromHand(int $seat, array $ids): void
+    {
+        foreach ($ids as $id) {
+            $this->moveTo($this->objects[$id], GameObject::EXILE);
+        }
+        $this->log("{$this->players[$seat]->name}'s ".implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids)).' is exiled.');
+    }
+
     private function discardCards(int $seat, array $ids): void
     {
         if ($ids === []) {
@@ -1357,6 +1369,15 @@ final class Game
                 continue;
             }
             $plan = ManaPayer::plan($payment, $player->manaPool, $sources);
+            // `{1}, {T}: Add one mana of any color.`: each one used that way costs {1} more.
+            $filters = array_keys(array_filter($sources, fn (array $source) => $source['filter'] ?? false));
+            for ($k = 1; $plan === null && $k <= count($filters); $k++) {
+                $filtered = $sources;
+                foreach (array_slice($filters, 0, $k) as $id) {
+                    $filtered[$id] = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
+                }
+                $plan = ManaPayer::plan(['mana' => ['generic' => ($payment['mana']['generic'] ?? 0) + $k] + $payment['mana']] + $payment, $player->manaPool, $filtered);
+            }
             if ($plan !== null) {
                 return $plan + ['life' => $total];
             }
@@ -2528,9 +2549,9 @@ final class Game
                     $this->log("{$this->players[$victim]->name} reveals ".($hand === [] ? 'an empty hand' : implode(', ', array_map(fn (int $id) => $this->objects[$id]->name(), $hand))).'.');
                     $cards = array_values(array_filter($hand, fn (int $id) => $this->matchesFilter($this->objects[$id]->definition(), $effect['filter'] ?? 'any')));
                     if (count($cards) === 1) {
-                        $this->discardCards($victim, $cards);
+                        ($effect['exile'] ?? false) ? $this->exileFromHand($victim, $cards) : $this->discardCards($victim, $cards);
                     } elseif ($cards !== []) {
-                        $this->pendingChoice = ['type' => 'discard', 'seat' => $controller, 'from' => $victim, 'count' => 1, 'cards' => $cards, 'next' => []];
+                        $this->pendingChoice = ['type' => 'discard', 'seat' => $controller, 'from' => $victim, 'count' => 1, 'cards' => $cards, 'next' => []] + (($effect['exile'] ?? false) ? ['exile' => true] : []);
 
                         return true;
                     }
@@ -2602,6 +2623,23 @@ final class Game
             case 'energy':
                 $this->players[$controller]->energy += $amount;
                 $this->log("{$this->players[$controller]->name} gets {$amount} energy.");
+                break;
+
+            case 'return_own':
+                // A land (or creature …) its controller returns to hand: a tapped one other than this, basic lands first; else this one.
+                $kind = $effect['filter'];
+                $pick = fn (GameObject $o) => match ($kind) {
+                    'land' => $o->definition()->isLand(),
+                    'creature' => $this->isCreature($o),
+                    default => ! $o->definition()->isLand(),
+                };
+                $own = array_values(array_filter($this->permanents($controller), $pick));
+                usort($own, fn (GameObject $a, GameObject $b) => [$a->id === $source->id, ! $a->tapped, ! in_array('Basic', $a->definition()->supertypes, true), $a->id]
+                    <=> [$b->id === $source->id, ! $b->tapped, ! in_array('Basic', $b->definition()->supertypes, true), $b->id]);
+                if (($back = $own[0] ?? null) !== null) {
+                    $this->moveTo($back, GameObject::HAND);
+                    $this->log("{$this->players[$controller]->name} returns {$back->name()} to hand.");
+                }
                 break;
 
             case 'edict':
@@ -3504,6 +3542,10 @@ final class Game
             case 'p':
                 $seat = (int) ($parts[1] ?? -1);
                 if (! isset($this->players[$seat]) || $this->players[$seat]->lost) {
+                    return false;
+                }
+                // `You have hexproof.`
+                if ($seat !== $controller && array_filter($this->permanents($seat), fn (GameObject $o) => in_array('you have hexproof', $o->definition()->keywords, true)) !== []) {
                     return false;
                 }
 

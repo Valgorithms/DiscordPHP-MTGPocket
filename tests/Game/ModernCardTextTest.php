@@ -148,6 +148,12 @@ final class ModernCardTextTest extends GameTestCase
         'Syndicate Messenger' => ['manaCost' => '{3}{W}', 'type' => 'Creature — Bird', 'power' => '2', 'toughness' => '3', 'text' => "Flying\nAfterlife 1 (When this creature dies, create a 1/1 white and black Spirit creature token with flying.)", 'colors' => ['W']],
         'Annihilator Lite' => ['manaCost' => '{5}', 'type' => 'Creature — Eldrazi', 'power' => '4', 'toughness' => '4', 'text' => 'Annihilator 1 (Whenever this creature attacks, defending player sacrifices a permanent of their choice.)', 'colors' => []],
         'No More Lies' => ['manaCost' => '{W}{U}', 'type' => 'Instant', 'text' => "Counter target spell unless its controller pays {3}. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.", 'colors' => ['W', 'U']],
+        'Azorius Chancery' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {W}{U}.", 'colors' => []],
+        'Rumble Arena' => ['manaCost' => null, 'type' => 'Land', 'text' => "Vigilance\n{T}: Add {C}.\n{1}, {T}: Add one mana of any color.", 'colors' => []],
+        'Prismatic Lens' => ['manaCost' => '{2}', 'type' => 'Artifact', 'text' => "{1}, {T}: Add one mana of any color.\n{T}: Add {C}.", 'colors' => []],
+        'Intimidation Tactics' => ['manaCost' => '{B}', 'type' => 'Sorcery', 'text' => "Target opponent reveals their hand. You choose an artifact or creature card from it. Exile that card.\nCycling {3} ({3}, Discard this card: Draw a card.)", 'colors' => ['B']],
+        'Stress Dream Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => 'Look at the top two cards of your library. Put one of those cards into your hand and the other on the bottom of your library.', 'colors' => ['U']],
+        'Leyline of Sanctity' => ['manaCost' => '{2}{W}{W}', 'type' => 'Enchantment', 'text' => "If this card is in your opening hand, you may begin the game with it on the battlefield.\nYou have hexproof. (You can't be the target of spells or abilities your opponents control.)", 'colors' => ['W']],
     ];
 
     private function put(int $seat, string $name, string $zone): int
@@ -589,6 +595,68 @@ final class ModernCardTextTest extends GameTestCase
         $this->resolve();
         $this->assertSame(GameObject::EXILE, $this->zone($bolt));
         $this->assertSame(20, $this->life(1));
+    }
+
+    public function testBounceAndFilterLands(): void
+    {
+        $game = $this->newGame();
+        $plains = $this->battlefield(0, 'Plains');
+        $chancery = $this->put(0, 'Azorius Chancery', GameObject::HAND);
+        $game->objects[$plains]->tapped = true;
+        $game->playLand(0, $chancery);
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($plains), 'The tapped Plains goes back.');
+        $this->assertTrue($game->objects[$chancery]->tapped);
+
+        // Untapped next turn: {W}{U} pays for a two-color spell.
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->assertSame(['count' => 2, 'colors' => ['W', 'U'], 'fixed' => [['W'], ['U']]], $game->manaSources(0)[$chancery]);
+        $this->lands(0, 'Swamp', 1);
+        $this->assertTrue($game->canCast(0, $this->put(0, 'Syndic of Tithes', GameObject::HAND)), '{2}{W} from {W}{U} and a Swamp.');
+
+        // Rumble Arena: {C}, or {1} and itself for any color.
+        $this->assertSame(['count' => 1, 'colors' => ['C'], 'filter' => true], self::read('Rumble Arena')->manaAbility);
+        $this->assertSame(['count' => 1, 'colors' => ['C'], 'filter' => true], self::read('Prismatic Lens')->manaAbility);
+    }
+
+    public function testFilterManaPaysAColor(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 1);
+        $this->put(0, 'Prismatic Lens', GameObject::BATTLEFIELD);
+        $squire = $this->put(0, 'Akrasan Squire', GameObject::HAND);
+        $this->assertTrue($game->canCast(0, $squire), '{1} from the Mountain, {W} from the Lens.');
+        $game->cast(0, $squire, 0, []);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($squire));
+        $this->assertFalse($game->canCast(0, $this->put(0, 'Akrasan Squire', GameObject::HAND)), 'Everything is tapped.');
+    }
+
+    public function testRevealExileLookAndPlayerHexproof(): void
+    {
+        $game = $this->newGame();
+        $bears = $this->put(1, 'Akrasan Squire', GameObject::HAND);
+        $this->hand(1, 'Lightning Bolt');
+        $this->lands(0, 'Swamp', 1);
+        $game->cast(0, $this->put(0, 'Intimidation Tactics', GameObject::HAND), 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(GameObject::EXILE, $this->zone($bears), 'The only creature card: exiled.');
+
+        $this->lands(0, 'Island', 2);
+        $hand = count($game->players[0]->hand);
+        $library = count($game->players[0]->library);
+        $game->cast(0, $this->put(0, 'Stress Dream Lite', GameObject::HAND), 0, []);
+        $this->resolve();
+        if ($game->choiceAwaiting() !== null) {
+            $choice = $game->choiceAwaiting();
+            $game->take(0, [$choice['cards'][0]]);
+        }
+        $this->assertSame($hand + 1, count($game->players[0]->hand));
+        $this->assertSame($library - 1, count($game->players[0]->library));
+
+        $this->put(1, 'Leyline of Sanctity', GameObject::BATTLEFIELD);
+        $this->assertFalse($game->isLegalTarget('player', 'p:1', 0));
+        $this->assertTrue($game->isLegalTarget('player', 'p:1', 1));
     }
 
     public function testUnearth(): void
@@ -1499,11 +1567,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 
