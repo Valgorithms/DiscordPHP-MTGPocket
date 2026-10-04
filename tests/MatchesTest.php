@@ -368,6 +368,50 @@ final class MatchesTest extends PocketTestCase
      *
      * @return MatchRecord
      */
+    public function testModesAndScryThroughThePanel(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        $ids = [self::ALICE, self::BOB];
+        $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $active = $match->game->active;
+        $player = $ids[$active];
+
+        $charm = $opt = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($active, &$charm, &$opt): void {
+            foreach (range(1, 2) as $i) {
+                $game->addCard($active, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+                $game->addCard($active, $this->pocket->deckBuilder->cardData('basic:Island'), GameObject::BATTLEFIELD);
+            }
+            $charm = $game->addCard($active, ['uuid' => 'charm', 'name' => 'Fiery Charm', 'type' => 'Instant', 'manaCost' => '{R}', 'text' => "Choose one —\n• Fiery Charm deals 2 damage to target creature.\n• Fiery Charm deals 1 damage to each opponent."], GameObject::HAND)->id;
+            $opt = $game->addCard($active, ['uuid' => 'opt', 'name' => 'Opt', 'type' => 'Instant', 'manaCost' => '{U}', 'text' => 'Scry 1. Draw a card.'], GameObject::HAND)->id;
+        });
+
+        $panelJson = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Fiery Charm — mode 2', $panelJson);
+        $this->assertStringContainsString("\"{$charm}:m1\"", $panelJson);
+        $this->assertStringNotContainsString("\"{$charm}:m0\"", $panelJson, 'Nothing for the first mode to target.');
+
+        [$match, $changed] = $panel->run($match->id, $player, 'play', [], ["{$charm}:m1"]);
+        $this->assertTrue($changed);
+        while ($match->game->stack !== []) {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $this->assertSame(19, $match->game->players[$match->game->opponent($active)]->life);
+
+        [$match] = $panel->run($match->id, $player, 'play', [], ["{$opt}:"]);
+        while ($match->game->decision($active) !== 'scry') {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $panelJson = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Scry 1: from the top of your library', $panelJson);
+        $top = $match->game->choiceAwaiting()['cards'][0];
+        [$match] = $panel->run($match->id, $player, 'away', [], [(string) $top]);
+        $this->assertSame($top, $match->game->players[$active]->library[0]);
+        $this->assertSame('priority', $match->game->decision($active));
+    }
+
     private function modifyGame(MatchRecord $match, callable $change): MatchRecord
     {
         $repository = new \MTGPocket\Repository\MatchRepository($this->pocket->store);

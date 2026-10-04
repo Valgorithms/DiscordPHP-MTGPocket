@@ -54,8 +54,17 @@ final class GameObject
 
     public ?int $attachedTo = null;
 
-    /** @var array<int, array{power: int, toughness: int, keywords: string[]}> Effects that last until end of turn. */
+    /** @var array<int, array{power: int, toughness: int, keywords: string[], creature?: bool}> Effects that last until end of turn; `creature` makes a crewed Vehicle one. */
     public array $untilEndOfTurn = [];
+
+    /** Face down: a 2/2 with no name or abilities (rule 708). */
+    public bool $faceDown = false;
+
+    /** Cast with its kicker cost paid. */
+    public bool $kicked = false;
+
+    /** Regeneration shields until end of turn (rule 701.15). */
+    public int $shields = 0;
 
     public int $incarnation = 0;
 
@@ -63,6 +72,7 @@ final class GameObject
     public array $used = [];
 
     private ?CardDefinition $definition = null;
+    private ?CardDefinition $faceDownDefinition = null;
 
     /**
      * @param int    $id
@@ -83,7 +93,26 @@ final class GameObject
         }
     }
 
+    /**
+     * Its characteristics: the card's, or a face-down 2/2's.
+     *
+     * @return CardDefinition
+     */
     public function definition(): CardDefinition
+    {
+        if ($this->faceDown) {
+            return $this->faceDownDefinition ??= new CardDefinition($this->printed()->faceDownCard());
+        }
+
+        return $this->printed();
+    }
+
+    /**
+     * The card itself, even face down.
+     *
+     * @return CardDefinition
+     */
+    public function printed(): CardDefinition
     {
         return $this->definition ??= new CardDefinition($this->card);
     }
@@ -112,6 +141,9 @@ final class GameObject
         $this->attachedTo = null;
         $this->untilEndOfTurn = [];
         $this->used = [];
+        $this->faceDown = false;
+        $this->kicked = false;
+        $this->shields = 0;
         $this->incarnation++;
     }
 
@@ -151,6 +183,9 @@ final class GameObject
             'untilEndOfTurn' => $this->untilEndOfTurn,
             'incarnation' => $this->incarnation,
             'used' => $this->used,
+            'faceDown' => $this->faceDown,
+            'kicked' => $this->kicked,
+            'shields' => $this->shields,
         ];
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
@@ -172,6 +207,9 @@ final class GameObject
         $object->attachedTo = isset($data['attachedTo']) ? (int) $data['attachedTo'] : null;
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
         $object->incarnation = (int) ($data['incarnation'] ?? 0);
+        $object->faceDown = (bool) ($data['faceDown'] ?? false);
+        $object->kicked = (bool) ($data['kicked'] ?? false);
+        $object->shields = (int) ($data['shields'] ?? 0);
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;
         }

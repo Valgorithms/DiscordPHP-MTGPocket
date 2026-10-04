@@ -35,8 +35,17 @@ final class CardDefinition
      */
     public const array KEYWORDS = [
         'flying', 'reach', 'first strike', 'double strike', 'deathtouch', 'lifelink', 'trample',
-        'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash',
+        'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
     ];
+
+    /**
+     * Restrictions kept with a permanent's keywords, from its own text
+     * (`This creature can't block.`) or an Aura's (`Enchanted creature can't
+     * attack or block.`).
+     *
+     * @var string[]
+     */
+    public const array RESTRICTIONS = ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"];
 
     public readonly string $key;
     public readonly string $name;
@@ -63,13 +72,43 @@ final class CardDefinition
     /** @var string[] Lowercase, from {@see KEYWORDS}. */
     public readonly array $keywords;
 
-    /** @var array{count: int, colors: string[]}|null A `{T}: Add …` ability. */
+    /** @var array{count: int, colors: string[], pain?: string[]}|null Its `{T}: Add …` abilities as one source; making a `pain` color costs 1 life. */
     public readonly ?array $manaAbility;
 
     public readonly bool $entersTapped;
 
-    /** @var array[] What an instant or sorcery does, in order; see {@see TextParser}. */
+    /** How many +1/+1 counters it enters with. */
+    public readonly int $entersWithCounters;
+
+    /** @var array[] What an instant or sorcery does, in order; see {@see TextParser}. Effects marked `kicked` are done only when it was kicked. */
     public readonly array $effects;
+
+    /** @var array<int, array{text: string, effects: array[]}> A modal spell's modes. */
+    public readonly array $modes;
+
+    /** @var array{min: int, max: int}|null How many modes are chosen. */
+    public readonly ?array $choose;
+
+    /** @var array{mana?: string, life?: int}|null What an opponent pays to target it (rule 702.21). */
+    public readonly ?array $ward;
+
+    /** A kicker cost (rule 702.33). */
+    public readonly ?string $kicker;
+
+    /** How many +1/+1 counters it enters with when kicked. */
+    public readonly int $kickerCounters;
+
+    /** A flashback cost (rule 702.34). */
+    public readonly ?string $flashback;
+
+    /** A cycling cost (rule 702.29). */
+    public readonly ?string $cycling;
+
+    /** @var array{kind: string, cost: string}|null Morph, megamorph or disguise, and the cost to turn it face up (rule 702.37). */
+    public readonly ?array $morph;
+
+    /** @var array<int, array{min: int, max: int|null, power: int|null, toughness: int|null, keywords: string[]}> A level up creature's bands (rule 711). */
+    public readonly array $levels;
 
     /** @var array{enchant: string, power: int, toughness: int, keywords: string[]}|null An Aura's restriction and what it gives. */
     public readonly ?array $aura;
@@ -121,7 +160,17 @@ final class CardDefinition
         $this->keywords = $parsed['keywords'];
         $this->manaAbility = $parsed['mana'] ?? self::basicLandMana($this->subtypes);
         $this->entersTapped = $parsed['entersTapped'];
+        $this->entersWithCounters = $parsed['counters'];
         $this->effects = $parsed['effects'];
+        $this->modes = $parsed['modes'];
+        $this->choose = $parsed['choose'];
+        $this->ward = $parsed['ward'];
+        $this->kicker = $parsed['kicker'];
+        $this->kickerCounters = $parsed['kickerCounters'];
+        $this->flashback = $parsed['flashback'];
+        $this->cycling = $parsed['cycling'];
+        $this->morph = $parsed['morph'];
+        $this->levels = $parsed['levels'];
         $this->aura = $parsed['aura'];
         $this->equipment = $parsed['equipment'];
         $this->triggered = $parsed['triggered'];
@@ -276,30 +325,125 @@ final class CardDefinition
     }
 
     /**
+     * What a spell of this card does, with the modes chosen and whether it
+     * was kicked.
+     *
+     * @param int[] $modes
+     * @param bool  $kicked
+     *
+     * @return array[]
+     */
+    public function spellEffects(array $modes = [], bool $kicked = false): array
+    {
+        $effects = [];
+        foreach ($this->effects as $effect) {
+            if (($effect['kicked'] ?? false) && ! $kicked) {
+                continue;
+            }
+            if ($kicked && isset($effect['kickedAmount'])) {
+                $effect['amount'] = $effect['kickedAmount'];
+            }
+            unset($effect['kicked'], $effect['kickedAmount']);
+            $effects[] = $effect;
+        }
+        sort($modes);
+        foreach ($modes as $mode) {
+            array_push($effects, ...($this->modes[$mode]['effects'] ?? []));
+        }
+
+        return $effects;
+    }
+
+    /**
+     * Every legal choice of modes, each in order.
+     *
+     * @return array<int, int[]> Just `[]` for a spell that is not modal.
+     */
+    public function modeChoices(): array
+    {
+        if ($this->choose === null) {
+            return [[]];
+        }
+        $choices = [[]];
+        foreach (array_keys($this->modes) as $mode) {
+            foreach ($choices as $choice) {
+                $choices[] = [...$choice, $mode];
+            }
+        }
+        $choices = array_values(array_filter($choices, fn (array $choice) => count($choice) >= $this->choose['min'] && count($choice) <= $this->choose['max']));
+        usort($choices, fn (array $a, array $b) => [count($a), $a] <=> [count($b), $b]);
+
+        return $choices;
+    }
+
+    /**
      * Whether a spell of this card needs targets, an Aura's included.
+     *
+     * @param int[] $modes
+     * @param bool  $kicked
      *
      * @return int The number of targets.
      */
-    public function targetCount(): int
+    public function targetCount(array $modes = [], bool $kicked = false): int
     {
-        if ($this->aura !== null) {
-            return 1;
-        }
-
-        return count(array_filter($this->effects, fn (array $effect) => isset($effect['target'])));
+        return count($this->targetKinds($modes, $kicked));
     }
 
     /**
      * What each target of a spell may be, in order.
      *
+     * @param int[] $modes
+     * @param bool  $kicked
+     *
      * @return string[] Target kinds; see {@see Game::isLegalTarget()}.
      */
-    public function targetKinds(): array
+    public function targetKinds(array $modes = [], bool $kicked = false): array
     {
         if ($this->aura !== null) {
             return [$this->aura['enchant']];
         }
 
-        return array_values(array_map(fn (array $effect) => $effect['target'], array_filter($this->effects, fn (array $effect) => isset($effect['target']))));
+        return array_values(array_map(fn (array $effect) => $effect['target'], array_filter($this->spellEffects($modes, $kicked), fn (array $effect) => isset($effect['target']))));
+    }
+
+    /**
+     * A level up creature's band for a number of level counters.
+     *
+     * @param int $level
+     *
+     * @return array{min: int, max: int|null, power: int|null, toughness: int|null, keywords: string[]}|null
+     */
+    public function levelBand(int $level): ?array
+    {
+        foreach ($this->levels as $band) {
+            if ($level >= $band['min'] && ($band['max'] === null || $level <= $band['max'])) {
+                return $band;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Card data for this card face down: a 2/2 creature with no name or
+     * text but the cost to turn it face up, and ward {2} for disguise.
+     *
+     * @return array
+     */
+    public function faceDownCard(): array
+    {
+        return [
+            'uuid' => $this->key.':face-down',
+            'name' => 'Face-down creature',
+            'type' => 'Creature',
+            'types' => ['Creature'],
+            'subtypes' => [],
+            'supertypes' => [],
+            'colors' => [],
+            'manaCost' => null,
+            'power' => '2',
+            'toughness' => '2',
+            'text' => $this->morph === null ? '' : "{$this->morph['cost']}: Turn this permanent face up.".($this->morph['kind'] === 'disguise' ? "\nWard {2}" : ''),
+        ];
     }
 }

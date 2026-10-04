@@ -29,6 +29,7 @@ use MTGPocket\Game\GameObject;
 use MTGPocket\Game\GameRecord;
 use MTGPocket\Matches\Ladder;
 use MTGPocket\Matches\MatchRecord;
+use MTGPocket\Matches\PanelActions;
 use MTGPocket\Modes\GameMode;
 use MTGPocket\Modes\GameModes;
 
@@ -354,6 +355,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'mulligan' => 'keep or mulligan',
                 'bottom' => 'put cards on the bottom',
                 'trigger' => 'choose targets for '.$game->triggerAwaitingTargets()['label'],
+                'scry', 'surveil' => $game->decision($seat),
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
                 'discard' => 'discard down to seven',
@@ -528,6 +530,16 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $tax = $game->commanderTax($id);
             $hand[] = (in_array($id, $playable, true) ? '✅ ' : '▫️ ').'👑 '.self::cardLabel($game->objects[$id]).' · command zone'.($tax > 0 ? " · tax {{$tax}}" : '');
         }
+        foreach ($game->permanents($seat) as $object) {
+            if ($object->faceDown) {
+                $hand[] = '-# 🂠 Your face-down '.$object->printed()->name.' turns face up for '.$object->printed()->morph['cost'].'.';
+            }
+        }
+        foreach ($player->graveyard as $id) {
+            if (in_array($id, $playable, true)) {
+                $hand[] = '✅ 🪦 '.self::cardLabel($game->objects[$id]).' · graveyard · flashback '.$game->objects[$id]->printed()->flashback;
+            }
+        }
         $container->addComponent(TextDisplay::new($hand === [] ? '*Your hand is empty.*' : Text::clip(implode("\n", $hand), 2500)));
         $container->addComponent(Separator::new())->addComponent(TextDisplay::new(self::prompt($game, $seat, $decision, $choice)));
         $message->addComponent($container);
@@ -585,6 +597,14 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('noblk'))->setLabel('No blocks')));
                 break;
 
+            case 'scry':
+            case 'surveil':
+                $cards = $game->choiceAwaiting()['cards'];
+                $where = $decision === 'scry' ? 'on the bottom' : 'into your graveyard';
+                $message->addComponent(self::cardSelect($id('away'), "Put {$where}…", $cards, $cardOption, 1, count($cards)));
+                $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_PRIMARY, $id('keepall'))->setLabel(count($cards) === 1 ? 'Keep it on top' : 'Keep them all on top')));
+                break;
+
             case 'trigger':
                 $trigger = $game->triggerAwaitingTargets();
                 $slot = count((array) ($choice['trigger'] ?? []));
@@ -597,7 +617,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
             case 'priority':
                 $cast = $choice['cast'] ?? null;
-                if ($cast !== null && in_array((int) $cast['id'], [...$player->hand, ...$game->commandCards($seat)], true)) {
+                if ($cast !== null && in_array((int) $cast['id'], [...$player->hand, ...$game->commandCards($seat), ...$player->graveyard], true)) {
                     self::castControls($message, $match, $seat, $cast);
                     break;
                 }
@@ -612,8 +632,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('cancel'))->setLabel('Cancel')));
                     break;
                 }
-                if ($playable !== []) {
-                    $message->addComponent(self::cardSelect($id('play'), 'Play a land or cast a spell', $playable, $cardOption, 1, 1));
+                $plays = array_slice($game->plays($seat), 0, 25);
+                if ($plays !== []) {
+                    $select = StringSelect::new($id('play'))->setPlaceholder('Play a land or cast a spell');
+                    foreach ($plays as $play) {
+                        $select->addOption(self::playOption($game, $play['id'], $play['how']));
+                    }
+                    $message->addComponent(ActionRow::new()->addComponent($select));
                 }
                 $abilities = array_slice($game->activatableAbilities($seat), 0, 25);
                 if ($abilities !== []) {
@@ -654,17 +679,19 @@ class MatchMessageBuilder extends PocketMessageBuilder
     {
         $game = $match->game;
         $object = $game->objects[(int) $cast['id']];
-        $card = $object->definition();
+        $card = $object->printed();
+        $how = (string) ($cast['how'] ?? '');
+        $options = Game::castOptions($how);
 
-        if ($card->cost->xCount > 0 && ! isset($cast['x'])) {
-            $max = min(24, $game->maxX($seat, $object->id));
+        if (PanelActions::xCount($card, $options) > 0 && ! isset($cast['x'])) {
+            $max = min(24, $game->maxX($seat, $object->id, 20, $how));
             $select = StringSelect::new(self::id($match->id, 'x'))->setPlaceholder("Choose X for {$card->name}");
             for ($x = 0; $x <= $max; $x++) {
                 $select->addOption(Option::new("X = {$x}", (string) $x));
             }
             $message->addComponent(ActionRow::new()->addComponent($select));
         } else {
-            $kinds = $card->targetKinds();
+            $kinds = $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);
             $slot = count((array) ($cast['targets'] ?? []));
             if (isset($kinds[$slot])) {
                 $message->addComponent(self::targetSelect(self::id($match->id, 'tgt'), $game, $seat, $game->targetOptions($seat, $kinds[$slot]), 'Choose a target for '.$card->name, $slot, count($kinds)));
@@ -720,6 +747,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'block' => 'For each attacker, choose the creatures that block it, then **Confirm blocks**. Each creature blocks one attacker.',
             'discard' => 'You have more than seven cards. Choose what to discard.',
             'trigger' => 'Choose targets for **'.$game->triggerAwaitingTargets()['label'].'**, which just triggered: '.$game->triggerAwaitingTargets()['text'],
+            'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
+                .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
+                ."\nChoose any to put ".($decision === 'scry' ? 'on the bottom' : 'into your graveyard').', or keep them all on top.',
             'priority' => match (true) {
                 isset($choice['cast']) => 'Finish casting your spell, or cancel.',
                 isset($choice['activate']) => 'Choose targets for the ability, or cancel.',
@@ -752,6 +782,33 @@ class MatchMessageBuilder extends PocketMessageBuilder
         }
 
         return ActionRow::new()->addComponent($select);
+    }
+
+    /**
+     * One way to play a card, for the play menu: see {@see Game::plays()}.
+     *
+     * @param Game   $game
+     * @param int    $id
+     * @param string $how
+     *
+     * @return Option
+     */
+    private static function playOption(Game $game, int $id, string $how): Option
+    {
+        $object = $game->objects[$id];
+        $card = $object->printed();
+        $options = $how === 'cycle' ? null : Game::castOptions($how);
+        $way = $options === null ? "cycle {$card->cycling}" : implode(', ', array_filter([
+            $options['faceDown'] ? 'face down for {3}' : '',
+            $options['flashback'] ? "flashback {$card->flashback}" : '',
+            $options['kicked'] ? "kicked +{$card->kicker}" : '',
+            $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
+        ]));
+        $description = $options !== null && $options['modes'] !== []
+            ? implode(' + ', array_map(fn (int $mode) => str_replace('CARDNAME', $card->name, $card->modes[$mode]['text']), $options['modes']))
+            : self::cardDescription($object);
+
+        return Option::new(Text::clip($card->name.($way === '' ? '' : " — {$way}"), 100), "{$id}:{$how}")->setDescription(Text::clip($description, 100));
     }
 
     private static function permanentOption(Game $game, int $id): Option
