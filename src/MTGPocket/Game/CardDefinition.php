@@ -122,6 +122,9 @@ final class CardDefinition
     /** @var array{power: int, toughness: int, keywords: string[]}|null What it gets and has while its controller is at max speed. */
     public readonly ?array $maxSpeed;
 
+    /** @var array{of: string, power: bool, toughness: bool}|null Power and/or toughness equal to how many lands (creatures …) its controller controls. */
+    public readonly ?array $countsAs;
+
     /** @var array<string, string> Other ways to cast it: `dash`, `evoke`, `warp` or `plot` => cost. */
     public readonly array $altCosts;
 
@@ -224,6 +227,7 @@ final class CardDefinition
         $this->chooses = $parsed['chooses'];
         $this->stationBands = $parsed['stationBands'];
         $this->maxSpeed = $parsed['maxSpeed'];
+        $this->countsAs = $parsed['countsAs'];
         $this->yourTurnKeywords = $parsed['yourTurnKeywords'];
         $this->entersWithOther = $parsed['otherCounters'];
         $this->costReductions = $parsed['costReductions'];

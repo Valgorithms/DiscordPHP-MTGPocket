@@ -873,6 +873,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $options['grave'] === 'escape' ? "escape {$card->altCosts['escape']}" : '',
             in_array($options['grave'], ['jumpstart', 'retrace'], true) ? ($options['grave'] === 'jumpstart' ? 'jump-start' : 'retrace').' from the graveyard' : '',
             $options['bargained'] ? 'bargained' : '',
+            $options['casualty'] ? 'casualty, copied' : '',
             $options['kicked'] && ! $options['bargained'] ? (in_array('offspring', $card->keywords, true) ? "offspring +{$card->kicker}" : "kicked +{$card->kicker}") : '',
             $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
         ]));
