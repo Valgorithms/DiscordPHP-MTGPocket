@@ -31,7 +31,7 @@ use MTGPocket\Game\Step;
 final class AutoPlayer
 {
     /** Effects aimed at the opponent's side; anything else helps your own. */
-    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life', 'discard'];
+    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life', 'discard', 'control', 'mill'];
 
     /**
      * Makes this seat's next move, if the game is waiting on it.
@@ -79,6 +79,13 @@ final class AutoPlayer
 
     private static function discard(Game $game, int $seat): bool
     {
+        $choice = $game->choiceAwaiting();
+        if (($choice['from'] ?? $seat) !== $seat) {
+            // Their best card: the most expensive.
+            $game->discard($seat, [array_reverse(self::worstFirst($game, $choice['cards']))[0]]);
+
+            return true;
+        }
         $hand = $game->players[$seat]->hand;
         $game->discard($seat, array_slice(self::worstFirst($game, $hand), 0, $game->discardCount()));
 
@@ -182,7 +189,7 @@ final class AutoPlayer
                 $options = Game::castOptions($play['how']);
                 $effects = $options['faceDown'] ? [] : $card->spellEffects($options['modes'], $options['kicked']);
                 // Pump spells are for combat; the main phase is too early.
-                if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true)) {
+                if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true) && array_intersect(array_column($effects, 'type'), self::HARMFUL) === []) {
                     continue;
                 }
                 $kinds = $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);

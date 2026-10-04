@@ -66,6 +66,9 @@ final class GameObject
     /** Regeneration shields until end of turn (rule 701.15). */
     public int $shields = 0;
 
+    /** Who gets it back at end of turn, when another player gained control of it until then. */
+    public ?int $borrowedFrom = null;
+
     public int $incarnation = 0;
 
     /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
@@ -144,6 +147,7 @@ final class GameObject
         $this->faceDown = false;
         $this->kicked = false;
         $this->shields = 0;
+        $this->borrowedFrom = null;
         $this->incarnation++;
     }
 
@@ -187,6 +191,10 @@ final class GameObject
             'kicked' => $this->kicked,
             'shields' => $this->shields,
         ];
+        // Seat 0 is a real value here.
+        if ($this->borrowedFrom !== null) {
+            $data['borrowedFrom'] = $this->borrowedFrom;
+        }
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
     }
@@ -210,6 +218,7 @@ final class GameObject
         $object->faceDown = (bool) ($data['faceDown'] ?? false);
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
+        $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;
         }

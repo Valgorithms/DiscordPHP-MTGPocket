@@ -44,6 +44,9 @@ final class GamePlayer
 
     public int $mulligans = 0;
 
+    /** The last turn they were dealt damage, for bloodthirst. */
+    public int $damagedOnTurn = 0;
+
     /** Kept an opening hand. */
     public bool $kept = false;
 
@@ -87,6 +90,7 @@ final class GamePlayer
             'manaPool' => $this->manaPool->toArray(),
             'landsPlayed' => $this->landsPlayed,
             'mulligans' => $this->mulligans,
+            'damagedOnTurn' => $this->damagedOnTurn,
             'kept' => $this->kept,
             'toBottom' => $this->toBottom,
             'drewFromEmpty' => $this->drewFromEmpty,
@@ -107,6 +111,7 @@ final class GamePlayer
         $player->manaPool = new ManaPool((array) ($data['manaPool'] ?? []));
         $player->landsPlayed = (int) ($data['landsPlayed'] ?? 0);
         $player->mulligans = (int) ($data['mulligans'] ?? 0);
+        $player->damagedOnTurn = (int) ($data['damagedOnTurn'] ?? 0);
         $player->kept = (bool) ($data['kept'] ?? false);
         $player->toBottom = (int) ($data['toBottom'] ?? 0);
         $player->drewFromEmpty = (bool) ($data['drewFromEmpty'] ?? false);

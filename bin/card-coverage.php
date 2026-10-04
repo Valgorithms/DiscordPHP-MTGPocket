@@ -52,6 +52,10 @@ $legal = null;
 if (preg_match('/^[a-z]+$/', $since) && $since !== 'all') {
     $format = $since;
     $sqlite = getenv('MTGJSON_DATABASE') ?: $baseDir.'/var/mtgjson/AllPrintings.sqlite';
+    if (! is_file($sqlite)) {
+        fwrite(STDERR, "No MTGJSON build at {$sqlite}; set MTGJSON_DATABASE to your AllPrintings.sqlite.\n");
+        exit(1);
+    }
     $pdo = new PDO('sqlite:'.$sqlite);
     $statement = $pdo->query('SELECT DISTINCT "c"."name" FROM "cards" "c" JOIN "cardLegalities" "l" ON "l"."uuid" = "c"."uuid" WHERE "l"."'.$format.'" = \'Legal\'');
     $legal = array_fill_keys($statement->fetchAll(PDO::FETCH_COLUMN), true);

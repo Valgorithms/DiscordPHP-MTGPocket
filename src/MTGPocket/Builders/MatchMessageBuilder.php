@@ -561,7 +561,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
             case 'discard':
                 $count = $game->discardCount();
-                $message->addComponent(self::cardSelect($id('disc'), "Discard {$count}", $player->hand, $cardOption, $count, $count));
+                $message->addComponent(self::cardSelect($id('disc'), "Discard {$count}", $game->choiceAwaiting()['cards'] ?? $player->hand, $cardOption, $count, $count));
                 break;
 
             case 'attack':
@@ -745,9 +745,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'bottom' => "Choose {$player->toBottom} card".($player->toBottom === 1 ? '' : 's').' to put on the bottom of your library.',
             'attack' => 'Choose your attackers, then **Attack**. They attack '.$game->players[$game->defender()]->name.'.',
             'block' => 'For each attacker, choose the creatures that block it, then **Confirm blocks**. Each creature blocks one attacker.',
-            'discard' => $game->choiceAwaiting() === null
-                ? 'You have more than seven cards. Choose what to discard.'
-                : 'Choose '.$game->discardCount().' card'.($game->discardCount() === 1 ? '' : 's').' to discard.',
+            'discard' => match (true) {
+                $game->choiceAwaiting() === null => 'You have more than seven cards. Choose what to discard.',
+                ($game->choiceAwaiting()['from'] ?? $seat) !== $seat => 'Choose a card for '.$game->players[$game->choiceAwaiting()['from']]->name.' to discard.',
+                default => 'Choose '.$game->discardCount().' card'.($game->discardCount() === 1 ? '' : 's').' to discard.',
+            },
             'trigger' => 'Choose targets for **'.$game->triggerAwaitingTargets()['label'].'**, which just triggered: '.$game->triggerAwaitingTargets()['text'],
             'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))

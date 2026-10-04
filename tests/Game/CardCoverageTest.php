@@ -83,7 +83,7 @@ final class CardCoverageTest extends GameTestCase
     public function testEveryCardHereIsReadWhole(): void
     {
         foreach (array_keys(self::MORE) as $name) {
-            $this->assertSame($name === 'River Boa' ? ['Islandwalk'] : [], self::read($name)->unsupported, $name);
+            $this->assertSame([], self::read($name)->unsupported, $name);
         }
     }
 

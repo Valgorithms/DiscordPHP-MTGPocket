@@ -37,6 +37,7 @@ final class CardDefinition
         'flying', 'reach', 'first strike', 'double strike', 'deathtouch', 'lifelink', 'trample',
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
+        'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke',
     ];
 
     /**
@@ -107,6 +108,12 @@ final class CardDefinition
 
     /** What landcycling finds instead of drawing: `basic land` or a basic land type (rule 702.29e). */
     public readonly ?string $cyclingFinds;
+
+    /** @var array<int, array{power: int, toughness: int, keywords: string[], other: bool}> What it gives the creatures its controller controls (`other`: but itself). */
+    public readonly array $anthem;
+
+    /** `sacrifice_creature` or `discard`: an additional cost to cast it. */
+    public readonly ?string $additionalCost;
 
     /** How many -1/-1 counters it enters with. */
     public readonly int $entersWithMinusCounters;
@@ -182,6 +189,8 @@ final class CardDefinition
         $this->cyclingFinds = $parsed['cyclingFinds'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
+        $this->anthem = $parsed['anthem'];
+        $this->additionalCost = $parsed['additionalCost'];
         $this->morph = $parsed['morph'];
         $this->levels = $parsed['levels'];
         $this->aura = $parsed['aura'];
