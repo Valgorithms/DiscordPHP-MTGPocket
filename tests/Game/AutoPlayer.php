@@ -227,8 +227,10 @@ final class AutoPlayer
                 if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true) && array_intersect(array_column($effects, 'type'), self::HARMFUL) === []) {
                     continue;
                 }
-                $kinds = $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);
-                if ($card->aura !== null) {
+                $kinds = Game::castTargetKinds($card, $options);
+                if ($options['bestowed']) {
+                    $effects = [['type' => 'pump']];
+                } elseif ($card->aura !== null) {
                     // Pacifism and the like go on the opponent's creatures.
                     $harmful = array_intersect($card->aura['keywords'], ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"]) !== [] || $card->aura['power'] < 0;
                     $effects = [['type' => $harmful ? 'destroy' : 'pump']];

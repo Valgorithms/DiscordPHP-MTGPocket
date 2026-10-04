@@ -70,6 +70,7 @@ final class ModernCardTextTest extends GameTestCase
         'Sleight of Hand' => ['manaCost' => '{U}', 'type' => 'Sorcery', 'text' => 'Look at the top two cards of your library. Put one of them into your hand and the other on the bottom of your library.', 'colors' => ['U']],
         "Dáin's Company Lite" => ['manaCost' => '{R}{W}', 'type' => 'Creature — Dwarf Warrior', 'power' => '2', 'toughness' => '2', 'text' => 'When this creature enters, look at the top four cards of your library. You may reveal a Dwarf or Equipment card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.', 'colors' => ['R', 'W']],
         'Glimpse Lite' => ['manaCost' => '{U}', 'type' => 'Instant', 'text' => "Look at the top three cards of your library, then put them back in any order.\nDraw a card.", 'colors' => ['U']],
+        'Hopeful Eidolon' => ['manaCost' => '{W}', 'type' => 'Enchantment Creature — Spirit', 'power' => '1', 'toughness' => '1', 'text' => "Bestow {3}{W} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a creature again if it's not attached.)\nLifelink\nEnchanted creature gets +1/+1 and has lifelink.", 'colors' => ['W']],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -324,6 +325,33 @@ final class ModernCardTextTest extends GameTestCase
         $this->resolve();
         $this->assertFalse($game->objects[$mustang]->tapped, 'Untapped by its trigger.');
         $this->assertSame(1, $game->objects[$mustang]->counter('+1/+1'));
+    }
+
+    public function testBestow(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Plains', 5);
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $eidolon = $this->put(0, 'Hopeful Eidolon', GameObject::HAND);
+        $this->assertSame([], self::read('Hopeful Eidolon')->unsupported);
+        $this->assertContains(['id' => $eidolon, 'how' => 'bestow'], $game->plays(0));
+        $game->cast(0, $eidolon, 0, ["o:{$bears}"], 'bestow');
+        $this->resolve();
+        $this->assertSame($bears, $game->objects[$eidolon]->attachedTo);
+        $this->assertFalse($game->isCreature($game->objects[$eidolon]));
+        $this->assertSame(3, $game->power($game->objects[$bears]));
+        $this->assertContains('lifelink', $game->keywords($game->objects[$bears]));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+
+        $this->lands(1, 'Mountain', 1);
+        $bolt = $this->hand(1, 'Lightning Bolt');
+        $game->pass(0);
+        $game->cast(1, $bolt, 0, ["o:{$bears}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($bears));
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($eidolon), 'It stays as a creature.');
+        $this->assertTrue($game->isCreature($game->objects[$eidolon]));
+        $this->assertSame(1, $game->power($game->objects[$eidolon]));
     }
 
     public function testAnthems(): void
@@ -600,7 +628,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

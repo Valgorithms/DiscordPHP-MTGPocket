@@ -714,7 +714,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             }
             $message->addComponent(ActionRow::new()->addComponent($select));
         } else {
-            $kinds = $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);
+            $kinds = Game::castTargetKinds($card, $options);
             $slot = count((array) ($cast['targets'] ?? []));
             if (isset($kinds[$slot])) {
                 $message->addComponent(self::targetSelect(self::id($match->id, 'tgt'), $game, $seat, $game->targetOptions($seat, $kinds[$slot]), 'Choose a target for '.$card->name, $slot, count($kinds)));
@@ -841,6 +841,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $options['faceDown'] ? 'face down for {3}' : '',
             $options['flashback'] ? "flashback {$card->flashback}" : '',
             $options['rebound'] ? 'rebound, free' : '',
+            $options['bestowed'] ? "bestow {$card->bestow['cost']}" : '',
             $options['kicked'] ? "kicked +{$card->kicker}" : '',
             $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
         ]));

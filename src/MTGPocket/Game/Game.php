@@ -811,6 +811,9 @@ final class Game
         if (! $flashback && $card->morph !== null) {
             $ways[] = 'morph';
         }
+        if (! $flashback && $card->bestow !== null) {
+            $ways[] = 'bestow';
+        }
 
         return $ways;
     }
@@ -822,11 +825,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -837,6 +840,8 @@ final class Game
                 $options['flashback'] = true;
             } elseif ($part === 'rb') {
                 $options['rebound'] = true;
+            } elseif ($part === 'bestow') {
+                $options['bestowed'] = true;
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (preg_match('/^m\d+(?:\+\d+)*$/', $part)) {
@@ -1001,6 +1006,9 @@ final class Game
         if ($options['faceDown'] && $card->morph === null) {
             return "{$card->name} cannot be cast face down.";
         }
+        if ($options['bestowed'] && $card->bestow === null) {
+            return "{$card->name} has no bestow.";
+        }
         if (! $options['faceDown'] && ! in_array(array_values(array_unique(array_map('intval', $options['modes']))), $card->modeChoices(), true)) {
             return $card->choose === null ? "{$card->name} has no modes." : "Choose {$card->choose['min']}".($card->choose['max'] > $card->choose['min'] ? " to {$card->choose['max']}" : '')." of {$card->name}'s modes.";
         }
@@ -1035,7 +1043,27 @@ final class Game
      */
     private function castKinds(CardDefinition $card, array $options): array
     {
-        return $options['faceDown'] ? [] : $card->targetKinds($options['modes'], $options['kicked']);
+        return self::castTargetKinds($card, $options);
+    }
+
+    /**
+     * The targets a spell needs, cast a given way: none face down, the
+     * creature it enchants when bestowed.
+     *
+     * @param CardDefinition $card
+     * @param string|array   $how
+     *
+     * @return string[]
+     */
+    public static function castTargetKinds(CardDefinition $card, string|array $how): array
+    {
+        $options = self::castOptions($how);
+
+        return match (true) {
+            $options['faceDown'] => [],
+            $options['bestowed'] => [$card->bestow['enchant']],
+            default => $card->targetKinds($options['modes'], $options['kicked']),
+        };
     }
 
     /**
@@ -1053,6 +1081,9 @@ final class Game
         if ($options['rebound']) {
             // Without paying its mana cost (rule 118.9): X is 0.
             return '';
+        }
+        if ($options['bestowed']) {
+            return $card->bestow['cost'];
         }
         $cost = $options['faceDown'] ? '{3}' : ($options['flashback'] ? (string) $card->flashback : (string) $card->cost);
 
@@ -1308,7 +1339,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand]);
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'], 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed']]);
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
@@ -1316,6 +1347,7 @@ final class Game
             $fromCommand ? 'from the command zone'.($tax > 0 ? " (tax {{$tax}})" : '') : '',
             $options['flashback'] ? 'with flashback' : '',
             $options['rebound'] ? 'from exile with rebound' : '',
+            $options['bestowed'] ? 'bestowed' : '',
             $options['kicked'] ? 'kicked' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['modes'] === [] ? '' : 'choosing '.implode(' and ', array_map(fn (int $mode) => '"'.rtrim(str_replace('CARDNAME', $card->name, $card->modes[$mode]['text']), '.').'"', $options['modes'])),
@@ -1494,13 +1526,23 @@ final class Game
         }
         $card = $object->definition();
         $effects = $ability ? $item['effects'] : ($card->isPermanentCard() ? [] : $card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false));
-        $kinds = $ability ? $item['kinds'] : ($card->aura !== null ? [$card->aura['enchant']] : self::targetKindsOf($effects));
+        $kinds = $ability ? $item['kinds'] : match (true) {
+            (bool) ($item['bestowed'] ?? false) => [$card->bestow['enchant']],
+            $card->aura !== null => [$card->aura['enchant']],
+            default => self::targetKindsOf($effects),
+        };
         $name = $ability ? $item['label'] : $object->name();
 
         // A spell or ability whose targets are all illegal does not resolve (rule 608.2b).
         $legal = [];
         foreach ($item['targets'] as $slot => $target) {
             $legal[$slot] = $this->isLegalTarget($kinds[$slot], $target, $item['controller'], $item['id']);
+        }
+        if ($legal !== [] && ! in_array(true, $legal, true) && ! $ability && ($item['bestowed'] ?? false)) {
+            // A bestowed Aura with nothing to enchant resolves as a creature (rule 702.103e).
+            $item['bestowed'] = false;
+            $item['targets'] = [];
+            $legal = [];
         }
         if ($legal !== [] && ! in_array(true, $legal, true)) {
             $this->log("{$name} has no legal targets left and does nothing.");
@@ -1513,8 +1555,9 @@ final class Game
 
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0));
-            if ($card->aura !== null) {
+            if ($card->aura !== null || ($item['bestowed'] ?? false)) {
                 $object->attachedTo = $this->targetObject($item['targets'][0])?->id;
+                $object->bestowed = (bool) ($item['bestowed'] ?? false);
             }
             $this->log("{$object->name()} enters the battlefield".($object->attachedTo !== null ? ' attached to '.$this->objects[$object->attachedTo]->name() : '').'.');
 
@@ -3691,6 +3734,10 @@ final class Game
      */
     public function isCreature(GameObject $object): bool
     {
+        // A bestowed Aura is not a creature while it is attached (rule 702.103b).
+        if ($object->bestowed && $object->attachedTo !== null) {
+            return false;
+        }
         if ($object->definition()->isCreature()) {
             return true;
         }
@@ -3718,6 +3765,18 @@ final class Game
     }
 
     /**
+     * What an Aura, Equipment or bestowed Aura gives the permanent it is attached to.
+     *
+     * @param GameObject $attached
+     *
+     * @return array{power: int, toughness: int, keywords: string[]}|null
+     */
+    private function bonusOf(GameObject $attached): ?array
+    {
+        return $attached->bestowed ? $attached->definition()->bestow : $attached->definition()->attachmentBonus();
+    }
+
+    /**
      * The Auras and Equipment attached to a permanent.
      *
      * @param GameObject $object
@@ -3726,14 +3785,14 @@ final class Game
      */
     public function attachments(GameObject $object): array
     {
-        return array_values(array_filter($this->permanents(), fn (GameObject $attached) => $attached->attachedTo === $object->id && $attached->definition()->attachmentBonus() !== null));
+        return array_values(array_filter($this->permanents(), fn (GameObject $attached) => $attached->attachedTo === $object->id && $this->bonusOf($attached) !== null));
     }
 
     public function power(GameObject $object): int
     {
         $power = ($this->levelBand($object)['power'] ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         foreach ($this->attachments($object) as $attached) {
-            $power += $attached->definition()->attachmentBonus()['power'];
+            $power += $this->bonusOf($attached)['power'];
         }
         foreach ($object->untilEndOfTurn as $effect) {
             $power += $effect['power'];
@@ -3749,7 +3808,7 @@ final class Game
     {
         $toughness = ($this->levelBand($object)['toughness'] ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         foreach ($this->attachments($object) as $attached) {
-            $toughness += $attached->definition()->attachmentBonus()['toughness'];
+            $toughness += $this->bonusOf($attached)['toughness'];
         }
         foreach ($object->untilEndOfTurn as $effect) {
             $toughness += $effect['toughness'];
@@ -3775,7 +3834,7 @@ final class Game
         if ($object->zone === GameObject::BATTLEFIELD) {
             array_push($keywords, ...($this->levelBand($object)['keywords'] ?? []));
             foreach ($this->attachments($object) as $attached) {
-                array_push($keywords, ...$attached->definition()->attachmentBonus()['keywords']);
+                array_push($keywords, ...$this->bonusOf($attached)['keywords']);
             }
             foreach ($object->untilEndOfTurn as $effect) {
                 array_push($keywords, ...$effect['keywords']);
@@ -4046,6 +4105,7 @@ final class Game
             'flashback' => (bool) ($item['flashback'] ?? false),
             'faceDown' => (bool) ($item['faceDown'] ?? false),
             'fromHand' => (bool) ($item['fromHand'] ?? false),
+            'bestowed' => (bool) ($item['bestowed'] ?? false),
         ])), (array) $data['stack']));
         $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
             'source' => (int) $trigger['source'],

@@ -150,7 +150,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -204,7 +204,7 @@ final class TextParser
                 || (! $spell && self::restriction($line, $result))
                 || (! $spell && self::anthem($line, $result))
                 || self::additionalCost($line, $result)
-                || ($card->isAura() && self::aura($line, $result))
+                || (($card->isAura() || $result['bestow'] !== null) && self::aura($line, $result))
                 || ($card->isEquipment() && self::equipment($line, $result))
                 || ($card->isPlaneswalker() && self::loyalty($line, $result))
                 || (! $spell && self::triggered($line, $result))
@@ -245,6 +245,12 @@ final class TextParser
 
         if ($card->isAura() && $result['aura'] === null) {
             $result['unsupported'][] = 'Enchant …';
+        }
+        // Bestowed, it is an Aura with enchant creature (rule 702.103); otherwise a creature.
+        if ($result['bestow'] !== null) {
+            $result['bestow'] += ($result['aura'] ?? []) + ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
+            $result['bestow']['enchant'] = 'creature';
+            $result['aura'] = null;
         }
         if (in_array('prowess', $result['keywords'], true)) {
             $result['triggered'][] = ['text' => 'Prowess', 'event' => 'cast_noncreature', 'effects' => [['type' => 'pump', 'power' => 1, 'toughness' => 1, 'keywords' => [], 'self' => true]]];
@@ -424,6 +430,8 @@ final class TextParser
                 $found['kicker'] = $m[1];
             } elseif (preg_match('/^flashback '.self::COST.'$/i', $part, $m) && $spell) {
                 $found['flashback'] = $m[1];
+            } elseif (preg_match('/^bestow '.self::COST.'$/i', $part, $m) && ! $spell) {
+                $found['bestow'] = ['cost' => $m[1]];
             } elseif (preg_match('/^unearth '.self::COST.'$/i', $part, $m) && ! $spell) {
                 $found['unearth'] = $m[1];
             } elseif (preg_match('/^cycling '.self::COST.'$/i', $part, $m)) {
@@ -447,7 +455,7 @@ final class TextParser
                 return false;
             }
         }
-        foreach (['kicker', 'flashback', 'cycling', 'morph', 'unearth'] as $cost) {
+        foreach (['kicker', 'flashback', 'cycling', 'morph', 'unearth', 'bestow'] as $cost) {
             if ($found[$cost] !== null && str_contains(is_array($found[$cost]) ? $found[$cost]['cost'] : $found[$cost], 'X')) {
                 return false;
             }

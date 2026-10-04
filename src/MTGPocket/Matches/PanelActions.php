@@ -111,7 +111,7 @@ final class PanelActions
         $card = ($match->game?->objects[$id] ?? throw new GameException('That card is not in your hand.'))->printed();
         $options = in_array($how, ['cycle', 'unearth'], true) ? null : Game::castOptions($how);
 
-        if ($options !== null && ! $card->isLand() && (self::xCount($card, $options) > 0 || ($options['faceDown'] ? 0 : $card->targetCount($options['modes'], $options['kicked'])) > 0)) {
+        if ($options !== null && ! $card->isLand() && (self::xCount($card, $options) > 0 || count(Game::castTargetKinds($card, $options)) > 0)) {
             $seat = $match->game->seatOf($playerId);
             if ($seat === null || ! $match->game->canCast($seat, $id, $how)) {
                 throw new GameException("You cannot cast {$card->name} that way now.");
@@ -167,7 +167,7 @@ final class PanelActions
         }
         $card = $match->game->objects[(int) $cast['id']]->printed();
         $options = Game::castOptions((string) ($cast['how'] ?? ''));
-        if (! isset($cast['x']) || count($cast['targets']) < ($options['faceDown'] ? 0 : $card->targetCount($options['modes'], $options['kicked']))) {
+        if (! isset($cast['x']) || count($cast['targets']) < count(Game::castTargetKinds($card, $options))) {
             return [$match, false];
         }
 

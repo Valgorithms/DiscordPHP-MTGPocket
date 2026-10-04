@@ -112,6 +112,9 @@ final class CardDefinition
     /** An unearth cost (rule 702.84). */
     public readonly ?string $unearth;
 
+    /** @var array{cost: string, enchant: string, power: int, toughness: int, keywords: string[]}|null Its bestow cost and what it gives as an Aura (rule 702.103). */
+    public readonly ?array $bestow;
+
     /** @var array<int, array{power: int, toughness: int, keywords: string[], other: bool}> What it gives the creatures its controller controls (`other`: but itself). */
     public readonly array $anthem;
 
@@ -191,6 +194,7 @@ final class CardDefinition
         $this->cycling = $parsed['cycling'];
         $this->cyclingFinds = $parsed['cyclingFinds'];
         $this->unearth = $parsed['unearth'];
+        $this->bestow = $parsed['bestow'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];
