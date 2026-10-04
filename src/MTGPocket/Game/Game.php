@@ -1566,6 +1566,59 @@ final class Game
     }
 
     /**
+     * Finishes looking at the top cards of a library: the chosen cards go to
+     * their owner's hand, and the rest go to the bottom in a random order
+     * or into the graveyard. Then the spell or ability goes on resolving.
+     *
+     * @param int   $seat
+     * @param int[] $ids
+     *
+     * @return void
+     */
+    public function take(int $seat, array $ids): void
+    {
+        $choice = $this->pendingChoice;
+        if ($choice === null || $choice['type'] !== 'look' || $choice['seat'] !== $seat || $this->stage !== self::PLAYING) {
+            throw new GameException('You are not looking at any cards.');
+        }
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $least = $choice['may'] ? 0 : $choice['take'];
+        if (count($ids) < $least || count($ids) > $choice['take']) {
+            throw new GameException($least === $choice['take'] ? "Choose {$choice['take']} of the cards." : "Choose up to {$choice['take']} of the cards.");
+        }
+        foreach ($ids as $id) {
+            if (! in_array($id, $choice['eligible'], true)) {
+                throw new GameException('You can\'t take that card.');
+            }
+        }
+        $player = $this->players[$seat];
+        foreach ($ids as $id) {
+            $this->moveTo($this->objects[$id], GameObject::HAND);
+        }
+        $rest = array_values(array_diff($choice['cards'], $ids));
+        shuffle($rest);
+        foreach ($rest as $id) {
+            $object = $this->objects[$id];
+            if ($choice['rest'] === 'graveyard') {
+                $this->moveTo($object, GameObject::GRAVEYARD);
+            } else {
+                $this->removeFromZone($object);
+                $object->moveTo(GameObject::LIBRARY);
+                array_unshift($player->library, $id);
+            }
+        }
+        $this->pendingChoice = null;
+        $this->log(
+            "{$player->name} looks at the top ".count($choice['cards']).' cards and puts '.($ids === [] ? 'none' : count($ids)).' into their hand.',
+            $seat,
+            'took '.count($ids).'/'.count($choice['cards']),
+        );
+        $resume = $choice['resume'];
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+    /**
      * Does one effect of a resolving spell or ability.
      *
      * @param array           $effect     See {@see TextParser::effect()}.
@@ -1809,6 +1862,24 @@ final class Game
                 }
                 break;
 
+            case 'look':
+                $cards = array_reverse(array_slice($this->players[$controller]->library, -$amount));
+                if ($amount > 0 && $cards !== []) {
+                    $eligible = array_values(array_filter($cards, fn (int $id) => $this->matchesFilter($this->objects[$id]->printed(), $effect['filter'])));
+                    $this->pendingChoice = [
+                        'type' => 'look',
+                        'seat' => $controller,
+                        'cards' => $cards,
+                        'eligible' => $eligible,
+                        'take' => min((int) $effect['take'], count($eligible)),
+                        'may' => (bool) $effect['may'],
+                        'rest' => $effect['rest'],
+                    ];
+
+                    return true;
+                }
+                break;
+
             case 'regenerate':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $affected->shields++;
@@ -1846,6 +1917,10 @@ final class Game
             'noncreature' => ! $card->isCreature(),
             'noncreature_nonland' => ! $card->isCreature() && ! $card->isLand(),
             'instant_sorcery' => $card->is('Instant') || $card->is('Sorcery'),
+            'land' => $card->isLand(),
+            'creature_or_land' => $card->isCreature() || $card->isLand(),
+            'artifact' => $card->is('Artifact'),
+            'enchantment' => $card->is('Enchantment'),
             default => true,
         };
     }
@@ -2017,7 +2092,7 @@ final class Game
                 'kinds' => self::targetKindsOf($ability['effects']),
                 'label' => "{$source->name()}'s ability",
                 'text' => str_replace('CARDNAME', $source->name(), $ability['text']),
-            ];
+            ] + (isset($ability['modes']) ? ['modes' => $ability['modes'], 'choose' => $ability['choose']] : []);
         }
     }
 
@@ -2034,6 +2109,29 @@ final class Game
         usort($this->pendingTriggers, fn (array $a, array $b) => ($a['controller'] !== $this->active) <=> ($b['controller'] !== $this->active));
         while ($this->pendingTriggers !== []) {
             $trigger = $this->pendingTriggers[0];
+            // A modal one first gets its modes (rule 603.3c): only those with targets to choose.
+            if (isset($trigger['modes'])) {
+                $options = array_values(array_filter(
+                    CardDefinition::choices(count($trigger['modes']), $trigger['choose']),
+                    fn (array $modes) => array_filter(self::targetKindsOf($this->modeEffects($trigger, $modes)), fn (string $kind) => $this->targetOptions($trigger['controller'], $kind) === []) === []
+                ));
+                if ($options === []) {
+                    array_shift($this->pendingTriggers);
+                    $this->log("{$trigger['label']} has no mode it can choose and is removed.");
+
+                    continue;
+                }
+                if (count($options) > 1) {
+                    $this->pendingChoice = ['type' => 'mode', 'seat' => $trigger['controller'], 'label' => $trigger['label'], 'options' => $options, 'texts' => array_map(
+                        fn (array $modes) => implode(' and ', array_map(fn (int $mode) => rtrim(str_replace('CARDNAME', $this->objects[$trigger['source']]->name(), $trigger['modes'][$mode]['text']), '.'), $modes)),
+                        $options,
+                    )];
+
+                    return true;
+                }
+                $this->setTriggerModes($options[0]);
+                $trigger = $this->pendingTriggers[0];
+            }
             $targets = [];
             foreach ($trigger['kinds'] as $kind) {
                 $options = $this->targetOptions($trigger['controller'], $kind);
@@ -2053,6 +2151,65 @@ final class Game
         }
 
         return false;
+    }
+
+    /**
+     * The effects of a modal triggered ability's chosen modes, in order.
+     *
+     * @param array $trigger
+     * @param int[] $modes
+     *
+     * @return array[]
+     */
+    private function modeEffects(array $trigger, array $modes): array
+    {
+        $effects = [];
+        foreach ($modes as $mode) {
+            array_push($effects, ...$trigger['modes'][$mode]['effects']);
+        }
+
+        return $effects;
+    }
+
+    /**
+     * Fixes the modes of the modal triggered ability next in line.
+     *
+     * @param int[] $modes
+     *
+     * @return void
+     */
+    private function setTriggerModes(array $modes): void
+    {
+        $trigger = $this->pendingTriggers[0];
+        $trigger['effects'] = $this->modeEffects($trigger, $modes);
+        $trigger['kinds'] = self::targetKindsOf($trigger['effects']);
+        $trigger['text'] = implode(' and ', array_map(fn (int $mode) => rtrim(str_replace('CARDNAME', $this->objects[$trigger['source']]->name(), $trigger['modes'][$mode]['text']), '.'), $modes)).'.';
+        unset($trigger['modes'], $trigger['choose']);
+        $this->pendingTriggers[0] = $trigger;
+    }
+
+    /**
+     * Chooses the modes of a modal triggered ability, as one of the options
+     * {@see choiceAwaiting()} lists.
+     *
+     * @param int $seat
+     * @param int $option
+     *
+     * @return void
+     */
+    public function chooseMode(int $seat, int $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($choice === null || $choice['type'] !== 'mode' || $choice['seat'] !== $seat || $this->stage !== self::PLAYING) {
+            throw new GameException('You have no modes to choose.');
+        }
+        if (! isset($choice['options'][$option])) {
+            throw new GameException('Choose one of the modes offered.');
+        }
+        $this->pendingChoice = null;
+        $this->setTriggerModes($choice['options'][$option]);
+        $this->log("{$this->players[$seat]->name} chooses \"{$choice['texts'][$option]}\" for {$this->pendingTriggers[0]['label']}.", $seat);
+        $this->settle();
     }
 
     /**
@@ -3729,7 +3886,7 @@ final class Game
             'kinds' => array_values(array_map('strval', (array) $trigger['kinds'])),
             'label' => (string) $trigger['label'],
             'text' => (string) ($trigger['text'] ?? ''),
-        ], (array) ($data['pendingTriggers'] ?? [])));
+        ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : []), (array) ($data['pendingTriggers'] ?? [])));
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
         $game->exile = array_map('intval', (array) $data['exile']);
         $game->command = array_map('intval', (array) ($data['command'] ?? []));

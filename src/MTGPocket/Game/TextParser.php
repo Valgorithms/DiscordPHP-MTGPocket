@@ -160,14 +160,19 @@ final class TextParser
         for ($i = 0; $i < count($lines); $i++) {
             $line = $lines[$i];
 
-            // A modal spell's `Choose one —` and its `•` modes.
-            if (preg_match('/^Choose (one|two|three|one or both|one or more) —$/u', $line, $match)) {
+            // A modal spell's `Choose one —` and its `•` modes, or a triggered ability's `When CARDNAME enters, choose one —`.
+            if (preg_match('/^(?:(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks), )?[Cc]hoose (one|two|three|one or both|one or more) —$/u', $line, $match)) {
                 $bullets = [];
                 while (isset($lines[$i + 1]) && str_starts_with($lines[$i + 1], '•')) {
                     $bullets[] = trim(mb_substr($lines[++$i], 1));
                 }
-                if (! self::modes($spell, $match[1], $bullets, $result)) {
-                    $result['unsupported'][] = implode("\n", [$line, ...array_map(fn ($bullet) => "• {$bullet}", $bullets)]);
+                $read = $match[1] === ''
+                    ? self::modes($spell, $match[2], $bullets, $result)
+                    : ! $spell && self::modalTrigger(['enters the battlefield' => 'enters', 'enters' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks'][$match[1]], $line, $match[2], $bullets, $result);
+                if (! $read) {
+                    // Each mode not read yet, so the coverage report counts them one by one.
+                    $unread = array_values(array_filter($bullets, fn (string $bullet) => self::effects($bullet) === null));
+                    $result['unsupported'] = [...$result['unsupported'], ...($unread === [] ? [$line] : array_map(fn ($bullet) => "• {$bullet}", $unread))];
                 }
 
                 continue;
@@ -213,6 +218,11 @@ final class TextParser
                 continue;
             }
 
+            if (($look = self::look($line)) !== null) {
+                $result['effects'][] = $look;
+
+                continue;
+            }
             if (($reveal = self::revealDiscard($line)) !== null) {
                 [$result['effects'][], $line] = $reveal;
             }
@@ -272,6 +282,45 @@ final class TextParser
         }
         $result['modes'] = $modes;
         $result['choose'] = ['min' => $min, 'max' => min($max ?? count($modes), count($modes))];
+
+        return true;
+    }
+
+    /**
+     * A triggered ability with modes, such as `When CARDNAME enters, choose
+     * one —`.
+     *
+     * @param string   $event
+     * @param string   $line
+     * @param string   $choose
+     * @param string[] $bullets
+     * @param array    $result
+     *
+     * @return bool
+     */
+    private static function modalTrigger(string $event, string $line, string $choose, array $bullets, array &$result): bool
+    {
+        if (count($bullets) < 2) {
+            return false;
+        }
+        $modes = [];
+        foreach ($bullets as $bullet) {
+            if (($effects = self::effects($bullet)) === null) {
+                return false;
+            }
+            $modes[] = ['text' => $bullet, 'effects' => $effects];
+        }
+        [$min, $max] = self::CHOOSE[$choose];
+        if ($min > count($modes)) {
+            return false;
+        }
+        $result['triggered'][] = [
+            'text' => implode("\n", [$line, ...array_map(fn ($bullet) => "• {$bullet}", $bullets)]),
+            'event' => $event,
+            'effects' => [],
+            'modes' => $modes,
+            'choose' => ['min' => $min, 'max' => min($max ?? count($modes), count($modes))],
+        ];
 
         return true;
     }
@@ -828,6 +877,9 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
+        if (($look = self::look($text)) !== null) {
+            return [$look];
+        }
         $effects = [];
         if (($reveal = self::revealDiscard($text)) !== null) {
             [$effects[], $text] = $reveal;
@@ -848,6 +900,35 @@ final class TextParser
         }
 
         return $effects === [] ? null : $effects;
+    }
+
+    /**
+     * `Look at the top four cards of your library. Put one of them into
+     * your hand and the rest on the bottom of your library in any order.`,
+     * or `You may reveal a creature card from among them and put it into
+     * your hand. Put the rest …`.
+     *
+     * @param string $text
+     *
+     * @return array|null
+     */
+    private static function look(string $text): ?array
+    {
+        $kinds = ['card' => 'any', 'creature card' => 'creature', 'land card' => 'land', 'nonland card' => 'nonland', 'instant or sorcery card' => 'instant_sorcery', 'creature or land card' => 'creature_or_land', 'artifact card' => 'artifact', 'enchantment card' => 'enchantment'];
+        $kind = implode('|', array_map(fn ($k) => preg_quote($k, '/'), array_keys($kinds)));
+        if (! preg_match("/^Look at the top (\\w+) cards of your library\\. (?:Put (one|two) of them into your hand|You may reveal an? ({$kind}) from among them and put (?:it|that card) into your hand)(?: and the rest|\\. Put the rest) (on the bottom of your library in (?:a random|any) order|into your graveyard)\\.?$/", trim($text), $m)
+            || ! is_int($n = self::amount($m[1]))) {
+            return null;
+        }
+
+        return [
+            'type' => 'look',
+            'amount' => $n,
+            'take' => ($m[2] ?? '') === 'two' ? 2 : 1,
+            'may' => ($m[3] ?? '') !== '',
+            'filter' => ($m[3] ?? '') === '' ? 'any' : $kinds[$m[3]],
+            'rest' => str_starts_with($m[4], 'into') ? 'graveyard' : 'bottom',
+        ];
     }
 
     /**

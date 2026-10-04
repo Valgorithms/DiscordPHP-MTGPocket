@@ -48,6 +48,8 @@ final class AutoPlayer
             'bottom' => self::bottom($game, $seat),
             'trigger' => self::trigger($game, $seat),
             'scry', 'surveil' => self::arrange($game, $seat),
+            'look' => self::look($game, $seat),
+            'mode' => self::mode($game, $seat),
             'attack' => self::attack($game, $seat),
             'block' => self::block($game, $seat),
             'discard' => self::discard($game, $seat),
@@ -73,6 +75,22 @@ final class AutoPlayer
     {
         $player = $game->players[$seat];
         $game->bottom($seat, array_slice(self::worstFirst($game, $player->hand), 0, $player->toBottom));
+
+        return true;
+    }
+
+    private static function look(Game $game, int $seat): bool
+    {
+        $choice = $game->choiceAwaiting();
+        // The most expensive eligible cards.
+        $game->take($seat, array_slice(array_reverse(self::worstFirst($game, $choice['eligible'])), 0, $choice['take']));
+
+        return true;
+    }
+
+    private static function mode(Game $game, int $seat): bool
+    {
+        $game->chooseMode($seat, 0);
 
         return true;
     }

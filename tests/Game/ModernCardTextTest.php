@@ -52,6 +52,10 @@ final class ModernCardTextTest extends GameTestCase
         'Divine Verdict' => ['manaCost' => '{3}{W}', 'type' => 'Instant', 'text' => 'Destroy target attacking or blocking creature.', 'colors' => ['W']],
         'Bog Wraith' => ['manaCost' => '{3}{B}', 'type' => 'Creature — Wraith', 'power' => '3', 'toughness' => '3', 'text' => 'Swampwalk (This creature can\'t be blocked as long as defending player controls a Swamp.)', 'colors' => ['B']],
         'Ghostly Flicker Lite' => ['manaCost' => '{2}{U}', 'type' => 'Instant', 'text' => "Convoke.\nDraw two cards.", 'colors' => ['U']],
+        'Impulse' => ['manaCost' => '{1}{U}', 'type' => 'Instant', 'text' => 'Look at the top four cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order.', 'colors' => ['U']],
+        'Commune with Nature' => ['manaCost' => '{G}', 'type' => 'Sorcery', 'text' => 'Look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in any order.', 'colors' => ['G']],
+        'Mode Sprite' => ['manaCost' => '{1}{W}', 'type' => 'Creature — Faerie', 'power' => '2', 'toughness' => '2', 'text' => "When this creature enters, choose one —\n• Draw a card.\n• Destroy target artifact.", 'colors' => ['W']],
+        'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
     private function put(int $seat, string $name, string $zone): int
@@ -317,6 +321,66 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertCount(2, $game->players[0]->hand);
     }
 
+    public function testLookingAtTheTopCards(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Island', 2);
+        $library = $game->players[0]->library;
+        $top = array_reverse(array_slice($library, -4));
+        $impulse = $this->put(0, 'Impulse', GameObject::HAND);
+        $game->cast(0, $impulse);
+        $this->resolve();
+        $this->assertSame('look', $game->decision(0));
+        $this->assertSame($top, $game->choiceAwaiting()['cards']);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        try {
+            $game->take(0, []);
+            $this->fail('Impulse must take one.');
+        } catch (\MTGPocket\Game\GameException) {
+        }
+        $game->take(0, [$top[2]]);
+        $this->assertSame(GameObject::HAND, $this->zone($top[2]));
+        $this->assertCount(count($library) - 4, array_intersect($game->players[0]->library, array_slice($library, 0, -4)));
+        $this->assertEqualsCanonicalizing([$top[0], $top[1], $top[3]], array_slice($game->players[0]->library, 0, 3), 'The rest go on the bottom.');
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($impulse));
+
+        // Only a creature, and only if you want to.
+        $this->lands(0, 'Forest', 1);
+        $commune = $this->put(0, 'Commune with Nature', GameObject::HAND);
+        $this->passUntil(Step::PrecombatMain, 3);
+        $game->cast(0, $commune);
+        $this->resolve();
+        $look = $game->choiceAwaiting();
+        foreach ($look['eligible'] as $id) {
+            $this->assertTrue($game->objects[$id]->definition()->isCreature());
+        }
+        $game->take(0, []);
+        $this->assertNull($game->choiceAwaiting());
+    }
+
+    public function testModalEntersTriggers(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Plains', 4);
+        $sprite = $this->put(0, 'Mode Sprite', GameObject::HAND);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $sprite);
+        $this->resolve();
+        $this->resolve(); // Only "Draw a card" can be chosen with no artifact around.
+        $this->assertCount($hand, $game->players[0]->hand);
+
+        $thopter = $this->put(1, 'Ornithopter', GameObject::BATTLEFIELD);
+        $again = $this->put(0, 'Mode Sprite', GameObject::HAND);
+        $game->cast(0, $again);
+        $this->resolve();
+        $this->assertSame('mode', $game->decision(0));
+        $this->assertSame(['Draw a card', 'Destroy target artifact'], $game->choiceAwaiting()['texts']);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $game->chooseMode(0, 1);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($thopter));
+    }
+
     public function testDecksOfTheseCardsPlayToTheEnd(): void
     {
         $deck = function (array $basics, array $more): array {
@@ -333,11 +397,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 

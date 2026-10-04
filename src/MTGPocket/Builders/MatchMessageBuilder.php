@@ -356,6 +356,8 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'bottom' => 'put cards on the bottom',
                 'trigger' => 'choose targets for '.$game->triggerAwaitingTargets()['label'],
                 'scry', 'surveil' => $game->decision($seat),
+                'look' => 'choose from the top of their library',
+                'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
                 'discard' => $game->choiceAwaiting() === null ? 'discard down to seven' : 'discard',
@@ -605,6 +607,24 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_PRIMARY, $id('keepall'))->setLabel(count($cards) === 1 ? 'Keep it on top' : 'Keep them all on top')));
                 break;
 
+            case 'look':
+                $look = $game->choiceAwaiting();
+                if ($look['eligible'] !== [] && $look['take'] > 0) {
+                    $message->addComponent(self::cardSelect($id('take'), 'Put into your hand…', $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
+                }
+                if ($look['may'] || $look['take'] === 0) {
+                    $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('takenone'))->setLabel($look['take'] === 0 ? 'Continue' : 'Take none')));
+                }
+                break;
+
+            case 'mode':
+                $select = StringSelect::new($id('mode'))->setPlaceholder('Choose a mode');
+                foreach (array_slice($game->choiceAwaiting()['texts'], 0, 25, true) as $option => $text) {
+                    $select->addOption(Option::new(Text::clip($text, 100), (string) $option));
+                }
+                $message->addComponent(ActionRow::new()->addComponent($select));
+                break;
+
             case 'trigger':
                 $trigger = $game->triggerAwaitingTargets();
                 $slot = count((array) ($choice['trigger'] ?? []));
@@ -754,6 +774,14 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\nChoose any to put ".($decision === 'scry' ? 'on the bottom' : 'into your graveyard').', or keep them all on top.',
+            'look' => 'From the top of your library, these are'."\n"
+                .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
+                ."\n".match (true) {
+                    $game->choiceAwaiting()['take'] === 0 => 'None of them can go to your hand.',
+                    $game->choiceAwaiting()['may'] => 'You may put '.($game->choiceAwaiting()['take'] === 1 ? 'one' : 'up to '.$game->choiceAwaiting()['take']).' of the highlighted choices into your hand.',
+                    default => 'Choose '.$game->choiceAwaiting()['take'].' to put into your hand.',
+                }.' The rest go '.($game->choiceAwaiting()['rest'] === 'graveyard' ? 'into your graveyard.' : 'on the bottom in a random order.'),
+            'mode' => 'Choose the mode for **'.$game->choiceAwaiting()['label'].'**, which just triggered.',
             'priority' => match (true) {
                 isset($choice['cast']) => 'Finish casting your spell, or cancel.',
                 isset($choice['activate']) => 'Choose targets for the ability, or cancel.',

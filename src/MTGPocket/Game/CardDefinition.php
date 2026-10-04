@@ -383,16 +383,26 @@ final class CardDefinition
      */
     public function modeChoices(): array
     {
-        if ($this->choose === null) {
-            return [[]];
-        }
+        return $this->choose === null ? [[]] : self::choices(count($this->modes), $this->choose);
+    }
+
+    /**
+     * Every set of modes that could be chosen, fewest first.
+     *
+     * @param int                         $count  How many modes there are.
+     * @param array{min: int, max: int}   $choose
+     *
+     * @return int[][]
+     */
+    public static function choices(int $count, array $choose): array
+    {
         $choices = [[]];
-        foreach (array_keys($this->modes) as $mode) {
+        for ($mode = 0; $mode < $count; $mode++) {
             foreach ($choices as $choice) {
                 $choices[] = [...$choice, $mode];
             }
         }
-        $choices = array_values(array_filter($choices, fn (array $choice) => count($choice) >= $this->choose['min'] && count($choice) <= $this->choose['max']));
+        $choices = array_values(array_filter($choices, fn (array $choice) => count($choice) >= $choose['min'] && count($choice) <= $choose['max']));
         usort($choices, fn (array $a, array $b) => [count($a), $a] <=> [count($b), $b]);
 
         return $choices;
