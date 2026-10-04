@@ -1262,6 +1262,9 @@ final class Game
             if ($this->isCreature($object) && $object->sick && ! $this->hasKeyword($object, 'haste')) {
                 continue;
             }
+            if (($ability['chosen'] ?? false) && $object->chosen !== null) {
+                $ability['colors'] = [$object->chosen];
+            }
             $sources[$object->id] = $ability;
         }
         // Lands and creatures before Treasures, which are used up.
@@ -3419,6 +3422,10 @@ final class Game
         if ($card->entersWithMinusCounters > 0) {
             $object->addCounters('-1/-1', $card->entersWithMinusCounters);
         }
+        if ($card->chooses !== null) {
+            $object->chosen = $this->choiceFor($controller, $card->chooses);
+            $this->log("{$this->players[$controller]->name} chooses {$object->chosen} for {$object->name()}.");
+        }
         // Bloodthirst (rule 702.54): if an opponent was dealt damage this turn.
         if (($n = $this->keywordAmount($object, 'bloodthirst')) > 0) {
             foreach ($this->players as $seat => $player) {
@@ -3437,6 +3444,42 @@ final class Game
                 }
             }
         }
+    }
+
+    /**
+     * What a player chooses as a permanent enters: the creature type most
+     * common among their creature cards, or the color most common in their
+     * cards' mana costs.
+     *
+     * @param int    $seat
+     * @param string $kind `type` or `color`.
+     *
+     * @return string A creature type, or a color letter.
+     */
+    private function choiceFor(int $seat, string $kind): string
+    {
+        $counts = [];
+        foreach ($this->objects as $object) {
+            if ($object->owner !== $seat || $object->definition()->isToken()) {
+                continue;
+            }
+            $card = $object->printed();
+            if ($kind === 'type') {
+                if ($card->isCreature()) {
+                    foreach ($card->subtypes as $subtype) {
+                        $counts[$subtype] = ($counts[$subtype] ?? 0) + 1;
+                    }
+                }
+            } else {
+                preg_match_all('/[WUBRG]/', (string) ($card->card['manaCost'] ?? ''), $symbols);
+                foreach ($symbols[0] as $color) {
+                    $counts[$color] = ($counts[$color] ?? 0) + 1;
+                }
+            }
+        }
+        arsort($counts);
+
+        return (string) (array_key_first($counts) ?? ($kind === 'type' ? 'Human' : 'W'));
     }
 
     /**
@@ -3867,6 +3910,9 @@ final class Game
                 continue;
             }
             foreach ($source->definition()->anthem as $anthem) {
+                if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
+                    continue;
+                }
                 if (! ($anthem['other'] && $source->id === $object->id)) {
                     $anthems[] = $anthem;
                 }

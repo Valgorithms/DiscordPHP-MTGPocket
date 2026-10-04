@@ -112,6 +112,9 @@ final class CardDefinition
     /** An unearth cost (rule 702.84). */
     public readonly ?string $unearth;
 
+    /** `type` or `color`: what is chosen as it enters (`As this enters, choose a creature type.`). */
+    public readonly ?string $chooses;
+
     /** @var array{cost: string, enchant: string, power: int, toughness: int, keywords: string[]}|null Its bestow cost and what it gives as an Aura (rule 702.103). */
     public readonly ?array $bestow;
 
@@ -195,6 +198,7 @@ final class CardDefinition
         $this->cyclingFinds = $parsed['cyclingFinds'];
         $this->unearth = $parsed['unearth'];
         $this->bestow = $parsed['bestow'];
+        $this->chooses = $parsed['chooses'];
         $this->entersWithMinusCounters = $parsed['minusCounters'];
         $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->anthem = $parsed['anthem'];

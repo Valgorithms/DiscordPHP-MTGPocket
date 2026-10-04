@@ -457,6 +457,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         }
 
         $notes = [];
+        if ($object->chosen !== null) {
+            $notes[] = 'chose '.$object->chosen;
+        }
         $keywords = $game->keywords($object);
         if ($keywords !== []) {
             $notes[] = implode(', ', $keywords);

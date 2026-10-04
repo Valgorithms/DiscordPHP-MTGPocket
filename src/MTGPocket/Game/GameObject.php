@@ -72,6 +72,9 @@ final class GameObject
     /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
     public bool $unearthed = false;
 
+    /** The creature type or color chosen as it entered. */
+    public ?string $chosen = null;
+
     /** Cast for its bestow cost: an Aura while attached (rule 702.103). */
     public bool $bestowed = false;
 
@@ -160,6 +163,7 @@ final class GameObject
         $this->unearthed = false;
         $this->rebound = false;
         $this->bestowed = false;
+        $this->chosen = null;
         $this->incarnation++;
     }
 
@@ -205,6 +209,7 @@ final class GameObject
             'unearthed' => $this->unearthed,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
+            'chosen' => $this->chosen,
         ];
         // Seat 0 is a real value here.
         if ($this->borrowedFrom !== null) {
@@ -236,6 +241,7 @@ final class GameObject
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
         $object->rebound = (bool) ($data['rebound'] ?? false);
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
+        $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
         $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;

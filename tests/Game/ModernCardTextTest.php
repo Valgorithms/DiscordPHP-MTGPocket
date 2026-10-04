@@ -71,6 +71,8 @@ final class ModernCardTextTest extends GameTestCase
         "Dáin's Company Lite" => ['manaCost' => '{R}{W}', 'type' => 'Creature — Dwarf Warrior', 'power' => '2', 'toughness' => '2', 'text' => 'When this creature enters, look at the top four cards of your library. You may reveal a Dwarf or Equipment card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.', 'colors' => ['R', 'W']],
         'Glimpse Lite' => ['manaCost' => '{U}', 'type' => 'Instant', 'text' => "Look at the top three cards of your library, then put them back in any order.\nDraw a card.", 'colors' => ['U']],
         'Hopeful Eidolon' => ['manaCost' => '{W}', 'type' => 'Enchantment Creature — Spirit', 'power' => '1', 'toughness' => '1', 'text' => "Bestow {3}{W} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a creature again if it's not attached.)\nLifelink\nEnchanted creature gets +1/+1 and has lifelink.", 'colors' => ['W']],
+        'Patchwork Banner' => ['manaCost' => '{3}', 'type' => 'Artifact', 'text' => "As this artifact enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{T}: Add one mana of any color.", 'colors' => []],
+        'Room of Refuge Lite' => ['manaCost' => null, 'type' => 'Land', 'text' => "This land enters tapped. As it enters, choose a color.\n{T}: Add one mana of the chosen color.", 'colors' => []],
         'Ornithopter' => ['manaCost' => '{0}', 'type' => 'Artifact Creature — Thopter', 'power' => '0', 'toughness' => '2', 'text' => 'Flying', 'colors' => []],
     ];
 
@@ -354,6 +356,26 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(1, $game->power($game->objects[$eidolon]));
     }
 
+    public function testChosenTypeAndColor(): void
+    {
+        $game = $this->newGame();
+        $elves = array_map(fn () => $this->battlefield(0, 'Llanowar Elves'), range(1, 3));
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $this->lands(0, 'Forest', 3);
+        $banner = $this->put(0, 'Patchwork Banner', GameObject::HAND);
+        $game->cast(0, $banner);
+        $this->resolve();
+        $this->assertSame('Elf', $game->objects[$banner]->chosen, 'The type most of their creatures have.');
+        $this->assertSame(2, $game->power($game->objects[$elves[0]]));
+        $this->assertSame(2, $game->power($game->objects[$bears]));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertSame('Elf', $game->objects[$banner]->chosen);
+
+        $room = $this->put(0, 'Room of Refuge Lite', GameObject::BATTLEFIELD);
+        $this->assertSame('G', $game->objects[$room]->chosen);
+        $this->assertSame(['G'], $game->manaSources(0)[$room]['colors']);
+    }
+
     public function testAnthems(): void
     {
         $game = $this->newGame();
@@ -628,7 +650,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

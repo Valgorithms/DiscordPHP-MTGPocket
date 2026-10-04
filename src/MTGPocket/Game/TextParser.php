@@ -150,7 +150,7 @@ final class TextParser
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
             'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
-            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'morph' => null, 'levels' => [],
+            'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
         ];
@@ -487,6 +487,9 @@ final class TextParser
         $ability = null;
         if (preg_match('/^one mana of any colou?r$/i', $what)) {
             $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
+        } elseif (preg_match('/^one mana of the chosen color$/i', $what) && $result['chooses'] === 'color') {
+            // See Game::manaSources().
+            $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G'], 'chosen' => true];
         } elseif (preg_match('/^(\{[WUBRGC]\})+$/', $what)) {
             preg_match_all('/\{([WUBRGC])\}/', $what, $symbols);
             if (count(array_unique($symbols[1])) !== 1) {
@@ -541,6 +544,13 @@ final class TextParser
 
             return true;
         }
+        // "As CARDNAME enters, choose a creature type." (rule 614.12): chosen as it enters.
+        if (preg_match('/^(CARDNAME enters(?: the battlefield)? tapped\. )?As (?:CARDNAME|it) enters(?: the battlefield)?, choose a (creature type|color)\.?$/', $line, $match)) {
+            $result['entersTapped'] = $result['entersTapped'] || $match[1] !== '';
+            $result['chooses'] = $match[2] === 'color' ? 'color' : 'type';
+
+            return true;
+        }
         if (preg_match('/^As CARDNAME enters(?: the battlefield)?, you may pay (\d+) life\. If you don\'t, it enters(?: the battlefield)? tapped\.?$/', $line, $match)) {
             $result['tappedUnless'] = ['life' => (int) $match[1]];
 
@@ -581,17 +591,17 @@ final class TextParser
      */
     private static function anthem(string $line, array &$result): bool
     {
-        if (preg_match('/^(Other )?[Cc]reatures you control get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?\.?$/', $line, $m)) {
-            [$power, $toughness, $keywords] = [(int) $m[2], (int) $m[3], self::keywordList($m[4] ?? '')];
-        } elseif (preg_match('/^(Other )?[Cc]reatures you control have (.+?)\.?$/', $line, $m)) {
-            [$power, $toughness, $keywords] = [0, 0, self::keywordList($m[2])];
+        if (preg_match('/^(Other )?[Cc]reatures you control( of the chosen type)? get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?\.?$/', $line, $m)) {
+            [$power, $toughness, $keywords] = [(int) $m[3], (int) $m[4], self::keywordList($m[5] ?? '')];
+        } elseif (preg_match('/^(Other )?[Cc]reatures you control( of the chosen type)? have (.+?)\.?$/', $line, $m)) {
+            [$power, $toughness, $keywords] = [0, 0, self::keywordList($m[3])];
         } else {
             return false;
         }
-        if ($keywords === null) {
+        if ($keywords === null || ($m[2] !== '' && $result['chooses'] !== 'type')) {
             return false;
         }
-        $result['anthem'][] = ['power' => $power, 'toughness' => $toughness, 'keywords' => $keywords, 'other' => $m[1] !== ''];
+        $result['anthem'][] = ['power' => $power, 'toughness' => $toughness, 'keywords' => $keywords, 'other' => $m[1] !== ''] + ($m[2] !== '' ? ['chosenType' => true] : []);
 
         return true;
     }
