@@ -358,7 +358,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'scry', 'surveil' => $game->decision($seat),
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
-                'discard' => 'discard down to seven',
+                'discard' => $game->choiceAwaiting() === null ? 'discard down to seven' : 'discard',
                 default => $game->stack === [] ? 'act or pass' : 'respond or pass',
             };
             $lines[] = "<@{$player->id}> to {$what}";
@@ -560,7 +560,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 break;
 
             case 'discard':
-                $count = count($player->hand) - 7;
+                $count = $game->discardCount();
                 $message->addComponent(self::cardSelect($id('disc'), "Discard {$count}", $player->hand, $cardOption, $count, $count));
                 break;
 
@@ -745,7 +745,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'bottom' => "Choose {$player->toBottom} card".($player->toBottom === 1 ? '' : 's').' to put on the bottom of your library.',
             'attack' => 'Choose your attackers, then **Attack**. They attack '.$game->players[$game->defender()]->name.'.',
             'block' => 'For each attacker, choose the creatures that block it, then **Confirm blocks**. Each creature blocks one attacker.',
-            'discard' => 'You have more than seven cards. Choose what to discard.',
+            'discard' => $game->choiceAwaiting() === null
+                ? 'You have more than seven cards. Choose what to discard.'
+                : 'Choose '.$game->discardCount().' card'.($game->discardCount() === 1 ? '' : 's').' to discard.',
             'trigger' => 'Choose targets for **'.$game->triggerAwaitingTargets()['label'].'**, which just triggered: '.$game->triggerAwaitingTargets()['text'],
             'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))

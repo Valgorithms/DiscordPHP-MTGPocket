@@ -31,7 +31,7 @@ use MTGPocket\Game\Step;
 final class AutoPlayer
 {
     /** Effects aimed at the opponent's side; anything else helps your own. */
-    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life'];
+    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life', 'discard'];
 
     /**
      * Makes this seat's next move, if the game is waiting on it.
@@ -80,7 +80,7 @@ final class AutoPlayer
     private static function discard(Game $game, int $seat): bool
     {
         $hand = $game->players[$seat]->hand;
-        $game->discard($seat, array_slice(self::worstFirst($game, $hand), 0, count($hand) - 7));
+        $game->discard($seat, array_slice(self::worstFirst($game, $hand), 0, $game->discardCount()));
 
         return true;
     }
@@ -160,6 +160,15 @@ final class AutoPlayer
             foreach (self::plainPlays($game, $seat) as $id) {
                 if ($game->objects[$id]->definition()->isLand()) {
                     $game->playLand($seat, $id);
+
+                    return true;
+                }
+            }
+            // Landcycle when there is no land to play.
+            $lands = array_filter($game->players[$seat]->hand, fn (int $id) => $game->objects[$id]->definition()->isLand());
+            foreach ($game->plays($seat) as $play) {
+                if ($lands === [] && $play['how'] === 'cycle' && $game->objects[$play['id']]->printed()->cyclingFinds !== null) {
+                    $game->cycle($seat, $play['id']);
 
                     return true;
                 }
@@ -259,7 +268,10 @@ final class AutoPlayer
     {
         $harmful = array_intersect(array_column($effects, 'type'), self::HARMFUL) !== [];
         $targets = [];
+        $spellHarmful = $harmful;
         foreach ($kinds as $kind) {
+            // A fight picks one of your creatures and one of theirs.
+            $harmful = str_ends_with($kind, '_you_control') ? false : (str_ends_with($kind, '_opponent') ? true : $spellHarmful);
             $best = null;
             $bestScore = PHP_INT_MIN;
             foreach ($game->targetOptions($seat, $kind) as $option) {

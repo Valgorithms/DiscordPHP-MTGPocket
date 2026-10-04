@@ -83,9 +83,7 @@ final class CardCoverageTest extends GameTestCase
     public function testEveryCardHereIsReadWhole(): void
     {
         foreach (array_keys(self::MORE) as $name) {
-            $expected = $name === 'River Boa' ? ['Islandwalk'] : ($name === 'Izzet Charm' ? 1 : []);
-            $unsupported = self::read($name)->unsupported;
-            is_int($expected) ? $this->assertCount($expected, $unsupported, $name) : $this->assertSame($expected, $unsupported, $name);
+            $this->assertSame($name === 'River Boa' ? ['Islandwalk'] : [], self::read($name)->unsupported, $name);
         }
     }
 
@@ -164,7 +162,9 @@ final class CardCoverageTest extends GameTestCase
     public function testChooseOneModes(): void
     {
         $charm = self::read('Izzet Charm');
-        $this->assertCount(1, $charm->unsupported, 'The "unless" counter and the looting are not read, so the card is not modal yet.');
+        $this->assertCount(3, $charm->modes);
+        $this->assertSame(['type' => 'counter', 'target' => 'noncreature_spell', 'unless' => '{2}'], $charm->modes[0]['effects'][0]);
+        $this->assertSame(['draw', 'discard'], array_column($charm->modes[2]['effects'], 'type'));
         $fiery = self::read('Fiery Charm');
         $this->assertSame([[0], [1]], $fiery->modeChoices());
         $this->assertSame(['creature'], $fiery->targetKinds([0]));

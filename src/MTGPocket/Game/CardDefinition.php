@@ -36,6 +36,7 @@ final class CardDefinition
     public const array KEYWORDS = [
         'flying', 'reach', 'first strike', 'double strike', 'deathtouch', 'lifelink', 'trample',
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
+        'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
     ];
 
     /**
@@ -45,7 +46,7 @@ final class CardDefinition
      *
      * @var string[]
      */
-    public const array RESTRICTIONS = ["can't attack", "can't block", "doesn't untap", "abilities can't be activated"];
+    public const array RESTRICTIONS = ["can't attack", "can't block", "doesn't untap", "abilities can't be activated", "can't be blocked", 'attacks each combat if able', "can't be countered"];
 
     public readonly string $key;
     public readonly string $name;
@@ -77,8 +78,8 @@ final class CardDefinition
 
     public readonly bool $entersTapped;
 
-    /** How many +1/+1 counters it enters with. */
-    public readonly int $entersWithCounters;
+    /** How many +1/+1 counters it enters with, or `X` for the X it was cast with. */
+    public readonly int|string $entersWithCounters;
 
     /** @var array[] What an instant or sorcery does, in order; see {@see TextParser}. Effects marked `kicked` are done only when it was kicked. */
     public readonly array $effects;
@@ -103,6 +104,15 @@ final class CardDefinition
 
     /** A cycling cost (rule 702.29). */
     public readonly ?string $cycling;
+
+    /** What landcycling finds instead of drawing: `basic land` or a basic land type (rule 702.29e). */
+    public readonly ?string $cyclingFinds;
+
+    /** How many -1/-1 counters it enters with. */
+    public readonly int $entersWithMinusCounters;
+
+    /** @var array{life?: int, lands_min?: int, lands_max?: int, any?: string[]}|null What keeps a land from entering tapped: paying life, or controlling something. */
+    public readonly ?array $entersTappedUnless;
 
     /** @var array{kind: string, cost: string}|null Morph, megamorph or disguise, and the cost to turn it face up (rule 702.37). */
     public readonly ?array $morph;
@@ -169,6 +179,9 @@ final class CardDefinition
         $this->kickerCounters = $parsed['kickerCounters'];
         $this->flashback = $parsed['flashback'];
         $this->cycling = $parsed['cycling'];
+        $this->cyclingFinds = $parsed['cyclingFinds'];
+        $this->entersWithMinusCounters = $parsed['minusCounters'];
+        $this->entersTappedUnless = $parsed['tappedUnless'];
         $this->morph = $parsed['morph'];
         $this->levels = $parsed['levels'];
         $this->aura = $parsed['aura'];
