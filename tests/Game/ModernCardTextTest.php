@@ -165,6 +165,12 @@ final class ModernCardTextTest extends GameTestCase
         'Retrace Lite' => ['manaCost' => '{1}{R}', 'type' => 'Sorcery', 'text' => "Retrace Lite deals 2 damage to any target.\nRetrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)", 'colors' => ['R']],
         'Bargain Lite' => ['manaCost' => '{1}{R}', 'type' => 'Instant', 'text' => "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nBargain Lite deals 2 damage to any target. If this spell was bargained, it deals 4 damage instead.", 'colors' => ['R']],
         'Skulking Ghost' => ['manaCost' => '{1}{B}', 'type' => 'Creature — Spirit', 'power' => '2', 'toughness' => '1', 'text' => "Flying\nWhen Skulking Ghost becomes the target of a spell or ability, sacrifice it.", 'colors' => ['B']],
+        'Grapeshot' => ['manaCost' => '{1}{R}', 'type' => 'Sorcery', 'text' => "Grapeshot deals 1 damage to any target.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)", 'colors' => ['R']],
+        'Foretell Lite' => ['manaCost' => '{2}{R}', 'type' => 'Sorcery', 'text' => "Foretell Lite deals 3 damage to any target.\nForetell {R} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)", 'colors' => ['R']],
+        'Cumulative Lite' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Elemental', 'power' => '4', 'toughness' => '4', 'text' => 'Cumulative upkeep {1} (At the beginning of your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age counter on it.)', 'colors' => ['G']],
+        'Thallid' => ['manaCost' => '{G}', 'type' => 'Creature — Fungus', 'power' => '1', 'toughness' => '1', 'text' => "At the beginning of your upkeep, put a spore counter on Thallid.\nRemove three spore counters from Thallid: Create a 1/1 green Saproling creature token.", 'colors' => ['G']],
+        'Murder Lite' => ['manaCost' => '{1}{B}', 'type' => 'Instant', 'text' => 'Destroy target creature. Its controller loses 2 life.', 'colors' => ['B']],
+        'Bloodbraid Elf' => ['manaCost' => '{2}{R}{G}', 'type' => 'Creature — Elf Berserker', 'power' => '3', 'toughness' => '2', 'text' => "Cascade (When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom of your library in a random order.)\nHaste", 'colors' => ['R', 'G']],
         'Ascend Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '1', 'text' => "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)", 'colors' => ['W']],
     ];
 
@@ -815,6 +821,97 @@ final class ModernCardTextTest extends GameTestCase
         $game->cast(0, $this->put(0, 'Bargain Lite', GameObject::HAND), 0, ['p:1']);
         $this->resolve();
         $this->assertSame(12, $this->life(1));
+    }
+
+    public function testStormAndForetell(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Mountain', 3);
+        $game->cast(0, $this->hand(0, 'Lightning Bolt'), 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(17, $this->life(1));
+        $game->cast(0, $this->put(0, 'Grapeshot', GameObject::HAND), 0, ['p:1']);
+        while ($game->stack !== []) {
+            $this->resolve();
+        }
+        $this->assertSame(15, $this->life(1), 'Grapeshot and one copy.');
+
+        $this->lands(0, 'Mountain', 2);
+        $foretell = $this->put(0, 'Foretell Lite', GameObject::HAND);
+        $this->assertContains(['id' => $foretell, 'how' => 'foretell'], $game->plays(0));
+        $game->foretell(0, $foretell);
+        $this->assertSame(GameObject::EXILE, $this->zone($foretell));
+        $this->assertNotContains(['id' => $foretell, 'how' => 'ft'], $game->plays(0), 'Not the turn it was foretold.');
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->assertContains(['id' => $foretell, 'how' => 'ft'], $game->plays(0));
+        $this->assertSame('{R}', Game::castCost($game->objects[$foretell]->printed(), 'ft'));
+        $game->cast(0, $foretell, 0, ['p:1'], 'ft');
+        $this->resolve();
+        $this->assertSame(12, $this->life(1));
+    }
+
+    public function testCumulativeUpkeepSporesAndControllerLosesLife(): void
+    {
+        $game = $this->newGame();
+        $elemental = $this->put(0, 'Cumulative Lite', GameObject::BATTLEFIELD);
+        $thallid = $this->put(0, 'Thallid', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Forest', 1);
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($elemental), 'Paid {1} for one age counter.');
+        $this->passUntil(Step::PrecombatMain, 5);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($elemental), 'Two age counters: {2} it cannot pay.');
+
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::PrecombatMain, 7);
+        $this->assertSame(3, $game->objects[$thallid]->counter('spore'));
+        $game->activate(0, $thallid, 0);
+        $this->resolve();
+        $this->assertSame(0, $game->objects[$thallid]->counter('spore'));
+        $this->assertCount(1, array_filter($game->permanents(0), fn (GameObject $object) => $object->name() === 'Saproling Token'));
+        try {
+            $game->activate(0, $thallid, 0);
+            $this->fail('No spore counters left.');
+        } catch (GameException) {
+        }
+
+        $squire = $this->put(1, 'Akrasan Squire', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Swamp', 2);
+        $game->cast(0, $this->put(0, 'Murder Lite', GameObject::HAND), 0, ["o:{$squire}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($squire));
+        $this->assertSame(18, $this->life(1));
+    }
+
+    public function testCascade(): void
+    {
+        $game = $this->newGame();
+        $this->put(0, 'Annihilator Lite', GameObject::LIBRARY);
+        $grapeshot = $this->put(0, 'Grapeshot', GameObject::LIBRARY);
+        $this->game->addCard(0, self::card('Forest'), GameObject::LIBRARY);
+        $this->lands(0, 'Mountain', 2);
+        $this->lands(0, 'Forest', 2);
+        $elf = $this->put(0, 'Bloodbraid Elf', GameObject::HAND);
+        $game->cast(0, $elf, 0, []);
+        $this->assertSame(GameObject::EXILE, $this->zone($grapeshot), 'The Forest is passed over.');
+        $this->assertContains(['id' => $grapeshot, 'how' => 'cc'], $game->plays(0), 'Cast free while the trigger waits.');
+        $game->cast(0, $grapeshot, 0, ['p:1'], 'cc');
+        while ($game->stack !== []) {
+            $this->resolve();
+        }
+        $this->assertSame(18, $this->life(1), 'Grapeshot is cast, so its storm copies it once for the Elf.');
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($elf));
+        $this->assertSame('Forest', $game->objects[$game->players[0]->library[0]]->name(), 'The Forest goes on the bottom.');
+
+        // Not cast: the card goes on the bottom too.
+        $this->passUntil(Step::PrecombatMain, 3);
+        $missed = $this->put(0, 'Grapeshot', GameObject::LIBRARY);
+        $game->cast(0, $this->put(0, 'Bloodbraid Elf', GameObject::HAND), 0, []);
+        while ($game->stack !== []) {
+            $this->resolve();
+        }
+        $this->assertSame(GameObject::LIBRARY, $this->zone($missed));
+        $this->assertSame($missed, $game->players[0]->library[0]);
     }
 
     public function testUnearth(): void
@@ -1725,11 +1822,11 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
-            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2,
+            'Thought Scour' => 2, 'Bog Wraith' => 3, 'Impulse' => 2, 'Ornithopter' => 1, 'Wall of Air Lite' => 1, 'Hellspark Lite' => 2, 'Staggershock' => 2, 'Longtusk Cub' => 2, 'Thriving Rhino' => 1, 'Sleight of Hand' => 1, 'Glimpse Lite' => 1, 'Curse of the Pierced Heart' => 2, 'Druid Class Lite' => 2, 'Mardu Scout' => 2, 'Mulldrifter' => 1, 'Warp Lite' => 2, 'Plot Lite' => 2, 'Mobilize Lite' => 2, 'Goblin War Drums Lite' => 1, 'Second Draw Lite' => 1, 'Draw Lite' => 1, 'Ninja Lite' => 2, 'Spree Lite' => 2, 'Flourishing Strike' => 1, 'Rift Sower' => 2, 'Annihilator Lite' => 1, 'Pillage' => 1, 'Rumble Arena' => 1, 'Stress Dream Lite' => 1, 'Retreat to Kazandu' => 1, 'Reckless Impulse' => 2, 'Etched Oracle' => 1, 'Seer Lite' => 1, 'Flanking Lite' => 2, "Chemister's Insight" => 1, 'Bargain Lite' => 2, 'Foretell Lite' => 2, 'Thallid' => 2,
         ]);
         array_push($gruul, ...array_fill(0, 4, self::card('Grizzly Bears')), ...array_fill(0, 3, self::card('Lightning Bolt')));
 

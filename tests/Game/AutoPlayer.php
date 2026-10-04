@@ -249,10 +249,11 @@ final class AutoPlayer
                 return true;
             }
             foreach ($game->plays($seat) as $play) {
-                if (in_array($play['how'], ['unearth', 'plot', 'suspend', 'ninjutsu', 'regrow'], true)) {
+                if (in_array($play['how'], ['unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell'], true)) {
                     match ($play['how']) {
                         'unearth' => $game->unearth($seat, $play['id']),
                         'plot' => $game->plot($seat, $play['id']),
+                        'foretell' => $game->foretell($seat, $play['id']),
                         'suspend' => $game->suspend($seat, $play['id']),
                         'ninjutsu' => $game->ninjutsu($seat, $play['id']),
                         'regrow' => $game->regrow($seat, $play['id']),
