@@ -87,6 +87,17 @@ final class MatchRecord
         };
     }
 
+    /**
+     * Whether it is the How to play practice game, with the starter decks
+     * and tips, rather than a practice game with the player's own deck.
+     *
+     * @return bool
+     */
+    public function isTutorial(): bool
+    {
+        return $this->practice && ($this->players[0]['deckId'] ?? null) === null;
+    }
+
     public function challenger(): array
     {
         return $this->players[0];

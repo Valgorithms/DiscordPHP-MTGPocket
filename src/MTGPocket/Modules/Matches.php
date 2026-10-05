@@ -89,6 +89,7 @@ final class Matches implements Module
                 $deck(),
                 $mode('The game mode; defaults to your deck\'s format.'),
             ))
+            ->addOption(self::subcommand($mtg, 'bot', 'Practice against the bot with your deck: unranked, no rewards, only you see it.', $mode('The game mode; defaults to Casual, which takes any deck of 40 cards or more.'), $deck()))
             ->addOption(self::subcommand($mtg, 'modes', 'The game modes, their deck rules and who is waiting.', self::hidden($mtg)))
             ->addOption(self::subcommand($mtg, 'ladder', 'A game mode\'s ratings.', $mode('Which mode; defaults to your active deck\'s format.'), self::hidden($mtg)))
             ->addOption(self::subcommand($mtg, 'board', 'Show the board of your current game.', self::hidden($mtg)))
@@ -130,6 +131,13 @@ final class Matches implements Module
                     ? MatchMessageBuilder::board($result['match'], true)
                     : MatchMessageBuilder::queued($result['mode'], $result['deck']->name, $matches->ladder->entry($result['mode']->id, $id)['rating'], intdiv(MatchService::QUEUE_WAIT, 60));
             });
+        }, $this->deckChoices(...));
+
+        $mtg->listenCommand(['match', 'bot'], function (Interaction $interaction, $options) use ($mtg, $matches) {
+            $args = self::values($options);
+            [$id, $name] = self::caller($interaction);
+
+            return self::reply($mtg, $interaction, true, fn () => MatchMessageBuilder::board($matches->practice($id, $name, (string) ($args['deck'] ?? ''), $args['mode'] ?? null)));
         }, $this->deckChoices(...));
 
         $mtg->listenCommand(['match', 'modes'], function (Interaction $interaction, $options) use ($mtg, $matches) {
