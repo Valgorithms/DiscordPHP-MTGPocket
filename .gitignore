@@ -6,3 +6,18 @@ composer.lock
 
 # Runtime data: the MTGJSON build and the game's JSON storage
 /var/
+.php-cs-fixer.cache
+phpunit.log
+/coverage
+
+# phpacker build output
+/bin/build
+/linux
+/mac
+/windows
+
+# phpDocumentor output and toolchain (the docs workflow installs
+# discord-php/phpdoc-tool with composer create-project)
+/build/
+/.phpdoc/
+/phpdoc-tool

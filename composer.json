@@ -17,7 +17,9 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^9.4.4",
-        "laravel/pint": "^1.21"
+        "laravel/pint": "^1.21",
+        "friendsofphp/php-cs-fixer": "^3",
+        "phpacker/phpacker": "^0.6.4"
     },
     "repositories": [
         {
@@ -38,9 +40,31 @@
         }
     },
     "scripts": {
-        "pint": "./vendor/bin/pint --config ./pint.json ./src ./tests",
+        "pint": "./vendor/bin/pint --config ./pint.json ./src ./tests ./bin ./bot.php",
+        "cs": "php-cs-fixer fix",
+        "cs-unsupported": "php-cs-fixer fix --allow-unsupported-php-version yes",
         "unit": "phpunit",
+        "coverage": [
+            "XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-html coverage --testdox"
+        ],
+        "docs": "php phpdoc-tool/vendor/bin/phpdoc --config phpdoc.dist.xml",
+        "phpacker": [
+            "@phpacker:bot"
+        ],
+        "phpacker:bot": "phpacker build --src=bot.php --dest=bin/build/bot",
         "import-cards": "php bin/import-cards.php",
         "card-coverage": "php bin/card-coverage.php"
+    },
+    "scripts-descriptions": {
+        "pint": "Format src, tests, bin and bot.php with Laravel Pint.",
+        "cs": "Fix code style with php-cs-fixer (.php-cs-fixer.dist.php).",
+        "cs-unsupported": "Run php-cs-fixer on a PHP version it does not support yet.",
+        "unit": "Run the PHPUnit suite.",
+        "coverage": "Write an HTML coverage report to coverage/ (needs Xdebug).",
+        "docs": "Build the class reference into build/ with phpDocumentor (install discord-php/phpdoc-tool into phpdoc-tool/ first).",
+        "phpacker": "Build a standalone binary for bot.php (all platforms).",
+        "phpacker:bot": "Build a standalone binary for bot.php into bin/build/bot.",
+        "import-cards": "Import per-set card pools from the MTGJSON build.",
+        "card-coverage": "Report how much card text the rules engine understands."
     }
 }
