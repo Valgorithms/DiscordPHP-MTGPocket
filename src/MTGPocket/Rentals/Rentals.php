@@ -69,7 +69,7 @@ final class Rentals
      */
     public function available(): array
     {
-        return array_values(array_filter($this->rentals->all(), fn (RentalDeck $deck) => $this->isOffered($deck)));
+        return array_values(array_map($this->fill(...), array_filter($this->rentals->all(), fn (RentalDeck $deck) => $this->isOffered($deck))));
     }
 
     public function isOffered(RentalDeck $deck): bool
@@ -108,7 +108,20 @@ final class Rentals
             throw new \OutOfBoundsException("**{$found->name}** is from a set that has left {$this->mode()->label}, so it is no longer for rent.");
         }
 
-        return $found;
+        return $this->fill($found);
+    }
+
+    /**
+     * A rental with basic lands added up to the main deck size of the mode
+     * rentals are offered for, so a 40-card precon still plays there.
+     *
+     * @param RentalDeck $deck
+     *
+     * @return RentalDeck
+     */
+    private function fill(RentalDeck $deck): RentalDeck
+    {
+        return $deck->filledTo($this->mode()->mainMin);
     }
 
     /**

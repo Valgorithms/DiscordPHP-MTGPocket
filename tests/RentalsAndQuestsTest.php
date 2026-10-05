@@ -136,6 +136,45 @@ final class RentalsAndQuestsTest extends PocketTestCase
         $json = json_encode(PocketMessageBuilder::rentalList($rentals->available(), 3, 3, 'Standard', null), JSON_UNESCAPED_UNICODE);
         $this->assertStringContainsString('**Burn** · New Set · Starter Kit · 60 cards', $json);
         $this->assertStringContainsString('3 games left today of 3', $json);
+        $this->assertStringNotContainsString('added', $json, 'A 60-card precon is left as it is.');
+    }
+
+    public function testShortRentalsGetBasicLandsUpTo60Cards(): void
+    {
+        // Three red instants and three red-white creatures, four of each.
+        $spells = [];
+        foreach ([1, 2, 3] as $i) {
+            $spells[] = ['count' => 4, 'card' => ['uuid' => "bolt-{$i}", 'name' => "Bolt {$i}", 'rarity' => 'common', 'colors' => ['R'], 'manaValue' => 1.0, 'type' => 'Instant', 'manaCost' => '{R}', 'text' => "Bolt {$i} deals 3 damage to any target."]];
+            $spells[] = ['count' => 4, 'card' => ['uuid' => "mender-{$i}", 'name' => "Mender {$i}", 'rarity' => 'common', 'colors' => ['W', 'R'], 'manaValue' => 3.0, 'type' => 'Creature — Human', 'manaCost' => '{1}{R/W}{W}', 'power' => '2', 'toughness' => '2']];
+        }
+        $plains = ['uuid' => 'plains-new', 'name' => 'Plains', 'rarity' => 'common', 'colors' => [], 'manaValue' => 0.0, 'type' => 'Basic Land — Plains', 'manaCost' => null];
+        $mountain = ['uuid' => 'mountain-new', 'name' => 'Mountain', 'rarity' => 'common', 'colors' => [], 'manaValue' => 0.0, 'type' => 'Basic Land — Mountain', 'manaCost' => null];
+
+        // A 41-card theme deck with 9 Plains and 8 Mountains: the 19 lands follow that split.
+        $this->pocket->rentalDecks->save(new RentalDeck('new-boros', 'Boros', 'NEW', 'New Set', 'Theme Deck', '2026-06-01', [...$spells, ['count' => 9, 'card' => $plains], ['count' => 8, 'card' => $mountain]]));
+        // No basics at all: by mana symbols, red 24 (Bolts, Menders' hybrid) to white 24 (Menders' hybrid and white).
+        $this->pocket->rentalDecks->save(new RentalDeck('new-spells', 'Spells', 'NEW', 'New Set', 'Theme Deck', '2026-06-01', $spells));
+
+        $rentals = $this->pocket->rentals;
+        $boros = $rentals->find('Boros');
+        $this->assertSame(60, $boros->mainCount());
+        $this->assertSame(['Plains' => 10, 'Mountain' => 9], $boros->addedLands());
+        $this->assertSame([], $rentals->mode()->problems($boros->deck(self::DAVE, 'standard'), $boros->card(...), fn () => '2026-06-01', time()));
+
+        $spells = $rentals->find('Spells');
+        $this->assertSame(60, $spells->mainCount());
+        $this->assertSame(['Mountain' => 18, 'Plains' => 18], $spells->addedLands());
+
+        $json = json_encode(PocketMessageBuilder::rentalList($rentals->available(), 3, 3, 'Standard', null), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('**Boros** · New Set · Theme Deck · 60 cards (with 19 basic lands added)', $json);
+
+        // And it plays: 60 cards less the opening hand.
+        $rentals->rent(self::DAVE, 'Dave', 'Boros');
+        $rentals->rent(self::BOB, 'Bob', 'Boros');
+        $match = $this->pocket->matches->challenge(self::DAVE, 'Dave', self::BOB, 'Bob');
+        $match = $this->pocket->matches->accept($match->id, self::BOB, 'Bob');
+        $this->assertSame(53, count($match->game->players[0]->library));
+        $this->assertContains('Plains', array_map(fn (int $id) => $match->game->object($id)->name(), [...$match->game->players[0]->library, ...$match->game->players[0]->hand]));
     }
 
     public function testRentingAndPlayingARentalDeck(): void
