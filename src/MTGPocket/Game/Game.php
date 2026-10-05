@@ -661,6 +661,19 @@ final class Game
                 }
                 break;
 
+            case Step::PrecombatMain:
+                // After your draw step, each of your Sagas gets a lore counter (rule 714.3b).
+                foreach ($this->permanents($this->active) as $object) {
+                    if ($this->keywordAmount($object, 'saga') > 0) {
+                        $this->addLore($object);
+                    }
+                }
+                // "At the beginning of your first main phase, …"
+                foreach ($this->permanents($this->active) as $object) {
+                    $this->trigger($object, 'first_main', $object->controller);
+                }
+                break;
+
             case Step::DeclareAttackers:
                 if ($this->attackCandidates() === []) {
                     $this->declared['attack'] = true;
@@ -896,7 +909,8 @@ final class Game
                     }
                 }
             }
-            foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true)] as $code => $has) {
+            $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
+            foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
                     if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
@@ -1019,9 +1033,9 @@ final class Game
             } elseif ($part === 'bargain') {
                 // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
                 $options['kicked'] = $options['bargained'] = true;
-            } elseif (in_array($part, ['es', 'js', 'rt'], true)) {
-                // From the graveyard: escape, jump-start or retrace.
-                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace'][$part];
+            } elseif (in_array($part, ['es', 'js', 'rt', 'db'], true)) {
+                // From the graveyard: escape, jump-start, retrace, or disturb (transformed, rule 702.146).
+                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype'], true)) {
@@ -1329,8 +1343,8 @@ final class Game
         if (in_array($options['exiled'], ['madness', 'foretell'], true)) {
             return $card->altCosts[$options['exiled']].$more;
         }
-        if ($options['grave'] === 'escape') {
-            return $card->altCosts['escape'].$more;
+        if (in_array($options['grave'], ['escape', 'disturb'], true)) {
+            return $card->altCosts[$options['grave']].$more;
         }
         if ($options['bestowed']) {
             return $card->bestow['cost'];
@@ -1656,6 +1670,7 @@ final class Game
         $object->moveTo(GameObject::STACK);
         $object->controller = $seat;
         $object->faceDown = $options['faceDown'];
+        $object->transformed = $options['grave'] === 'disturb';
         if (! $options['faceDown'] && $card->additionalCost !== null) {
             $this->payAdditionalCost($seat, $card);
         }
@@ -1666,7 +1681,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'],
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'],
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0]);
         $this->passes = 0;
 
@@ -1733,6 +1748,7 @@ final class Game
             'escape' => ! isset($card->altCosts['escape']) ? "{$card->name} has no escape."
                 : (count($this->players[$seat]->graveyard) - 1 < self::escapeExile($card) ? 'Not enough other cards in your graveyard to escape.' : null),
             'jumpstart' => ! in_array('jump-start', $card->keywords, true) ? "{$card->name} has no jump-start." : ($hand === [] ? 'Jump-start needs a card to discard.' : null),
+            'disturb' => ! isset($card->altCosts['disturb']) || $card->back === null || $card->back->isAura() ? "{$card->name} can't be cast with disturb." : null,
             'retrace' => ! in_array('retrace', $card->keywords, true) ? "{$card->name} has no retrace."
                 : (array_filter($hand, fn (int $card) => $this->objects[$card]->printed()->isLand()) === [] ? 'Retrace needs a land card to discard.' : null),
             default => null,
@@ -2466,7 +2482,7 @@ final class Game
         }
 
         if (! $ability && $card->isPermanentCard()) {
-            $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0));
+            $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0), (bool) ($item['disturbed'] ?? false));
             $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
             foreach (($item['escaped'] ?? false) ? $card->keywords : [] as $keyword) {
                 if (preg_match('/^escapes with (\d+)$/', $keyword, $m)) {
@@ -3391,6 +3407,16 @@ final class Game
                 $seat = ($effect['that'] ?? false) ? ($this->targetOwner($target) ?? $controller) : $controller;
                 $this->shuffle($seat);
                 $this->log("{$this->players[$seat]->name} shuffles their library.");
+                break;
+
+            case 'pay_transform':
+                // `At the beginning of your first main phase, you may pay {N}. If you do, transform CARDNAME.`: paid when it can be.
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! $self->transformed && ($payment = $this->payFor($controller, $effect['cost'])) !== null) {
+                    $this->pay($controller, $payment);
+                    $before = $self->name();
+                    $self->transformed = true;
+                    $this->log("{$this->players[$controller]->name} pays {$effect['cost']}, and {$before} transforms into {$self->name()}.");
+                }
                 break;
 
             case 'transform':
@@ -4406,6 +4432,42 @@ final class Game
      * @return GameObject|null
      */
     /**
+     * Adds a lore counter to a Saga and triggers that chapter (rule 714.2b).
+     *
+     * @param GameObject $saga
+     *
+     * @return void
+     */
+    private function addLore(GameObject $saga): void
+    {
+        $saga->addCounters('lore', 1);
+        $this->trigger($saga, 'chapter_'.$saga->counter('lore'), $saga->controller);
+    }
+
+    /**
+     * Whether one of a permanent's abilities is waiting to go on the stack or to resolve.
+     *
+     * @param GameObject $object
+     *
+     * @return bool
+     */
+    private function waitsOn(GameObject $object): bool
+    {
+        foreach ($this->pendingTriggers as $trigger) {
+            if ($trigger['source'] === $object->id) {
+                return true;
+            }
+        }
+        foreach ($this->stack as $item) {
+            if (self::isAbility($item) && $item['object'] === $object->id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Spells cast during the turn before this one, by anyone.
      *
      * @return int
@@ -5152,6 +5214,10 @@ final class Game
         $this->battlefield[] = $object->id;
         if ($triggers) {
             $this->trigger($object, 'enters', $controller);
+            // A Saga gets its first lore counter as it enters (rule 714.3a).
+            if ($this->keywordAmount($object, 'saga') > 0) {
+                $this->addLore($object);
+            }
             // Evolve (rule 702.100): a bigger creature entering under your control. Graft: any other creature of yours.
             if ($this->isCreature($object)) {
                 foreach ($this->permanents($controller) as $permanent) {
@@ -5283,6 +5349,10 @@ final class Game
             $zone = GameObject::EXILE;
         }
         if ($object->exileIfDies === $this->turn && $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object)) {
+            $zone = GameObject::EXILE;
+        }
+        // A disturbed back face: `If CARDNAME would be put into a graveyard from anywhere, exile it instead.`
+        if ($zone === GameObject::GRAVEYARD && in_array('exile instead of graveyard', $object->definition()->keywords, true)) {
             $zone = GameObject::EXILE;
         }
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
@@ -5431,6 +5501,10 @@ final class Game
                 }
                 if ($card->isPlaneswalker() && $object->counter('loyalty') <= 0) {
                     $toGraveyard[$id] = "{$object->name()} has no loyalty left";
+                }
+                // A Saga is sacrificed once its last chapter has resolved (rule 714.4).
+                if (($last = $this->keywordAmount($object, 'saga')) > 0 && $object->counter('lore') >= $last && ! $this->waitsOn($object)) {
+                    $toGraveyard[$id] = "{$object->name()} is sacrificed after its last chapter";
                 }
                 // An Aura on a player stays while that player is in the game, and the game ends when either one leaves.
                 if ($card->isAura() && $object->enchantedPlayer === null) {
@@ -6136,6 +6210,7 @@ final class Game
             'alt' => (string) ($item['alt'] ?? ''),
             'sunburst' => (int) ($item['sunburst'] ?? 0),
             'escaped' => (bool) ($item['escaped'] ?? false),
+            'disturbed' => (bool) ($item['disturbed'] ?? false),
         ])), (array) $data['stack']));
         $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
             'source' => (int) $trigger['source'],

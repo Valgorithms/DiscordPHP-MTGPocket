@@ -286,6 +286,7 @@ final class TextParser
                 'You may look at the top card of your library any time.' => 'look at top any time',
                 // Daybound sets it to day as it enters when it is neither (rule 702.145); see Game::dayNight().
                 "If it's neither day nor night, it becomes day as CARDNAME enters." => 'daybound',
+                'If CARDNAME would be put into a graveyard from anywhere, exile it instead.' => 'exile instead of graveyard',
                 'CARDNAME escapes with a +1/+1 counter on it.' => 'escapes with 1',
                 'CARDNAME escapes with two +1/+1 counters on it.' => 'escapes with 2',
                 'CARDNAME escapes with three +1/+1 counters on it.' => 'escapes with 3',
@@ -375,6 +376,7 @@ final class TextParser
                 || (($card->isAura() || $result['bestow'] !== null) && self::aura($line, $result))
                 || ($card->isEquipment() && self::equipment($line, $result))
                 || ($card->isPlaneswalker() && self::loyalty($line, $result))
+                || (in_array('Saga', $card->subtypes, true) && self::chapter($line, $result))
                 || (! $spell && self::triggered($line, $result))
                 || (! $spell && self::activated($line, $result))) {
                 continue;
@@ -605,6 +607,12 @@ final class TextParser
         if (preg_match('/^Escape—'.self::COST.', Exile (\w+) other cards? from your graveyard\.?$/u', $line, $m) && is_int($n = self::amount($m[2])) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['escape'] = $m[1];
             $result['keywords'][] = "escape {$n}";
+
+            return true;
+        }
+        // Disturb (rule 702.146): cast transformed from your graveyard.
+        if (preg_match('/^Disturb '.self::COST.'$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['disturb'] = $m[1];
 
             return true;
         }
@@ -1183,6 +1191,32 @@ final class TextParser
     }
 
     /**
+     * A Saga's chapter ability (rule 714), e.g. `I, II — Create a 1/1 …`:
+     * it triggers when its lore counter is added. The last chapter is kept
+     * as the keyword `saga N`.
+     *
+     * @param string $line
+     * @param array  $result
+     *
+     * @return bool
+     */
+    private static function chapter(string $line, array &$result): bool
+    {
+        $numerals = ['I' => 1, 'II' => 2, 'III' => 3, 'IV' => 4, 'V' => 5, 'VI' => 6];
+        if (! preg_match('/^((?:I|II|III|IV|V|VI)(?:, (?:I|II|III|IV|V|VI))*) — (.+)$/u', $line, $match) || ($effects = self::effects($match[2])) === null) {
+            return false;
+        }
+        $chapters = array_map(fn (string $numeral) => $numerals[$numeral], explode(', ', $match[1]));
+        foreach ($chapters as $n) {
+            $result['triggered'][] = ['text' => $line, 'event' => "chapter_{$n}", 'effects' => $effects];
+        }
+        $last = max([...$chapters, ...array_map(fn (string $keyword) => (int) substr($keyword, 5), preg_grep('/^saga \d+$/', $result['keywords']))]);
+        $result['keywords'] = [...array_values(preg_grep('/^saga \d+$/', $result['keywords'], PREG_GREP_INVERT)), "saga {$last}"];
+
+        return true;
+    }
+
+    /**
      * A planeswalker's loyalty ability, e.g. `+1: You gain 2 life.` or
      * `−3: Destroy target creature.`
      *
@@ -1241,6 +1275,10 @@ final class TextParser
         } elseif (preg_match('/^At the beginning of each upkeep, if (no spells were cast last turn|a player cast two or more spells last turn), transform CARDNAME\.?$/', $line, $match)) {
             // The werewolves of Innistrad (rule 701.28).
             $result['triggered'][] = ['text' => $line, 'event' => 'each_upkeep', 'effects' => [['type' => 'transform', 'self' => true, 'if' => str_starts_with($match[1], 'no') ? 'no_spells' : 'two_spells']]];
+
+            return true;
+        } elseif (preg_match('/^At the beginning of your (?:first|precombat) main phase, you may pay '.self::COST.'\. If you do, transform CARDNAME\.?$/u', $line, $match) && ! str_contains($match[1], 'X')) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'first_main', 'effects' => [['type' => 'pay_transform', 'cost' => $match[1], 'self' => true]]];
 
             return true;
         } elseif (preg_match('/^At the beginning of the end step, (.+)$/', $line, $match)) {

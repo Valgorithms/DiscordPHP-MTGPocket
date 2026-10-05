@@ -876,6 +876,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $options['rebound'] ? 'rebound, free' : '',
             $options['bestowed'] ? "bestow {$card->bestow['cost']}" : '',
             $options['grave'] === 'escape' ? "escape {$card->altCosts['escape']}" : '',
+            $options['grave'] === 'disturb' ? "disturb {$card->altCosts['disturb']} as {$card->back?->name}" : '',
             in_array($options['grave'], ['jumpstart', 'retrace'], true) ? ($options['grave'] === 'jumpstart' ? 'jump-start' : 'retrace').' from the graveyard' : '',
             $options['bargained'] ? 'bargained' : '',
             $options['casualty'] ? 'casualty, copied' : '',
