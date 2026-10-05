@@ -21,7 +21,7 @@ Everything can be done with buttons, menus and forms: `/menu` opens your home pa
 | 🎁 **Packs** | Pick a set and a color from menus (or leave them on 🎲 for a surprise), then **Open free pack** or **Buy a pack**. |
 | 📚 **Collection** | Your cards a page at a time; **Filter** asks for a set, color, rarity and part of a name. |
 | 🃏 **Decks** | Open a deck from a menu or make one with **New deck**. On a deck: **Add cards** lists the cards you own with copies to spare (by color, a page at a time) to add from a menu; **Add by name** and **Take out** ask for a card and a count; a menu takes one copy out; **Basic lands** sets every basic land count at once; the format, **Rename**, **Commander**, **Play with it** and **Delete** are there too. **Rental decks** lists the official decks to play with. |
-| ⚔️ **Play** | Find a ranked game in a mode from a menu, or pick a player to challenge; show your board, leave the queue, concede, see a ladder, or get your last game's record. **Practice vs bot** starts a practice game. |
+| ⚔️ **Play** | Find a ranked game in a mode from a menu, or pick a player to challenge; show your board, leave the queue, concede, see a ladder, or get your last game's record. **Practice vs bot** plays your active deck (rentals too) against the bot in the mode you pick; **Starter decks vs bot** starts the How to play practice game. |
 | 🎴 **Draft** | Join an open pod or make one for a set from menus; start, leave, take your picks, and build your draft deck from menus (**Basic lands**, **Auto-build**, **Ready**), then play your round. |
 | 🛒 **Shop** | **Buy a card**, **Sell a card**, **Sell extras** and **Check a price** each ask in a short form; **Buy a pack** goes to the packs panel. |
 | 🤝 **Trades** | Pick a player to open the offer form (cards you give and want, one per line like `2 Shock`, and points each way); add to or call off an offer you made from a menu. |
@@ -50,6 +50,7 @@ Your own panels change in place. Anyone else who clicks a panel you posted gets 
 | `/decks rentals` · `/decks rent <rental>` | The official decks you can play without owning the cards; or plays with one until you pick your own deck with `/decks use`. |
 | `/match queue [mode] [deck]` | Waits for a ranked game in a mode (default: your deck's format) against a player of about your rating. |
 | `/match challenge <opponent> [deck] [mode]` | Challenges another player to a friendly game. They get **Accept** and **Decline** buttons. |
+| `/match bot [mode] [deck]` | Practice against the bot with one of your decks or a rental (default: your active deck) in a mode (default: Casual, any deck of 40+ cards). The bot plays a random rental deck. Unranked, pays nothing, uses up none of your rental games, and only you see it. Also under **Play** in `/menu`. |
 | `/match modes` · `/match ladder [mode]` | The game modes with their deck rules and who is waiting; or a mode's ratings. |
 | `/match board` | The board of the game you are in. |
 | `/match leave` | Leaves the queue, calls off your challenge, or concedes your game. |

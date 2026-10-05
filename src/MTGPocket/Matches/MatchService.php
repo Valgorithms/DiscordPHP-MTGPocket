@@ -249,40 +249,85 @@ final class MatchService
     }
 
     /**
-     * Starts a practice game against the bot: the player plays the
-     * red-green starter deck, the bot the white-black one, in Casual. It is
-     * not ranked and pays nothing, and the player needs no cards or deck.
+     * Starts a practice game against the bot. With no deck, the player
+     * plays the red-green starter deck and the bot the white-black one, in
+     * Casual, with tips. With a deck (one of theirs or a rental, the active
+     * one when the deck is empty), the player plays it in a mode (Casual
+     * unless they pick one) against a rental deck the bot picks at random,
+     * or the white-black starter deck when no rental is offered.
      *
-     * @param string $playerId
-     * @param string $playerName
+     * It is not ranked, pays nothing, counts towards no quest, and uses up
+     * none of the day's rental games.
+     *
+     * @param string      $playerId
+     * @param string      $playerName
+     * @param string|null $deck       Id or name, '' for the active deck; null for the starter decks.
+     * @param string|null $mode       Defaults to Casual.
      *
      * @return MatchRecord
      */
-    public function practice(string $playerId, string $playerName): MatchRecord
+    public function practice(string $playerId, string $playerName, ?string $deck = null, ?string $mode = null): MatchRecord
     {
         if ($this->current($playerId) !== null) {
             throw new \InvalidArgumentException('You are already in a match. Finish it, or leave it with `/match leave`.');
         }
+        $gameMode = $this->playableMode($deck === null ? 'casual' : ($mode ?? 'casual'));
+        if ($deck === null) {
+            $mine = ['deckId' => null, 'deckName' => StarterDecks::PLAYER_DECK, 'cards' => StarterDecks::cards(StarterDecks::PLAYER)];
+            $bot = ['deckName' => StarterDecks::BOT_DECK, 'cards' => StarterDecks::cards(StarterDecks::BOT)];
+        } else {
+            $chosen = $this->chooseDeck($playerId, $deck);
+            $problems = $this->problems($chosen, $gameMode);
+            if ($problems !== []) {
+                throw new \InvalidArgumentException("**{$chosen->name}** cannot be played in {$gameMode->label}:\n- ".implode("\n- ", $problems));
+            }
+            $mine = ['deckId' => $chosen->id, 'deckName' => $chosen->name, 'cards' => $this->mainCards($chosen)];
+            $bot = $this->botDeck($gameMode);
+        }
+
         $now = ($this->clock)();
         $match = new MatchRecord(
             substr(($this->random)(), 0, 12),
             MatchRecord::PENDING,
             [
-                ['id' => $playerId, 'name' => $playerName, 'deckId' => null, 'deckName' => StarterDecks::PLAYER_DECK],
-                ['id' => PracticeBot::ID, 'name' => PracticeBot::NAME, 'deckId' => null, 'deckName' => StarterDecks::BOT_DECK],
+                ['id' => $playerId, 'name' => $playerName, 'deckId' => $mine['deckId'], 'deckName' => $mine['deckName']],
+                ['id' => PracticeBot::ID, 'name' => PracticeBot::NAME, 'deckId' => null, 'deckName' => $bot['deckName']],
             ],
             createdAt: $now,
             updatedAt: $now,
-            mode: 'casual',
+            mode: $gameMode->id,
             practice: true,
         );
-        $this->begin($match, [StarterDecks::cards(StarterDecks::PLAYER), StarterDecks::cards(StarterDecks::BOT)], $this->modes->get('casual'));
+        $this->begin($match, [$mine['cards'], $bot['cards']], $gameMode);
         PracticeBot::play($match->game, 1);
         $this->matches->save($match);
         $this->matches->setLive($playerId, $match->id);
         $this->unqueue($playerId);
 
         return $match;
+    }
+
+    /**
+     * The bot's deck for a practice game with the player's own deck: a
+     * random offered rental deck the mode allows, or the white-black
+     * starter deck.
+     *
+     * @param GameMode $mode
+     *
+     * @return array{deckName: string, cards: array[]}
+     */
+    private function botDeck(GameMode $mode): array
+    {
+        $rentals = array_values(array_filter(
+            $this->rentals->available(),
+            fn (RentalDeck $rental) => $this->problems($rental->deck(PracticeBot::ID, $mode->id), $mode) === [],
+        ));
+        if ($rentals === []) {
+            return ['deckName' => StarterDecks::BOT_DECK, 'cards' => StarterDecks::cards(StarterDecks::BOT)];
+        }
+        $rental = $rentals[hexdec(substr(($this->random)(), 0, 6)) % count($rentals)];
+
+        return ['deckName' => $rental->deck(PracticeBot::ID, $mode->id)->name, 'cards' => $rental->mainCards()];
     }
 
     // ----------------------------------------------------------------------
@@ -733,15 +778,29 @@ final class MatchService
                 throw new \InvalidArgumentException("You have played your {$this->rentals->rules->rentalGamesPerDay} rental games for today; more at midnight UTC. Your own decks can still play (`/decks use`).");
             }
 
-            return [$chosen, $this->rentals->find($chosen->id)->mainCards()];
         }
 
+        return [$chosen, $this->mainCards($chosen)];
+    }
+
+    /**
+     * A deck's main deck as card data, one entry per copy.
+     *
+     * @param Deck $deck
+     *
+     * @return array[]
+     */
+    private function mainCards(Deck $deck): array
+    {
+        if (RentalDeck::isRental($deck->id)) {
+            return $this->rentals->find($deck->id)->mainCards();
+        }
         $cards = [];
-        foreach ($chosen->main as $key => $count) {
+        foreach ($deck->main as $key => $count) {
             array_push($cards, ...array_fill(0, $count, $this->decks->cardData((string) $key)));
         }
 
-        return [$chosen, $cards];
+        return $cards;
     }
 
     /**
@@ -798,7 +857,7 @@ final class MatchService
             ['id' => $match->players[0]['id'], 'name' => $match->players[0]['name'], 'cards' => $cards[0], 'commander' => $this->commanderCard($match->players[0], $mode)],
             ['id' => $match->players[1]['id'], 'name' => $match->players[1]['name'], 'cards' => $cards[1], 'commander' => $this->commanderCard($match->players[1], $mode)],
         ], ($this->random)(), $mode->life);
-        foreach ($match->players as $player) {
+        foreach ($match->practice ? [] : $match->players as $player) {
             if (RentalDeck::isRental((string) $player['deckId'])) {
                 $this->rentals->countGame($player['id']);
             }

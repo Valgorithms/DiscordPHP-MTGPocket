@@ -58,7 +58,8 @@ use MTGPocket\Tutorial\Tutorial;
  *   `dremv:<deck>` → `mrem`, `duse:<deck>`, `dren:<deck>` → `mren`,
  *   `dfmt:<deck>` (menu), `dcmd:<deck>` → `mcmd`, `dlands:<deck>` → `mlands`,
  *   `ddel:<deck>` and `ddelok:<deck>`; `rentals`, `rent` (menu).
- * - Play: `play`, `pqueue` (menu of modes), `pchal` (menu of players), `tplay`,
+ * - Play: `play`, `pqueue` (menu of modes), `pchal` (menu of players), `pbot`
+ *   (menu of modes, the active deck against the bot), `tplay`,
  *   `pleave`, `pconc` and `pconcok`, `pboard`, `pladder` (menu), `plog`.
  * - Drafts: `draft`, `djoin` and `dnewpod` (menus), `dstart`, `dleave` and
  *   `dleaveok`, `dpack`, `dpool`, `dplay`; on the pool, `dpadd` and `dprem`
@@ -123,7 +124,7 @@ final class Panels
             in_array($action, ['deck', 'dbrowse', 'dqrem', 'dtype', 'dremv', 'duse', 'dren', 'dfmt', 'dcmd', 'dlands', 'ddel', 'ddelok', 'madd', 'mrem', 'mren', 'mcmd', 'mlands'], true) => $this->deckOrList($u, $arg(0), $error),
             in_array($action, ['dpadd', 'dprem', 'dplands', 'mplands', 'dpauto', 'dpready'], true) => $this->draftPool($u, $error),
             in_array($action, ['djoin', 'dnewpod', 'dstart', 'dleave', 'dleaveok', 'dpack', 'dpool', 'dplay'], true) => $this->draft($u, $error),
-            in_array($action, ['pqueue', 'pchal', 'pleave', 'pconc', 'pconcok', 'pboard', 'pladder', 'plog', 'tplay'], true) => $this->play($u, $error),
+            in_array($action, ['pqueue', 'pchal', 'pleave', 'pconc', 'pconcok', 'pboard', 'pladder', 'plog', 'tplay', 'pbot'], true) => $this->play($u, $error),
             in_array($action, ['sbuy', 'ssell', 'sextra', 'sprice', 'mbuy', 'msell', 'mextra', 'mprice'], true) => $this->shop($u, $error),
             in_array($action, ['tnew', 'tadd', 'tcancel', 'mtrade', 'mtadd'], true) => $this->trades($u, $error),
             default => $this->home($u, $userName, $error),
@@ -172,6 +173,8 @@ final class Panels
                 return $panel($this->tutorial($u, (int) $value));
             case 'tplay':
                 return $panel(MatchMessageBuilder::board($matches->practice($u, $name)));
+            case 'pbot':
+                return $panel(MatchMessageBuilder::board($matches->practice($u, $name, '', $value)));
 
                 // Packs.
             case 'packs':
@@ -865,7 +868,7 @@ final class Panels
         } elseif ($queued !== null) {
             $lines[] = "🔎 You are waiting in the {$queued['mode']->label} queue with **{$queued['deckName']}** (rating {$queued['rating']}) since <t:{$queued['since']}:R>.";
         } else {
-            $lines[] = 'Find a **ranked** game in a mode, or **challenge** a player you pick to a friendly game. Your active deck plays.';
+            $lines[] = 'Find a **ranked** game in a mode, **challenge** a player you pick to a friendly game, or practice against the **bot**. Your active deck plays, rentals included; bot games use up no rental games.';
         }
         $modes = [];
         foreach ($matches->modes->all() as $id => $mode) {
@@ -882,6 +885,15 @@ final class Panels
                 $message->addComponent($select);
             }
             $message->addComponent(Menu::userSelect(Menu::id($u, 'pchal'), 'Challenge a player to a friendly game…'));
+            // Casual first: it takes any deck of 40 cards or more.
+            $bot = [];
+            foreach ($matches->modes->playable() as $id => $label) {
+                $bot[(string) $id] = ['label' => $label, 'description' => Text::clip($matches->modes->get((string) $id)->summary(), 100)];
+            }
+            uksort($bot, fn (string $a, string $b) => ($b === 'casual') <=> ($a === 'casual'));
+            if (($select = Menu::select(Menu::id($u, 'pbot'), '🤖 Practice vs bot with your deck, in…', $bot)) !== null) {
+                $message->addComponent($select);
+            }
         }
 
         $ladders = [];
@@ -901,7 +913,7 @@ final class Panels
             $row->addComponent(Menu::button($u, '📜 Game record', 'plog'));
         }
         if ($match === null && $queued === null) {
-            $row->addComponent(Menu::button($u, '🤖 Practice vs bot', 'tplay'));
+            $row->addComponent(Menu::button($u, '📖 Starter decks vs bot', 'tplay'));
         }
         $row->addComponent(Menu::button($u, '🃏 Decks', 'decks'));
 

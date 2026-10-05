@@ -16,11 +16,13 @@ namespace MTGPocket\Tests;
 use Discord\Builders\MessageBuilder;
 use MTGPocket\Builders\MatchMessageBuilder;
 use MTGPocket\Builders\MenuMessageBuilder;
+use MTGPocket\Cards\CardPool;
 use MTGPocket\Game\Game;
 use MTGPocket\Matches\MatchRecord;
 use MTGPocket\Panels\PanelResult;
 use MTGPocket\Panels\Panels;
 use MTGPocket\Pocket;
+use MTGPocket\Rentals\RentalDeck;
 use MTGPocket\Tests\Game\AutoPlayer;
 use MTGPocket\Tutorial\PracticeBot;
 use MTGPocket\Tutorial\StarterDecks;
@@ -192,6 +194,70 @@ final class TutorialTest extends PocketTestCase
         $this->assertSame('basic:Forest', StarterDecks::card('Forest')['uuid']);
         $this->expectException(\OutOfBoundsException::class);
         StarterDecks::card('Black Lotus');
+    }
+
+    /**
+     * Saves a 40-card rental deck (read padded to 60) of a current set: Grizzly Bears and Forests.
+     */
+    private function saveRental(string $id = 'bears', string $name = 'Bear Kit'): void
+    {
+        $bears = ['uuid' => "{$id}-bears", 'name' => 'Grizzly Bears', 'rarity' => 'common', 'colors' => ['G'], 'manaValue' => 2.0, 'type' => 'Creature — Bear', 'types' => ['Creature'], 'manaCost' => '{1}{G}', 'power' => '2', 'toughness' => '2'];
+        $forest = ['uuid' => "{$id}-forest", 'name' => 'Forest', 'rarity' => 'common', 'colors' => [], 'manaValue' => 0.0, 'type' => 'Basic Land — Forest', 'types' => ['Land'], 'supertypes' => ['Basic'], 'subtypes' => ['Forest'], 'manaCost' => null];
+        $this->pocket->rentalDecks->save(new RentalDeck($id, $name, 'NEW', 'New Set', 'Starter Kit', '2026-06-01', [['count' => 16, 'card' => $bears], ['count' => 24, 'card' => $forest]]));
+    }
+
+    public function testARentalDeckPlaysTheBot(): void
+    {
+        $this->saveRental();
+        $this->pocket->rentals->rent(self::ALICE, 'Alice', 'Bear Kit');
+        $left = $this->pocket->rentals->gamesLeft(self::ALICE);
+
+        $play = self::json($this->click('play')->panel);
+        $this->assertStringContainsString('Practice vs bot with your deck', $play);
+        $this->assertStringContainsString('Starter decks vs bot', $play);
+
+        $result = $this->click('pbot', ['casual']);
+        $this->assertNull($result->announce, 'Nothing is posted in the channel.');
+        $match = $this->pocket->matches->current(self::ALICE);
+        $this->assertNotNull($match);
+        $this->assertTrue($match->practice);
+        $this->assertFalse($match->isTutorial());
+        $this->assertFalse($match->ranked);
+        $this->assertSame('casual', $match->mode);
+        $this->assertSame([RentalDeck::PREFIX.'bears', null], array_column($match->players, 'deckId'));
+        $this->assertSame(['Bear Kit (rental)', 'Bear Kit (rental)'], array_column($match->players, 'deckName'), 'The bot plays an offered rental.');
+        $this->assertSame(60, count($match->game->players[0]->library) + count($match->game->players[0]->hand), 'Rentals are padded to 60 with basic lands.');
+        $this->assertSame($left, $this->pocket->rentals->gamesLeft(self::ALICE), 'Bot games use up no rental games.');
+        $this->assertStringNotContainsString('💡', self::json(MatchMessageBuilder::actions($match, self::ALICE)), 'Tips are for the starter decks.');
+
+        for ($moves = 0; $match->status === MatchRecord::PLAYING; $moves++) {
+            $this->assertLessThan(3000, $moves, 'The game never ended.');
+            $this->assertSame([0], $match->game->waitingOn());
+            $match = $this->pocket->matches->act($match->id, self::ALICE, function (Game $game, int $seat): void {
+                $this->assertTrue(AutoPlayer::act($game, $seat));
+            });
+        }
+        $this->assertSame([], $match->rewards, 'Practice pays nothing.');
+        $this->assertSame($left, $this->pocket->rentals->gamesLeft(self::ALICE));
+        $this->assertNull($this->pocket->matches->current(self::ALICE));
+    }
+
+    public function testAnOwnDeckPlaysTheBot(): void
+    {
+        $pool = new CardPool('OLD', 'Old Set', '2015-01-01');
+        $pool->add(['uuid' => 'bears', 'name' => 'Grizzly Bears', 'rarity' => 'common', 'colors' => ['G'], 'manaValue' => 2.0, 'type' => 'Creature — Bear', 'manaCost' => '{1}{G}', 'power' => '2', 'toughness' => '2']);
+        $this->pocket->pools->save($pool);
+        $this->pocket->inventories->addCards(self::ALICE, ['bears' => 8]);
+        $this->pocket->deckBuilder->create(self::ALICE, 'Alice', 'Bears', 'standard');
+        $this->pocket->deckBuilder->add(self::ALICE, 'Bears', 'bears', 8);
+        $this->pocket->deckBuilder->add(self::ALICE, 'Bears', 'Forest', 32);
+
+        // Its format's library refuses the old set; Casual takes it.
+        $this->assertException(fn () => $this->pocket->matches->practice(self::ALICE, 'Alice', 'Bears', 'standard'), 'cannot be played in Standard');
+        $match = $this->pocket->matches->practice(self::ALICE, 'Alice', '');
+        $this->assertSame('casual', $match->mode);
+        $this->assertSame(['Bears', StarterDecks::BOT_DECK], array_column($match->players, 'deckName'), 'With no rental offered, the bot plays its starter deck.');
+        $this->assertSame([0], $match->game->waitingOn());
     }
 
     public function testTips(): void

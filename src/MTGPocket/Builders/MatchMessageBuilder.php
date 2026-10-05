@@ -562,7 +562,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         }
         $container->addComponent(TextDisplay::new($hand === [] ? '*Your hand is empty.*' : Text::clip(implode("\n", $hand), 2500)));
         $prompt = self::prompt($game, $seat, $decision, $choice);
-        if ($match->practice && ($tip = Tutorial::tip($game, $seat, $decision, $choice)) !== null) {
+        if ($match->isTutorial() && ($tip = Tutorial::tip($game, $seat, $decision, $choice)) !== null) {
             $prompt .= "\n-# 💡 {$tip}";
         }
         $container->addComponent(Separator::new())->addComponent(TextDisplay::new($prompt));
