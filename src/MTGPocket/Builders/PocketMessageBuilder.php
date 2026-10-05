@@ -327,11 +327,12 @@ class PocketMessageBuilder extends MessageBuilder
     public static function rentalList(array $rentals, int $gamesLeft, int $perDay, string $mode, ?string $activeId): static
     {
         $lines = array_map(fn (RentalDeck $deck) => sprintf(
-            '**%s** · %s · %s · %d cards%s',
+            '**%s** · %s · %s · %d cards%s%s',
             $deck->name,
             $deck->setName !== '' ? $deck->setName : $deck->setCode,
             $deck->type !== '' ? $deck->type : 'Deck',
             $deck->mainCount(),
+            ($added = array_sum($deck->addedLands())) > 0 ? ' (with '.Text::plural($added, 'basic land').' added)' : '',
             $deck->id === $activeId ? ' · ✅ active' : '',
         ), array_values($rentals));
 
