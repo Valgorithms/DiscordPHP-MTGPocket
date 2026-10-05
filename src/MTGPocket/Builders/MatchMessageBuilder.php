@@ -632,7 +632,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             case 'look':
                 $look = $game->choiceAwaiting();
                 if ($look['eligible'] !== [] && $look['take'] > 0) {
-                    $message->addComponent(self::cardSelect($id('take'), 'Put into your hand…', $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
+                    $message->addComponent(self::cardSelect($id('take'), ($look['to'] ?? 'hand') === 'hand' ? 'Put into your hand…' : 'Put onto the battlefield…', $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
                 }
                 if ($look['may'] || $look['take'] === 0) {
                     $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('takenone'))->setLabel($look['take'] === 0 ? 'Continue' : 'Take none')));

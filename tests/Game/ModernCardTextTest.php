@@ -189,6 +189,10 @@ final class ModernCardTextTest extends GameTestCase
         'Proliferate Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => "Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nDraw a card.", 'colors' => ['U']],
         'Prototype Lite' => ['manaCost' => '{6}', 'type' => 'Artifact Creature — Construct', 'power' => '6', 'toughness' => '6', 'text' => "Prototype {1}{R} — 2/2 (You can cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nTrample", 'colors' => []],
         'Tribute Lite' => ['manaCost' => '{1}{B}{R}', 'type' => 'Creature — Minotaur', 'power' => '3', 'toughness' => '3', 'text' => "Tribute 1 (As this creature enters, an opponent of your choice may put a +1/+1 counter on it.)\nWhen Tribute Lite enters, if tribute wasn't paid, draw a card.", 'colors' => ['B', 'R']],
+        'Look Land Lite' => ['manaCost' => '{1}{G}', 'type' => 'Sorcery', 'text' => 'Look at the top four cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. You gain 2 life.', 'colors' => ['G']],
+        'Reveal Lands Lite' => ['manaCost' => '{1}{G}', 'type' => 'Sorcery', 'text' => 'Reveal the top three cards of your library. Put all land cards revealed this way into your hand and the rest into your graveyard.', 'colors' => ['G']],
+        'Shuffle Lite' => ['manaCost' => '{U}', 'type' => 'Instant', 'text' => 'Draw a card. Then shuffle.', 'colors' => ['U']],
+        'Temporary Lite' => ['manaCost' => '{1}{B}', 'type' => 'Sorcery', 'text' => 'Return target creature card from your graveyard to the battlefield. It gains haste until end of turn. Exile it at the beginning of the next end step.', 'colors' => ['B']],
         'Healer Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Human Cleric', 'power' => '1', 'toughness' => '1', 'text' => '{T}: Prevent the next 1 damage that would be dealt to any target this turn.', 'colors' => ['W']],
         'Reconfigure Lite' => ['manaCost' => '{1}{G}', 'type' => 'Artifact Creature — Equipment Fox', 'power' => '2', 'toughness' => '2', 'text' => "Equipped creature gets +2/+2.\nReconfigure {2} ({2}: Attach to target creature you control; or unattach from a creature. Reconfigure only as a sorcery. While attached, this isn't a creature.)", 'colors' => ['G']],
         'Zenith Lite' => ['manaCost' => '{1}{G}', 'type' => 'Sorcery', 'text' => "Draw a card. Shuffle Zenith Lite into its owner's library.", 'colors' => ['G']],
@@ -1155,6 +1159,45 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(GameObject::LIBRARY, $this->zone($zenith));
     }
 
+    public function testLookRevealShuffleAndEndStepExile(): void
+    {
+        $game = $this->newGame();
+        foreach (['Look Land Lite', 'Reveal Lands Lite', 'Shuffle Lite', 'Temporary Lite'] as $name) {
+            $this->assertSame([], (new \MTGPocket\Game\CardDefinition(self::more($name)))->unsupported, $name);
+        }
+        $this->passUntil(Step::PrecombatMain, 1);
+        $this->lands(0, 'Forest', 2);
+        $forest = $game->addCard(0, self::card('Forest'), GameObject::LIBRARY)->id;
+        $life = $game->players[0]->life;
+        $game->cast(0, $this->put(0, 'Look Land Lite', GameObject::HAND), 0, []);
+        $this->resolve();
+        $this->assertSame('look', $game->decision(0));
+        $this->assertSame('tapped', $game->choiceAwaiting()['to']);
+        $game->take(0, [$forest]);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($forest));
+        $this->assertTrue($game->objects[$forest]->tapped);
+        $this->assertSame($life + 2, $game->players[0]->life, 'The sentence after the look still happens.');
+
+        $this->lands(0, 'Forest', 2);
+        $land = $game->addCard(0, self::card('Forest'), GameObject::LIBRARY)->id;
+        $game->cast(0, $this->put(0, 'Reveal Lands Lite', GameObject::HAND), 0, []);
+        $this->resolve();
+        $this->assertContains($land, $game->choiceAwaiting()['eligible']);
+        $this->assertFalse($game->choiceAwaiting()['may']);
+        $game->take(0, $game->choiceAwaiting()['eligible']);
+        $this->assertSame(GameObject::HAND, $this->zone($land));
+
+        $this->lands(0, 'Swamp', 2);
+        $dead = $game->addCard(0, self::more('Ward Discard Lite'), GameObject::GRAVEYARD)->id;
+        $game->cast(0, $this->put(0, 'Temporary Lite', GameObject::HAND), 0, ["o:{$dead}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($dead));
+        $this->assertContains('haste', $game->keywords($game->objects[$dead]));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->passUntil(Step::End, 1);
+        $this->assertSame(GameObject::EXILE, $this->zone($dead));
+    }
+
     public function testUnearth(): void
     {
         $game = $this->newGame();
@@ -2063,7 +2106,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
