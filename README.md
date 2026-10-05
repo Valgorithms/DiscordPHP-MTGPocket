@@ -153,12 +153,26 @@ The bot reads its settings from `config/`: shop prices and match points from `ec
 
 Pools imported before matches existed lack the rules data (mana costs, power and toughness, rules text). Run `composer import-cards` again before playing; a deck with such cards cannot start a match until then.
 
-## Tests
+## Development
 
 ```sh
-composer unit
-composer pint
+composer unit       # PHPUnit
+composer coverage   # HTML coverage report in coverage/ (needs Xdebug)
+composer pint       # Laravel Pint, the style CI checks
+composer cs         # php-cs-fixer with .php-cs-fixer.dist.php
+composer phpacker   # standalone bot binaries for every platform in bin/build/
 ```
+
+`composer cs-unsupported` runs php-cs-fixer on a PHP version it does not support yet.
+
+The class reference is built with phpDocumentor through [discord-php/phpdoc-tool](https://github.com/discord-php/phpdoc-tool), the same way as the other DiscordPHP libraries. The Build Docs workflow publishes it to the `gh-pages` branch on a release, a manual run, or a push whose commit message contains `build docs`. To build it locally:
+
+```sh
+composer create-project discord-php/phpdoc-tool:^1.0 phpdoc-tool --repository='{"type":"vcs","url":"https://github.com/discord-php/phpdoc-tool"}'
+composer docs
+```
+
+Packed binaries and the generated docs are git-ignored and left out of dist archives. A packed binary can be decompiled, so never commit one.
 
 ## License
 
