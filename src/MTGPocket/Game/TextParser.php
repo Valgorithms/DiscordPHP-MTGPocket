@@ -647,8 +647,12 @@ final class TextParser
             $word = strtolower($part);
             if (in_array($word, CardDefinition::KEYWORDS, true) && ! in_array($word, ['evolve', 'unleash'], true)) {
                 $found['keywords'][] = $word;
-            } elseif (preg_match('/^(bushido|toxic|bloodthirst) (\d+)$/', $word, $m)) {
+            } elseif (preg_match('/^(bushido|toxic|bloodthirst|dredge) (\d+)$/', $word, $m)) {
+                // Dredge (rule 702.52): see Game::draw().
                 $found['keywords'][] = "{$m[1]} {$m[2]}";
+            } elseif (preg_match('/^afflict (\d+)$/', $word, $m) && ! $spell) {
+                // Afflict (rule 702.130): the defending player loses N life when it becomes blocked.
+                $found['triggered'][] = ['text' => $part, 'event' => 'blocked', 'effects' => [['type' => 'lose_life', 'amount' => (int) $m[1], 'each' => 'opponent']]];
             } elseif (preg_match('/^ward '.self::COST.'$/i', $part, $m)) {
                 $found['ward'] = ['mana' => $m[1]];
             } elseif (preg_match('/^ward—pay (\d+) life\.?$/iu', $part, $m)) {
@@ -1296,16 +1300,16 @@ final class TextParser
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous',
-            'is put into a graveyard from the battlefield' => 'to_graveyard',
+            'is put into a graveyard from the battlefield' => 'to_graveyard', 'becomes blocked' => 'blocked',
         ];
         $casts = [
-            'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell',
+            'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
         ];
         $saddled = false;
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield|becomes the target of a spell or ability)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield|becomes the target of a spell or ability|becomes blocked)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -1346,7 +1350,7 @@ final class TextParser
         } elseif (preg_match('/^Whenever you gain life, (.+)$/', $line, $match)) {
             $event = 'gain_life';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell), (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell|a Spirit or Arcane spell), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
         } else {
@@ -1664,7 +1668,7 @@ final class TextParser
             && ($m[1] === 'deals damage equal to its power to' || ! str_contains($kind, 'planeswalker'))) {
             return [['type' => 'chosen', 'target' => 'creature_you_control'], ['type' => 'fight', 'target' => $kind, 'mutual' => strtolower($m[1]) === 'fights']];
         }
-        if (preg_match('/^you draw (\w+) cards? and (gain|lose) (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[1])) !== null && ($life = self::amount($m[3])) !== null) {
+        if (preg_match('/^you draw (\w+) cards? and (?:you )?(gain|lose) (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[1])) !== null && ($life = self::amount($m[3])) !== null) {
             return [['type' => 'draw', 'amount' => $draw], strtolower($m[2]) === 'gain' ? ['type' => 'gain_life', 'amount' => $life] : ['type' => 'lose_life', 'amount' => $life, 'you' => true]];
         }
         if (preg_match('/^(target player|target opponent) draws (\w+) cards? and loses (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[2])) !== null && ($life = self::amount($m[3])) !== null) {
@@ -1915,10 +1919,14 @@ final class TextParser
         if (preg_match('/^CARDNAME gains (.+?) until end of turn$/i', $s, $m) && ($keywords = self::keywordList($m[1])) !== null) {
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'self' => true];
         }
+        // Incubate (rule 701.53): an Incubator token with N +1/+1 counters and `{2}: Transform this artifact.`
+        if (preg_match('/^incubate (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'incubate', 'amount' => $n];
+        }
         if (preg_match('/^you lose (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'lose_life', 'amount' => $n, 'you' => true];
         }
-        if (preg_match('/^put (\w+) (spore|charge|age|time|ki|oil|verse|fade|quest|storage|page|lore) counters? on CARDNAME$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+        if (preg_match('/^(?:you may )?put (\w+) (spore|charge|age|time|ki|oil|verse|fade|quest|storage|page|lore) counters? on CARDNAME$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'counters', 'amount' => $n, 'self' => true, 'kind' => strtolower($m[2])];
         }
         if (preg_match("/^put (\w+) \+1\/\+1 counters? on ({$targets}|CARDNAME)$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {

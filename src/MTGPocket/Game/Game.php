@@ -1970,7 +1970,8 @@ final class Game
         if (in_array('cascade', $card->keywords, true)) {
             $this->cascade($seat, $spell);
         }
-        $events = ['cast_spell', ...($card->isCreature() ? [] : ['cast_noncreature']), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery'])];
+        $events = ['cast_spell', ...($card->isCreature() ? [] : ['cast_noncreature']), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
+            ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : [])];
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
@@ -3315,6 +3316,13 @@ final class Game
                 if ($seat !== null) {
                     $this->searchForLand($seat, $effect['find'], $effect['to'], $effect['count'] ?? 1);
                 }
+                break;
+
+            case 'incubate':
+                $incubator = $this->createToken(['name' => 'Incubator Token', 'type' => 'Token Artifact — Incubator', 'types' => ['Artifact'], 'subtypes' => ['Incubator'], 'colors' => [], 'text' => '{2}: Transform Incubator Token.', 'manaCost' => null, 'layout' => 'transform',
+                    'back' => ['name' => 'Phyrexian Token', 'type' => 'Token Artifact Creature — Phyrexian', 'types' => ['Artifact', 'Creature'], 'subtypes' => ['Phyrexian'], 'colors' => [], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null]], $controller);
+                $incubator->addCounters('+1/+1', $amount);
+                $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
 
             case 'job_select':
@@ -4876,6 +4884,10 @@ final class Game
                 $this->log("Flanking: {$this->objects[$blocker]->name()} gets -1/-1 until end of turn.");
             }
         }
+        // `Whenever this creature becomes blocked`, afflict.
+        foreach (array_keys($this->blocked) as $id) {
+            $this->trigger($this->objects[$id], 'blocked', $this->objects[$id]->controller);
+        }
         // Bushido (rule 702.45): +N/+N when it blocks or becomes blocked.
         foreach (array_unique([...array_keys($this->blockers), ...array_keys($this->blocked)]) as $id) {
             if (($n = $this->keywordAmount($this->objects[$id], 'bushido')) > 0) {
@@ -5160,10 +5172,42 @@ final class Game
      *
      * @return void
      */
+    /**
+     * Dredge (rule 702.52): instead of drawing, mill N and return the card
+     * from the graveyard to hand. Taken whenever the library has at least
+     * N cards more than the player's hand size, the biggest dredge first.
+     *
+     * @param int $seat
+     *
+     * @return bool Whether the draw was replaced.
+     */
+    private function dredge(int $seat): bool
+    {
+        $player = $this->players[$seat];
+        $best = null;
+        foreach ($player->graveyard as $id) {
+            if (($n = (int) substr((string) current(preg_grep('/^dredge \d+$/', $this->objects[$id]->definition()->keywords) ?: ['dredge 0']), 7)) > 0 && count($player->library) >= $n + GamePlayer::HAND_SIZE && ($best === null || $n > $best[1])) {
+                $best = [$id, $n];
+            }
+        }
+        if ($best === null) {
+            return false;
+        }
+        [$id, $n] = $best;
+        $this->log("{$player->name} dredges {$this->objects[$id]->name()}.");
+        $this->mill($seat, $n);
+        $this->moveTo($this->objects[$id], GameObject::HAND);
+
+        return true;
+    }
+
     private function draw(int $seat, int $count): void
     {
         $player = $this->players[$seat];
         for ($i = 0; $i < $count; $i++) {
+            if ($this->stage === self::PLAYING && $this->dredge($seat)) {
+                continue;
+            }
             $id = array_pop($player->library);
             if ($id === null) {
                 $player->drewFromEmpty = true;
