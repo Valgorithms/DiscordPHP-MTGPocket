@@ -60,6 +60,9 @@ final class GameObject
     /** Face down: a 2/2 with no name or abilities (rule 708). */
     public bool $faceDown = false;
 
+    /** A double-faced card showing its back face (rule 712). */
+    public bool $transformed = false;
+
     /** Cast with its kicker cost paid. */
     public bool $kicked = false;
 
@@ -151,6 +154,9 @@ final class GameObject
         if ($this->faceDown) {
             return $this->faceDownDefinition ??= new CardDefinition($this->printed()->faceDownCard());
         }
+        if ($this->transformed && $this->printed()->back !== null) {
+            return $this->printed()->back;
+        }
 
         return $this->printed();
     }
@@ -190,6 +196,7 @@ final class GameObject
         $this->untilEndOfTurn = [];
         $this->used = [];
         $this->faceDown = false;
+        $this->transformed = false;
         $this->kicked = false;
         $this->shields = 0;
         $this->borrowedFrom = null;
@@ -248,6 +255,7 @@ final class GameObject
             'incarnation' => $this->incarnation,
             'used' => $this->used,
             'faceDown' => $this->faceDown,
+            'transformed' => $this->transformed,
             'kicked' => $this->kicked,
             'shields' => $this->shields,
             'unearthed' => $this->unearthed,
@@ -295,6 +303,7 @@ final class GameObject
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
         $object->incarnation = (int) ($data['incarnation'] ?? 0);
         $object->faceDown = (bool) ($data['faceDown'] ?? false);
+        $object->transformed = (bool) ($data['transformed'] ?? false);
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
         $object->unearthed = (bool) ($data['unearthed'] ?? false);

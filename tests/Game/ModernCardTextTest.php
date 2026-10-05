@@ -198,6 +198,12 @@ final class ModernCardTextTest extends GameTestCase
         'Seismic Lite' => ['manaCost' => '{G}', 'type' => 'Sorcery', 'text' => 'Look at the top X cards of your library, where X is the number of lands you control. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.', 'colors' => ['G']],
         'Extraction Lite' => ['manaCost' => '{B}', 'type' => 'Instant', 'text' => "Choose target card in a graveyard other than a basic land card. Search its owner's graveyard, hand, and library for any number of cards with the same name as that card and exile them. Then that player shuffles.", 'colors' => ['B']],
         'Bribery Lite' => ['manaCost' => '{2}{U}', 'type' => 'Sorcery', 'text' => "Search target opponent's library for a creature card and put that card onto the battlefield under your control. Then that player shuffles.", 'colors' => ['U']],
+        'Werewolf Lite // Howler Lite' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Human Werewolf', 'power' => '2', 'toughness' => '2', 'text' => 'At the beginning of each upkeep, if no spells were cast last turn, transform Werewolf Lite.', 'colors' => ['G'], 'layout' => 'transform',
+            'back' => ['name' => 'Howler Lite', 'type' => 'Creature — Werewolf', 'manaCost' => null, 'power' => '4', 'toughness' => '4', 'text' => "Trample\nAt the beginning of each upkeep, if a player cast two or more spells last turn, transform Howler Lite.", 'colors' => ['G']]],
+        'Daybound Lite // Nightbound Lite' => ['manaCost' => '{2}{R}', 'type' => 'Creature — Human Werewolf', 'power' => '3', 'toughness' => '2', 'text' => "Daybound (If a player casts no spells during their own turn, it becomes night next turn.)", 'colors' => ['R'], 'layout' => 'transform',
+            'back' => ['name' => 'Nightbound Lite', 'type' => 'Creature — Werewolf', 'manaCost' => null, 'power' => '5', 'toughness' => '4', 'text' => "Menace\nNightbound (If a player casts at least two spells during their own turn, it becomes day next turn.)", 'colors' => ['R']]],
+        'Flip Lite // Flipped Lite' => ['manaCost' => '{U}', 'type' => 'Creature — Human Wizard', 'power' => '1', 'toughness' => '1', 'text' => '{1}{U}: Transform Flip Lite. Activate only as a sorcery.', 'colors' => ['U'], 'layout' => 'transform',
+            'back' => ['name' => 'Flipped Lite', 'type' => 'Creature — Insect', 'manaCost' => null, 'power' => '3', 'toughness' => '2', 'text' => 'Flying', 'colors' => ['U']]],
         'Healer Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Human Cleric', 'power' => '1', 'toughness' => '1', 'text' => '{T}: Prevent the next 1 damage that would be dealt to any target this turn.', 'colors' => ['W']],
         'Reconfigure Lite' => ['manaCost' => '{1}{G}', 'type' => 'Artifact Creature — Equipment Fox', 'power' => '2', 'toughness' => '2', 'text' => "Equipped creature gets +2/+2.\nReconfigure {2} ({2}: Attach to target creature you control; or unattach from a creature. Reconfigure only as a sorcery. While attached, this isn't a creature.)", 'colors' => ['G']],
         'Zenith Lite' => ['manaCost' => '{1}{G}', 'type' => 'Sorcery', 'text' => "Draw a card. Shuffle Zenith Lite into its owner's library.", 'colors' => ['G']],
@@ -1260,6 +1266,43 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertTrue($stolen[0]->definition()->isCreature());
     }
 
+    public function testTransformWerewolvesAndDayNight(): void
+    {
+        $game = $this->newGame();
+        foreach (['Werewolf Lite // Howler Lite', 'Daybound Lite // Nightbound Lite', 'Flip Lite // Flipped Lite'] as $name) {
+            $this->assertSame([], (new \MTGPocket\Game\CardDefinition(self::more($name)))->unsupported, $name);
+        }
+        $this->passUntil(Step::PrecombatMain, 1);
+        $flip = $this->put(0, 'Flip Lite // Flipped Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Island', 2);
+        $game->activate(0, $flip, 0);
+        $this->resolve();
+        $this->assertSame('Flipped Lite', $game->objects[$flip]->name());
+        $this->assertContains('flying', $game->keywords($game->objects[$flip]));
+
+        $wolf = $this->put(0, 'Werewolf Lite // Howler Lite', GameObject::BATTLEFIELD);
+        $day = $this->put(0, 'Daybound Lite // Nightbound Lite', GameObject::BATTLEFIELD);
+        $this->assertSame('day', $game->dayNight);
+        $this->assertFalse($game->objects[$day]->transformed);
+        // Nobody casts a spell in turn 1: the werewolf transforms and it becomes night.
+        $this->passUntil(Step::PrecombatMain, 2);
+        $this->assertSame('night', $game->dayNight);
+        $this->assertSame([4, 'Howler Lite'], [$game->power($game->objects[$wolf]), $game->objects[$wolf]->name()]);
+        $this->assertSame('Nightbound Lite', $game->objects[$day]->name());
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->assertSame([5, 'night'], [$game->power($game->objects[$day]), $game->dayNight]);
+
+        // Two spells in turn 2: day again, and the Howler turns back.
+        $this->lands(1, 'Mountain', 2);
+        foreach ([1, 2] as $i) {
+            $game->cast(1, $game->addCard(1, self::card('Lightning Bolt'), GameObject::HAND)->id, 0, ['p:0']);
+            $this->resolve();
+        }
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->assertSame('day', $game->dayNight);
+        $this->assertSame(['Werewolf Lite // Howler Lite', 'Daybound Lite // Nightbound Lite'], [$game->objects[$wolf]->name(), $game->objects[$day]->name()]);
+    }
+
     public function testUnearth(): void
     {
         $game = $this->newGame();
@@ -2168,7 +2211,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1, 'Path Lite' => 1, 'Stress Lite' => 2, 'Seismic Lite' => 2, 'Extraction Lite' => 1, 'Bribery Lite' => 1,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1, 'Path Lite' => 1, 'Stress Lite' => 2, 'Seismic Lite' => 2, 'Extraction Lite' => 1, 'Bribery Lite' => 1, 'Werewolf Lite // Howler Lite' => 2, 'Daybound Lite // Nightbound Lite' => 2, 'Flip Lite // Flipped Lite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

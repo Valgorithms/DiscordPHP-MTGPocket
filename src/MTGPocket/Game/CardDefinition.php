@@ -38,7 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound',
-        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'look at top any time', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry',
+        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'look at top any time', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound',
     ];
 
     /**
@@ -173,8 +173,11 @@ final class CardDefinition
     /** @var array<int, array{text: string, cost: array, effects: array[], sorcery: bool, once: bool}> Activated abilities other than mana abilities, loyalty and Equip included. */
     public readonly array $activated;
 
-    /** @var string[] Rules text the engine does not apply yet. */
+    /** @var string[] Rules text the engine does not apply yet, the back face's included. */
     public readonly array $unsupported;
+
+    /** The back face of a transforming or modal double-faced card (rule 712). */
+    public readonly ?CardDefinition $back;
 
     /**
      * @param array $card Pool card data (see {@see \MTGPocket\Cards\CardPool}) or a basic land's.
@@ -242,7 +245,8 @@ final class CardDefinition
         $this->equipment = $parsed['equipment'];
         $this->triggered = $parsed['triggered'];
         $this->activated = $parsed['activated'];
-        $this->unsupported = [...$costUnsupported, ...$parsed['unsupported']];
+        $this->back = is_array($card['back'] ?? null) ? new CardDefinition(['uuid' => $this->key] + $card['back']) : null;
+        $this->unsupported = [...$costUnsupported, ...$parsed['unsupported'], ...($this->back?->unsupported ?? [])];
     }
 
     /**

@@ -75,10 +75,12 @@ final class CardPoolImporterTest extends StorageTestCase
         }
         $pdo->exec('INSERT INTO "cards" VALUES (\'akroma\', \'Akroma, Angel of Wrath\', \'TSB\', \'1\', \'special\', \'W\', 8, \'Card\', null, null, 0, null)');
         // Rules columns, as the real build has them.
-        foreach (['manaCost', 'power', 'toughness', 'text', 'types', 'subtypes', 'keywords'] as $column) {
+        foreach (['manaCost', 'power', 'toughness', 'text', 'types', 'subtypes', 'keywords', 'layout', 'faceName'] as $column) {
             $pdo->exec("ALTER TABLE \"cards\" ADD COLUMN \"{$column}\" TEXT");
         }
         $pdo->exec('UPDATE "cards" SET "manaCost" = \'{3}{W}{W}\', "power" = \'4\', "toughness" = \'4\', "text" = \'Flying, vigilance\', "types" = \'Creature\', "subtypes" = \'Angel\', "keywords" = \'Flying, Vigilance\' WHERE "uuid" = \'angel\'');
+        $pdo->exec('UPDATE "cards" SET "name" = \'Delver of Secrets // Insectile Aberration\', "layout" = \'transform\' WHERE "uuid" LIKE \'dfc-%\'');
+        $pdo->exec('UPDATE "cards" SET "faceName" = \'Insectile Aberration\', "power" = \'3\', "toughness" = \'2\', "text" = \'Flying\', "types" = \'Creature\' WHERE "uuid" = \'dfc-back\'');
         $pdo->exec('UPDATE "cards" SET "manaCost" = \'{R}\', "text" = \'Lightning Bolt deals 3 damage to any target.\', "types" = \'Instant\' WHERE "uuid" = \'bolt\'');
         // Official decks, for rentals.
         $pdo->exec('CREATE TABLE "setDecks" ("code" TEXT, "name" TEXT, "type" TEXT, "releaseDate" TEXT, "mainBoard" TEXT, "sideBoard" TEXT, "commander" TEXT)');
@@ -131,6 +133,10 @@ final class CardPoolImporterTest extends StorageTestCase
         $this->assertSame(['ring'], $pool->uuids(CardPool::COLORLESS));
         $this->assertSame(['W', 'U', 'R', 'M', 'C'], $pool->colors());
         $this->assertSame('scry-dragon', $pool->card('dragon')['scryfallId']);
+
+        $back = $pool->card('dfc-front')['back'];
+        $this->assertSame(['Insectile Aberration', '3', '2', 'Flying'], [$back['name'], $back['power'], $back['toughness'], $back['text']], 'A double-faced card keeps its back face.');
+        $this->assertArrayNotHasKey('back', $pool->card('angel'));
 
         $angel = $pool->card('angel');
         $this->assertSame(['{3}{W}{W}', '4', '4', ['Creature'], ['Angel']], [$angel['manaCost'], $angel['power'], $angel['toughness'], $angel['types'], $angel['subtypes']]);
