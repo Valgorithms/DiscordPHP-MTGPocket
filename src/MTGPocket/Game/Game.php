@@ -2728,7 +2728,12 @@ final class Game
         if (($effect['sameTarget'] ?? false) && $target !== null && isset($this->followed[$target])) {
             $target = $this->followed[$target];
         }
-        $amount = ($effect['amount'] ?? 0) === 'X' ? $x : (int) ($effect['amount'] ?? 0);
+        $amount = match ($effect['amount'] ?? 0) {
+            'X' => $x,
+            // `Look at the top X cards of your library, where X is the number of lands you control.`
+            'lands' => count(array_filter($this->permanents($controller), fn (GameObject $o) => $o->definition()->isLand())),
+            default => (int) ($effect['amount'] ?? 0),
+        };
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {
             (bool) ($effect['self'] ?? false) => $self,
@@ -3253,7 +3258,11 @@ final class Game
                 break;
 
             case 'search':
-                $this->searchForLand($controller, $effect['find'], $effect['to']);
+                // `Its controller may search …`: the owner of the card the spell just destroyed or exiled.
+                $seat = ($effect['theirs'] ?? false) ? $this->targetOwner($target) : $controller;
+                if ($seat !== null) {
+                    $this->searchForLand($seat, $effect['find'], $effect['to']);
+                }
                 break;
 
             case 'job_select':
@@ -3334,10 +3343,7 @@ final class Game
 
             case 'shuffle':
                 // `Then shuffle.`, or `Then that player shuffles.` after an effect on a player or their permanent.
-                $seat = $controller;
-                if ($effect['that'] ?? false) {
-                    $seat = $target !== null && str_starts_with($target, 'p:') ? (int) substr($target, 2) : ($affected?->controller ?? $controller);
-                }
+                $seat = ($effect['that'] ?? false) ? ($this->targetOwner($target) ?? $controller) : $controller;
                 $this->shuffle($seat);
                 $this->log("{$this->players[$seat]->name} shuffles their library.");
                 break;
@@ -4330,6 +4336,25 @@ final class Game
      *
      * @return GameObject|null
      */
+    /**
+     * The player a target names, or the owner of the card it names, even
+     * after that card has changed zones.
+     *
+     * @param string|null $target
+     *
+     * @return int|null
+     */
+    private function targetOwner(?string $target): ?int
+    {
+        $parts = explode(':', (string) $target);
+
+        return match ($parts[0]) {
+            'p' => (int) ($parts[1] ?? 0),
+            'o' => ($this->objects[(int) ($parts[1] ?? 0)] ?? null)?->owner,
+            default => null,
+        };
+    }
+
     private function targetObject(string $target): ?GameObject
     {
         $parts = explode(':', $target);
