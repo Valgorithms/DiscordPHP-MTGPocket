@@ -620,6 +620,7 @@ final class Game
                         $alt = $object->alt;
                         match ($alt) {
                             'dash' => $this->moveTo($object, GameObject::HAND),
+                            'blitz' => $this->moveTo($object, GameObject::GRAVEYARD),
                             'warp' => $this->moveTo($object, GameObject::EXILE),
                             'temporary' => $this->moveTo($object, GameObject::GRAVEYARD),
                             'end_exile' => $this->moveTo($object, GameObject::EXILE),
@@ -912,7 +913,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -937,7 +938,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -982,6 +983,9 @@ final class Game
             if (self::casualty($card) > 0) {
                 $ways[] = implode(',', [...$base, 'casualty']);
             }
+            if (isset($card->altCosts['buyback'])) {
+                $ways[] = implode(',', [...$base, 'buyback']);
+            }
         }
         if ($card->entwine !== null && $card->modes !== []) {
             $ways[] = implode(',', array_filter([$flashback ? 'fb' : '', 'm'.implode('+', array_keys($card->modes)), 'entwine']));
@@ -992,7 +996,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1008,11 +1012,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -1027,6 +1031,8 @@ final class Game
                 $options['bestowed'] = true;
             } elseif ($part === 'entwine') {
                 $options['entwined'] = true;
+            } elseif ($part === 'buyback') {
+                $options['buyback'] = true;
             } elseif ($part === 'casualty') {
                 // Casualty (rule 702.153): sacrifice a creature with enough power, and the spell is copied.
                 $options['casualty'] = true;
@@ -1038,7 +1044,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1331,7 +1337,7 @@ final class Game
     {
         $options = self::castOptions($how);
         // Additional costs: kicker, entwine and each Spree mode's.
-        $more = ($options['kicked'] && ! $options['bargained'] ? (string) $card->kicker : '').($options['entwined'] ? (string) $card->entwine : '')
+        $more = ($options['kicked'] && ! $options['bargained'] ? (string) $card->kicker : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
             .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']));
         if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended', 'cascade'], true)) {
             // Without paying its mana cost (rule 118.9), but still its additional costs: X is 0.
@@ -1695,7 +1701,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'],
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'],
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0]);
         $this->passes = 0;
 
@@ -1710,6 +1716,7 @@ final class Game
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
             $options['exiled'] !== '' ? "from exile ({$options['exiled']})" : '',
             $options['kicked'] ? 'kicked' : '',
+            $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['modes'] === [] ? '' : 'choosing '.implode(' and ', array_map(fn (int $mode) => '"'.rtrim(str_replace('CARDNAME', $card->name, $card->modes[$mode]['text']), '.').'"', $options['modes'])),
             $xCount > 0 ? "(X = {$x})" : '',
@@ -2622,6 +2629,12 @@ final class Game
 
             return;
         }
+        if ($resolved && ($item['buyback'] ?? false) && ! ($item['flashback'] ?? false)) {
+            $this->moveTo($object, GameObject::HAND);
+            $this->log("{$object->name()} returns to {$this->players[$object->owner]->name}'s hand (buyback).");
+
+            return;
+        }
         // `Shuffle CARDNAME into its owner's library.` as the spell's last instruction.
         if ($resolved && ! ($item['flashback'] ?? false) && in_array('shuffle_self', array_column($object->definition()->effects, 'type'), true)) {
             $this->moveTo($object, GameObject::LIBRARY);
@@ -3315,6 +3328,14 @@ final class Game
                 $seat = ($effect['theirs'] ?? false) ? $this->targetOwner($target) : $controller;
                 if ($seat !== null) {
                     $this->searchForLand($seat, $effect['find'], $effect['to'], $effect['count'] ?? 1);
+                }
+                break;
+
+            case 'ingest':
+                $opponent = $this->opponent($controller);
+                if (($top = end($this->players[$opponent]->library)) !== false) {
+                    $this->moveTo($this->objects[$top], GameObject::EXILE);
+                    $this->log("Ingest: {$this->players[$opponent]->name} exiles {$this->objects[$top]->name()} from the top of their library.");
                 }
                 break;
 
@@ -5310,6 +5331,9 @@ final class Game
                 foreach ($this->permanents($controller) as $permanent) {
                     if ($permanent->id !== $object->id) {
                         $this->trigger($permanent, 'creature_enters_other', $controller);
+                        if (in_array('Ally', $object->definition()->subtypes, true)) {
+                            $this->trigger($permanent, 'ally_enters_other', $controller);
+                        }
                     }
                 }
                 foreach ($this->permanents($controller) as $permanent) {
@@ -5445,6 +5469,7 @@ final class Game
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
         $plusCounters = $object->counter('+1/+1');
+        $blitzed = $dies && $object->alt === 'blitz';
         // Persist and undying (rules 702.79 and 702.93) look at its counters as it died.
         $returns = ! $dies ? null : match (true) {
             $this->hasKeyword($object, 'persist') && $object->counter('-1/-1') === 0 => '-1/-1',
@@ -5469,6 +5494,11 @@ final class Game
         };
         if ($dies) {
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
+        }
+        // Blitz (rule 702.152): `When this creature dies, draw a card.`
+        if ($blitzed) {
+            $this->log("Blitz: {$this->players[$controller]->name} draws a card.");
+            $this->draw($controller, 1);
         }
         if ($toGraveyard) {
             $this->trigger($object, 'to_graveyard', $controller, $incarnation);
@@ -6082,7 +6112,7 @@ final class Game
             if ($this->active === $object->controller) {
                 array_push($keywords, ...$object->definition()->yourTurnKeywords);
             }
-            if ($object->alt === 'dash' || ($object->alt === 'suspend' && $this->isCreature($object))) {
+            if ($object->alt === 'dash' || $object->alt === 'blitz' || ($object->alt === 'suspend' && $this->isCreature($object))) {
                 $keywords[] = 'haste';
             }
             foreach ($object->definition()->stationBands as $band) {
@@ -6383,6 +6413,7 @@ final class Game
             'sunburst' => (int) ($item['sunburst'] ?? 0),
             'escaped' => (bool) ($item['escaped'] ?? false),
             'disturbed' => (bool) ($item['disturbed'] ?? false),
+            'buyback' => (bool) ($item['buyback'] ?? false),
         ])), (array) $data['stack']));
         $game->pendingTriggers = array_values(array_map(fn ($trigger) => [
             'source' => (int) $trigger['source'],

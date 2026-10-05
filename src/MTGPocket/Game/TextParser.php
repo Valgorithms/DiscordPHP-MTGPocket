@@ -735,7 +735,13 @@ final class TextParser
             } elseif (preg_match('/^tribute (\d+)$/', $word, $m) && ! $spell) {
                 // Tribute (rule 702.104): the opponent never pays it, so `if tribute wasn't paid` always happens.
                 $found['keywords'][] = "tribute {$m[1]}";
-            } elseif (preg_match('/^(dash|evoke|warp|plot) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^buyback '.self::COST.'$/i', $part, $m) && $spell) {
+                // Buyback (rule 702.27): an additional cost that returns the spell to its owner's hand.
+                $found['altCosts']['buyback'] = $m[1];
+            } elseif ($word === 'ingest' && ! $spell) {
+                // Ingest (rule 702.115): the damaged player exiles the top card of their library.
+                $found['triggered'][] = ['text' => 'Ingest', 'event' => 'combat_damage', 'effects' => [['type' => 'ingest']]];
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
@@ -1341,6 +1347,13 @@ final class TextParser
         } elseif (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), (.+)$/', $line, $match)) {
             $event = 'landfall';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever CARDNAME or another Ally (?:you control enters|enters the battlefield under your control)(?: the battlefield)?, (.+)$/', $line, $match) && ($effects = self::effects($match[1])) !== null) {
+            // Rally-style Allies: once for itself, once for each other Ally.
+            foreach (['enters', 'ally_enters_other'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+            }
+
+            return true;
         } elseif (preg_match('/^Whenever another creature you control enters(?: the battlefield)?, (.+)$/', $line, $match)) {
             $event = 'creature_enters_other';
             $text = $match[1];
@@ -1929,7 +1942,7 @@ final class TextParser
         if (preg_match('/^(?:you may )?put (\w+) (spore|charge|age|time|ki|oil|verse|fade|quest|storage|page|lore) counters? on CARDNAME$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'counters', 'amount' => $n, 'self' => true, 'kind' => strtolower($m[2])];
         }
-        if (preg_match("/^put (\w+) \+1\/\+1 counters? on ({$targets}|CARDNAME)$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
+        if (preg_match("/^(?:you may )?put (\w+) \+1\/\+1 counters? on ({$targets}|CARDNAME)$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             if ($m[2] === 'CARDNAME') {
                 return ['type' => 'counters', 'amount' => $n, 'self' => true];
             }
