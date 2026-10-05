@@ -122,6 +122,9 @@ final class Game
     /** The turn in which all combat damage is prevented (`Prevent all combat damage that would be dealt this turn.`). */
     public int $fogTurn = 0;
 
+    /** @var array<string, string> A card returned to the battlefield, by its old target, for `It gains haste …` after it. */
+    private array $followed = [];
+
     /** @var array<string, int> Damage to prevent this turn, by target (`p:SEAT` or `o:ID`) (rule 615). */
     public array $prevent = [];
 
@@ -613,6 +616,7 @@ final class Game
                             'dash' => $this->moveTo($object, GameObject::HAND),
                             'warp' => $this->moveTo($object, GameObject::EXILE),
                             'temporary' => $this->moveTo($object, GameObject::GRAVEYARD),
+                            'end_exile' => $this->moveTo($object, GameObject::EXILE),
                             default => null,
                         };
                         if ($alt === 'warp' && $object->zone === GameObject::EXILE) {
@@ -2668,8 +2672,15 @@ final class Game
             }
         }
         $player = $this->players[$seat];
+        $to = $choice['to'] ?? 'hand';
         foreach ($ids as $id) {
-            $this->moveTo($this->objects[$id], GameObject::HAND);
+            if ($to === 'hand') {
+                $this->moveTo($this->objects[$id], GameObject::HAND);
+            } else {
+                // `You may put a land card from among them onto the battlefield tapped.`
+                $this->putOntoBattlefield($this->objects[$id], $seat);
+                $this->objects[$id]->tapped = $this->objects[$id]->tapped || $to === 'tapped';
+            }
         }
         $rest = array_values(array_diff($choice['cards'], $ids));
         shuffle($rest);
@@ -2685,7 +2696,7 @@ final class Game
         }
         $this->pendingChoice = null;
         $this->log(
-            "{$player->name} looks at the top ".count($choice['cards']).' cards and puts '.($ids === [] ? 'none' : count($ids)).' into their hand.',
+            "{$player->name} looks at the top ".count($choice['cards']).' cards and puts '.($ids === [] ? 'none' : count($ids)).($to === 'hand' ? ' into their hand.' : ' onto the battlefield.'),
             $seat,
             'took '.count($ids).'/'.count($choice['cards']),
         );
@@ -2713,6 +2724,9 @@ final class Game
             if ($target === null) {
                 return false;
             }
+        }
+        if (($effect['sameTarget'] ?? false) && $target !== null && isset($this->followed[$target])) {
+            $target = $this->followed[$target];
         }
         $amount = ($effect['amount'] ?? 0) === 'X' ? $x : (int) ($effect['amount'] ?? 0);
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
@@ -2972,6 +2986,9 @@ final class Game
                     if ($effect['haste'] ?? false) {
                         $token->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
                     }
+                    if (isset($effect['endStep'])) {
+                        $token->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
+                    }
                 }
                 $this->log("{$this->players[$controller]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
                 break;
@@ -3072,6 +3089,10 @@ final class Game
                 if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
                     $this->putOntoBattlefield($affected, $controller);
                     $this->log("{$affected->name()} returns to the battlefield.");
+                    $this->followed = [(string) $target => "o:{$affected->id}:{$affected->incarnation}"];
+                    if (isset($effect['endStep'])) {
+                        $affected->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
+                    }
                 }
                 break;
 
@@ -3291,6 +3312,7 @@ final class Game
                         'take' => min((int) $effect['take'], count($eligible)),
                         'may' => (bool) $effect['may'],
                         'rest' => $effect['rest'],
+                        'to' => $effect['to'] ?? 'hand',
                     ];
 
                     return true;
@@ -3308,6 +3330,16 @@ final class Game
                 if ($shielded !== null) {
                     $this->prevent[$shielded] = ($effect['amount'] ?? 0) === 'all' ? PHP_INT_MAX : ($this->prevent[$shielded] ?? 0) + $amount;
                 }
+                break;
+
+            case 'shuffle':
+                // `Then shuffle.`, or `Then that player shuffles.` after an effect on a player or their permanent.
+                $seat = $controller;
+                if ($effect['that'] ?? false) {
+                    $seat = $target !== null && str_starts_with($target, 'p:') ? (int) substr($target, 2) : ($affected?->controller ?? $controller);
+                }
+                $this->shuffle($seat);
+                $this->log("{$this->players[$seat]->name} shuffles their library.");
                 break;
 
             case 'shuffle_self':
