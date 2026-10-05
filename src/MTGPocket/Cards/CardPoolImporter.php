@@ -48,6 +48,13 @@ class CardPoolImporter
     public const array RULES_COLUMNS = ['manaCost', 'types', 'supertypes', 'subtypes', 'power', 'toughness', 'loyalty', 'defense', 'text', 'keywords', 'layout', 'colorIdentity'];
 
     /**
+     * Layouts whose back face is kept with the card.
+     *
+     * @var string[]
+     */
+    public const array DOUBLE_FACED = ['transform', 'modal_dfc'];
+
+    /**
      * @param Database $database An open MTGJSON build (wait for `ready()` first).
      */
     public function __construct(protected Database $database)
@@ -127,6 +134,8 @@ class CardPoolImporter
             $rows = $inBoosters;
         }
 
+        $backs = $this->backFaces($setCode, $rules);
+
         $pool = new CardPool($set['code'], (string) $set['name'], $set['releaseDate'] ?? null, $this->database->getVersion(), time());
         $names = [];
         foreach ($rows as $row) {
@@ -154,9 +163,57 @@ class CardPoolImporter
             if (in_array('manaCost', $rules, true)) {
                 $card['manaCost'] ??= null;
             }
+            // A transforming or modal double-faced card keeps its back face (rules 712).
+            if (in_array($row['layout'] ?? null, self::DOUBLE_FACED, true) && isset($backs[$row['name']])) {
+                $card['back'] = $backs[$row['name']];
+            }
             $pool->add($card);
         }
 
         return $pool;
+    }
+
+    /**
+     * The back faces of a set's double-faced cards, by the card's full name
+     * (`Front // Back`), each named for its own face.
+     *
+     * @param string   $setCode
+     * @param string[] $rules   The rules columns the build has.
+     *
+     * @return array<string, array>
+     */
+    protected function backFaces(string $setCode, array $rules): array
+    {
+        if (! in_array('layout', $rules, true)) {
+            return [];
+        }
+        $faceName = array_key_exists('faceName', $this->database->getColumns('cards'));
+        $rows = $this->database->select(
+            'SELECT "c"."name", "c"."colors", "c"."type"'.($faceName ? ', "c"."faceName"' : '')
+            .implode('', array_map(fn (string $column) => ", \"c\".\"{$column}\"", $rules))
+            .' FROM "cards" AS "c" WHERE "c"."setCode" = ? AND "c"."side" = \'b\'',
+            [$setCode]
+        );
+        $backs = [];
+        foreach ($rows as $row) {
+            $row = $this->database->decode('cards', $row);
+            if (isset($backs[$row['name']]) || ! in_array($row['layout'] ?? null, self::DOUBLE_FACED, true)) {
+                continue;
+            }
+            $back = [
+                'name' => $row['faceName'] ?? (explode(' // ', $row['name'])[1] ?? $row['name']),
+                'colors' => $row['colors'] ?? [],
+                'type' => $row['type'] ?? null,
+            ];
+            foreach ($rules as $column) {
+                if (isset($row[$column]) && $column !== 'layout') {
+                    $back[$column] = $row[$column];
+                }
+            }
+            $back['manaCost'] ??= null;
+            $backs[$row['name']] = $back;
+        }
+
+        return $backs;
     }
 }

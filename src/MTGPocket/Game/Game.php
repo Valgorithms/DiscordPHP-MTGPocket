@@ -133,6 +133,12 @@ final class Game
 
     public int $spellsTurn = 0;
 
+    /** Spells cast in the turn before `$spellsTurn`, when that was the turn before it. */
+    public int $spellsBefore = 0;
+
+    /** `day`, `night`, or null while it is neither (rule 726). */
+    public ?string $dayNight = null;
+
     /** @var array<int, true> Creatures that dealt first-strike damage this combat. */
     public array $struckFirst = [];
 
@@ -626,8 +632,15 @@ final class Game
                         }
                     }
                 }
+                if ($step === Step::Upkeep) {
+                    $this->dayNightCheck();
+                }
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
+                }
+                // "At the beginning of each upkeep, …": every turn's.
+                foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
+                    $this->trigger($object, 'each_upkeep', $object->controller);
                 }
                 // "At the beginning of the end step, …": every turn's.
                 foreach ($step === Step::End ? $this->permanents() : [] as $object) {
@@ -1915,6 +1928,7 @@ final class Game
     {
         $card = $spell->definition();
         if ($this->spellsTurn !== $this->turn) {
+            $this->spellsBefore = $this->spellsTurn === $this->turn - 1 ? $this->spellsCast : 0;
             [$this->spellsTurn, $this->spellsCast] = [$this->turn, 0];
         }
         // Storm (rule 702.40): a copy for each spell cast before it this turn, with the same targets.
@@ -3379,6 +3393,28 @@ final class Game
                 $this->log("{$this->players[$seat]->name} shuffles their library.");
                 break;
 
+            case 'transform':
+                // Rule 701.28: a double-faced permanent turns over; the werewolves' only if the spell count says so.
+                $met = match ($effect['if'] ?? null) {
+                    'no_spells' => $this->spellsLastTurn() === 0,
+                    'two_spells' => $this->spellsLastTurn() >= 2,
+                    default => true,
+                };
+                if ($met && $self !== null && $self->zone === GameObject::BATTLEFIELD && $self->printed()->back !== null) {
+                    $before = $self->name();
+                    $self->transformed = ! $self->transformed;
+                    $this->log("{$before} transforms into {$self->name()}.");
+                }
+                break;
+
+            case 'exile_transformed':
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD && $self->printed()->back !== null) {
+                    $this->moveTo($self, GameObject::EXILE);
+                    $this->putOntoBattlefield($self, $controller, transformed: true);
+                    $this->log("{$self->printed()->name} returns to the battlefield transformed into {$self->name()}.");
+                }
+                break;
+
             case 'shuffle_self':
                 if ($self !== null && $self->zone !== GameObject::LIBRARY && $self->zone !== GameObject::STACK) {
                     $this->log("{$self->name()} is shuffled into {$this->players[$self->owner]->name}'s library.");
@@ -4370,6 +4406,47 @@ final class Game
      * @return GameObject|null
      */
     /**
+     * Spells cast during the turn before this one, by anyone.
+     *
+     * @return int
+     */
+    private function spellsLastTurn(): int
+    {
+        return match ($this->spellsTurn) {
+            $this->turn => $this->spellsBefore,
+            $this->turn - 1 => $this->spellsCast,
+            default => 0,
+        };
+    }
+
+    /**
+     * Day and night (rule 726): as a turn begins, day becomes night if no
+     * spells were cast last turn, and night becomes day if two or more
+     * were; daybound permanents turn to their nightbound faces and back.
+     *
+     * @return void
+     */
+    private function dayNightCheck(): void
+    {
+        $spells = $this->spellsLastTurn();
+        $next = match (true) {
+            $this->dayNight === 'day' && $spells === 0 => 'night',
+            $this->dayNight === 'night' && $spells >= 2 => 'day',
+            default => $this->dayNight,
+        };
+        if ($next === $this->dayNight) {
+            return;
+        }
+        $this->dayNight = $next;
+        $this->log("It becomes {$next}.");
+        foreach ($this->permanents() as $object) {
+            if (! $object->faceDown && $object->printed()->back !== null && in_array('daybound', $object->printed()->keywords, true)) {
+                $object->transformed = $next === 'night';
+            }
+        }
+    }
+
+    /**
      * The player a target names, or the owner of the card it names, even
      * after that card has changed zones.
      *
@@ -5016,12 +5093,18 @@ final class Game
      *
      * @return void
      */
-    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true, bool $faceDown = false, bool $kicked = false, int $x = 0): void
+    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true, bool $faceDown = false, bool $kicked = false, int $x = 0, bool $transformed = false): void
     {
         $this->removeFromZone($object);
         $object->moveTo(GameObject::BATTLEFIELD);
         $object->faceDown = $faceDown;
         $object->kicked = $kicked;
+        $object->transformed = $transformed && $object->printed()->back !== null;
+        // Daybound (rule 702.145): it becomes day if it is neither, and it enters transformed at night.
+        if (! $faceDown && $object->printed()->back !== null && in_array('daybound', $object->printed()->keywords, true)) {
+            $this->dayNight ??= 'day';
+            $object->transformed = $this->dayNight === 'night';
+        }
         $card = $object->definition();
         $object->controller = $controller;
         $object->sick = true;
@@ -6005,6 +6088,8 @@ final class Game
             'fogTurn' => $this->fogTurn,
             'spellsCast' => $this->spellsCast,
             'spellsTurn' => $this->spellsTurn,
+            'spellsBefore' => $this->spellsBefore,
+            'dayNight' => $this->dayNight,
             'prevent' => $this->prevent,
         ];
     }
@@ -6087,6 +6172,8 @@ final class Game
         $game->fogTurn = (int) ($data['fogTurn'] ?? 0);
         $game->spellsCast = (int) ($data['spellsCast'] ?? 0);
         $game->spellsTurn = (int) ($data['spellsTurn'] ?? 0);
+        $game->spellsBefore = (int) ($data['spellsBefore'] ?? 0);
+        $game->dayNight = isset($data['dayNight']) ? (string) $data['dayNight'] : null;
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
 
         return $game;

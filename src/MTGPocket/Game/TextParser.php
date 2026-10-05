@@ -284,6 +284,8 @@ final class TextParser
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
                 'You may look at the top card of your library any time.' => 'look at top any time',
+                // Daybound sets it to day as it enters when it is neither (rule 702.145); see Game::dayNight().
+                "If it's neither day nor night, it becomes day as CARDNAME enters." => 'daybound',
                 'CARDNAME escapes with a +1/+1 counter on it.' => 'escapes with 1',
                 'CARDNAME escapes with two +1/+1 counters on it.' => 'escapes with 2',
                 'CARDNAME escapes with three +1/+1 counters on it.' => 'escapes with 3',
@@ -562,7 +564,9 @@ final class TextParser
             return [];
         }
 
-        $names = array_filter([$card->name, explode(',', $card->name)[0]], fn ($name) => strlen(trim($name)) > 2);
+        // A double-faced or split card's face is named before ` // `.
+        $face = explode(' // ', $card->name)[0];
+        $names = array_filter([$card->name, $face, explode(',', $face)[0]], fn ($name) => strlen(trim($name)) > 2);
         foreach (array_unique($names) as $name) {
             $text = str_replace($name, 'CARDNAME', $text);
         }
@@ -1234,6 +1238,11 @@ final class TextParser
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
+        } elseif (preg_match('/^At the beginning of each upkeep, if (no spells were cast last turn|a player cast two or more spells last turn), transform CARDNAME\.?$/', $line, $match)) {
+            // The werewolves of Innistrad (rule 701.28).
+            $result['triggered'][] = ['text' => $line, 'event' => 'each_upkeep', 'effects' => [['type' => 'transform', 'self' => true, 'if' => str_starts_with($match[1], 'no') ? 'no_spells' : 'two_spells']]];
+
+            return true;
         } elseif (preg_match('/^At the beginning of the end step, (.+)$/', $line, $match)) {
             $event = 'each_end_step';
             $text = $match[1];
@@ -1791,6 +1800,13 @@ final class TextParser
                 'you' => ['you' => true],
                 default => ['target' => self::TARGETS[$who]],
             };
+        }
+        if (preg_match('/^transform CARDNAME$/i', $s)) {
+            return ['type' => 'transform', 'self' => true];
+        }
+        // A Saga's last chapter: `Exile CARDNAME, then return it to the battlefield transformed under your control.`
+        if (preg_match('/^exile CARDNAME, then return it to the battlefield transformed under (?:your|its owner\'s) control$/i', $s)) {
+            return ['type' => 'exile_transformed', 'self' => true];
         }
         if (preg_match("/^(?:you may )?shuffle CARDNAME into its owner's library$/i", $s)) {
             return ['type' => 'shuffle_self', 'self' => true];
