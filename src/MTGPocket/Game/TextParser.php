@@ -312,6 +312,23 @@ final class TextParser
 
                 continue;
             }
+            // `CARDNAME gets +1/+1 for each artifact you control.`: read by Game::scaling().
+            if (! $spell && preg_match('/^CARDNAME gets \+(\d+)\/\+(\d+) for each (artifact|creature|other creature|land|enchantment) you control\.$/', $line, $match)) {
+                $result['keywords'][] = "gets +{$match[1]}/+{$match[2]} for each {$match[3]}";
+
+                continue;
+            }
+            // `CARDNAME costs {1} less to cast for each creature in your party.`: read by Game::paymentFor().
+            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast for each (creature in your party|artifact you control|creature you control|land you control|card in your hand|opponent you have)\.$/', $line, $match)) {
+                $result['keywords'][] = "costs {$match[1]} less for each ".match ($match[2]) {
+                    'creature in your party' => 'party',
+                    'opponent you have' => 'opponent',
+                    'card in your hand' => 'card',
+                    default => strtok($match[2], ' '),
+                };
+
+                continue;
+            }
             $kinds = ['' => 'any', 'Instant and sorcery ' => 'instant_sorcery', 'Creature ' => 'creature', 'Noncreature ' => 'noncreature', 'Artifact ' => 'artifact', 'Enchantment ' => 'enchantment'];
             if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?spells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
                 $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]];
@@ -786,6 +803,9 @@ final class TextParser
             } elseif ($word === 'mentor' && ! $spell) {
                 // Mentor (rule 702.134): a +1/+1 counter on an attacking creature with lesser power.
                 $found['triggered'][] = ['text' => 'Mentor', 'event' => 'attacks', 'effects' => [['type' => 'counters', 'amount' => 1, 'target' => 'attacking_lesser']]];
+            } elseif ($word === 'training' && ! $spell) {
+                // Training (rule 702.149): a +1/+1 counter when it attacks with a creature with greater power.
+                $found['triggered'][] = ['text' => 'Training', 'event' => 'attacks', 'effects' => [['type' => 'training', 'self' => true]]];
             } elseif ($word === 'exploit' && ! $spell) {
                 // Exploit (rule 702.110): see Game::applyEffect().
                 $found['triggered'][] = ['text' => 'Exploit', 'event' => 'enters', 'effects' => [['type' => 'exploit', 'self' => true]]];
@@ -984,6 +1004,15 @@ final class TextParser
     {
         if (preg_match('/^Creatures enchanted player controls get ([+-]\d+)\/([+-]\d+)\.?$/', $line, $m) && in_array($result['aura']['enchant'] ?? null, ['player', 'opponent'], true)) {
             $result['anthem'][] = ['power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'other' => false, 'enchantedPlayer' => true];
+
+            return true;
+        }
+        // `Each creature you control with a +1/+1 counter on it has trample.`
+        if (preg_match('/^(?:Each (other )?creature you control with a \+1\/\+1 counter on it has|(Other )?[Cc]reatures you control with \+1\/\+1 counters on them have) (.+?)\.?$/', $line, $m)) {
+            if (($keywords = self::keywordList($m[3])) === null) {
+                return false;
+            }
+            $result['anthem'][] = ['power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'other' => $m[1] !== '' || $m[2] !== '', 'withCounter' => true];
 
             return true;
         }
@@ -1386,6 +1415,10 @@ final class TextParser
             [$text, $sorcery] = [$limit[1], true];
         } elseif (preg_match('/^(.+?)\s*Activate only once each turn\.$/', $text, $limit)) {
             [$text, $once] = [$limit[1], true];
+        }
+        if ($cost['sacrifice'] ?? false) {
+            // `Sacrifice CARDNAME: It deals 2 damage to target creature.`: "it" is the sacrificed permanent.
+            $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
         }
         $effects = self::effects($text);
         if ($effects === null) {

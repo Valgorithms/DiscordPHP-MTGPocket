@@ -1399,6 +1399,20 @@ final class Game
         if (! $options['faceDown'] && in_array('affinity for artifacts', $card->keywords, true)) {
             $tax -= count(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')));
         }
+        // `This spell costs {1} less to cast for each creature in your party.` (or artifact you control …)
+        foreach ($options['faceDown'] ? [] : $card->keywords as $keyword) {
+            if (preg_match('/^costs (\d+) less for each (\w+)$/', $keyword, $m)) {
+                $tax -= (int) $m[1] * match ($m[2]) {
+                    'party' => $this->partySize($seat),
+                    'creature' => $this->countYours($seat, 'creature'),
+                    'artifact' => $this->countYours($seat, 'artifact'),
+                    'land' => $this->countYours($seat, 'land'),
+                    'card' => count(array_diff($this->players[$seat]->hand, [$id])),
+                    'opponent' => count($this->players) - 1,
+                    default => 0,
+                };
+            }
+        }
         // `Instant and sorcery spells you cast cost {1} less to cast.`
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($permanent->definition()->costReductions as $reduction) {
@@ -2847,6 +2861,14 @@ final class Game
                         $this->log("The last time counter leaves {$affected->name()}.");
                         $this->moveTo($affected, GameObject::GRAVEYARD);
                     }
+                }
+                break;
+
+            case 'training':
+                // Training: another attacking creature has greater power.
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD && array_filter(array_keys($this->attackers), fn (int $id) => $id !== $affected->id && $this->power($this->objects[$id]) > $this->power($affected)) !== []) {
+                    $affected->addCounters('+1/+1', 1);
+                    $this->log("Training: {$affected->name()} gets a +1/+1 counter.");
                 }
                 break;
 
@@ -5864,6 +5886,80 @@ final class Game
         return [];
     }
 
+    /**
+     * `CARDNAME gets +1/+1 for each artifact you control.`
+     *
+     * @param GameObject $object
+     *
+     * @return array{0: int, 1: int}
+     */
+    private function scaling(GameObject $object): array
+    {
+        $bonus = [0, 0];
+        if ($object->zone !== GameObject::BATTLEFIELD) {
+            return $bonus;
+        }
+        foreach ($object->definition()->keywords as $keyword) {
+            if (preg_match('/^gets \+(\d+)\/\+(\d+) for each (.+)$/', $keyword, $m)) {
+                $n = $this->countYours($object->controller, $m[3], $object);
+                $bonus = [$bonus[0] + (int) $m[1] * $n, $bonus[1] + (int) $m[2] * $n];
+            }
+        }
+
+        return $bonus;
+    }
+
+    /**
+     * How many of a kind of permanent a player controls, for `for each artifact you control` and the like.
+     *
+     * @param int             $seat
+     * @param string          $kind   artifact, creature, other creature, land or enchantment.
+     * @param GameObject|null $source Left out of `other creature`.
+     *
+     * @return int
+     */
+    private function countYours(int $seat, string $kind, ?GameObject $source = null): int
+    {
+        return count(array_filter($this->permanents($seat), fn (GameObject $o) => match ($kind) {
+            'artifact' => $o->definition()->is('Artifact'),
+            'creature' => $this->isCreature($o),
+            'other creature' => $o->id !== $source?->id && $this->isCreature($o),
+            'land' => $o->definition()->isLand(),
+            'enchantment' => $o->definition()->is('Enchantment'),
+            default => false,
+        }));
+    }
+
+    /**
+     * The size of a player's party (rule 700.8): up to one each of Cleric, Rogue, Warrior and Wizard among their creatures.
+     *
+     * @param int $seat
+     *
+     * @return int
+     */
+    public function partySize(int $seat): int
+    {
+        $roles = ['Cleric', 'Rogue', 'Warrior', 'Wizard'];
+        $creatures = array_map(fn (GameObject $o) => array_values(array_intersect($roles, $this->hasKeyword($o, 'changeling') ? $roles : $o->definition()->subtypes)), array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o))));
+        $best = 0;
+        // Try every assignment of creatures to roles; parties are at most four.
+        $assign = function (int $i, array $used) use (&$assign, &$best, $creatures): void {
+            $best = max($best, count($used));
+            if ($best === 4 || $i >= count($creatures)) {
+                return;
+            }
+            $assign($i + 1, $used);
+            foreach ($creatures[$i] as $role) {
+                if (! isset($used[$role])) {
+                    $assign($i + 1, $used + [$role => true]);
+                }
+            }
+        };
+        $assign(0, []);
+
+        return $best;
+    }
+
     private function counted(GameObject $object, string $stat): ?int
     {
         $counts = $object->definition()->countsAs;
@@ -5893,6 +5989,7 @@ final class Game
     {
         $power = ($this->levelBand($object)['power'] ?? $this->counted($object, 'power') ?? $this->prototype($object)[0] ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         $power += $this->maxSpeedBonus($object)['power'] ?? 0;
+        $power += $this->scaling($object)[0];
         foreach ($this->attachments($object) as $attached) {
             $power += $this->bonusOf($attached)['power'];
         }
@@ -5910,6 +6007,7 @@ final class Game
     {
         $toughness = ($this->levelBand($object)['toughness'] ?? $this->counted($object, 'toughness') ?? $this->prototype($object)[1] ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
         $toughness += $this->maxSpeedBonus($object)['toughness'] ?? 0;
+        $toughness += $this->scaling($object)[1];
         foreach ($this->attachments($object) as $attached) {
             $toughness += $this->bonusOf($attached)['toughness'];
         }
@@ -5986,7 +6084,7 @@ final class Game
                 continue;
             }
             foreach ($source->definition()->anthem as $anthem) {
-                if (($anthem['enchantedPlayer'] ?? false) || ! $this->gained($source, $anthem)) {
+                if (($anthem['enchantedPlayer'] ?? false) || ! $this->gained($source, $anthem) || (($anthem['withCounter'] ?? false) && $object->counter('+1/+1') === 0)) {
                     continue;
                 }
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
