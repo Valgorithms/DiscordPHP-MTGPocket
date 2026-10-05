@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+            <title>DiscordPHP-MTGPocket Documentation</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="../">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png"/>
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png"/>
+    <link rel="icon" href="images/favicon.ico"/>
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png"/>
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/base.css">
+            <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@100;200;300;400;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="css/template.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0/css/all.min.css" integrity="sha256-ybRkN9dBjhcS2qrW1z+hfCxq+1aBdwyQM5wlQoQVt/0=" crossorigin="anonymous" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/themes/prism-okaidia.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-numbers/prism-line-numbers.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-highlight/prism-line-highlight.css">
+                <script src="https://cdn.jsdelivr.net/npm/fuse.js@3.4.6"></script>
+        <script src="https://cdn.jsdelivr.net/npm/css-vars-ponyfill@2"></script>
+        <script src="js/template.js"></script>
+        <script src="js/search.js"></script>
+        <script defer src="js/searchIndex.js"></script>
+    </head>
+<body id="top">
+    <header class="phpdocumentor-header phpdocumentor-section">
+    <h1 class="phpdocumentor-title"><a href="" class="phpdocumentor-title__link">DiscordPHP-MTGPocket Documentation</a></h1>
+    <input class="phpdocumentor-header__menu-button" type="checkbox" id="menu-button" name="menu-button" />
+    <label class="phpdocumentor-header__menu-icon" for="menu-button">
+        <i class="fas fa-bars"></i>
+    </label>
+    <section data-search-form class="phpdocumentor-search">
+    <label>
+        <span class="visually-hidden">Search for</span>
+        <svg class="phpdocumentor-search__icon" width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" stroke-width="2"/>
+            <line x1="12.4892" y1="12.2727" x2="19.1559" y2="18.9393" stroke="currentColor" stroke-width="3"/>
+        </svg>
+        <input type="search" class="phpdocumentor-field phpdocumentor-search__field" placeholder="Loading .." disabled />
+    </label>
+</section>
+
+    <nav class="phpdocumentor-topnav">
+    <ul class="phpdocumentor-topnav__menu">
+        </ul>
+</nav>
+</header>
+
+    <main class="phpdocumentor">
+        <div class="phpdocumentor-section">
+            <input class="phpdocumentor-sidebar__menu-button" type="checkbox" id="sidebar-button" name="sidebar-button" />
+<label class="phpdocumentor-sidebar__menu-icon" for="sidebar-button">
+    Menu
+</label>
+<aside class="phpdocumentor-column -three phpdocumentor-sidebar">
+                    <section class="phpdocumentor-sidebar__category -namespaces">
+            <h2 class="phpdocumentor-sidebar__category-header">Namespaces</h2>
+                                    <h4 class="phpdocumentor-sidebar__root-namespace">
+    <a href="namespaces/mtgpocket.html" class="">MTGPocket</a>
+</h4>
+    <ul class="phpdocumentor-list">
+                    <li>
+                <a href="namespaces/mtgpocket-builders.html" class="">Builders</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-cards.html" class="">Cards</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-collection.html" class="">Collection</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-decks.html" class="">Decks</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-drafts.html" class="">Drafts</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-economy.html" class="">Economy</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-exports.html" class="">Exports</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-game.html" class="">Game</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-matches.html" class="">Matches</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-models.html" class="">Models</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-modes.html" class="">Modes</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-modules.html" class="">Modules</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-packs.html" class="">Packs</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-panels.html" class="">Panels</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-quests.html" class="">Quests</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-rentals.html" class="">Rentals</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-repository.html" class="">Repository</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-storage.html" class="">Storage</a>
+                
+            </li>
+                    <li>
+                <a href="namespaces/mtgpocket-trades.html" class="">Trades</a>
+                
+            </li>
+            </ul>
+
+                        </section>
+                <section class="phpdocumentor-sidebar__category -packages">
+            <h2 class="phpdocumentor-sidebar__category-header">Packages</h2>
+                                    <h4 class="phpdocumentor-sidebar__root-namespace">
+    <a href="packages/Application.html" class="">Application</a>
+</h4>
+
+                        </section>
+            
+    <section class="phpdocumentor-sidebar__category -reports">
+        <h2 class="phpdocumentor-sidebar__category-header">Reports</h2>
+                <h3 class="phpdocumentor-sidebar__root-package"><a href="reports/deprecated.html">Deprecated</a></h3>
+        <h3 class="phpdocumentor-sidebar__root-package"><a href="reports/errors.html">Errors</a></h3>
+        <h3 class="phpdocumentor-sidebar__root-package"><a href="reports/markers.html">Markers</a></h3>
+    </section>
+
+    <section class="phpdocumentor-sidebar__category -indices">
+        <h2 class="phpdocumentor-sidebar__category-header">Indices</h2>
+        <h3 class="phpdocumentor-sidebar__root-package"><a href="indices/files.html">Files</a></h3>
+    </section>
+</aside>
+
+            <div class="phpdocumentor-column -nine phpdocumentor-content">
+                                <section>
+                                        <ul class="phpdocumentor-breadcrumbs">
+            <li class="phpdocumentor-breadcrumb"><a href="namespaces/mtgpocket.html">MTGPocket</a></li>
+            <li class="phpdocumentor-breadcrumb"><a href="namespaces/mtgpocket-packs.html">Packs</a></li>
+    </ul>
+
+    <article class="phpdocumentor-element -class">
+        <h2 class="phpdocumentor-content__title">
+    PackGenerator
+
+    
+            <div class="phpdocumentor-element__package">
+            in package
+            <ul class="phpdocumentor-breadcrumbs">
+                                    <li class="phpdocumentor-breadcrumb"><a href="packages/Application.html">Application</a></li>
+                            </ul>
+        </div>
+    
+    
+    </h2>
+
+<div class="phpdocumentor-label-line">
+
+
+</div>
+
+        <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">38</span>
+
+    </aside>
+
+            <p class="phpdocumentor-summary">Builds packs of one color of one set.</p>
+
+
+    <section class="phpdocumentor-description"><p>A pack has <abbr title="\MTGPocket\Packs\SIZE">SIZE</abbr> cards in four kinds of slot, like a real draft
+booster without its basic land:</p>
+<ul>
+<li><abbr title="\MTGPocket\Packs\COMMONS">COMMONS</abbr> commons and <abbr title="\MTGPocket\Packs\UNCOMMONS">UNCOMMONS</abbr> uncommons;</li>
+<li>one wildcard slot, usually a common or uncommon but sometimes rarer;</li>
+<li>one rare slot, which is always a rare or a mythic rare, so every pack
+holds at least one. A mythic comes up as often as it would on a real
+print sheet, where each rare is printed twice and each mythic once.</li>
+</ul>
+<p>A pack holds no card twice while the color has enough cards. When a
+color runs short of a rarity, the slot takes the nearest rarity that has
+cards left; the rare slot never falls below rare, and is drawn first so
+the wildcard cannot take its card.</p>
+</section>
+
+
+    <h5 class="phpdocumentor-tag-list__heading" id="tags">
+        Tags
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#tags" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h5>
+    <dl class="phpdocumentor-tag-list">
+                    <dt class="phpdocumentor-tag-list__entry">
+                <span class="phpdocumentor-tag__name">since</span>
+            </dt>
+                            <dd class="phpdocumentor-tag-list__definition">
+                                            <span class="phpdocumentor-tag-link">0.2.0</span>
+                                                                                                        
+                                    </dd>
+                        </dl>
+
+    
+    
+<h3 id="toc">
+    Table of Contents
+    <a href="classes/MTGPocket-Packs-PackGenerator.html#toc" class="headerlink"><i class="fas fa-link"></i></a>
+
+</h3>
+
+
+
+
+
+
+
+<h4 id="toc-constants">
+    Constants
+    <a href="classes/MTGPocket-Packs-PackGenerator.html#toc-constants" class="headerlink"><i class="fas fa-link"></i></a>
+
+</h4>
+<dl class="phpdocumentor-table-of-contents">
+            <dt class="phpdocumentor-table-of-contents__entry -constant -public">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#constant_COMMONS">COMMONS</a>
+    <span>
+        &nbsp;: int&nbsp;= 10                            </span>
+</dt>
+
+            <dt class="phpdocumentor-table-of-contents__entry -constant -public">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#constant_SIZE">SIZE</a>
+    <span>
+        &nbsp;: int&nbsp;= 15                            </span>
+</dt>
+
+            <dt class="phpdocumentor-table-of-contents__entry -constant -public">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#constant_UNCOMMONS">UNCOMMONS</a>
+    <span>
+        &nbsp;: int&nbsp;= 3                            </span>
+</dt>
+
+            <dt class="phpdocumentor-table-of-contents__entry -constant -public">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#constant_WILDCARD_ODDS">WILDCARD_ODDS</a>
+    <span>
+        &nbsp;: array&lt;string|int, mixed&gt;&nbsp;= [&#039;common&#039; =&gt; 70, &#039;uncommon&#039; =&gt; 20, &#039;rare&#039; =&gt; 8,...                            </span>
+</dt>
+<dd>How likely the wildcard slot is to be each rarity, out of 100.</dd>
+
+            <dt class="phpdocumentor-table-of-contents__entry -constant -protected">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#constant_FALLBACK">FALLBACK</a>
+    <span>
+        &nbsp;: array&lt;string|int, mixed&gt;&nbsp;= [&#039;common&#039; =&gt; [&#039;common&#039;, &#039;uncommon&#039;, &#039;rare&#039;, &#039;my...                            </span>
+</dt>
+<dd>Rarities a slot falls back to, nearest first, when its own has run out.</dd>
+
+            <dt class="phpdocumentor-table-of-contents__entry -constant -protected">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#constant_WILDCARD_FALLBACK">WILDCARD_FALLBACK</a>
+    <span>
+        &nbsp;: array&lt;string|int, mixed&gt;&nbsp;= [&#039;common&#039; =&gt; [&#039;common&#039;, &#039;uncommon&#039;, &#039;rare&#039;, &#039;my...                            </span>
+</dt>
+<dd>Fallbacks for the wildcard slot, which, unlike the rare slot, may go
+below rare rather than repeat a card.</dd>
+
+    </dl>
+
+
+<h4 id="toc-properties">
+    Properties
+    <a href="classes/MTGPocket-Packs-PackGenerator.html#toc-properties" class="headerlink"><i class="fas fa-link"></i></a>
+
+</h4>
+<dl class="phpdocumentor-table-of-contents">
+            <dt class="phpdocumentor-table-of-contents__entry -property -protected">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#property_random">$random</a>
+    <span>
+                        &nbsp;: <abbr title="\Random\Randomizer">Randomizer</abbr>            </span>
+</dt>
+
+    </dl>
+
+<h4 id="toc-methods">
+    Methods
+    <a href="classes/MTGPocket-Packs-PackGenerator.html#toc-methods" class="headerlink"><i class="fas fa-link"></i></a>
+
+</h4>
+<dl class="phpdocumentor-table-of-contents">
+            <dt class="phpdocumentor-table-of-contents__entry -method -public">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#method___construct">__construct()</a>
+    <span>
+                                &nbsp;: mixed    </span>
+</dt>
+
+            <dt class="phpdocumentor-table-of-contents__entry -method -public">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#method_generate">generate()</a>
+    <span>
+                                &nbsp;: <a href="classes/MTGPocket-Packs-Pack.html"><abbr title="\MTGPocket\Packs\Pack">Pack</abbr></a>    </span>
+</dt>
+<dd>Opens a pack.</dd>
+
+            <dt class="phpdocumentor-table-of-contents__entry -method -protected">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#method_draw">draw()</a>
+    <span>
+                                &nbsp;: string    </span>
+</dt>
+<dd>Draws one card for a slot: one not yet in the pack, of the slot&#039;s
+rarity or the nearest that has one left; a repeat only when the color
+has nothing left to give.</dd>
+
+            <dt class="phpdocumentor-table-of-contents__entry -method -protected">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#method_rareSlotRarity">rareSlotRarity()</a>
+    <span>
+                                &nbsp;: string    </span>
+</dt>
+<dd>The rare slot&#039;s rarity: mythic one time in (2 × rares + mythics) per
+mythic, rare otherwise.</dd>
+
+            <dt class="phpdocumentor-table-of-contents__entry -method -protected">
+    <a class="" href="classes/MTGPocket-Packs-PackGenerator.html#method_wildcardRarity">wildcardRarity()</a>
+    <span>
+                                &nbsp;: string    </span>
+</dt>
+<dd>The wildcard slot&#039;s rarity, from {@see WILDCARD_ODDS} over the
+rarities the color has.</dd>
+
+    </dl>
+
+
+
+        
+    <section class="phpdocumentor-constants">
+        <h3 class="phpdocumentor-elements__header" id="constants">
+            Constants
+            <a href="classes/MTGPocket-Packs-PackGenerator.html#constants" class="headerlink"><i class="fas fa-link"></i></a>
+
+        </h3>
+                    <article class="phpdocumentor-element -constant -public ">
+    <h4 class="phpdocumentor-element__name" id="constant_COMMONS">
+        COMMONS
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#constant_COMMONS" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">41</span>
+
+    </aside>
+
+    
+    
+    <code class="phpdocumentor-signature phpdocumentor-code ">
+    <span class="phpdocumentor-signature__visibility">public</span>
+        <span class="phpdocumentor-signature__type">int</span>
+    <span class="phpdocumentor-signature__name">COMMONS</span>
+    = <span class="phpdocumentor-signature__default-value">10</span>
+</code>
+
+
+    
+    
+    
+
+        
+    </article>
+                    <article class="phpdocumentor-element -constant -public ">
+    <h4 class="phpdocumentor-element__name" id="constant_SIZE">
+        SIZE
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#constant_SIZE" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">40</span>
+
+    </aside>
+
+    
+    
+    <code class="phpdocumentor-signature phpdocumentor-code ">
+    <span class="phpdocumentor-signature__visibility">public</span>
+        <span class="phpdocumentor-signature__type">int</span>
+    <span class="phpdocumentor-signature__name">SIZE</span>
+    = <span class="phpdocumentor-signature__default-value">15</span>
+</code>
+
+
+    
+    
+    
+
+        
+    </article>
+                    <article class="phpdocumentor-element -constant -public ">
+    <h4 class="phpdocumentor-element__name" id="constant_UNCOMMONS">
+        UNCOMMONS
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#constant_UNCOMMONS" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">42</span>
+
+    </aside>
+
+    
+    
+    <code class="phpdocumentor-signature phpdocumentor-code ">
+    <span class="phpdocumentor-signature__visibility">public</span>
+        <span class="phpdocumentor-signature__type">int</span>
+    <span class="phpdocumentor-signature__name">UNCOMMONS</span>
+    = <span class="phpdocumentor-signature__default-value">3</span>
+</code>
+
+
+    
+    
+    
+
+        
+    </article>
+                    <article class="phpdocumentor-element -constant -public ">
+    <h4 class="phpdocumentor-element__name" id="constant_WILDCARD_ODDS">
+        WILDCARD_ODDS
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#constant_WILDCARD_ODDS" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">49</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">How likely the wildcard slot is to be each rarity, out of 100.</p>
+
+    
+    <code class="phpdocumentor-signature phpdocumentor-code ">
+    <span class="phpdocumentor-signature__visibility">public</span>
+        <span class="phpdocumentor-signature__type">array&lt;string|int, mixed&gt;</span>
+    <span class="phpdocumentor-signature__name">WILDCARD_ODDS</span>
+    = <span class="phpdocumentor-signature__default-value">[&#039;common&#039; =&gt; 70, &#039;uncommon&#039; =&gt; 20, &#039;rare&#039; =&gt; 8, &#039;mythic&#039; =&gt; 2]</span>
+</code>
+
+
+    
+    
+    
+
+        
+    </article>
+                    <article class="phpdocumentor-element -constant -protected ">
+    <h4 class="phpdocumentor-element__name" id="constant_FALLBACK">
+        FALLBACK
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#constant_FALLBACK" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">56</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">Rarities a slot falls back to, nearest first, when its own has run out.</p>
+
+    
+    <code class="phpdocumentor-signature phpdocumentor-code ">
+    <span class="phpdocumentor-signature__visibility">protected</span>
+        <span class="phpdocumentor-signature__type">array&lt;string|int, mixed&gt;</span>
+    <span class="phpdocumentor-signature__name">FALLBACK</span>
+    = <span class="phpdocumentor-signature__default-value">[&#039;common&#039; =&gt; [&#039;common&#039;, &#039;uncommon&#039;, &#039;rare&#039;, &#039;mythic&#039;], &#039;uncommon&#039; =&gt; [&#039;uncommon&#039;, &#039;common&#039;, &#039;rare&#039;, &#039;mythic&#039;], &#039;rare&#039; =&gt; [&#039;rare&#039;, &#039;mythic&#039;], &#039;mythic&#039; =&gt; [&#039;mythic&#039;, &#039;rare&#039;]]</span>
+</code>
+
+
+    
+    
+    
+
+        
+    </article>
+                    <article class="phpdocumentor-element -constant -protected ">
+    <h4 class="phpdocumentor-element__name" id="constant_WILDCARD_FALLBACK">
+        WILDCARD_FALLBACK
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#constant_WILDCARD_FALLBACK" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">69</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">Fallbacks for the wildcard slot, which, unlike the rare slot, may go
+below rare rather than repeat a card.</p>
+
+    
+    <code class="phpdocumentor-signature phpdocumentor-code ">
+    <span class="phpdocumentor-signature__visibility">protected</span>
+        <span class="phpdocumentor-signature__type">array&lt;string|int, mixed&gt;</span>
+    <span class="phpdocumentor-signature__name">WILDCARD_FALLBACK</span>
+    = <span class="phpdocumentor-signature__default-value">[&#039;common&#039; =&gt; [&#039;common&#039;, &#039;uncommon&#039;, &#039;rare&#039;, &#039;mythic&#039;], &#039;uncommon&#039; =&gt; [&#039;uncommon&#039;, &#039;common&#039;, &#039;rare&#039;, &#039;mythic&#039;], &#039;rare&#039; =&gt; [&#039;rare&#039;, &#039;mythic&#039;, &#039;uncommon&#039;, &#039;common&#039;], &#039;mythic&#039; =&gt; [&#039;mythic&#039;, &#039;rare&#039;, &#039;uncommon&#039;, &#039;common&#039;]]</span>
+</code>
+
+
+    
+    
+    
+
+        
+    </article>
+            </section>
+
+        
+    <section class="phpdocumentor-properties">
+        <h3 class="phpdocumentor-elements__header" id="properties">
+            Properties
+            <a href="classes/MTGPocket-Packs-PackGenerator.html#properties" class="headerlink"><i class="fas fa-link"></i></a>
+
+        </h3>
+                    <article
+        class="
+            phpdocumentor-element
+            -property
+            -protected
+                                                                    "
+>
+    <h4 class="phpdocumentor-element__name" id="property_random">
+        $random
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#property_random" class="headerlink"><i class="fas fa-link"></i></a>
+
+        <span class="phpdocumentor-element__modifiers">
+                                            </span>
+    </h4>
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">76</span>
+
+    </aside>
+
+    
+    
+    <code class="phpdocumentor-code phpdocumentor-signature ">
+        <span class="phpdocumentor-signature__visibility">protected</span>
+            <span class="phpdocumentor-signature__type"><abbr title="\Random\Randomizer">Randomizer</abbr></span>
+    <span class="phpdocumentor-signature__name">$random</span>
+    </code>
+
+    
+    
+    
+
+        
+        
+
+</article>
+            </section>
+
+            <section class="phpdocumentor-methods">
+        <h3 class="phpdocumentor-elements__header" id="methods">
+            Methods
+            <a href="classes/MTGPocket-Packs-PackGenerator.html#methods" class="headerlink"><i class="fas fa-link"></i></a>
+
+        </h3>
+                    <article
+        class="phpdocumentor-element
+            -method
+            -public
+                                                        "
+>
+    <h4 class="phpdocumentor-element__name" id="method___construct">
+        __construct()
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#method___construct" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">81</span>
+
+    </aside>
+
+    
+    <code class="phpdocumentor-code phpdocumentor-signature ">
+    <span class="phpdocumentor-signature__visibility">public</span>
+                    <span class="phpdocumentor-signature__name">__construct</span><span>(</span><span class="phpdocumentor-signature__argument"><span>[</span><span class="phpdocumentor-signature__argument__type"><abbr title="\Random\Randomizer">Randomizer</abbr>|null&nbsp;</span><span class="phpdocumentor-signature__argument__name">$random</span><span> = </span><span class="phpdocumentor-signature__argument__default-value">null</span><span> ]</span></span><span>)</span><span> : </span><span class="phpdocumentor-signature__response_type">mixed</span></code>
+
+    <div class="phpdocumentor-label-line">
+        </div>
+    
+    
+        <h5 class="phpdocumentor-argument-list__heading">Parameters</h5>
+    <dl class="phpdocumentor-argument-list">
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$random</span>
+                : <span class="phpdocumentor-argument-list__argument__type"><abbr title="\Random\Randomizer">Randomizer</abbr>|null</span>
+                 = <span class="phpdocumentor-argument-list__argument__default-value">null</span>            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                    <section class="phpdocumentor-description"><p>A seeded one makes packs repeatable, for tests.</p>
+</section>
+
+            </dd>
+            </dl>
+
+    
+
+        
+    
+    
+</article>
+                    <article
+        class="phpdocumentor-element
+            -method
+            -public
+                                                        "
+>
+    <h4 class="phpdocumentor-element__name" id="method_generate">
+        generate()
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#method_generate" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">96</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">Opens a pack.</p>
+
+    <code class="phpdocumentor-code phpdocumentor-signature ">
+    <span class="phpdocumentor-signature__visibility">public</span>
+                    <span class="phpdocumentor-signature__name">generate</span><span>(</span><span class="phpdocumentor-signature__argument"><span class="phpdocumentor-signature__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a>&nbsp;</span><span class="phpdocumentor-signature__argument__name">$pool</span></span><span class="phpdocumentor-signature__argument"><span>, </span><span class="phpdocumentor-signature__argument__type">string&nbsp;</span><span class="phpdocumentor-signature__argument__name">$color</span></span><span>)</span><span> : </span><span class="phpdocumentor-signature__response_type"><a href="classes/MTGPocket-Packs-Pack.html"><abbr title="\MTGPocket\Packs\Pack">Pack</abbr></a></span></code>
+
+    <div class="phpdocumentor-label-line">
+        </div>
+    
+    
+        <h5 class="phpdocumentor-argument-list__heading">Parameters</h5>
+    <dl class="phpdocumentor-argument-list">
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$pool</span>
+                : <span class="phpdocumentor-argument-list__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a></span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$color</span>
+                : <span class="phpdocumentor-argument-list__argument__type">string</span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                    <section class="phpdocumentor-description"><p>One of <a href="classes/MTGPocket-Cards-CardPool.html#constant_COLORS"><abbr title="\MTGPocket\Cards\CardPool::COLORS">CardPool::COLORS</abbr></a>.</p>
+</section>
+
+            </dd>
+            </dl>
+
+    
+    <h5 class="phpdocumentor-tag-list__heading" id="method_generate_tags">
+        Tags
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#method_generate_tags" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h5>
+    <dl class="phpdocumentor-tag-list">
+                    <dt class="phpdocumentor-tag-list__entry">
+                <span class="phpdocumentor-tag__name">throws</span>
+            </dt>
+                            <dd class="phpdocumentor-tag-list__definition">
+                                                                <span class="phpdocumentor-tag-link"><abbr title="\InvalidArgumentException">InvalidArgumentException</abbr></span>
+                                                                                        <section class="phpdocumentor-description"><p>When the color has no rare or mythic rare to fill the rare slot.</p>
+</section>
+
+                                    </dd>
+                        </dl>
+
+        
+    
+            <section>
+        <h5 class="phpdocumentor-return-value__heading">Return values</h5>
+        <span class="phpdocumentor-signature__response_type"><a href="classes/MTGPocket-Packs-Pack.html"><abbr title="\MTGPocket\Packs\Pack">Pack</abbr></a></span>
+            </section>
+
+</article>
+                    <article
+        class="phpdocumentor-element
+            -method
+            -protected
+                                                        "
+>
+    <h4 class="phpdocumentor-element__name" id="method_draw">
+        draw()
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#method_draw" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">171</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">Draws one card for a slot: one not yet in the pack, of the slot&#039;s
+rarity or the nearest that has one left; a repeat only when the color
+has nothing left to give.</p>
+
+    <code class="phpdocumentor-code phpdocumentor-signature ">
+    <span class="phpdocumentor-signature__visibility">protected</span>
+                    <span class="phpdocumentor-signature__name">draw</span><span>(</span><span class="phpdocumentor-signature__argument"><span class="phpdocumentor-signature__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a>&nbsp;</span><span class="phpdocumentor-signature__argument__name">$pool</span></span><span class="phpdocumentor-signature__argument"><span>, </span><span class="phpdocumentor-signature__argument__type">string&nbsp;</span><span class="phpdocumentor-signature__argument__name">$color</span></span><span class="phpdocumentor-signature__argument"><span>, </span><span class="phpdocumentor-signature__argument__type">string&nbsp;</span><span class="phpdocumentor-signature__argument__name">$rarity</span></span><span class="phpdocumentor-signature__argument"><span>, </span><span class="phpdocumentor-signature__argument__type">array&lt;string, bool&gt;&nbsp;</span><span class="phpdocumentor-signature__argument__reference-operator">&amp;</span><span class="phpdocumentor-signature__argument__name">$taken</span></span><span class="phpdocumentor-signature__argument"><span>[</span><span>, </span><span class="phpdocumentor-signature__argument__type">bool&nbsp;</span><span class="phpdocumentor-signature__argument__name">$wildcard</span><span> = </span><span class="phpdocumentor-signature__argument__default-value">false</span><span> ]</span></span><span>)</span><span> : </span><span class="phpdocumentor-signature__response_type">string</span></code>
+
+    <div class="phpdocumentor-label-line">
+        </div>
+    
+    
+        <h5 class="phpdocumentor-argument-list__heading">Parameters</h5>
+    <dl class="phpdocumentor-argument-list">
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$pool</span>
+                : <span class="phpdocumentor-argument-list__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a></span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$color</span>
+                : <span class="phpdocumentor-argument-list__argument__type">string</span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$rarity</span>
+                : <span class="phpdocumentor-argument-list__argument__type">string</span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$taken</span>
+                : <span class="phpdocumentor-argument-list__argument__type">array&lt;string, bool&gt;</span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                    <section class="phpdocumentor-description"><p>Uuids already in the pack.</p>
+</section>
+
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$wildcard</span>
+                : <span class="phpdocumentor-argument-list__argument__type">bool</span>
+                 = <span class="phpdocumentor-argument-list__argument__default-value">false</span>            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                    <section class="phpdocumentor-description"><p>Use <abbr title="\MTGPocket\Packs\WILDCARD_FALLBACK">WILDCARD_FALLBACK</abbr>.</p>
+</section>
+
+            </dd>
+            </dl>
+
+    
+
+        
+    
+            <section>
+        <h5 class="phpdocumentor-return-value__heading">Return values</h5>
+        <span class="phpdocumentor-signature__response_type">string</span>
+            </section>
+
+</article>
+                    <article
+        class="phpdocumentor-element
+            -method
+            -protected
+                                                        "
+>
+    <h4 class="phpdocumentor-element__name" id="method_rareSlotRarity">
+        rareSlotRarity()
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#method_rareSlotRarity" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">128</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">The rare slot&#039;s rarity: mythic one time in (2 × rares + mythics) per
+mythic, rare otherwise.</p>
+
+    <code class="phpdocumentor-code phpdocumentor-signature ">
+    <span class="phpdocumentor-signature__visibility">protected</span>
+                    <span class="phpdocumentor-signature__name">rareSlotRarity</span><span>(</span><span class="phpdocumentor-signature__argument"><span class="phpdocumentor-signature__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a>&nbsp;</span><span class="phpdocumentor-signature__argument__name">$pool</span></span><span class="phpdocumentor-signature__argument"><span>, </span><span class="phpdocumentor-signature__argument__type">string&nbsp;</span><span class="phpdocumentor-signature__argument__name">$color</span></span><span>)</span><span> : </span><span class="phpdocumentor-signature__response_type">string</span></code>
+
+    <div class="phpdocumentor-label-line">
+        </div>
+    
+    
+        <h5 class="phpdocumentor-argument-list__heading">Parameters</h5>
+    <dl class="phpdocumentor-argument-list">
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$pool</span>
+                : <span class="phpdocumentor-argument-list__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a></span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$color</span>
+                : <span class="phpdocumentor-argument-list__argument__type">string</span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+            </dl>
+
+    
+
+        
+    
+            <section>
+        <h5 class="phpdocumentor-return-value__heading">Return values</h5>
+        <span class="phpdocumentor-signature__response_type">string</span>
+            </section>
+
+</article>
+                    <article
+        class="phpdocumentor-element
+            -method
+            -protected
+                                                        "
+>
+    <h4 class="phpdocumentor-element__name" id="method_wildcardRarity">
+        wildcardRarity()
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#method_wildcardRarity" class="headerlink"><i class="fas fa-link"></i></a>
+
+    </h4>
+    <aside class="phpdocumentor-element-found-in">
+    <abbr class="phpdocumentor-element-found-in__file" title="src/MTGPocket/Packs/PackGenerator.php"><a href="files/src-mtgpocket-packs-packgenerator.html"><abbr title="src/MTGPocket/Packs/PackGenerator.php">PackGenerator.php</abbr></a></abbr>
+    :
+    <span class="phpdocumentor-element-found-in__line">145</span>
+
+    </aside>
+
+        <p class="phpdocumentor-summary">The wildcard slot&#039;s rarity, from {@see WILDCARD_ODDS} over the
+rarities the color has.</p>
+
+    <code class="phpdocumentor-code phpdocumentor-signature ">
+    <span class="phpdocumentor-signature__visibility">protected</span>
+                    <span class="phpdocumentor-signature__name">wildcardRarity</span><span>(</span><span class="phpdocumentor-signature__argument"><span class="phpdocumentor-signature__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a>&nbsp;</span><span class="phpdocumentor-signature__argument__name">$pool</span></span><span class="phpdocumentor-signature__argument"><span>, </span><span class="phpdocumentor-signature__argument__type">string&nbsp;</span><span class="phpdocumentor-signature__argument__name">$color</span></span><span>)</span><span> : </span><span class="phpdocumentor-signature__response_type">string</span></code>
+
+    <div class="phpdocumentor-label-line">
+        </div>
+    
+    
+        <h5 class="phpdocumentor-argument-list__heading">Parameters</h5>
+    <dl class="phpdocumentor-argument-list">
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$pool</span>
+                : <span class="phpdocumentor-argument-list__argument__type"><a href="classes/MTGPocket-Cards-CardPool.html"><abbr title="\MTGPocket\Cards\CardPool">CardPool</abbr></a></span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+                    <dt class="phpdocumentor-argument-list__entry">
+                <span class="phpdocumentor-argument-list__argument__name">$color</span>
+                : <span class="phpdocumentor-argument-list__argument__type">string</span>
+                            </dt>
+            <dd class="phpdocumentor-argument-list__definition">
+                
+            </dd>
+            </dl>
+
+    
+
+        
+    
+            <section>
+        <h5 class="phpdocumentor-return-value__heading">Return values</h5>
+        <span class="phpdocumentor-signature__response_type">string</span>
+            </section>
+
+</article>
+            </section>
+
+        
+    </article>
+                                </section>
+                <section class="phpdocumentor-on-this-page__sidebar">
+                                
+    <section class="phpdocumentor-on-this-page__content">
+        <strong class="phpdocumentor-on-this-page__title">On this page</strong>
+
+        <ul class="phpdocumentor-list -clean">
+            <li class="phpdocumentor-on-this-page-section__title">Table Of Contents</li>
+            <li>
+                <ul class="phpdocumentor-list -clean">
+                                        <li><a href="classes/MTGPocket-Packs-PackGenerator.html#toc-constants">Constants</a></li>
+                                                            <li><a href="classes/MTGPocket-Packs-PackGenerator.html#toc-properties">Properties</a></li>
+                                                            <li><a href="classes/MTGPocket-Packs-PackGenerator.html#toc-methods">Methods</a></li>
+                                    </ul>
+            </li>
+                            <li class="phpdocumentor-on-this-page-section__title">Constants</li>
+                <li>
+                    <ul class="phpdocumentor-list -clean">
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#constant_COMMONS">COMMONS</a></li>
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#constant_SIZE">SIZE</a></li>
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#constant_UNCOMMONS">UNCOMMONS</a></li>
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#constant_WILDCARD_ODDS">WILDCARD_ODDS</a></li>
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#constant_FALLBACK">FALLBACK</a></li>
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#constant_WILDCARD_FALLBACK">WILDCARD_FALLBACK</a></li>
+                                            </ul>
+                </li>
+            
+                            <li class="phpdocumentor-on-this-page-section__title">Properties</li>
+                <li>
+                    <ul class="phpdocumentor-list -clean">
+                                                    <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#property_random">$random</a></li>
+                                            </ul>
+                </li>
+            
+                        <li class="phpdocumentor-on-this-page-section__title">Methods</li>
+            <li>
+                <ul class="phpdocumentor-list -clean">
+                                            <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#method___construct">__construct()</a></li>
+                                            <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#method_generate">generate()</a></li>
+                                            <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#method_draw">draw()</a></li>
+                                            <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#method_rareSlotRarity">rareSlotRarity()</a></li>
+                                            <li class=""><a href="classes/MTGPocket-Packs-PackGenerator.html#method_wildcardRarity">wildcardRarity()</a></li>
+                                    </ul>
+            </li>
+                    </ul>
+    </section>
+
+                </section>
+                            </div>
+            <section data-search-results class="phpdocumentor-search-results phpdocumentor-search-results--hidden">
+    <section class="phpdocumentor-search-results__dialog">
+        <header class="phpdocumentor-search-results__header">
+            <h2 class="phpdocumentor-search-results__title">Search results</h2>
+            <button class="phpdocumentor-search-results__close"><i class="fas fa-times"></i></button>
+        </header>
+        <section class="phpdocumentor-search-results__body">
+            <ul class="phpdocumentor-search-results__entries"></ul>
+        </section>
+    </section>
+</section>
+        </div>
+        <a href="classes/MTGPocket-Packs-PackGenerator.html#top" class="phpdocumentor-back-to-top"><i class="fas fa-chevron-circle-up"></i></a>
+
+    </main>
+
+    <script>
+        cssVars({});
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-highlight/prism-line-highlight.min.js"></script>
+</body>
+</html>
