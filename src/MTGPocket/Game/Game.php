@@ -86,7 +86,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours', 'card_graveyard_nonbasic'];
 
     /** @var int[] */
     public array $exile = [];
@@ -3341,6 +3341,37 @@ final class Game
                 }
                 break;
 
+            case 'choose_target':
+                break;
+
+            case 'exile_named':
+                // Surgical Extraction, Crumble to Dust: every card with that card's name from its owner's graveyard, hand and library.
+                $named = $target === null ? null : ($this->objects[(int) (explode(':', $target)[1] ?? 0)] ?? null);
+                if ($named !== null) {
+                    $owner = $this->players[$named->owner];
+                    $found = array_values(array_filter([...$owner->graveyard, ...$owner->hand, ...$owner->library], fn (int $id) => $id !== $named->id && $this->objects[$id]->name() === $named->name()));
+                    foreach ($found as $id) {
+                        $this->moveTo($this->objects[$id], GameObject::EXILE);
+                    }
+                    $this->shuffle($named->owner);
+                    $this->log("{$this->players[$controller]->name} exiles ".count($found)." card(s) named {$named->name()} from {$owner->name}'s graveyard, hand and library.");
+                }
+                break;
+
+            case 'steal_search':
+                // Bribery: the opponent's best matching card, onto the battlefield under the caster's control.
+                $seat = $this->targetOwner($target);
+                if ($seat !== null) {
+                    $found = array_values(array_filter($this->players[$seat]->library, fn (int $id) => $this->matchesFilter($this->objects[$id]->printed(), $effect['filter'])));
+                    usort($found, fn (int $a, int $b) => $this->objects[$b]->printed()->cost->manaValue() <=> $this->objects[$a]->printed()->cost->manaValue());
+                    if ($found !== []) {
+                        $this->putOntoBattlefield($this->objects[$found[0]], $controller);
+                        $this->log("{$this->players[$controller]->name} puts {$this->objects[$found[0]]->name()} from {$this->players[$seat]->name}'s library onto the battlefield.");
+                    }
+                    $this->shuffle($seat);
+                }
+                break;
+
             case 'shuffle':
                 // `Then shuffle.`, or `Then that player shuffles.` after an effect on a player or their permanent.
                 $seat = ($effect['that'] ?? false) ? ($this->targetOwner($target) ?? $controller) : $controller;
@@ -4250,6 +4281,8 @@ final class Game
             'untapped_creature' => $creature && ! $object->tapped,
             'creature_card_yours' => $object->printed()->isCreature() && $object->owner === $controller,
             'card_yours' => $object->owner === $controller,
+            'card_graveyard_nonbasic' => ! ($object->printed()->isLand() && in_array('Basic', $object->printed()->supertypes, true)),
+            'nonbasic_land' => $card->isLand() && ! in_array('Basic', $card->supertypes, true),
             'creature_or_planeswalker_opponent' => ($creature || $card->isPlaneswalker()) && $object->controller !== $controller,
             'land_you_control' => $card->isLand() && $object->controller === $controller,
             'land' => $card->isLand(),

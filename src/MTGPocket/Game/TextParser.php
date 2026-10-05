@@ -97,6 +97,8 @@ final class TextParser
         'target untapped creature' => 'untapped_creature',
         'target creature card from your graveyard' => 'creature_card_yours',
         'target card from your graveyard' => 'card_yours',
+        'target card in a graveyard other than a basic land card' => 'card_graveyard_nonbasic',
+        'target nonbasic land' => 'nonbasic_land',
         'target spell' => 'spell',
         'target creature spell' => 'creature_spell',
         'target noncreature spell' => 'noncreature_spell',
@@ -1926,6 +1928,18 @@ final class TextParser
         if (preg_match("/^return CARDNAME to its owner's hand$/i", $s)) {
             return ['type' => 'bounce', 'self' => true];
         }
+        // Surgical Extraction: `Choose target card in a graveyard other than a basic land card.`
+        if (preg_match("/^choose ({$targets})$/i", $s, $m) && (self::TARGETS[strtolower($m[1])] ?? null) === 'card_graveyard_nonbasic') {
+            return ['type' => 'choose_target', 'target' => 'card_graveyard_nonbasic'];
+        }
+        // `Search its owner's graveyard, hand, and library for any number of cards with the same name as that card and exile them.`
+        if (preg_match("/^search its (?:owner|controller)'s graveyard, hand, and library for (?:any number of|all|up to four) cards with the same name as that (?:card|land|creature|permanent) and exile them$/i", $s)) {
+            return ['type' => 'exile_named', 'sameTarget' => true];
+        }
+        // Bribery: `Search target opponent's library for a creature card and put that card onto the battlefield under your control.`
+        if (preg_match("/^search target opponent's library for an? (.+?) card and put (?:that card|it) onto the battlefield under your control$/i", $s, $m) && ($filter = self::cardFilter(strtolower($m[1]))) !== null) {
+            return ['type' => 'steal_search', 'filter' => $filter, 'target' => 'opponent'];
+        }
         // Path to Exile: `Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.`
         if (preg_match('/^its controller may search their library for a basic land card, put (?:it|that card) (onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => 'basic land', 'to' => strtolower($m[1]) === 'onto the battlefield' ? 'battlefield' : 'tapped', 'theirs' => true, 'sameTarget' => true];
@@ -2009,6 +2023,6 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours'], true);
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours', 'card_graveyard_nonbasic'], true);
     }
 }
