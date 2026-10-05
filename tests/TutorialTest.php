@@ -197,7 +197,7 @@ final class TutorialTest extends PocketTestCase
     }
 
     /**
-     * Saves a 40-card rental deck of a current set: Grizzly Bears and Forests.
+     * Saves a 40-card rental deck (read padded to 60) of a current set: Grizzly Bears and Forests.
      */
     private function saveRental(string $id = 'bears', string $name = 'Bear Kit'): void
     {
@@ -206,14 +206,11 @@ final class TutorialTest extends PocketTestCase
         $this->pocket->rentalDecks->save(new RentalDeck($id, $name, 'NEW', 'New Set', 'Starter Kit', '2026-06-01', [['count' => 16, 'card' => $bears], ['count' => 24, 'card' => $forest]]));
     }
 
-    public function testARentalDeckOf40CardsPlaysTheBot(): void
+    public function testARentalDeckPlaysTheBot(): void
     {
         $this->saveRental();
         $this->pocket->rentals->rent(self::ALICE, 'Alice', 'Bear Kit');
         $left = $this->pocket->rentals->gamesLeft(self::ALICE);
-
-        // Ranked Standard needs 60 cards, so the queue refuses it.
-        $this->assertStringContainsString('cannot be played in Standard', self::json($this->click('pqueue', ['standard'])->panel));
 
         $play = self::json($this->click('play')->panel);
         $this->assertStringContainsString('Practice vs bot with your deck', $play);
@@ -229,7 +226,7 @@ final class TutorialTest extends PocketTestCase
         $this->assertSame('casual', $match->mode);
         $this->assertSame([RentalDeck::PREFIX.'bears', null], array_column($match->players, 'deckId'));
         $this->assertSame(['Bear Kit (rental)', 'Bear Kit (rental)'], array_column($match->players, 'deckName'), 'The bot plays an offered rental.');
-        $this->assertSame(40, count($match->game->players[0]->library) + count($match->game->players[0]->hand));
+        $this->assertSame(60, count($match->game->players[0]->library) + count($match->game->players[0]->hand), 'Rentals are padded to 60 with basic lands.');
         $this->assertSame($left, $this->pocket->rentals->gamesLeft(self::ALICE), 'Bot games use up no rental games.');
         $this->assertStringNotContainsString('💡', self::json(MatchMessageBuilder::actions($match, self::ALICE)), 'Tips are for the starter decks.');
 
