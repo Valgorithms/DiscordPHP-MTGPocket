@@ -44,6 +44,7 @@ final class MatchRecord
      * @param bool                  $ranked    Paired by matchmaking; the result moves ratings.
      * @param list<array{id: string, points: int, quests: list<array{label: string, points: int}>}> $rewards Points the finished game paid, and the quests it completed.
      * @param string|null           $event     The draft whose round this game is part of.
+     * @param bool                  $practice  A practice game against {@see \MTGPocket\Tutorial\PracticeBot}, with the starter decks.
      */
     public function __construct(
         public readonly string $id,
@@ -57,6 +58,7 @@ final class MatchRecord
         public bool $ranked = false,
         public array $rewards = [],
         public ?string $event = null,
+        public bool $practice = false,
     ) {
     }
 
@@ -68,6 +70,21 @@ final class MatchRecord
     public function isLive(): bool
     {
         return $this->status === self::PENDING || $this->status === self::PLAYING;
+    }
+
+    /**
+     * What kind of game it is: ranked, draft, practice or friendly.
+     *
+     * @return string
+     */
+    public function kind(): string
+    {
+        return match (true) {
+            $this->ranked => 'ranked',
+            $this->event !== null => 'draft',
+            $this->practice => 'practice',
+            default => 'friendly',
+        };
     }
 
     public function challenger(): array
@@ -115,7 +132,7 @@ final class MatchRecord
         }
         $tags = [
             'Match' => $this->id,
-            'Mode' => ucfirst($this->mode).($this->ranked ? ' (ranked)' : ($this->event !== null ? ' (draft)' : ' (friendly)')),
+            'Mode' => ucfirst($this->mode).' ('.$this->kind().')',
         ];
         if ($this->event !== null) {
             $tags['Draft'] = $this->event;
@@ -147,6 +164,7 @@ final class MatchRecord
             'ranked' => $this->ranked,
             'rewards' => $this->rewards,
             'event' => $this->event,
+            'practice' => $this->practice,
         ];
     }
 
@@ -169,6 +187,7 @@ final class MatchRecord
                 'quests' => array_values(array_map(fn ($quest) => ['label' => (string) $quest['label'], 'points' => (int) $quest['points']], (array) ($reward['quests'] ?? []))),
             ], (array) ($data['rewards'] ?? []))),
             isset($data['event']) ? (string) $data['event'] : null,
+            (bool) ($data['practice'] ?? false),
         );
     }
 }

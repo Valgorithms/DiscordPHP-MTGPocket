@@ -28,7 +28,7 @@ use React\Promise\PromiseInterface;
 use function React\Promise\resolve;
 
 /**
- * `/menu`, the home panel, and every panel's buttons, menus and forms
+ * `/menu`, the home panel, `/tutorial` (How to play), and every panel's buttons, menus and forms
  * (custom ids `pocket:ui:<owner>:…`; see {@see Panels}).
  *
  * A panel's owner changes it in place. Anyone else who clicks gets the
@@ -63,7 +63,10 @@ final class Menu implements Module
      */
     public function commands(MTG $mtg): array
     {
-        return [self::command('menu', 'Everything in one place: packs, collection, decks, games, drafts, the shop, trades and quests.')];
+        return [
+            self::command('menu', 'Everything in one place: packs, collection, decks, games, drafts, the shop, trades and quests.'),
+            self::command('tutorial', 'New to Magic? Learn to play in a few minutes, then practice against a bot.'),
+        ];
     }
 
     /**
@@ -75,6 +78,12 @@ final class Menu implements Module
             [$id, $name] = self::caller($interaction);
 
             return self::reply($mtg, $interaction, true, fn () => $this->panels->home($id, $name));
+        });
+
+        $mtg->listenCommand('tutorial', function (Interaction $interaction) use ($mtg) {
+            [$id] = self::caller($interaction);
+
+            return self::reply($mtg, $interaction, true, fn () => $this->panels->tutorial($id));
         });
 
         $mtg->on(Event::INTERACTION_CREATE, function (Interaction $interaction) use ($mtg): void {

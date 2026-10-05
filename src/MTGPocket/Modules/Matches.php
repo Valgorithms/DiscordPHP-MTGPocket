@@ -43,7 +43,8 @@ use function React\Promise\resolve;
  * The board is public and shows what both players may see. A player's
  * hand and choices are only ever in their own panel, a hidden reply to
  * **Your hand & actions**. Acting in the panel updates the panel and posts
- * a fresh board that mentions whoever the game now waits on.
+ * a fresh board that mentions whoever the game now waits on. A practice
+ * game against the bot is shown only to its player.
  *
  * Every game keeps a full record, turn by turn; `/match log` (or the
  * finished board's **Game record** button) sends it as a text file.
@@ -155,8 +156,10 @@ final class Matches implements Module
 
         $mtg->listenCommand(['match', 'board'], function (Interaction $interaction, $options) use ($mtg, $matches) {
             [$id] = self::caller($interaction);
+            // A practice game is the player's own.
+            $hidden = (bool) (self::values($options)['hidden'] ?? false) || ($matches->current($id)?->practice ?? false);
 
-            return self::reply($mtg, $interaction, (bool) (self::values($options)['hidden'] ?? false), function () use ($matches, $id) {
+            return self::reply($mtg, $interaction, $hidden, function () use ($matches, $id) {
                 $match = $matches->current($id) ?? throw new \InvalidArgumentException('You are not in a match. Start one with `/match challenge`.');
 
                 return $match->status === MatchRecord::PENDING ? MatchMessageBuilder::challenge($match) : MatchMessageBuilder::board($match);
@@ -248,7 +251,7 @@ final class Matches implements Module
             ->then(fn () => $this->actions->run($matchId, $playerId, $action, $args, $values))
             ->then(
                 fn (array $result) => $interaction->updateMessage(MatchMessageBuilder::actions($result[0], $playerId))
-                    ->then(fn () => $result[1] ? $interaction->sendFollowUpMessage(MatchMessageBuilder::board($result[0], true)) : null),
+                    ->then(fn () => $result[1] ? $interaction->sendFollowUpMessage(MatchMessageBuilder::board($result[0], true), $result[0]->practice) : null),
                 function (\Throwable $e) use ($mtg, $interaction, $matchId, $playerId) {
                     $match = $this->pocket->matches->find($matchId);
                     if ($match === null || ! ($e instanceof \InvalidArgumentException)) {

@@ -54,6 +54,7 @@ class MenuMessageBuilder extends PocketMessageBuilder
         'shop' => '🛒 Shop',
         'trades' => '🤝 Trades',
         'quests' => '🎯 Quests',
+        'tut' => '📖 How to play',
     ];
 
     /**
@@ -241,7 +242,7 @@ class MenuMessageBuilder extends PocketMessageBuilder
             "### 🏠 {$name}'s Pocket\n".implode("\n", $status)."\n-# Everything is here: pick a section. The slash commands still work too.",
             $note,
         );
-        $rows = array_chunk(self::SECTIONS, 4, true);
+        $rows = array_chunk(self::SECTIONS, 5, true);
         foreach ($rows as $sections) {
             $row = ActionRow::new();
             foreach ($sections as $action => $label) {
