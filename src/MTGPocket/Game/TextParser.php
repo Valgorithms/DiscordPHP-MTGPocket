@@ -387,7 +387,12 @@ final class TextParser
 
                 continue;
             }
-            if (($look = self::look($line)) !== null) {
+            if (($look = self::look($line)) === null && preg_match('/^(.+?\.)\s+((?:Look at|Reveal) the top .*)$/s', $line, $split)
+                && ($later = self::look($split[2])) !== null && ($before = self::effects($split[1])) !== null) {
+                array_push($result['effects'], ...$before);
+                $look = $later;
+            }
+            if ($look !== null) {
                 [$result['effects'][], $line] = $look;
                 if ($line === '') {
                     continue;
@@ -1345,6 +1350,14 @@ final class TextParser
             return [$impulse];
         }
         $effects = [];
+        // `Stress Dream deals 5 damage … Look at the top two cards …`: the sentences before the look, then the look.
+        if (preg_match('/^(.+?\.)\s+((?:Look at|Reveal) the top .*)$/s', trim($text), $split) && self::look($split[2]) !== null) {
+            $before = self::effects($split[1]);
+            if ($before === null) {
+                return null;
+            }
+            [$effects, $text] = [$before, $split[2]];
+        }
         if (($look = self::look($text)) !== null) {
             [$effects[], $text] = $look;
             if ($text === '') {
@@ -1385,9 +1398,16 @@ final class TextParser
      */
     private static function look(string $text): ?array
     {
-        if (! preg_match('/^(Look at|Reveal) the top (\w+) cards of your library(.*)$/s', ucfirst(trim($text)), $head) || (! is_int($n = self::amount($head[2])) && $n !== 'X') || $n === 0) {
+        if (! preg_match('/^(Look at|Reveal) the top (\w+) cards of your library(, where X is the number of lands you control)?(.*)$/s', ucfirst(trim($text)), $head) || (! is_int($n = self::amount($head[2])) && $n !== 'X') || $n === 0) {
             return null;
         }
+        if ($head[3] !== '') {
+            if ($n !== 'X') {
+                return null;
+            }
+            $n = 'lands';
+        }
+        $head[3] = $head[4];
         $where = '(on the bottom of your library(?: in (?:a random|any) order)?|into your graveyard)';
         $to = '(into your hand|onto the battlefield tapped|onto the battlefield)';
         $after = '(?:\.|$)\s*(.*)$/s';
@@ -1396,7 +1416,7 @@ final class TextParser
             [$take, $may, $filter, $rest, $tail] = [0, true, 'any', 'top', $m[1]];
         } elseif (preg_match("/^\\. Put (up to )?(\\w+) of (?:them|those cards) into your hand and the (?:rest|other|others) {$where}{$after}", $head[3], $m) && is_int($take = self::amount($m[2]))) {
             [$may, $filter, $rest, $tail] = [$m[1] !== '', 'any', $m[3], $m[4]];
-        } elseif (preg_match("/^\\. (?:You may (?:reveal|put|choose) (an?|up to \\w+|any number of) (?:(.+?) )?cards? from among them(?: and put (?:it|that card|them|those cards) {$to}| {$to})?|Put all (.+?) cards revealed this way {$to})(?:\\. Put the rest| and the rest) {$where}{$after}", $head[3], $m)) {
+        } elseif (preg_match("/^\\. (?:You may (?:reveal|put|choose) (an?|up to \\w+|any number of) (?:(.+?) )?cards? from among them(?: and put (?:it|that card|them|those cards|the revealed cards) {$to}| {$to})?|Put all (.+?) cards revealed this way {$to})(?:\\. Put the rest| and the rest) {$where}{$after}", $head[3], $m)) {
             if (($m[5] ?? '') !== '') {
                 [$take, $may, $words, $place] = [is_int($n) ? $n : 99, false, $m[5], $m[6]];
             } else {
@@ -1905,6 +1925,10 @@ final class TextParser
         }
         if (preg_match("/^return CARDNAME to its owner's hand$/i", $s)) {
             return ['type' => 'bounce', 'self' => true];
+        }
+        // Path to Exile: `Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.`
+        if (preg_match('/^its controller may search their library for a basic land card, put (?:it|that card) (onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
+            return ['type' => 'search', 'find' => 'basic land', 'to' => strtolower($m[1]) === 'onto the battlefield' ? 'battlefield' : 'tapped', 'theirs' => true, 'sameTarget' => true];
         }
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, (?:reveal it, )?put it (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => match (strtolower($m[2])) {
