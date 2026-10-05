@@ -291,6 +291,10 @@ final class TextParser
                 'CARDNAME escapes with two +1/+1 counters on it.' => 'escapes with 2',
                 'CARDNAME escapes with three +1/+1 counters on it.' => 'escapes with 3',
                 'CARDNAME escapes with four +1/+1 counters on it.' => 'escapes with 4',
+                // Read by Game::canBlock().
+                "Creatures with power less than CARDNAME's power can't block it." => "can't be blocked by lesser power",
+                // Read ahead (rule 714.3a): the controller may start a Saga on a later chapter; Game always starts it on chapter I, which is one of the legal choices.
+                'Read ahead' => 'read ahead',
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -298,8 +302,13 @@ final class TextParser
                 continue;
             }
             // A characteristic-defining ability (rule 604.3): `CARDNAME's power and toughness are each equal to the number of lands you control.`
-            if (! $spell && preg_match("/^CARDNAME's (power and toughness are each|power is|toughness is) equal to the number of (lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control\\.$/", $line, $match)) {
-                $result['countsAs'] = ['of' => strtolower($match[2]), 'power' => $match[1] !== 'toughness is', 'toughness' => $match[1] !== 'power is'];
+            if (! $spell && preg_match("/^CARDNAME's (power and toughness are each|power is|toughness is) equal to the number of (?:(lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control|cards in your (hand|graveyard)|(creature) cards in your graveyard)\\.$/", $line, $match)) {
+                $of = match (true) {
+                    ($match[4] ?? '') !== '' => 'creature cards in graveyard',
+                    ($match[3] ?? '') !== '' => $match[3],
+                    default => strtolower($match[2]),
+                };
+                $result['countsAs'] = ['of' => $of, 'power' => $match[1] !== 'toughness is', 'toughness' => $match[1] !== 'power is'];
 
                 continue;
             }
@@ -1075,6 +1084,8 @@ final class TextParser
             "can't be blocked" => ["can't be blocked"],
             "can't be blocked by more than one creature" => ["can't be blocked by more than one creature"],
             "attacks each combat if able" => ["attacks each combat if able"],
+            // Read by Game::declareBlockers().
+            'must be blocked if able' => ['must be blocked if able'],
             "can't be countered" => ["can't be countered"],
             '' => [],
             default => [null],
@@ -1997,6 +2008,18 @@ final class TextParser
         // Path to Exile: `Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.`
         if (preg_match('/^its controller may search their library for a basic land card, put (?:it|that card) (onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => 'basic land', 'to' => strtolower($m[1]) === 'onto the battlefield' ? 'battlefield' : 'tapped', 'theirs' => true, 'sameTarget' => true];
+        }
+        // `Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.`
+        if (preg_match('/^(?:you may )?search your library for up to (\w+) basic land cards, (?:reveal them, )?put them (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
+            return ['type' => 'search', 'find' => 'basic land', 'count' => $n, 'to' => match (strtolower($m[2])) {
+                'into your hand' => 'hand',
+                'onto the battlefield tapped' => 'tapped',
+                default => 'battlefield',
+            }];
+        }
+        // Cultivate: `… for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.`
+        if (preg_match('/^(?:you may )?search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle$/i', $s)) {
+            return ['type' => 'search', 'find' => 'basic land', 'count' => 2, 'to' => 'split'];
         }
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, (?:reveal it, )?put it (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => match (strtolower($m[2])) {

@@ -3291,7 +3291,7 @@ final class Game
                 // `Its controller may search …`: the owner of the card the spell just destroyed or exiled.
                 $seat = ($effect['theirs'] ?? false) ? $this->targetOwner($target) : $controller;
                 if ($seat !== null) {
-                    $this->searchForLand($seat, $effect['find'], $effect['to']);
+                    $this->searchForLand($seat, $effect['find'], $effect['to'], $effect['count'] ?? 1);
                 }
                 break;
 
@@ -3584,8 +3584,16 @@ final class Game
      *
      * @return void
      */
-    private function searchForLand(int $seat, string $find, string $to): void
+    private function searchForLand(int $seat, string $find, string $to, int $count = 1): void
     {
+        // `up to N`: each land is picked like a single search; Cultivate puts the first onto the battlefield tapped and the second into hand.
+        if ($count > 1) {
+            for ($i = 0; $i < $count; $i++) {
+                $this->searchForLand($seat, $find, $to === 'split' ? ($i === 0 ? 'tapped' : 'hand') : $to);
+            }
+
+            return;
+        }
         $player = $this->players[$seat];
         $found = array_values(array_filter($player->library, function (int $id) use ($find) {
             $card = $this->objects[$id]->definition();
@@ -4763,6 +4771,7 @@ final class Game
             $this->hasKeyword($attacker, 'skulk') && $this->power($blocker) > $this->power($attacker) => true,
             $this->hasKeyword($blocker, 'can block only creatures with flying') && ! $this->hasKeyword($attacker, 'flying') => true,
             $this->evadesByPower($attacker, $this->power($blocker)) => true,
+            $this->hasKeyword($attacker, "can't be blocked by lesser power") && $this->power($blocker) < $this->power($attacker) => true,
             default => false,
         };
     }
@@ -4799,6 +4808,18 @@ final class Game
     public function declareBlockers(int $seat, array $blocks): void
     {
         $this->expect($seat, 'block');
+        // An attacker that must be blocked if able gets a free creature that can block it (rule 509.1c).
+        foreach (array_keys($this->attackers) as $attacker) {
+            if (in_array($attacker, array_map('intval', $blocks), true) || ! $this->hasKeyword($this->objects[$attacker], 'must be blocked if able') || $this->hasKeyword($this->objects[$attacker], 'menace')) {
+                continue;
+            }
+            foreach ($this->blockCandidates() as $candidate) {
+                if (! isset($blocks[$candidate]) && $this->canBlock($this->objects[$candidate], $this->objects[$attacker])) {
+                    $blocks[$candidate] = $attacker;
+                    break;
+                }
+            }
+        }
         $count = [];
         foreach ($blocks as $blocker => $attacker) {
             $blockerObject = $this->objects[(int) $blocker] ?? null;
@@ -5848,6 +5869,15 @@ final class Game
         $counts = $object->definition()->countsAs;
         if ($counts === null || ! $counts[$stat] || $object->zone !== GameObject::BATTLEFIELD) {
             return null;
+        }
+        $player = $this->players[$object->controller];
+        switch ($counts['of']) {
+            case 'hand':
+                return count($player->hand);
+            case 'graveyard':
+                return count($player->graveyard);
+            case 'creature cards in graveyard':
+                return count(array_filter($player->graveyard, fn (int $id) => $this->objects[$id]->definition()->is('Creature')));
         }
 
         return count(array_filter($this->permanents($object->controller), fn (GameObject $o) => match ($counts['of']) {
