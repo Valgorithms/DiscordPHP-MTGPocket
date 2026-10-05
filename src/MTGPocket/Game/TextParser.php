@@ -1131,6 +1131,14 @@ final class TextParser
      */
     private static function equipment(string $line, array &$result): bool
     {
+        // Reconfigure (rule 702.151): attach to another creature you control, or unattach, as a sorcery.
+        if (preg_match('/^Reconfigure ((?:\{[0-9WUBRGC\/P]+\})+)$/', $line, $match)) {
+            foreach ([['type' => 'attach', 'target' => 'creature_you_control'], ['type' => 'unattach', 'self' => true]] as $effect) {
+                $result['activated'][] = ['text' => $line, 'cost' => ['mana' => $match[1]], 'effects' => [$effect], 'sorcery' => true, 'once' => false];
+            }
+
+            return true;
+        }
         if (preg_match('/^Equip ((?:\{[0-9WUBRGC\/P]+\})+)$/', $line, $match)) {
             $result['activated'][] = [
                 'text' => $line,
@@ -1707,6 +1715,20 @@ final class TextParser
         }
         if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
             return ['type' => 'fog'];
+        }
+        if (preg_match("/^prevent (the next (\\d+|one|two|three|four|five)|all) damage that would be dealt to ({$targets}|CARDNAME|you) this turn$/i", $s, $m)
+            && (in_array(strtolower($m[3]), ['cardname', 'you'], true) || in_array(self::TARGETS[strtolower($m[3])] ?? '', ['any', ...self::CREATURE_KINDS], true))) {
+            $amount = strtolower($m[1]) === 'all' ? 'all' : self::amount($m[2]);
+            $who = strtolower($m[3]);
+
+            return ['type' => 'prevent', 'amount' => $amount] + match ($who) {
+                'cardname' => ['self' => true],
+                'you' => ['you' => true],
+                default => ['target' => self::TARGETS[$who]],
+            };
+        }
+        if (preg_match("/^(?:you may )?shuffle CARDNAME into its owner's library$/i", $s)) {
+            return ['type' => 'shuffle_self', 'self' => true];
         }
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'bounce', 'target' => self::TARGETS[strtolower($m[1])]];

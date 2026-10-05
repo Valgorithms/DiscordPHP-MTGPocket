@@ -122,6 +122,9 @@ final class Game
     /** The turn in which all combat damage is prevented (`Prevent all combat damage that would be dealt this turn.`). */
     public int $fogTurn = 0;
 
+    /** @var array<string, int> Damage to prevent this turn, by target (`p:SEAT` or `o:ID`) (rule 615). */
+    public array $prevent = [];
+
     /** Spells cast in turn `$spellsTurn`, by anyone, for storm (rule 702.40). */
     public int $spellsCast = 0;
 
@@ -695,6 +698,7 @@ final class Game
      */
     private function cleanup(): void
     {
+        $this->prevent = [];
         foreach ($this->battlefield as $id) {
             $object = $this->objects[$id];
             $object->damage = 0;
@@ -2569,6 +2573,14 @@ final class Game
 
             return;
         }
+        // `Shuffle CARDNAME into its owner's library.` as the spell's last instruction.
+        if ($resolved && ! ($item['flashback'] ?? false) && in_array('shuffle_self', array_column($object->definition()->effects, 'type'), true)) {
+            $this->moveTo($object, GameObject::LIBRARY);
+            $this->shuffle($object->owner);
+            $this->log("{$object->name()} is shuffled into {$this->players[$object->owner]->name}'s library.");
+
+            return;
+        }
         $this->moveTo($object, ($item['flashback'] ?? false) ? GameObject::EXILE : GameObject::GRAVEYARD);
     }
 
@@ -3288,6 +3300,28 @@ final class Game
             case 'regenerate':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $affected->shields++;
+                }
+                break;
+
+            case 'prevent':
+                $shielded = ($effect['you'] ?? false) ? "p:{$controller}" : ($affected !== null ? "o:{$affected->id}" : $target);
+                if ($shielded !== null) {
+                    $this->prevent[$shielded] = ($effect['amount'] ?? 0) === 'all' ? PHP_INT_MAX : ($this->prevent[$shielded] ?? 0) + $amount;
+                }
+                break;
+
+            case 'shuffle_self':
+                if ($self !== null && $self->zone !== GameObject::LIBRARY && $self->zone !== GameObject::STACK) {
+                    $this->log("{$self->name()} is shuffled into {$this->players[$self->owner]->name}'s library.");
+                    $this->moveTo($self, GameObject::LIBRARY);
+                    $this->shuffle($self->owner);
+                }
+                break;
+
+            case 'unattach':
+                if ($self !== null && $self->attachedTo !== null) {
+                    $self->attachedTo = null;
+                    $this->log("{$self->name()} becomes unattached.");
                 }
                 break;
 
@@ -4720,6 +4754,16 @@ final class Game
         if ($amount <= 0) {
             return;
         }
+        // Prevention shields (rule 615.7): `Prevent the next N damage that would be dealt to …`.
+        if (($shield = $this->prevent[$target] ?? 0) > 0) {
+            $prevented = min($shield, $amount);
+            $this->prevent[$target] = $shield - $prevented;
+            $amount -= $prevented;
+            $this->log("{$prevented} damage from {$source->name()} is prevented.");
+            if ($amount <= 0) {
+                return;
+            }
+        }
         $parts = explode(':', $target);
         if ($parts[0] === 'p') {
             $this->players[(int) $parts[1]]->damagedOnTurn = $this->turn;
@@ -5347,6 +5391,10 @@ final class Game
         if ($object->bestowed && $object->attachedTo !== null) {
             return false;
         }
+        // An attached Equipment creature, by reconfigure, is not a creature (rule 702.151b).
+        if ($object->attachedTo !== null && $object->definition()->isEquipment()) {
+            return false;
+        }
         // A Spacecraft with a power and toughness is an artifact creature at its last station threshold.
         $bands = $object->definition()->stationBands;
         if ($bands !== [] && $object->definition()->power !== null && $object->zone === GameObject::BATTLEFIELD && $object->counter('charge') >= max(array_column($bands, 'min'))) {
@@ -5867,6 +5915,7 @@ final class Game
             'fogTurn' => $this->fogTurn,
             'spellsCast' => $this->spellsCast,
             'spellsTurn' => $this->spellsTurn,
+            'prevent' => $this->prevent,
         ];
     }
 
@@ -5948,6 +5997,7 @@ final class Game
         $game->fogTurn = (int) ($data['fogTurn'] ?? 0);
         $game->spellsCast = (int) ($data['spellsCast'] ?? 0);
         $game->spellsTurn = (int) ($data['spellsTurn'] ?? 0);
+        $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
 
         return $game;
     }

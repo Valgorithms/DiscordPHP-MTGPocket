@@ -189,6 +189,9 @@ final class ModernCardTextTest extends GameTestCase
         'Proliferate Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => "Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nDraw a card.", 'colors' => ['U']],
         'Prototype Lite' => ['manaCost' => '{6}', 'type' => 'Artifact Creature — Construct', 'power' => '6', 'toughness' => '6', 'text' => "Prototype {1}{R} — 2/2 (You can cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nTrample", 'colors' => []],
         'Tribute Lite' => ['manaCost' => '{1}{B}{R}', 'type' => 'Creature — Minotaur', 'power' => '3', 'toughness' => '3', 'text' => "Tribute 1 (As this creature enters, an opponent of your choice may put a +1/+1 counter on it.)\nWhen Tribute Lite enters, if tribute wasn't paid, draw a card.", 'colors' => ['B', 'R']],
+        'Healer Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Human Cleric', 'power' => '1', 'toughness' => '1', 'text' => '{T}: Prevent the next 1 damage that would be dealt to any target this turn.', 'colors' => ['W']],
+        'Reconfigure Lite' => ['manaCost' => '{1}{G}', 'type' => 'Artifact Creature — Equipment Fox', 'power' => '2', 'toughness' => '2', 'text' => "Equipped creature gets +2/+2.\nReconfigure {2} ({2}: Attach to target creature you control; or unattach from a creature. Reconfigure only as a sorcery. While attached, this isn't a creature.)", 'colors' => ['G']],
+        'Zenith Lite' => ['manaCost' => '{1}{G}', 'type' => 'Sorcery', 'text' => "Draw a card. Shuffle Zenith Lite into its owner's library.", 'colors' => ['G']],
         'Ascend Lite' => ['manaCost' => '{W}', 'type' => 'Creature — Cat', 'power' => '1', 'toughness' => '1', 'text' => "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)", 'colors' => ['W']],
     ];
 
@@ -1117,6 +1120,41 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame($hand + 1, count($game->players[0]->hand), 'Tribute was not paid: draw a card.');
     }
 
+    public function testPreventionReconfigureAndShuffleIntoLibrary(): void
+    {
+        $game = $this->newGame();
+        $healer = $this->put(0, 'Healer Lite', GameObject::BATTLEFIELD);
+        $this->assertSame([], $game->objects[$healer]->definition()->unsupported);
+        $game->activate(0, $healer, 0, ['p:1']);
+        $this->resolve();
+        $this->lands(0, 'Mountain', 1);
+        $game->cast(0, $game->addCard(0, self::card('Lightning Bolt'), GameObject::HAND)->id, 0, ['p:1']);
+        $this->resolve();
+        $this->assertSame(18, $game->players[1]->life, 'One of the three damage was prevented.');
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+
+        $this->passUntil(Step::PrecombatMain, 3);
+        $this->lands(0, 'Forest', 2);
+        $fox = $this->put(0, 'Reconfigure Lite', GameObject::BATTLEFIELD);
+        $bearer = $this->put(0, 'Healer Lite', GameObject::BATTLEFIELD);
+        $this->assertSame([], $game->objects[$fox]->definition()->unsupported);
+        $game->activate(0, $fox, 0, ["o:{$bearer}"]);
+        $this->resolve();
+        $this->assertFalse($game->isCreature($game->objects[$fox]), 'Not a creature while attached.');
+        $this->assertSame(3, $game->power($game->objects[$bearer]));
+        $this->lands(0, 'Forest', 2);
+        $game->activate(0, $fox, 1);
+        $this->resolve();
+        $this->assertTrue($game->isCreature($game->objects[$fox]));
+        $this->assertSame(1, $game->power($game->objects[$bearer]));
+
+        $this->lands(0, 'Forest', 2);
+        $zenith = $this->put(0, 'Zenith Lite', GameObject::HAND);
+        $game->cast(0, $zenith, 0, []);
+        $this->resolve();
+        $this->assertSame(GameObject::LIBRARY, $this->zone($zenith));
+    }
+
     public function testUnearth(): void
     {
         $game = $this->newGame();
@@ -2025,7 +2063,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,
