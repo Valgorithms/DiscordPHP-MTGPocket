@@ -63,6 +63,7 @@ final class PanelActions
             'mull' => $act(fn (Game $game, int $seat) => $game->mulligan($seat)),
             'bottom' => $act(fn (Game $game, int $seat) => $game->bottom($seat, $ints)),
             'disc' => $act(fn (Game $game, int $seat) => $game->discard($seat, $ints)),
+            'nodisc' => $act(fn (Game $game, int $seat) => $game->discard($seat, [])),
             'away' => $act(fn (Game $game, int $seat) => $game->arrange($seat, $ints)),
             'keepall' => $act(fn (Game $game, int $seat) => $game->arrange($seat, [])),
             'take' => $act(fn (Game $game, int $seat) => $game->take($seat, $ints)),

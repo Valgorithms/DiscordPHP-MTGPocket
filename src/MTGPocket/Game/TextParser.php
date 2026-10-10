@@ -106,6 +106,10 @@ final class TextParser
         'target creature with power 4 or less' => 'creature_power_le_4',
         'target creature card from your graveyard' => 'creature_card_yours',
         'target card from your graveyard' => 'card_yours',
+        'target instant or sorcery card from your graveyard' => 'instant_sorcery_card_yours',
+        'target artifact card from your graveyard' => 'artifact_card_yours',
+        'target land card from your graveyard' => 'land_card_yours',
+        'target enchantment card from your graveyard' => 'enchantment_card_yours',
         'target card in a graveyard other than a basic land card' => 'card_graveyard_nonbasic',
         'target nonbasic land' => 'nonbasic_land',
         'target spell' => 'spell',
@@ -1773,6 +1777,11 @@ final class TextParser
 
             return true;
         }
+        if (preg_match('/^If you do, draw (\w+) cards?$/', $sentence, $m) && is_int($n = self::amount($m[1])) && $effects[$last]['type'] === 'discard' && ($effects[$last]['may'] ?? false)) {
+            $effects[$last]['draw'] = $n;
+
+            return true;
+        }
         if ($sentence === 'Then shuffle' || $sentence === 'Then that player shuffles') {
             $effects[] = ['type' => 'shuffle'] + ($sentence === 'Then shuffle' ? [] : ['that' => true, 'sameTarget' => true]);
 
@@ -2056,7 +2065,7 @@ final class TextParser
             return ['type' => 'untap', 'sameTarget' => true];
         }
         if (preg_match("/^return ({$targets}) to (your hand|the battlefield)$/i", $s, $m)
-            && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'card_yours'], true)
+            && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours'], true)
             && ($m[2] === 'your hand' || $kind === 'creature_card_yours')) {
             return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind];
         }
@@ -2108,8 +2117,21 @@ final class TextParser
                 default => 'battlefield',
             }];
         }
+        // A tutor: `Search your library for a creature card, reveal it, put it into your hand, then shuffle.`
+        if (preg_match('/^(?:you may )?search your library for an? (?:(.+?) )?card, (?:reveal it, )?put (?:it|that card) (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)
+            && ($filter = ($m[1] ?? '') === '' ? 'any' : self::cardFilter($m[1])) !== null) {
+            return ['type' => 'tutor', 'filter' => $filter, 'to' => match (strtolower($m[2])) {
+                'into your hand' => 'hand',
+                'onto the battlefield tapped' => 'tapped',
+                default => 'battlefield',
+            }];
+        }
         if (preg_match('/^discard (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'discard', 'amount' => $n];
+        }
+        // `You may discard a card. If you do, draw a card.`: see TextParser::modifies() for the draw.
+        if (preg_match('/^you may discard a card$/i', $s)) {
+            return ['type' => 'discard', 'amount' => 1, 'may' => true];
         }
         if (preg_match('/^(target player|target opponent) discards (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
             return ['type' => 'discard', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]];
@@ -2180,6 +2202,6 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours', 'card_graveyard_nonbasic'], true);
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours'], true);
     }
 }

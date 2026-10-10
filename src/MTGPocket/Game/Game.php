@@ -86,7 +86,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours', 'card_graveyard_nonbasic'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours'];
 
     /** @var int[] */
     public array $exile = [];
@@ -779,6 +779,9 @@ final class Game
         $this->expect($seat, 'discard');
         $ids = array_values(array_unique(array_map('intval', $ids)));
         $count = $this->discardCount();
+        if ($ids === [] && ($this->pendingChoice['may'] ?? false)) {
+            $count = 0;
+        }
         if (count($ids) !== $count) {
             throw new GameException("Choose exactly {$count} card".($count === 1 ? '' : 's').' to discard.');
         }
@@ -797,6 +800,10 @@ final class Game
                 $this->connived($this->objects[$id]->incarnation === $incarnation ? $this->objects[$id] : null, $ids);
             }
             $this->discardCards($from, $ids);
+            // `If you do, draw a card.`
+            if ($ids !== [] && ($this->pendingChoice['draw'] ?? 0) > 0) {
+                $this->draw($seat, $this->pendingChoice['draw']);
+            }
         }
         $choice = $this->pendingChoice;
         if ($choice === null) {
@@ -2840,7 +2847,7 @@ final class Game
         }
         $rest = array_values(array_diff($choice['cards'], $ids));
         shuffle($rest);
-        foreach ($choice['rest'] === 'top' ? [] : $rest as $id) {
+        foreach (in_array($choice['rest'], ['top', 'library'], true) ? [] : $rest as $id) {
             $object = $this->objects[$id];
             if ($choice['rest'] === 'graveyard') {
                 $this->moveTo($object, GameObject::GRAVEYARD);
@@ -2851,6 +2858,15 @@ final class Game
             }
         }
         $this->pendingChoice = null;
+        if ($choice['rest'] === 'library') {
+            // A tutor: the rest stay in the library, which is then shuffled.
+            $this->log("{$player->name} searches their library".($ids === [] ? ' and takes nothing.' : ' for '.$this->objects[$ids[0]]->name().'.'), $seat);
+            $this->shuffle($seat);
+            $this->runSteps($choice['resume']['item'], $choice['resume']['steps'], $choice['resume']['self']);
+            $this->settle();
+
+            return;
+        }
         $this->log(
             "{$player->name} looks at the top ".count($choice['cards']).' cards and puts '.($ids === [] ? 'none' : count($ids)).($to === 'hand' ? ' into their hand.' : ' onto the battlefield.'),
             $seat,
@@ -3218,6 +3234,15 @@ final class Game
                     'player' => array_keys($this->players),
                     default => [$target === null ? $controller : (int) substr($target, 2)],
                 };
+                // `You may discard a card. If you do, draw a card.`
+                if ($effect['may'] ?? false) {
+                    if ($this->players[$controller]->hand !== []) {
+                        $this->pendingChoice = ['type' => 'discard', 'seat' => $controller, 'count' => 1, 'next' => [], 'may' => true, 'draw' => (int) ($effect['draw'] ?? 0)];
+
+                        return true;
+                    }
+                    break;
+                }
                 $choosing = [];
                 foreach ($seats as $seat) {
                     // With no more cards than they must discard, there is nothing to choose.
@@ -3520,6 +3545,24 @@ final class Game
                     return true;
                 }
                 break;
+
+            case 'tutor':
+                // One card of each name that fits; the searcher picks (rule 701.19b: they may fail to find one with a stated quality).
+                $eligible = [];
+                foreach (array_reverse($this->players[$controller]->library) as $id) {
+                    $card = $this->objects[$id]->printed();
+                    if ($this->matchesFilter($card, $effect['filter']) && ! isset($eligible[$card->name])) {
+                        $eligible[$card->name] = $id;
+                    }
+                }
+                if ($eligible === []) {
+                    $this->log("{$this->players[$controller]->name} searches their library and finds nothing.");
+                    $this->shuffle($controller);
+                    break;
+                }
+                $this->pendingChoice = ['type' => 'look', 'seat' => $controller, 'cards' => array_values($eligible), 'eligible' => array_values($eligible), 'take' => 1, 'may' => $effect['filter'] !== 'any', 'rest' => 'library', 'to' => $effect['to']];
+
+                return true;
 
             case 'regenerate':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
@@ -4514,6 +4557,10 @@ final class Game
             'untapped_creature' => $creature && ! $object->tapped,
             'creature_card_yours' => $object->printed()->isCreature() && $object->owner === $controller,
             'card_yours' => $object->owner === $controller,
+            'instant_sorcery_card_yours' => ($object->printed()->is('Instant') || $object->printed()->is('Sorcery')) && $object->owner === $controller,
+            'artifact_card_yours' => $object->printed()->is('Artifact') && $object->owner === $controller,
+            'land_card_yours' => $object->printed()->isLand() && $object->owner === $controller,
+            'enchantment_card_yours' => $object->printed()->is('Enchantment') && $object->owner === $controller,
             'card_graveyard_nonbasic' => ! ($object->printed()->isLand() && in_array('Basic', $object->printed()->supertypes, true)),
             'nonbasic_land' => $card->isLand() && ! in_array('Basic', $card->supertypes, true),
             'creature_or_planeswalker_opponent' => ($creature || $card->isPlaneswalker()) && $object->controller !== $controller,

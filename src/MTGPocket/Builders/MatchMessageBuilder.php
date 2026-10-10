@@ -586,6 +586,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
             case 'discard':
                 $count = $game->discardCount();
                 $message->addComponent(self::cardSelect($id('disc'), "Discard {$count}", $game->choiceAwaiting()['cards'] ?? $player->hand, $cardOption, $count, $count));
+                if ($game->choiceAwaiting()['may'] ?? false) {
+                    $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('nodisc'))->setLabel("Don't discard")));
+                }
                 break;
 
             case 'attack':
@@ -790,13 +793,16 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'discard' => match (true) {
                 $game->choiceAwaiting() === null => 'You have more than seven cards. Choose what to discard.',
                 ($game->choiceAwaiting()['from'] ?? $seat) !== $seat => 'Choose a card for '.$game->players[$game->choiceAwaiting()['from']]->name.' to discard.',
+                $game->choiceAwaiting()['may'] ?? false => 'You may discard a card'.(($game->choiceAwaiting()['draw'] ?? 0) > 0 ? ' to draw '.$game->choiceAwaiting()['draw'] : '').'.',
                 default => 'Choose '.$game->discardCount().' card'.($game->discardCount() === 1 ? '' : 's').' to discard.',
             },
             'trigger' => 'Choose targets for **'.$game->triggerAwaitingTargets()['label'].'**, which just triggered: '.$game->triggerAwaitingTargets()['text'],
             'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\nChoose any to put ".($decision === 'scry' ? 'on the bottom' : 'into your graveyard').', or keep them all on top.',
-            'look' => 'From the top of your library, these are'."\n"
+            'look' => $game->choiceAwaiting()['rest'] === 'library'
+                ? 'Search your library: choose a card to put '.(($game->choiceAwaiting()['to'] ?? 'hand') === 'hand' ? 'into your hand' : 'onto the battlefield').'. Then your library is shuffled.'
+                : 'From the top of your library, these are'."\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\n".match (true) {
                     $game->choiceAwaiting()['take'] === 0 => 'None of them can go to your hand.',
