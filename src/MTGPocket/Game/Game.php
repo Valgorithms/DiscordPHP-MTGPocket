@@ -139,6 +139,9 @@ final class Game
     /** `day`, `night`, or null while it is neither (rule 726). */
     public ?string $dayNight = null;
 
+    /** @var array<int, int> Seat => the last turn an Assassin or commander they controlled dealt combat damage to a player, for freerunning (rule 702.173). */
+    public array $freerun = [];
+
     /** @var int[] Seats taking extra turns after this one, the next first (rule 500.7). */
     public array $extraTurns = [];
 
@@ -948,7 +951,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -973,7 +976,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1034,7 +1037,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1084,7 +1087,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1293,6 +1296,9 @@ final class Game
         }
         if ($options['conspire'] && (! in_array('conspire', $card->keywords, true) || $this->conspirators($seat, $card, $id) === null)) {
             return "{$card->name} needs two untapped creatures that share a color with it to conspire.";
+        }
+        if ($options['alt'] === 'freerunning' && ($this->freerun[$seat] ?? 0) !== $this->turn) {
+            return 'Freerunning needs an Assassin or your commander to have dealt combat damage to a player this turn.';
         }
         if ($options['faceDown'] && $card->morph === null) {
             return "{$card->name} cannot be cast face down.";
@@ -5248,6 +5254,9 @@ final class Game
                 }
                 $hitPlayer[$source->id] = $source;
                 $toPlayers[(int) substr($target, 2)] = ($toPlayers[(int) substr($target, 2)] ?? 0) + $amount;
+                if ($this->isCommander($source) || in_array('Assassin', $source->definition()->subtypes, true)) {
+                    $this->freerun[$source->controller] = $this->turn;
+                }
                 if ($this->isCommander($source)) {
                     $hit = $this->players[(int) substr($target, 2)];
                     $hit->commanderDamage[$source->id] = ($hit->commanderDamage[$source->id] ?? 0) + $amount;
@@ -6590,6 +6599,7 @@ final class Game
             'spellsBefore' => $this->spellsBefore,
             'dayNight' => $this->dayNight,
             'extraTurns' => $this->extraTurns,
+            'freerun' => $this->freerun,
             'prevent' => $this->prevent,
         ];
     }
@@ -6677,6 +6687,7 @@ final class Game
         $game->spellsBefore = (int) ($data['spellsBefore'] ?? 0);
         $game->dayNight = isset($data['dayNight']) ? (string) $data['dayNight'] : null;
         $game->extraTurns = array_map('intval', (array) ($data['extraTurns'] ?? []));
+        $game->freerun = array_map('intval', (array) ($data['freerun'] ?? []));
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
 
         return $game;
