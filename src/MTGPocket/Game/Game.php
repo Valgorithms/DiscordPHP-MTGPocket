@@ -3546,6 +3546,18 @@ final class Game
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
 
+            case 'tuck':
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $this->moveTo($affected, GameObject::LIBRARY);
+                    $library = &$this->players[$affected->owner]->library;
+                    if (($effect['bottom'] ?? false) && in_array($affected->id, $library, true)) {
+                        $library = [$affected->id, ...array_values(array_diff($library, [$affected->id]))];
+                    }
+                    unset($library);
+                    $this->log("{$affected->name()} is put on the ".(($effect['bottom'] ?? false) ? 'bottom' : 'top')." of {$this->players[$affected->owner]->name}'s library.");
+                }
+                break;
+
             case 'amass':
                 // An Army you control, or a new 0/0 black Army token of that subtype.
                 $army = null;
@@ -4929,6 +4941,26 @@ final class Game
     }
 
     /**
+     * How many creatures it takes to block it: 2 for menace, N for `can't be
+     * blocked except by N or more creatures`.
+     *
+     * @param GameObject $attacker
+     *
+     * @return int
+     */
+    public function minBlockers(GameObject $attacker): int
+    {
+        $min = $this->hasKeyword($attacker, 'menace') ? 2 : 1;
+        foreach ($this->keywords($attacker) as $keyword) {
+            if (preg_match("/^can't be blocked except by (\d+) or more creatures$/", $keyword, $m)) {
+                $min = max($min, (int) $m[1]);
+            }
+        }
+
+        return $min;
+    }
+
+    /**
      * `This creature can't attack unless defending player controls an Island.`
      *
      * @param GameObject $creature
@@ -5160,7 +5192,7 @@ final class Game
         $this->expect($seat, 'block');
         // An attacker that must be blocked if able gets a free creature that can block it (rule 509.1c).
         foreach (array_keys($this->attackers) as $attacker) {
-            if (in_array($attacker, array_map('intval', $blocks), true) || ! $this->hasKeyword($this->objects[$attacker], 'must be blocked if able') || $this->hasKeyword($this->objects[$attacker], 'menace')) {
+            if (in_array($attacker, array_map('intval', $blocks), true) || ! $this->hasKeyword($this->objects[$attacker], 'must be blocked if able') || $this->minBlockers($this->objects[$attacker]) > 1) {
                 continue;
             }
             foreach ($this->blockCandidates() as $candidate) {
@@ -5192,6 +5224,9 @@ final class Game
             $count[(int) $attacker] = ($count[(int) $attacker] ?? 0) + 1;
         }
         foreach ($count as $attacker => $n) {
+            if ($n < ($min = $this->minBlockers($this->objects[$attacker])) && $min > 2) {
+                throw new GameException($this->objects[$attacker]->name()." can be blocked only by {$min} or more creatures.");
+            }
             if ($n < 2 && $this->hasKeyword($this->objects[$attacker], 'menace')) {
                 throw new GameException($this->objects[$attacker]->name().' has menace and can be blocked only by two or more creatures.');
             }

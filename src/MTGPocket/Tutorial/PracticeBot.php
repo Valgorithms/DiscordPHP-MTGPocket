@@ -283,8 +283,8 @@ final class PracticeBot
         $attackers = array_map(fn (int $id) => $game->objects[$id], array_keys($game->attackers));
         usort($attackers, fn (GameObject $a, GameObject $b) => $game->power($b) <=> $game->power($a));
         foreach ($attackers as $attacker) {
-            // Menace needs two blockers; keep it simple and let it through.
-            if ($game->hasKeyword($attacker, 'menace')) {
+            // Menace needs two blockers (or more); keep it simple and let it through.
+            if ($game->minBlockers($attacker) > 1) {
                 continue;
             }
             $choice = null;

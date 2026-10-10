@@ -1194,6 +1194,10 @@ final class TextParser
             "doesn't untap during its controller's untap step", "doesn't untap during your untap step" => ["doesn't untap"],
             "can't be blocked" => ["can't be blocked"],
             "can't be blocked by more than one creature" => ["can't be blocked by more than one creature"],
+            // Read by Game::minBlockers().
+            "can't be blocked except by two or more creatures" => ['menace'],
+            "can't be blocked except by three or more creatures" => ["can't be blocked except by 3 or more creatures"],
+            "can't be blocked except by four or more creatures" => ["can't be blocked except by 4 or more creatures"],
             "attacks each combat if able" => ["attacks each combat if able"],
             // Read by Game::declareBlockers().
             'must be blocked if able' => ['must be blocked if able'],
@@ -1320,7 +1324,7 @@ final class TextParser
         if (preg_match('/^Enchanted creature gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))?\.?$/', $line, $match)
             || preg_match('/^Enchanted (?:creature|permanent|land|artifact|[A-Z][a-z]+) (has) (.+?)\.?$/', $line, $match)) {
             $keywords = self::keywordList($match[1] === 'has' ? $match[2] : ($match[3] ?? ''));
-        } elseif (preg_match('/^Enchanted creature (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Enchanted (?:creature|permanent|artifact|land) (.+)$/', $line, $match)) {
             $keywords = self::restrictions($match[1]);
             $match = [null, 'has'];
         } elseif (preg_match("/^Its activated abilities can't be activated\\.?$/", $line)) {
@@ -2122,6 +2126,13 @@ final class TextParser
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'self' => true];
         }
         // Incubate (rule 701.53): an Incubator token with N +1/+1 counters and `{2}: Transform this artifact.`
+        // `Put target creature on top of its owner's library.` / `… on the bottom …`; the owner's choice of top or bottom is top.
+        if (preg_match("/^put ({$targets}) on (top|the bottom) of its owner's library$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+            return ['type' => 'tuck', 'target' => self::TARGETS[strtolower($m[1])], 'bottom' => strtolower($m[2]) !== 'top'];
+        }
+        if (preg_match("/^({$targets})'s owner puts it on (?:their choice of )?the top or bottom of their library$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+            return ['type' => 'tuck', 'target' => self::TARGETS[strtolower($m[1])], 'bottom' => false];
+        }
         // Amass (rule 701.47): `Amass Orcs 2`, or the older `Amass 2` (Zombies).
         if (preg_match('/^amass (?:([A-Z][a-z]+) )?(\w+)$/i', $s, $m) && is_int($n = self::amount($m[2])) && $n > 0) {
             return ['type' => 'amass', 'amount' => $n, 'subtype' => $m[1] !== '' ? ucfirst(preg_replace('/s$/', '', $m[1])) : 'Zombie'];
@@ -2169,7 +2180,7 @@ final class TextParser
         if (preg_match('/^(tap|untap) CARDNAME$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'self' => true];
         }
-        if (preg_match('/^(tap|untap) enchanted creature$/i', $s, $m)) {
+        if (preg_match('/^(tap|untap) enchanted (?:creature|permanent|artifact|land)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'enchanted' => true];
         }
         if (preg_match('/^turn CARDNAME face up$/i', $s)) {
