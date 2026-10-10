@@ -708,6 +708,13 @@ final class TextParser
             } elseif ($word === 'for mirrodin!' && ! $spell) {
                 // For Mirrodin! (rule 702.163): a 2/2 red Rebel token to carry it.
                 $found['triggered'][] = ['text' => 'For Mirrodin!', 'event' => 'enters', 'effects' => [['type' => 'for_mirrodin', 'self' => true]]];
+            } elseif (preg_match('/^awaken (\d+)—'.self::COST.'$/iu', $part, $m) && $spell) {
+                // Awaken (rule 702.113): see Game::awaken().
+                $found['altCosts']['awaken'] = $m[2];
+                $found['keywords'][] = "awaken {$m[1]}";
+            } elseif ($word === 'conspire' && $spell) {
+                // Conspire (rule 702.78): see Game::conspirators().
+                $found['keywords'][] = 'conspire';
             } elseif (preg_match('/^casualty (\d+)$/', $word, $m) && $spell) {
                 // Casualty (rule 702.153): see Game::castOptions().
                 $found['keywords'][] = "casualty {$m[1]}";
