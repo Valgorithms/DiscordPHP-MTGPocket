@@ -1068,8 +1068,8 @@ final class TextParser
     }
 
     /**
-     * `As an additional cost to cast this spell, sacrifice a creature.` or
-     * `… discard a card.`
+     * `As an additional cost to cast this spell, sacrifice a creature.`,
+     * `… discard a card.` or `… exile a creature card from your graveyard.`
      *
      * @param string $line
      * @param array  $result
@@ -1078,12 +1078,14 @@ final class TextParser
      */
     private static function additionalCost(string $line, array &$result): bool
     {
-        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|discard a card)\.?$/', $line, $m)) {
+        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)\.?$/', $line, $m)) {
             return false;
         }
         $result['additionalCost'] = match ($m[1]) {
             'sacrifice a creature' => 'sacrifice_creature',
             'sacrifice an artifact or creature' => 'sacrifice_artifact_or_creature',
+            'exile a creature card from your graveyard' => 'exile_creature_card',
+            'exile a card from your graveyard' => 'exile_card',
             default => 'discard',
         };
 
@@ -1966,6 +1968,9 @@ final class TextParser
         // Incubate (rule 701.53): an Incubator token with N +1/+1 counters and `{2}: Transform this artifact.`
         if (preg_match('/^incubate (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'incubate', 'amount' => $n];
+        }
+        if (preg_match('/^take an extra turn after this one$/i', $s)) {
+            return ['type' => 'extra_turn'];
         }
         // Connive (rule 701.50): draw a card, then discard a card; a nonland discard puts a +1/+1 counter on it.
         if (preg_match('/^(?:CARDNAME|it) connives$/i', $s)) {
