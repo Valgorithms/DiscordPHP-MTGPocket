@@ -938,11 +938,16 @@ final class TextParser
 
             return true;
         }
-        if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
+        if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME|, Remove an? (?:charge|storage|oil) counter from CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
             return false;
         }
         $sacrifice = ($match[1] ?? '') === ', Sacrifice CARDNAME';
-        $pain = (($match[1] ?? '') !== '' && ! $sacrifice) || str_ends_with($line, 'deals 1 damage to you.');
+        // `{T}, Remove a charge counter from CARDNAME: Add one mana of any color.`: see Game::manaSources().
+        $counter = preg_match('/Remove an? (\w+) counter/', $match[1] ?? '', $c) ? $c[1] : null;
+        if ($counter !== null && $result['mana'] !== null) {
+            return false;
+        }
+        $pain = (($match[1] ?? '') !== '' && ! $sacrifice && $counter === null) || str_ends_with($line, 'deals 1 damage to you.');
         $what = $match[2];
         $ability = null;
         if (preg_match('/^one mana of any colou?r$/i', $what)) {
@@ -966,6 +971,11 @@ final class TextParser
         if ($pain) {
             $ability['pain'] = $ability['colors'];
         }
+        if ($counter !== null) {
+            $result['mana'] = $ability + ['counter' => $counter];
+
+            return true;
+        }
         if ($sacrifice) {
             // A Treasure: one use.
             if ($result['mana'] !== null) {
@@ -987,7 +997,7 @@ final class TextParser
 
             return true;
         }
-        if (isset($existing['fixed']) || isset($ability['fixed'])) {
+        if (isset($existing['fixed']) || isset($ability['fixed']) || isset($existing['counter'])) {
             return false;
         }
         // Two abilities of one mana each: one source of either, the painless colors first.
@@ -1039,7 +1049,7 @@ final class TextParser
 
             return true;
         }
-        if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[1]))) {
+        if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[1]))) {
             $result['otherCounters'][$match[2]] = $n;
 
             return true;
@@ -1184,6 +1194,12 @@ final class TextParser
             "attacks each combat if able" => ["attacks each combat if able"],
             // Read by Game::declareBlockers().
             'must be blocked if able' => ['must be blocked if able'],
+            // Read by Game::attackCandidates().
+            "can't attack unless defending player controls an Island" => ["can't attack unless defending player controls an Island"],
+            "can't attack unless defending player controls a Swamp" => ["can't attack unless defending player controls a Swamp"],
+            "can't attack unless defending player controls a Mountain" => ["can't attack unless defending player controls a Mountain"],
+            "can't attack unless defending player controls a Forest" => ["can't attack unless defending player controls a Forest"],
+            "can't attack unless defending player controls a Plains" => ["can't attack unless defending player controls a Plains"],
             "can't be countered" => ["can't be countered"],
             '' => [],
             default => [null],
@@ -1202,6 +1218,12 @@ final class TextParser
      */
     private static function restriction(string $line, array &$result): bool
     {
+        // Lure: every creature able to block it must (see Game::declareBlockers()).
+        if (preg_match('/^All creatures able to block CARDNAME do so\.?$/', $line)) {
+            $result['keywords'] = array_values(array_unique([...$result['keywords'], 'all creatures able to block it do so']));
+
+            return true;
+        }
         if (! preg_match('/^CARDNAME (.+)$/', $line, $match) || ($found = self::restrictions($match[1])) === null) {
             return false;
         }
