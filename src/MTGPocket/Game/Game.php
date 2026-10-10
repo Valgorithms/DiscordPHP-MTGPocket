@@ -4643,6 +4643,8 @@ final class Game
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1])
+                // `Enchant Forest`: a permanent with that subtype.
+                || ((bool) preg_match('/^sub_(\w+)$/', $kind, $m) && in_array($m[1], $card->subtypes, true))
                 // `target creature with power 4 or greater` / `… 2 or less`.
                 || ((bool) preg_match('/^creature_power_(ge|le)_(\d+)$/', $kind, $m) && $creature && ($m[1] === 'ge' ? $this->power($object) >= (int) $m[2] : $this->power($object) <= (int) $m[2])),
         };

@@ -139,6 +139,19 @@ final class TextParser
         'creature or vehicle' => 'creature_or_vehicle',
         'player' => 'player',
         'opponent' => 'opponent',
+        'tapped creature' => 'tapped_creature',
+        'untapped creature' => 'untapped_creature',
+        'creature with flying' => 'creature_flying',
+        'creature without flying' => 'creature_no_flying',
+        'artifact creature' => 'artifact_creature',
+        'nonbasic land' => 'nonbasic_land',
+        'artifact or enchantment' => 'artifact_or_enchantment',
+        'artifact or land' => 'artifact_or_land',
+        'nonland permanent an opponent controls' => 'nonland_permanent_opponent',
+        'nonland permanent you don\'t control' => 'nonland_permanent_opponent',
+        'creature or planeswalker an opponent controls' => 'creature_or_planeswalker_opponent',
+        'creature or planeswalker you don\'t control' => 'creature_or_planeswalker_opponent',
+        'artifact or creature an opponent controls' => 'artifact_or_creature_opponent',
     ];
 
     /** Predefined artifact tokens (rule 111.10). */
@@ -1199,9 +1212,10 @@ final class TextParser
 
     private static function aura(string $line, array &$result): bool
     {
-        if (preg_match('/^Enchant (.+)$/', $line, $match) && isset(self::ENCHANT[strtolower($match[1])])) {
+        // `Enchant Forest` or `Enchant Vehicle`: a permanent with that subtype.
+        if (preg_match('/^Enchant (.+)$/', $line, $match) && (isset(self::ENCHANT[strtolower($match[1])]) || preg_match('/^[A-Z][a-z]+$/', $match[1]))) {
             $result['aura'] ??= ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
-            $result['aura']['enchant'] = self::ENCHANT[strtolower($match[1])];
+            $result['aura']['enchant'] = self::ENCHANT[strtolower($match[1])] ?? 'sub_'.$match[1];
 
             return true;
         }
@@ -1214,7 +1228,7 @@ final class TextParser
         }
         $keywords = null;
         if (preg_match('/^Enchanted creature gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))?\.?$/', $line, $match)
-            || preg_match('/^Enchanted creature (has) (.+?)\.?$/', $line, $match)) {
+            || preg_match('/^Enchanted (?:creature|permanent|land|artifact|[A-Z][a-z]+) (has) (.+?)\.?$/', $line, $match)) {
             $keywords = self::keywordList($match[1] === 'has' ? $match[2] : ($match[3] ?? ''));
         } elseif (preg_match('/^Enchanted creature (.+)$/', $line, $match)) {
             $keywords = self::restrictions($match[1]);
