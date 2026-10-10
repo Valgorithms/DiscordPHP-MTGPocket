@@ -139,6 +139,9 @@ final class Game
     /** `day`, `night`, or null while it is neither (rule 726). */
     public ?string $dayNight = null;
 
+    /** @var int[] Seats taking extra turns after this one, the next first (rule 500.7). */
+    public array $extraTurns = [];
+
     /** @var array<int, true> Creatures that dealt first-strike damage this combat. */
     public array $struckFirst = [];
 
@@ -551,7 +554,8 @@ final class Game
     {
         $this->recordPosition();
         $this->turn++;
-        $this->active = $this->opponent($this->active);
+        // The most recently created extra turn is taken first (rule 500.7).
+        $this->active = $this->extraTurns !== [] ? array_shift($this->extraTurns) : $this->opponent($this->active);
         foreach ($this->players as $player) {
             $player->landsPlayed = 0;
         }
@@ -1322,6 +1326,9 @@ final class Game
         if (! $options['faceDown'] && $card->additionalCost === 'discard' && count($player->hand) < 2) {
             return "{$card->name} needs another card in your hand to discard.";
         }
+        if (! $options['faceDown'] && in_array($card->additionalCost, ['exile_creature_card', 'exile_card'], true) && $this->graveyardFodder($seat, $card, $id) === []) {
+            return "{$card->name} needs ".($card->additionalCost === 'exile_card' ? 'another card' : 'a creature card').' in your graveyard to exile.';
+        }
         // Face down it is a 2/2 creature spell with no abilities, flash included.
         // A plotted card is cast as a sorcery (rule 702.170d).
         // Madness casts it whenever its trigger waits (rule 702.35c).
@@ -1991,11 +1998,34 @@ final class Game
             $weakest = $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) || ($artifacts && $o->definition()->is('Artifact')));
             $this->log("{$this->players[$seat]->name} sacrifices {$weakest->name()} to cast {$card->name}.");
             $this->moveTo($weakest, GameObject::GRAVEYARD);
+        } elseif ($card->additionalCost === 'exile_creature_card' || $card->additionalCost === 'exile_card') {
+            $exiled = $this->objects[$this->graveyardFodder($seat, $card)[0]];
+            $this->log("{$this->players[$seat]->name} exiles {$exiled->name()} from their graveyard to cast {$card->name}.");
+            $this->moveTo($exiled, GameObject::EXILE);
         } else {
             $hand = $this->players[$seat]->hand;
             usort($hand, fn (int $a, int $b) => $this->objects[$a]->definition()->cost->manaValue() <=> $this->objects[$b]->definition()->cost->manaValue());
             $this->discardCards($seat, [$hand[0]]);
         }
+    }
+
+    /**
+     * Cards in a player's graveyard that could pay `exile a (creature) card
+     * from your graveyard`, lowest mana value first.
+     *
+     * @param int            $seat
+     * @param CardDefinition $card
+     * @param int|null       $id   The spell itself, which can't pay for itself.
+     *
+     * @return int[]
+     */
+    private function graveyardFodder(int $seat, CardDefinition $card, ?int $id = null): array
+    {
+        $cards = array_values(array_filter($this->players[$seat]->graveyard, fn (int $other) => $other !== $id
+            && ($card->additionalCost !== 'exile_creature_card' || $this->objects[$other]->printed()->isCreature())));
+        usort($cards, fn (int $a, int $b) => $this->objects[$a]->printed()->cost->manaValue() <=> $this->objects[$b]->printed()->cost->manaValue());
+
+        return $cards;
     }
 
     /**
@@ -3467,6 +3497,11 @@ final class Game
                     'back' => ['name' => 'Phyrexian Token', 'type' => 'Token Artifact Creature — Phyrexian', 'types' => ['Artifact', 'Creature'], 'subtypes' => ['Phyrexian'], 'colors' => [], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null]], $controller);
                 $incubator->addCounters('+1/+1', $amount);
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
+                break;
+
+            case 'extra_turn':
+                array_unshift($this->extraTurns, $controller);
+                $this->log("{$this->players[$controller]->name} will take an extra turn after this one.");
                 break;
 
             case 'connive':
@@ -6527,6 +6562,7 @@ final class Game
             'spellsTurn' => $this->spellsTurn,
             'spellsBefore' => $this->spellsBefore,
             'dayNight' => $this->dayNight,
+            'extraTurns' => $this->extraTurns,
             'prevent' => $this->prevent,
         ];
     }
@@ -6613,6 +6649,7 @@ final class Game
         $game->spellsTurn = (int) ($data['spellsTurn'] ?? 0);
         $game->spellsBefore = (int) ($data['spellsBefore'] ?? 0);
         $game->dayNight = isset($data['dayNight']) ? (string) $data['dayNight'] : null;
+        $game->extraTurns = array_map('intval', (array) ($data['extraTurns'] ?? []));
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
 
         return $game;
