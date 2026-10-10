@@ -770,7 +770,7 @@ final class TextParser
             } elseif ($word === 'ingest' && ! $spell) {
                 // Ingest (rule 702.115): the damaged player exiles the top card of their library.
                 $found['triggered'][] = ['text' => 'Ingest', 'event' => 'combat_damage', 'effects' => [['type' => 'ingest']]];
-            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
