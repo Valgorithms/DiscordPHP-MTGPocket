@@ -108,7 +108,7 @@ final class Game
     public int $passes = 0;
 
     /** Ways in {@see plays()} that are not casting a spell. */
-    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm'];
+    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'scavenge'];
 
     /** @var array<int, true> Attacking creatures. */
     public array $attackers = [];
@@ -959,7 +959,7 @@ final class Game
             if (isset($card->altCosts['regrow']) && $this->whyNotRegrow($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'regrow'];
             }
-            foreach (['eternalize', 'embalm'] as $way) {
+            foreach (['eternalize', 'embalm', 'scavenge'] as $way) {
                 if (isset($card->altCosts[$way]) && $this->whyNotEmbalm($seat, $id, $way) === null) {
                     $plays[] = ['id' => $id, 'how' => $way];
                 }
@@ -1555,12 +1555,25 @@ final class Game
             // A Signet's `{1}, {T}: Add {W}{U}.` works the same way, its {1} paid by other mana.
             $filters = array_keys(array_filter($sources, fn (array $source) => $source['filter'] ?? false));
             $others = array_sum(array_map(fn (array $source) => ($source['filter'] ?? false) ? 0 : $source['count'], $sources)) + $player->manaPool->total();
+            // A filter land's `{W/U}` is paid with either color: each way is tried.
             for ($k = 1; $plan === null && $k <= count($filters) && $k <= $others; $k++) {
                 $filtered = $sources;
+                $ways = [$payment['mana']];
                 foreach (array_slice($filters, 0, $k) as $id) {
                     $filtered[$id] = $sources[$id]['filterAs'] ?? ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
+                    $next = [];
+                    foreach ($ways as $way) {
+                        foreach ($sources[$id]['filterPays'] ?? ['generic'] as $type) {
+                            $next[] = [$type => ($way[$type] ?? 0) + 1] + $way;
+                        }
+                    }
+                    $ways = $next;
                 }
-                $plan = ManaPayer::plan(['mana' => ['generic' => ($payment['mana']['generic'] ?? 0) + $k] + $payment['mana']] + $payment, $player->manaPool, $filtered);
+                foreach ($ways as $way) {
+                    if (($plan = ManaPayer::plan(['mana' => $way] + $payment, $player->manaPool, $filtered)) !== null) {
+                        break;
+                    }
+                }
             }
             if ($plan !== null) {
                 return $plan + ['life' => $total];
@@ -2496,11 +2509,12 @@ final class Game
     /**
      * Embalm (rule 702.128) or eternalize (rule 702.129): exiles the card from
      * your graveyard, as a sorcery, for a token copy that's a Zombie (4/4 and
-     * black when eternalized, white when embalmed) with no mana cost.
+     * black when eternalized, white when embalmed) with no mana cost. Scavenge
+     * (rule 702.97) exiles it the same way for +1/+1 counters equal to its power.
      *
      * @param int    $seat
      * @param int    $id
-     * @param string $way  `embalm` or `eternalize`.
+     * @param string $way  `embalm`, `eternalize` or `scavenge`.
      *
      * @return void
      */
@@ -2518,7 +2532,7 @@ final class Game
             'source' => $object->id,
             'incarnation' => $object->incarnation,
             'controller' => $seat,
-            'effects' => [['type' => 'embalm', 'way' => $way]],
+            'effects' => [$way === 'scavenge' ? ['type' => 'scavenge', 'amount' => max(0, (int) ($card->card['power'] ?? 0))] : ['type' => 'embalm', 'way' => $way]],
             'kinds' => [],
             'label' => "{$card->name}'s {$way}",
         ], [], 'is activated', "{$way} {$card->name}");
@@ -2536,6 +2550,9 @@ final class Game
         }
         if (! $this->sorcerySpeed($seat)) {
             return ucfirst($way).' only as a sorcery.';
+        }
+        if ($way === 'scavenge' && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) === []) {
+            return 'Scavenge needs a creature you control to put the counters on.';
         }
         if ($this->payFor($seat, $object->printed()->altCosts[$way]) === null) {
             return "You cannot pay {$object->printed()->altCosts[$way]}.";
@@ -3432,6 +3449,16 @@ final class Game
                 }
                 $this->players[$controller]->energy += $this->players[$controller]->energy > 0 ? 1 : 0;
                 $this->log("{$this->players[$controller]->name} proliferates.");
+                break;
+
+            case 'scavenge':
+                // The game picks your strongest creature for the counters.
+                $creatures = array_filter($this->permanents($controller), fn (GameObject $o) => $this->isCreature($o));
+                usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
+                if ($creatures !== [] && $amount > 0) {
+                    $creatures[0]->addCounters('+1/+1', $amount);
+                    $this->log("{$creatures[0]->name()} gets {$amount} +1/+1 counter".($amount === 1 ? '' : 's').' (scavenge).');
+                }
                 break;
 
             case 'embalm':

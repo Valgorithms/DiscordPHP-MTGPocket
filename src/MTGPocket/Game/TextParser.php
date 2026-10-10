@@ -689,6 +689,9 @@ final class TextParser
                 $found['bestow'] = ['cost' => $m[1]];
             } elseif (preg_match('/^unearth '.self::COST.'$/i', $part, $m) && ! $spell) {
                 $found['unearth'] = $m[1];
+            } elseif (preg_match('/^scavenge '.self::COST.'$/i', $part, $m) && ! $spell && ! str_contains($m[1], 'X')) {
+                // Scavenge (rule 702.97): exile it from your graveyard, as a sorcery, for +1/+1 counters equal to its power.
+                $found['altCosts']['scavenge'] = $m[1];
             } elseif (preg_match('/^cycling '.self::COST.'$/i', $part, $m)) {
                 $found['cycling'] = $m[1];
             } elseif (preg_match('/^(basic land|plains|island|swamp|mountain|forest)cycling '.self::COST.'$/i', $part, $m)) {
@@ -907,6 +910,21 @@ final class TextParser
 
             return true;
         }
+        // A filter land's `{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}.`: like a Signet, its cost paid with either color.
+        if (preg_match('/^\{([WUBRG])\/([WUBRG])\}, \{T\}: Add \{(\w)\}\{(\w)\}, \{(\w)\}\{(\w)\}, or \{(\w)\}\{(\w)\}\.$/', $line, $match)
+            && [$match[3], $match[4], $match[5], $match[6], $match[7], $match[8]] === [$match[1], $match[1], $match[1], $match[2], $match[2], $match[2]]) {
+            $pair = [$match[1], $match[2]];
+            $two = ['count' => 2, 'colors' => $pair, 'fixed' => [$pair, $pair]];
+            if ($result['mana'] === null) {
+                $result['mana'] = ['count' => 0, 'colors' => ['C'], 'filter' => true, 'filterAs' => $two, 'filterPays' => $pair];
+            } elseif (($result['mana']['filter'] ?? false) || ($result['mana']['sacrifice'] ?? false) || isset($result['mana']['fixed'])) {
+                return false;
+            } else {
+                $result['mana'] += ['filter' => true, 'filterAs' => $two, 'filterPays' => $pair];
+            }
+
+            return true;
+        }
         if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
             return false;
         }
@@ -948,7 +966,7 @@ final class TextParser
         $existing = $result['mana'];
         if ($existing !== null && $existing['count'] === 0) {
             // The filter ability came first.
-            $ability += array_intersect_key($existing, ['filter' => true, 'filterAs' => true]);
+            $ability += array_intersect_key($existing, ['filter' => true, 'filterAs' => true, 'filterPays' => true]);
             $existing = null;
         }
         if ($existing === null) {
