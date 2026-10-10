@@ -1751,13 +1751,47 @@ final class TextParser
     private static function revealDiscard(string $text): ?array
     {
         $filters = ['card' => 'any', 'nonland card' => 'nonland', 'creature card' => 'creature', 'noncreature card' => 'noncreature', 'noncreature, nonland card' => 'noncreature_nonland', 'instant or sorcery card' => 'instant_sorcery', 'nonland permanent card' => 'nonland_permanent', 'creature or planeswalker card' => 'creature|planeswalker', 'artifact or creature card' => 'artifact|creature'];
-        $filter = implode('|', array_map(fn ($f) => preg_quote($f, '/'), array_keys($filters)));
         // `… That player discards that card.`, or `… and exile that card.` / `… Exile that card.`
-        if (! preg_match("/^(Target opponent|Target player) reveals (?:their|his or her) hand\. You choose an? ({$filter}) from it(\. That player discards that card| and exile that card|\. Exile that card)\.?\s*(.*)$/s", ucfirst(trim($text)), $m)) {
+        // `You may choose …. If you do, that player discards that card.`: choosing is always worth it.
+        if (! preg_match("/^(Target opponent|Target player) reveals (?:their|his or her) hand\. You (?:may )?choose an? ([^.]+?) from it(\. (?:If you do, that|That) player discards that card| and exile that card|\. Exile that card)\.?\s*(.*)$/s", ucfirst(trim($text)), $m)
+            || ($filter = $filters[$m[2]] ?? self::revealFilter($m[2])) === null) {
             return null;
         }
 
-        return [['type' => 'discard', 'amount' => 1, 'target' => self::TARGETS[strtolower($m[1])], 'chooser' => 'you', 'filter' => $filters[$m[2]]] + (str_contains($m[3], 'xile') ? ['exile' => true] : []), trim($m[4])];
+        return [['type' => 'discard', 'amount' => 1, 'target' => self::TARGETS[strtolower($m[1])], 'chooser' => 'you', 'filter' => $filter] + (str_contains($m[3], 'xile') ? ['exile' => true] : []), trim($m[4])];
+    }
+
+    /**
+     * The card a hand-reveal discard picks, beyond the common ones:
+     * `nonland card with mana value 3 or less`, `nonartifact, nonland card`
+     * or `artifact or enchantment card`, as a filter for Game::matchesFilter()
+     * (`&` joins filters that must all hold).
+     *
+     * @param string $words
+     *
+     * @return string|null
+     */
+    private static function revealFilter(string $words): ?string
+    {
+        $all = [];
+        if (preg_match('/^(.+?) with mana value (\d+) or (less|greater)$/', $words, $m)) {
+            [$words, $all[]] = [$m[1], 'mv_'.($m[3] === 'less' ? 'le' : 'ge').'_'.$m[2]];
+        }
+        if (! preg_match('/^(.+?) cards?$/', $words, $m)) {
+            return null;
+        }
+        // `noncreature, nonland`: every one of them.
+        if (preg_match('/^non[a-z]+(?:, non[a-z]+)+$/', $m[1])) {
+            foreach (explode(', ', $m[1]) as $piece) {
+                $all[] = 'not:'.substr($piece, 3);
+            }
+        } elseif (($filter = self::cardFilter($m[1])) !== null) {
+            $all[] = $filter;
+        } else {
+            return null;
+        }
+
+        return implode('&', $all);
     }
 
     /**
@@ -1886,7 +1920,7 @@ final class TextParser
 
             return true;
         }
-        if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && $effects[$last]['type'] === 'destroy') {
+        if (preg_match("/^(?:It|They|CARDNAME) can't be regenerated$/", $sentence) && in_array($effects[$last]['type'], ['destroy', 'damage'], true)) {
             $effects[$last]['noRegen'] = true;
 
             return true;
@@ -1995,7 +2029,7 @@ final class TextParser
         if (preg_match('/^CARDNAME deals (\w+) damage to each creature$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'creature'];
         }
-        if (preg_match('/^draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+        if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
         }
         if (preg_match('/^target player draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
@@ -2099,7 +2133,11 @@ final class TextParser
         if (preg_match("/^regenerate ({$targets})$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
             return ['type' => 'regenerate', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match('/^(tap|untap) CARDNAME$/', $s, $m)) {
+        // `Target opponent reveals their hand.` on its own: everyone sees it (see Game::log()).
+        if (preg_match('/^(target opponent|target player) reveals (?:their|his or her) hand$/i', $s, $m)) {
+            return ['type' => 'reveal_hand', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        if (preg_match('/^(tap|untap) CARDNAME$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'self' => true];
         }
         if (preg_match('/^(tap|untap) enchanted creature$/i', $s, $m)) {
