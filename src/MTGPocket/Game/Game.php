@@ -913,7 +913,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -938,7 +938,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -983,6 +983,9 @@ final class Game
             if (self::casualty($card) > 0) {
                 $ways[] = implode(',', [...$base, 'casualty']);
             }
+            if (in_array('conspire', $card->keywords, true)) {
+                $ways[] = implode(',', [...$base, 'conspire']);
+            }
             if (isset($card->altCosts['buyback'])) {
                 $ways[] = implode(',', [...$base, 'buyback']);
             }
@@ -996,7 +999,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1012,11 +1015,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -1031,6 +1034,8 @@ final class Game
                 $options['bestowed'] = true;
             } elseif ($part === 'entwine') {
                 $options['entwined'] = true;
+            } elseif ($part === 'conspire') {
+                $options['conspire'] = true;
             } elseif ($part === 'buyback') {
                 $options['buyback'] = true;
             } elseif ($part === 'casualty') {
@@ -1044,7 +1049,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1247,6 +1252,9 @@ final class Game
         }
         if ($options['casualty'] && (self::casualty($card) === 0 || $this->casualtyFodder($seat, self::casualty($card)) === null)) {
             return "{$card->name} needs a creature with power ".self::casualty($card).' or greater to sacrifice.';
+        }
+        if ($options['conspire'] && (! in_array('conspire', $card->keywords, true) || $this->conspirators($seat, $card, $id) === null)) {
+            return "{$card->name} needs two untapped creatures that share a color with it to conspire.";
         }
         if ($options['faceDown'] && $card->morph === null) {
             return "{$card->name} cannot be cast face down.";
@@ -1671,6 +1679,13 @@ final class Game
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
         }
+        $conspirators = $options['conspire'] ? $this->conspirators($seat, $card, $id) : null;
+        foreach ($conspirators ?? [] as $conspirator) {
+            $conspirator->tapped = true;
+        }
+        if ($conspirators !== null) {
+            $this->log("{$this->players[$seat]->name} taps ".implode(' and ', array_map(fn (GameObject $o) => $o->name(), $conspirators)).' (conspire).');
+        }
         $casualty = $options['casualty'] ? $this->casualtyFodder($seat, self::casualty($card)) : null;
         if ($casualty !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$casualty->name()} (casualty).");
@@ -1728,6 +1743,9 @@ final class Game
         );
         if ($casualty !== null) {
             $this->copySpell(end($this->stack), $seat, 'casualty');
+        }
+        if ($conspirators !== null) {
+            $this->copySpell(end($this->stack), $seat, 'conspire');
         }
         $this->castTriggers($seat, $object);
         $this->targetedTriggers($targets);
@@ -1826,6 +1844,25 @@ final class Game
     private function casualtyFodder(int $seat, int $power): ?GameObject
     {
         return $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) && $this->power($o) >= $power);
+    }
+
+    /**
+     * Conspire: two untapped creatures the player controls that share a
+     * color with the spell, the weakest first.
+     *
+     * @param int            $seat
+     * @param CardDefinition $card
+     * @param int            $id   The spell's own card, never one of them.
+     *
+     * @return GameObject[]|null
+     */
+    private function conspirators(int $seat, CardDefinition $card, int $id): ?array
+    {
+        $creatures = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $o->id !== $id && ! $o->tapped && $this->isCreature($o)
+            && array_intersect($o->definition()->colors, $card->colors) !== []));
+        usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($a) <=> $this->power($b));
+
+        return count($creatures) >= 2 ? array_slice($creatures, 0, 2) : null;
     }
 
     /** The N of `casualty N`, or 0. */
@@ -2604,9 +2641,35 @@ final class Game
         }
 
         $this->log((self::isAbility($item) ? $item['label'] : $source->name()).' resolves.');
+        if (! self::isAbility($item) && ($item['alt'] ?? '') === 'awaken') {
+            $this->awaken($item['controller'], (int) substr((string) current(preg_grep('/^awaken \d+$/', $source->definition()->keywords) ?: ['awaken 0']), 7));
+        }
         if (! self::isAbility($item) && $source->zone === GameObject::STACK) {
             $this->spellLeavesStack($source, $item, true);
         }
+    }
+
+    /**
+     * Awaken: N +1/+1 counters on a land the player controls, which becomes
+     * a 0/0 Elemental creature with haste. The game picks the land: one
+     * already awakened, else a tapped one, else any.
+     *
+     * @param int $seat
+     * @param int $n
+     *
+     * @return void
+     */
+    private function awaken(int $seat, int $n): void
+    {
+        $lands = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->isLand()));
+        usort($lands, fn (GameObject $a, GameObject $b) => [$b->awakened, $b->tapped] <=> [$a->awakened, $a->tapped]);
+        if ($lands === [] || $n <= 0) {
+            return;
+        }
+        $land = $lands[0];
+        $land->addCounters('+1/+1', $n);
+        $land->awakened = true;
+        $this->log("Awaken {$n}: {$land->name()} becomes a 0/0 Elemental creature with haste and gets {$n} +1/+1 counters.");
     }
 
     /**
@@ -5764,7 +5827,7 @@ final class Game
         if ($bands !== [] && $object->definition()->power !== null && $object->zone === GameObject::BATTLEFIELD && $object->counter('charge') >= max(array_column($bands, 'min'))) {
             return true;
         }
-        if ($object->definition()->isCreature()) {
+        if ($object->definition()->isCreature() || $object->awakened) {
             return true;
         }
         foreach ($object->untilEndOfTurn as $effect) {
@@ -6112,7 +6175,7 @@ final class Game
             if ($this->active === $object->controller) {
                 array_push($keywords, ...$object->definition()->yourTurnKeywords);
             }
-            if ($object->alt === 'dash' || $object->alt === 'blitz' || ($object->alt === 'suspend' && $this->isCreature($object))) {
+            if ($object->awakened || $object->alt === 'dash' || $object->alt === 'blitz' || ($object->alt === 'suspend' && $this->isCreature($object))) {
                 $keywords[] = 'haste';
             }
             foreach ($object->definition()->stationBands as $band) {

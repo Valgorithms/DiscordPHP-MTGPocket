@@ -75,6 +75,9 @@ final class GameObject
     /** Returned with unearth: exiled at the end step or when it would leave the battlefield (rule 702.84a). */
     public bool $unearthed = false;
 
+    /** A land awakened (rule 702.113): a 0/0 Elemental creature with haste that is still a land. */
+    public bool $awakened = false;
+
     /** Echo was paid, or it has been under its controller's control since an upkeep (rule 702.30). */
     public bool $echoPaid = false;
 
@@ -201,6 +204,7 @@ final class GameObject
         $this->shields = 0;
         $this->borrowedFrom = null;
         $this->unearthed = false;
+        $this->awakened = false;
         $this->echoPaid = false;
         $this->frozen = false;
         $this->renowned = false;
@@ -259,6 +263,7 @@ final class GameObject
             'kicked' => $this->kicked,
             'shields' => $this->shields,
             'unearthed' => $this->unearthed,
+            'awakened' => $this->awakened,
             'echoPaid' => $this->echoPaid,
             'frozen' => $this->frozen,
             'renowned' => $this->renowned,
@@ -307,6 +312,7 @@ final class GameObject
         $object->kicked = (bool) ($data['kicked'] ?? false);
         $object->shields = (int) ($data['shields'] ?? 0);
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
+        $object->awakened = (bool) ($data['awakened'] ?? false);
         $object->echoPaid = (bool) ($data['echoPaid'] ?? false);
         $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->renowned = (bool) ($data['renowned'] ?? false);
