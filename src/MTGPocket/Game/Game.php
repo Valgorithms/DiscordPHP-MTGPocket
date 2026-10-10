@@ -86,7 +86,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'];
 
     /** @var int[] */
     public array $exile = [];
@@ -3546,6 +3546,21 @@ final class Game
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
 
+            case 'amass':
+                // An Army you control, or a new 0/0 black Army token of that subtype.
+                $army = null;
+                foreach ($this->permanents($controller) as $object) {
+                    if ($this->isCreature($object) && in_array('Army', $object->definition()->subtypes, true)) {
+                        $army = $object;
+                        break;
+                    }
+                }
+                $kind = $effect['subtype'] ?? 'Zombie';
+                $army ??= $this->createToken(['name' => "{$kind} Army Token", 'type' => "Token Creature — {$kind} Army", 'types' => ['Creature'], 'subtypes' => [$kind, 'Army'], 'colors' => ['B'], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null], $controller);
+                $army->addCounters('+1/+1', $amount);
+                $this->log("{$this->players[$controller]->name} amasses {$kind} {$amount}.");
+                break;
+
             case 'extra_turn':
                 array_unshift($this->extraTurns, $controller);
                 $this->log("{$this->players[$controller]->name} will take an extra turn after this one.");
@@ -4647,6 +4662,7 @@ final class Game
             'artifact_card_yours' => $object->printed()->is('Artifact') && $object->owner === $controller,
             'land_card_yours' => $object->printed()->isLand() && $object->owner === $controller,
             'enchantment_card_yours' => $object->printed()->is('Enchantment') && $object->owner === $controller,
+            'permanent_card_yours' => $object->printed()->isPermanentCard() && $object->owner === $controller,
             'card_graveyard_nonbasic' => ! ($object->printed()->isLand() && in_array('Basic', $object->printed()->supertypes, true)),
             'nonbasic_land' => $card->isLand() && ! in_array('Basic', $card->supertypes, true),
             'creature_or_planeswalker_opponent' => ($creature || $card->isPlaneswalker()) && $object->controller !== $controller,
