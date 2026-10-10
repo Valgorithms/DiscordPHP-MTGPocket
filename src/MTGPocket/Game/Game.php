@@ -1610,6 +1610,10 @@ final class Game
             if ($this->objects[$source]->definition()->manaAbility['sacrifice'] ?? false) {
                 $this->moveTo($this->objects[$source], GameObject::GRAVEYARD);
             }
+            // `{T}, Remove a charge counter from this artifact: Add …`.
+            if (($kind = $this->objects[$source]->definition()->manaAbility['counter'] ?? null) !== null) {
+                $this->objects[$source]->addCounters($kind, -1);
+            }
         }
         foreach ($payment['pool'] as $type => $amount) {
             $player->manaPool->remove($type, $amount);
@@ -1664,7 +1668,7 @@ final class Game
         $sources = [];
         foreach ($this->permanents($seat) as $object) {
             $ability = $object->definition()->manaAbility;
-            if ($ability === null || $object->tapped || $this->hasKeyword($object, "abilities can't be activated")) {
+            if ($ability === null || $object->tapped || $this->hasKeyword($object, "abilities can't be activated") || (isset($ability['counter']) && $object->counter($ability['counter']) <= 0)) {
                 continue;
             }
             // A creature's {T} abilities need it to have been under your control since your turn began (rule 302.6).
@@ -4904,7 +4908,27 @@ final class Game
         return array_values(array_map(fn (GameObject $o) => $o->id, array_filter(
             $this->permanents($this->active),
             fn (GameObject $o) => $this->isCreature($o) && ! $o->tapped && (! $o->sick || $this->hasKeyword($o, 'haste')) && ! $this->hasKeyword($o, 'defender') && ! $this->hasKeyword($o, "can't attack")
+                && $this->attackAllowedByLands($o)
         )));
+    }
+
+    /**
+     * `This creature can't attack unless defending player controls an Island.`
+     *
+     * @param GameObject $creature
+     *
+     * @return bool
+     */
+    private function attackAllowedByLands(GameObject $creature): bool
+    {
+        foreach ($this->keywords($creature) as $keyword) {
+            if (preg_match("/^can't attack unless defending player controls an? (\w+)$/", $keyword, $m)
+                && array_filter($this->permanents($this->defender()), fn (GameObject $o) => in_array($m[1], $o->definition()->subtypes, true)) === []) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -5130,6 +5154,18 @@ final class Game
                 }
             }
         }
+        // Lure: every creature able to block it does (rule 509.1c), unless it already blocks another such attacker.
+        foreach (array_keys($this->attackers) as $attacker) {
+            if (! $this->hasKeyword($this->objects[$attacker], 'all creatures able to block it do so')) {
+                continue;
+            }
+            foreach ($this->blockCandidates() as $candidate) {
+                $current = isset($blocks[$candidate]) ? $this->objects[(int) $blocks[$candidate]] ?? null : null;
+                if (($current === null || ! $this->hasKeyword($current, 'all creatures able to block it do so')) && $this->canBlock($this->objects[$candidate], $this->objects[$attacker])) {
+                    $blocks[$candidate] = $attacker;
+                }
+            }
+        }
         $count = [];
         foreach ($blocks as $blocker => $attacker) {
             $blockerObject = $this->objects[(int) $blocker] ?? null;
@@ -5350,6 +5386,13 @@ final class Game
 
                 return;
             }
+            // A shield counter (rule 122.1c): prevent the damage and remove the counter instead.
+            if ($object->counter('shield') > 0) {
+                $object->addCounters('shield', -1);
+                $this->log("A shield counter on {$object->name()} prevents the damage and is removed.");
+
+                return;
+            }
             if ($object->definition()->isPlaneswalker() && ! $this->isCreature($object)) {
                 $object->addCounters('loyalty', -$amount);
             } elseif ($this->hasKeyword($source, 'infect') || $this->hasKeyword($source, 'wither')) {
@@ -5391,7 +5434,17 @@ final class Game
 
     private function destroy(?GameObject $object, bool $regenerates = true): void
     {
-        if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $this->hasKeyword($object, 'indestructible') || ($regenerates && $this->regenerate($object)) || $this->umbraArmor($object)) {
+        if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $this->hasKeyword($object, 'indestructible')) {
+            return;
+        }
+        // A shield counter (rule 122.1c): remove it instead.
+        if ($object->counter('shield') > 0) {
+            $object->addCounters('shield', -1);
+            $this->log("A shield counter on {$object->name()} is removed instead of it being destroyed.");
+
+            return;
+        }
+        if (($regenerates && $this->regenerate($object)) || $this->umbraArmor($object)) {
             return;
         }
         $this->moveTo($object, GameObject::GRAVEYARD);
