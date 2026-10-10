@@ -108,6 +108,7 @@ final class TextParser
         'target card from your graveyard' => 'card_yours',
         'target instant or sorcery card from your graveyard' => 'instant_sorcery_card_yours',
         'target artifact card from your graveyard' => 'artifact_card_yours',
+        'target permanent card from your graveyard' => 'permanent_card_yours',
         'target land card from your graveyard' => 'land_card_yours',
         'target enchantment card from your graveyard' => 'enchantment_card_yours',
         'target card in a graveyard other than a basic land card' => 'card_graveyard_nonbasic',
@@ -322,6 +323,8 @@ final class TextParser
                 "Creatures with power less than CARDNAME's power can't block it." => "can't be blocked by lesser power",
                 // Read ahead (rule 714.3a): the controller may start a Saga on a later chapter; Game always starts it on chapter I, which is one of the legal choices.
                 'Read ahead' => 'read ahead',
+                // Rule 502.3: untapping it anyway is always one of the legal choices, and Game always does.
+                'You may choose not to untap CARDNAME during your untap step.' => 'may not untap',
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -2119,6 +2122,10 @@ final class TextParser
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'self' => true];
         }
         // Incubate (rule 701.53): an Incubator token with N +1/+1 counters and `{2}: Transform this artifact.`
+        // Amass (rule 701.47): `Amass Orcs 2`, or the older `Amass 2` (Zombies).
+        if (preg_match('/^amass (?:([A-Z][a-z]+) )?(\w+)$/i', $s, $m) && is_int($n = self::amount($m[2])) && $n > 0) {
+            return ['type' => 'amass', 'amount' => $n, 'subtype' => $m[1] !== '' ? ucfirst(preg_replace('/s$/', '', $m[1])) : 'Zombie'];
+        }
         if (preg_match('/^incubate (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'incubate', 'amount' => $n];
         }
@@ -2227,7 +2234,7 @@ final class TextParser
             return ['type' => 'untap', 'sameTarget' => true];
         }
         if (preg_match("/^return ({$targets}) to (your hand|the battlefield)$/i", $s, $m)
-            && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours'], true)
+            && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true)
             && ($m[2] === 'your hand' || $kind === 'creature_card_yours')) {
             return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind];
         }
@@ -2364,6 +2371,6 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours'], true);
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true);
     }
 }
