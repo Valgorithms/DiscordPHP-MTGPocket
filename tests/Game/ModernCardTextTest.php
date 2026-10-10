@@ -238,6 +238,10 @@ final class ModernCardTextTest extends GameTestCase
         'Ally Lite' => ['manaCost' => '{1}{G}', 'type' => 'Creature — Elf Warrior Ally', 'power' => '1', 'toughness' => '1', 'text' => 'Whenever Ally Lite or another Ally you control enters, you may put a +1/+1 counter on Ally Lite.', 'colors' => ['G']],
         'Conspire Lite' => ['manaCost' => '{R}', 'type' => 'Instant', 'text' => "Conspire (As you cast this spell, you may tap two untapped creatures you control that share a color with it. When you do, copy it and you may choose a new target for the copy.)\nConspire Lite deals 1 damage to any target.", 'colors' => ['R']],
         'Awaken Lite' => ['manaCost' => '{1}{G}', 'type' => 'Sorcery', 'text' => "You gain 2 life.\nAwaken 2—{3}{G} (If you cast this spell for {3}{G}, also put two +1/+1 counters on target land you control and it becomes a 0/0 Elemental creature with haste. It's still a land.)", 'colors' => ['G']],
+        'Connive Lite' => ['manaCost' => '{1}{U}', 'type' => 'Creature — Human Rogue', 'power' => '1', 'toughness' => '1', 'text' => 'When Connive Lite enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)', 'colors' => ['U']],
+        'Tapped Discount Lite' => ['manaCost' => '{3}{B}', 'type' => 'Instant', 'text' => "Tapped Discount Lite costs {2} less to cast if it targets a tapped creature.\nDestroy target creature.", 'colors' => ['B']],
+        'Grave Lands Lite' => ['manaCost' => '{1}{G}', 'type' => 'Enchantment', 'text' => 'You may play lands from your graveyard.', 'colors' => ['G']],
+        'Big Game Lite' => ['manaCost' => '{1}{B}', 'type' => 'Sorcery', 'text' => 'Destroy target creature with power 4 or greater.', 'colors' => ['B']],
         'Cultivate' => ['manaCost' => '{2}{G}', 'type' => 'Sorcery', 'text' => 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', 'colors' => ['G']],
     ];
 
@@ -1597,6 +1601,57 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertTrue($game->isCreature($game->objects[$awakened->id]));
     }
 
+    public function testConniveTappedDiscountGraveLandsAndPowerTargets(): void
+    {
+        $game = $this->newGame();
+        foreach (['Connive Lite', 'Tapped Discount Lite', 'Grave Lands Lite', 'Big Game Lite'] as $name) {
+            $this->assertSame([], self::read($name)->unsupported, $name);
+        }
+        // Connive: draw, then discard; a nonland discard puts a +1/+1 counter on it.
+        $this->lands(0, 'Island', 2);
+        $bolt = $this->hand(0, 'Lightning Bolt');
+        $connive = $this->put(0, 'Connive Lite', GameObject::HAND);
+        $game->cast(0, $connive);
+        $this->resolve();
+        $this->resolve();
+        $this->assertSame('discard', $game->choiceAwaiting()['type']);
+        $game->discard(0, [$bolt]);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($bolt));
+        $this->assertSame(1, $game->objects[$connive]->counter('+1/+1'));
+
+        // {2} less only against a tapped creature.
+        $bear = $this->battlefield(1, 'Grizzly Bears');
+        $this->lands(0, 'Swamp', 2);
+        $discount = $this->put(0, 'Tapped Discount Lite', GameObject::HAND);
+        try {
+            $game->cast(0, $discount, 0, ["o:{$bear}"]);
+            $this->fail('An untapped target pays full price.');
+        } catch (GameException) {
+        }
+        $game->objects[$bear]->tapped = true;
+        $game->cast(0, $discount, 0, ["o:{$bear}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($bear));
+
+        // Power 4 or greater.
+        $bear = $this->battlefield(1, 'Grizzly Bears');
+        $this->lands(0, 'Swamp', 2);
+        $bigGame = $this->put(0, 'Big Game Lite', GameObject::HAND);
+        $this->assertFalse($game->isLegalTarget('creature_power_ge_4', "o:{$bear}", 0));
+        $game->objects[$bear]->addCounters('+1/+1', 2);
+        $game->cast(0, $bigGame, 0, ["o:{$bear}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($bear));
+
+        // Lands from the graveyard, still one a turn.
+        $forest = $game->addCard(0, self::card('Forest'), GameObject::GRAVEYARD)->id;
+        $this->assertNotContains(['id' => $forest, 'how' => ''], $game->plays(0));
+        $this->put(0, 'Grave Lands Lite', GameObject::BATTLEFIELD);
+        $this->assertContains(['id' => $forest, 'how' => ''], $game->plays(0));
+        $game->playLand(0, $forest);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($forest));
+    }
+
     public function testUnearth(): void
     {
         $game = $this->newGame();
@@ -2505,7 +2560,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1, 'Path Lite' => 1, 'Stress Lite' => 2, 'Seismic Lite' => 2, 'Extraction Lite' => 1, 'Bribery Lite' => 1, 'Werewolf Lite // Howler Lite' => 2, 'Daybound Lite // Nightbound Lite' => 2, 'Flip Lite // Flipped Lite' => 2, 'Ghost Lite // Spirit Lite' => 2, 'Pay Flip Lite // Paid Lite' => 2, 'Saga Lite' => 2, 'Flip Saga Lite // Saga Dragon Lite' => 2, 'Lure Lite' => 2, 'Bully Lite' => 2, 'Hand Lite' => 1, 'Grave Lite' => 1, 'Read Ahead Lite' => 1, 'Ramp Lite' => 1, 'Cultivate' => 1, 'Training Lite' => 2, 'Scaler Lite' => 1, 'Trample Counters Lite' => 1, 'Party Lite' => 1, 'Sac Ping Lite' => 1, 'Afflict Lite' => 2, 'Dredge Lite' => 2, 'Incubate Lite' => 2, 'Ki Lite' => 1, 'Arcane Lite' => 1, 'Night Lite' => 1, 'Blitz Lite' => 2, 'Buyback Lite' => 2, 'Ingest Lite' => 2, 'Ally Lite' => 2, 'Conspire Lite' => 2, 'Awaken Lite' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1, 'Path Lite' => 1, 'Stress Lite' => 2, 'Seismic Lite' => 2, 'Extraction Lite' => 1, 'Bribery Lite' => 1, 'Werewolf Lite // Howler Lite' => 2, 'Daybound Lite // Nightbound Lite' => 2, 'Flip Lite // Flipped Lite' => 2, 'Ghost Lite // Spirit Lite' => 2, 'Pay Flip Lite // Paid Lite' => 2, 'Saga Lite' => 2, 'Flip Saga Lite // Saga Dragon Lite' => 2, 'Lure Lite' => 2, 'Bully Lite' => 2, 'Hand Lite' => 1, 'Grave Lite' => 1, 'Read Ahead Lite' => 1, 'Ramp Lite' => 1, 'Cultivate' => 1, 'Training Lite' => 2, 'Scaler Lite' => 1, 'Trample Counters Lite' => 1, 'Party Lite' => 1, 'Sac Ping Lite' => 1, 'Afflict Lite' => 2, 'Dredge Lite' => 2, 'Incubate Lite' => 2, 'Ki Lite' => 1, 'Arcane Lite' => 1, 'Night Lite' => 1, 'Blitz Lite' => 2, 'Buyback Lite' => 2, 'Ingest Lite' => 2, 'Ally Lite' => 2, 'Conspire Lite' => 2, 'Awaken Lite' => 2, 'Connive Lite' => 2, 'Tapped Discount Lite' => 2, 'Grave Lands Lite' => 1, 'Big Game Lite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

@@ -792,6 +792,10 @@ final class Game
         if ($this->pendingChoice['exile'] ?? false) {
             $this->exileFromHand($from, $ids);
         } else {
+            if (isset($this->pendingChoice['connive'])) {
+                [$id, $incarnation] = $this->pendingChoice['connive'];
+                $this->connived($this->objects[$id]->incarnation === $incarnation ? $this->objects[$id] : null, $ids);
+            }
             $this->discardCards($from, $ids);
         }
         $choice = $this->pendingChoice;
@@ -821,6 +825,23 @@ final class Game
             $this->moveTo($this->objects[$id], GameObject::EXILE);
         }
         $this->log("{$this->players[$seat]->name}'s ".implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids)).' is exiled.');
+    }
+
+    /**
+     * Connive's last step: a +1/+1 counter on the creature if a nonland card is being discarded.
+     *
+     * @param GameObject|null $creature
+     * @param int[]           $ids      The cards about to be discarded.
+     *
+     * @return void
+     */
+    private function connived(?GameObject $creature, array $ids): void
+    {
+        if ($creature !== null && $creature->zone === GameObject::BATTLEFIELD
+            && array_filter($ids, fn (int $id) => ! $this->objects[$id]->definition()->isLand()) !== []) {
+            $creature->addCounters('+1/+1', 1);
+            $this->log("{$creature->name()} gets a +1/+1 counter.");
+        }
     }
 
     private function discardCards(int $seat, array $ids): void
@@ -903,6 +924,9 @@ final class Game
         }
         foreach ($this->players[$seat]->graveyard as $id) {
             $card = $this->objects[$id]->printed();
+            if ($card->isLand() && $this->canPlayLand($seat, $id)) {
+                $plays[] = ['id' => $id, 'how' => ''];
+            }
             if ($card->flashback !== null) {
                 foreach (self::castWays($card, true) as $how) {
                     if ($this->canCast($seat, $id, $how)) {
@@ -1137,7 +1161,10 @@ final class Game
     private function whyNotPlayLand(int $seat, int $id): ?string
     {
         $object = $this->objects[$id] ?? null;
-        if ($object === null || (! in_array($id, $this->players[$seat]->hand, true) && ! $this->impulsePlayable($seat, $id))) {
+        // `You may play lands from your graveyard.`
+        $fromGraveyard = $object !== null && in_array($id, $this->players[$seat]->graveyard, true)
+            && array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'lands from graveyard')) !== [];
+        if ($object === null || (! in_array($id, $this->players[$seat]->hand, true) && ! $this->impulsePlayable($seat, $id) && ! $fromGraveyard)) {
             return 'That card is not in your hand.';
         }
         if (! $object->definition()->isLand()) {
@@ -1400,10 +1427,11 @@ final class Game
      * @param array  $options  See {@see castOptions()}.
      * @param string $wardMana What ward makes them pay on top.
      * @param int    $wardLife
+     * @param ?array  $targets  The pinned targets, or null before they are chosen.
      *
      * @return array{life: int, pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null
      */
-    private function paymentFor(int $seat, int $id, int $x, array $options = [], string $wardMana = '', int $wardLife = 0): ?array
+    private function paymentFor(int $seat, int $id, int $x, array $options = [], string $wardMana = '', int $wardLife = 0, ?array $targets = null): ?array
     {
         $options = self::castOptions($options);
         $tax = $this->objects[$id]->zone === GameObject::COMMAND ? $this->commanderTax($id) : 0;
@@ -1425,6 +1453,13 @@ final class Game
                     'opponent' => count($this->players) - 1,
                     default => 0,
                 };
+            }
+            // `This spell costs {2} less to cast if it targets a tapped creature.`; before targets are chosen, if one could.
+            if (preg_match('/^costs (\d+) less if it targets a tapped creature$/', $keyword, $m)) {
+                $candidates = $targets === null ? $this->permanents() : array_filter(array_map(fn ($target) => $this->targetObject((string) $target), $targets));
+                if (array_filter($candidates, fn (GameObject $o) => $o->tapped && $this->isCreature($o)) !== []) {
+                    $tax -= (int) $m[1];
+                }
             }
         }
         // `Instant and sorcery spells you cast cost {1} less to cast.`
@@ -1658,7 +1693,7 @@ final class Game
         if ($wardDiscard > count($this->players[$seat]->hand) - (in_array($id, $this->players[$seat]->hand, true) ? 1 : 0)) {
             throw new GameException('You need a card in your hand to discard for ward.');
         }
-        $payment = $this->paymentFor($seat, $id, $x, $options, $wardMana, $wardLife);
+        $payment = $this->paymentFor($seat, $id, $x, $options, $wardMana, $wardLife, $targets);
         if ($payment === null) {
             $cost = ManaCost::parse(self::castCost($card, $options));
             throw new GameException("You cannot pay {$cost}".($xCount > 0 ? " with X = {$x}" : '').($wardMana !== '' || $wardLife > 0 ? ' and ward' : '').'.');
@@ -3409,6 +3444,20 @@ final class Game
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
 
+            case 'connive':
+                $this->draw($controller, 1);
+                $hand = $this->players[$controller]->hand;
+                $this->log("{$this->players[$controller]->name} connives.");
+                if (count($hand) === 1) {
+                    $this->connived($affected, $hand);
+                    $this->discardCards($controller, $hand);
+                } elseif ($hand !== []) {
+                    $this->pendingChoice = ['type' => 'discard', 'seat' => $controller, 'count' => 1, 'next' => []] + ($affected === null ? [] : ['connive' => [$affected->id, $affected->incarnation]]);
+
+                    return true;
+                }
+                break;
+
             case 'job_select':
                 // Job select: a 1/1 Hero token, and this Equipment attached to it.
                 $hero = $this->createToken(['name' => 'Hero Token', 'type' => 'Token Creature — Hero', 'types' => ['Creature'], 'subtypes' => ['Hero'], 'colors' => [], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null], $controller);
@@ -4478,7 +4527,9 @@ final class Game
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
-                || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1]),
+                || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1])
+                // `target creature with power 4 or greater` / `… 2 or less`.
+                || ((bool) preg_match('/^creature_power_(ge|le)_(\d+)$/', $kind, $m) && $creature && ($m[1] === 'ge' ? $this->power($object) >= (int) $m[2] : $this->power($object) <= (int) $m[2])),
         };
     }
 
