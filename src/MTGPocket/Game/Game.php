@@ -2974,6 +2974,10 @@ final class Game
                     default => [$target],
                 };
                 foreach ($hits as $hit) {
+                    // `It can't be regenerated.`: its regeneration shields are gone.
+                    if (($effect['noRegen'] ?? false) && ($hurt = $this->targetObject((string) $hit)) !== null) {
+                        $hurt->shields = 0;
+                    }
                     $this->dealDamage($source, (string) $hit, $amount);
                     if (($effect['exileIfDies'] ?? false) && ($hurt = $this->targetObject((string) $hit)) !== null) {
                         $hurt->exileIfDies = $this->turn;
@@ -3264,6 +3268,12 @@ final class Game
                         break;
                     }
                 }
+                break;
+
+            case 'reveal_hand':
+                $victim = (int) substr((string) $target, 2);
+                $hand = $this->players[$victim]->hand;
+                $this->log("{$this->players[$victim]->name} reveals ".($hand === [] ? 'an empty hand' : implode(', ', array_map(fn (int $id) => $this->objects[$id]->name(), $hand))).'.');
                 break;
 
             case 'discard':
@@ -3794,9 +3804,13 @@ final class Game
             'permanent' => $card->isPermanentCard(),
             'nonland_permanent' => $card->isPermanentCard() && ! $card->isLand(),
             'any' => true,
-            // `creature|land` or `sub:Dwarf|sub:Equipment`: any of them.
-            default => str_contains($filter, '|') ? array_filter(explode('|', $filter), fn (string $piece) => $this->matchesFilter($card, $piece)) !== []
-                : (! str_starts_with($filter, 'sub:') || in_array(substr($filter, 4), $card->subtypes, true)),
+            // `not:creature&mv_le_3`: all of them.
+            default => str_contains($filter, '&') ? array_filter(explode('&', $filter), fn (string $piece) => ! $this->matchesFilter($card, $piece)) === []
+                : (str_starts_with($filter, 'not:') ? ! $this->matchesFilter($card, substr($filter, 4))
+                : (preg_match('/^mv_(le|ge)_(\d+)$/', $filter, $m) ? ($m[1] === 'le' ? $card->cost->manaValue() <= (int) $m[2] : $card->cost->manaValue() >= (int) $m[2])
+                // `creature|land` or `sub:Dwarf|sub:Equipment`: any of them.
+                : (str_contains($filter, '|') ? array_filter(explode('|', $filter), fn (string $piece) => $this->matchesFilter($card, $piece)) !== []
+                : (! str_starts_with($filter, 'sub:') || in_array(substr($filter, 4), $card->subtypes, true))))),
         };
     }
 
