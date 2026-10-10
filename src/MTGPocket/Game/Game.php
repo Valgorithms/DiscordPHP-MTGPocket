@@ -4639,6 +4639,14 @@ final class Game
             'artifact_or_creature_opponent' => ($card->is('Artifact') || $creature) && $object->controller !== $controller,
             'artifact_creature_enchantment_opponent' => ($card->is('Artifact') || $creature || $card->is('Enchantment')) && $object->controller !== $controller,
             'permanent' => true,
+            'battle' => $card->is('Battle'),
+            'basic_land' => $card->isLand() && in_array('Basic', $card->supertypes, true),
+            'snow_land' => $card->isLand() && in_array('Snow', $card->supertypes, true),
+            'legendary_creature' => $creature && in_array('Legendary', $card->supertypes, true),
+            // Modified (rule 700.9): counters, or Equipment or an Aura its controller controls.
+            'modified_creature' => $creature && (array_filter($object->counters) !== []
+                || array_filter($this->objects, fn (GameObject $other) => $other->zone === GameObject::BATTLEFIELD && $other->attachedTo === $object->id && $other->controller === $object->controller) !== []),
+            'nonaura_enchantment' => $card->is('Enchantment') && ! in_array('Aura', $card->subtypes, true),
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
@@ -4646,7 +4654,13 @@ final class Game
                 // `Enchant Forest`: a permanent with that subtype.
                 || ((bool) preg_match('/^sub_(\w+)$/', $kind, $m) && in_array($m[1], $card->subtypes, true))
                 // `target creature with power 4 or greater` / `… 2 or less`.
-                || ((bool) preg_match('/^creature_power_(ge|le)_(\d+)$/', $kind, $m) && $creature && ($m[1] === 'ge' ? $this->power($object) >= (int) $m[2] : $this->power($object) <= (int) $m[2])),
+                || ((bool) preg_match('/^creature_power_(ge|le)_(\d+)$/', $kind, $m) && $creature && ($m[1] === 'ge' ? $this->power($object) >= (int) $m[2] : $this->power($object) <= (int) $m[2]))
+                || ((bool) preg_match('/^creature_(non)?color_([WUBRG])$/', $kind, $m) && $creature && in_array($m[2], $card->colors, true) === ($m[1] === ''))
+                || ((bool) preg_match('/^creature_mv_le_(\d+)$/', $kind, $m) && $creature && $card->cost->manaValue() <= (int) $m[1])
+                // `Enchant artifact or creature you control`: any of the kinds, with an optional controller.
+                || ((bool) preg_match('/^any:([^@]+)(?:@(you|opp))?$/', $kind, $m)
+                    && (! isset($m[2]) || ($m[2] === 'you') === ($object->controller === $controller))
+                    && array_filter(explode('|', $m[1]), fn (string $one) => $this->matchesKind($object, $one, $controller)) !== []),
         };
     }
 

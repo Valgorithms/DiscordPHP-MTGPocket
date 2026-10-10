@@ -1210,12 +1210,77 @@ final class TextParser
         return true;
     }
 
+    /**
+     * A combined Enchant line such as `creature or land`, `red or green creature`
+     * or `artifact, creature, or planeswalker you control`, as `any:a|b@you`
+     * (see Game::matchesKind()). A single subtype such as `Forest` is `sub_Forest`.
+     */
+    private static function enchantKind(string $text): ?string
+    {
+        if (preg_match('/^[A-Z][a-z]+$/', $text)) {
+            return 'sub_'.$text;
+        }
+        $who = '';
+        if (preg_match('/^(.+) (you control|an opponent controls|you don\'t control)$/', $text, $m)) {
+            [$text, $who] = [$m[1], $m[2] === 'you control' ? '@you' : '@opp'];
+        }
+        $parts = preg_split('/,? or (?!less|greater)|, /', $text);
+        $noun = null;
+        $atoms = [];
+        foreach (array_reverse($parts) as $part) {
+            $atom = self::enchantAtom($part);
+            // `red or green creature`: a bare color borrows the noun after it.
+            if ($atom === null && $noun !== null && isset(self::COLOR_WORDS[$part])) {
+                $atom = $noun === 'creature' ? 'creature_color_'.self::COLOR_WORDS[$part] : null;
+            }
+            if ($atom === null) {
+                return null;
+            }
+            $noun ??= preg_match('/(creature|land|permanent)$/', $part, $n) ? $n[1] : null;
+            $atoms[] = $atom;
+        }
+
+        return 'any:'.implode('|', array_reverse($atoms)).$who;
+    }
+
+    private const array COLOR_WORDS = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'];
+
+    /** One kind inside a combined Enchant line, or null when it isn't understood. */
+    private static function enchantAtom(string $part): ?string
+    {
+        $simple = ['creature', 'land', 'artifact', 'enchantment', 'planeswalker', 'permanent', 'battle', 'artifact creature', 'nonbasic land',
+            'basic land' => 'basic_land', 'snow land' => 'snow_land', 'legendary creature' => 'legendary_creature', 'modified creature' => 'modified_creature',
+            'non-Aura enchantment' => 'nonaura_enchantment', 'nonland permanent' => 'nonland_permanent', 'tapped creature' => 'tapped_creature', 'untapped creature' => 'untapped_creature'];
+        foreach ($simple as $key => $value) {
+            if ($part === (is_int($key) ? $value : $key)) {
+                return str_replace(' ', '_', $value);
+            }
+        }
+        if (preg_match('/^(white|blue|black|red|green) creature$/', $part, $m)) {
+            return 'creature_color_'.self::COLOR_WORDS[$m[1]];
+        }
+        if (preg_match('/^non(white|blue|black|red|green) creature$/', $part, $m)) {
+            return 'creature_noncolor_'.self::COLOR_WORDS[$m[1]];
+        }
+        if (preg_match('/^creature with power (\d+) or (greater|less)$/', $part, $m)) {
+            return 'creature_power_'.($m[2] === 'greater' ? 'ge' : 'le').'_'.$m[1];
+        }
+        if (preg_match('/^creature with mana value (\d+) or less$/', $part, $m)) {
+            return 'creature_mv_le_'.$m[1];
+        }
+        if (preg_match('/^[A-Z][a-z]+$/', $part)) {
+            return 'sub_'.$part;
+        }
+
+        return null;
+    }
+
     private static function aura(string $line, array &$result): bool
     {
         // `Enchant Forest` or `Enchant Vehicle`: a permanent with that subtype.
-        if (preg_match('/^Enchant (.+)$/', $line, $match) && (isset(self::ENCHANT[strtolower($match[1])]) || preg_match('/^[A-Z][a-z]+$/', $match[1]))) {
+        if (preg_match('/^Enchant (.+)$/', $line, $match) && ($kind = self::ENCHANT[strtolower($match[1])] ?? self::enchantKind($match[1])) !== null) {
             $result['aura'] ??= ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
-            $result['aura']['enchant'] = self::ENCHANT[strtolower($match[1])] ?? 'sub_'.$match[1];
+            $result['aura']['enchant'] = $kind;
 
             return true;
         }
