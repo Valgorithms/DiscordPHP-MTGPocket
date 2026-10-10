@@ -95,6 +95,15 @@ final class TextParser
         'target creature without flying' => 'creature_no_flying',
         'target tapped creature' => 'tapped_creature',
         'target untapped creature' => 'untapped_creature',
+        'target creature with power 2 or greater' => 'creature_power_ge_2',
+        'target creature with power 3 or greater' => 'creature_power_ge_3',
+        'target creature with power 4 or greater' => 'creature_power_ge_4',
+        'target creature with power 5 or greater' => 'creature_power_ge_5',
+        'target creature with power 6 or greater' => 'creature_power_ge_6',
+        'target creature with power 1 or less' => 'creature_power_le_1',
+        'target creature with power 2 or less' => 'creature_power_le_2',
+        'target creature with power 3 or less' => 'creature_power_le_3',
+        'target creature with power 4 or less' => 'creature_power_le_4',
         'target creature card from your graveyard' => 'creature_card_yours',
         'target card from your graveyard' => 'card_yours',
         'target card in a graveyard other than a basic land card' => 'card_graveyard_nonbasic',
@@ -139,6 +148,7 @@ final class TextParser
     private const array CREATURE_KINDS = [
         'creature', 'creature_you_control', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
         'creature_flying', 'creature_no_flying', 'tapped_creature', 'untapped_creature',
+        'creature_power_ge_2', 'creature_power_ge_3', 'creature_power_ge_4', 'creature_power_ge_5', 'creature_power_ge_6', 'creature_power_le_1', 'creature_power_le_2', 'creature_power_le_3', 'creature_power_le_4',
     ];
 
     /**
@@ -279,7 +289,7 @@ final class TextParser
             }
             // Static lines that work like keywords.
             $statics = [
-                'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land',
+                'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land', 'You may play lands from your graveyard.' => 'lands from graveyard',
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
@@ -326,6 +336,11 @@ final class TextParser
                     'card in your hand' => 'card',
                     default => strtok($match[2], ' '),
                 };
+
+                continue;
+            }
+            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast if it targets a tapped creature\.$/', $line, $match)) {
+                $result['keywords'][] = "costs {$match[1]} less if it targets a tapped creature";
 
                 continue;
             }
@@ -1942,6 +1957,10 @@ final class TextParser
         // Incubate (rule 701.53): an Incubator token with N +1/+1 counters and `{2}: Transform this artifact.`
         if (preg_match('/^incubate (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'incubate', 'amount' => $n];
+        }
+        // Connive (rule 701.50): draw a card, then discard a card; a nonland discard puts a +1/+1 counter on it.
+        if (preg_match('/^(?:CARDNAME|it) connives$/i', $s)) {
+            return ['type' => 'connive', 'self' => true];
         }
         if (preg_match('/^you lose (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'lose_life', 'amount' => $n, 'you' => true];
