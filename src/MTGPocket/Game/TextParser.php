@@ -807,6 +807,12 @@ final class TextParser
 
             return true;
         }
+        // Emerge (rule 702.119): cast for this cost by sacrificing a creature, less that creature's mana value; see Game::emergeFodder().
+        if (preg_match('/^Emerge '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['emerge'] = $m[1];
+
+            return true;
+        }
         // Miracle (rule 702.94): cast for this cost as the first card its owner draws in a turn; see Game::draw().
         if (preg_match('/^Miracle '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['miracle'] = $m[1];
@@ -2483,6 +2489,12 @@ final class TextParser
 
             return true;
         }
+        // The Pacts: `At the beginning of your next upkeep, pay {2}{G}{G}. If you don't, you lose the game.`; see Game::$pacts.
+        if (preg_match("/^If you don't, you lose the game$/", $sentence) && $effects[$last]['type'] === 'pact') {
+            $effects[$last]['lose'] = true;
+
+            return true;
+        }
         // `Prevent the next 3 damage … You gain life equal to the damage prevented this way.`: see Game::dealDamage().
         if ($sentence === 'You gain life equal to the damage prevented this way' && $effects[$last]['type'] === 'prevent') {
             $effects[$last]['gain'] = true;
@@ -2627,6 +2639,9 @@ final class TextParser
         }
         if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && (self::isPermanentTarget($m[1]) || (in_array(self::TARGETS[strtolower($m[1])], ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic'], true) && ($m[2] ?? '') === ''))) {
             return ['type' => 'exile', 'target' => self::TARGETS[strtolower($m[1])]] + (($m[2] ?? '') !== '' ? ['until' => true] : []);
+        }
+        if (preg_match('/^at the beginning of your next upkeep, pay '.self::COST.'$/i', $s, $m) && ! str_contains($m[1], 'X')) {
+            return ['type' => 'pact', 'cost' => $m[1]];
         }
         if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
             return ['type' => 'fog'];

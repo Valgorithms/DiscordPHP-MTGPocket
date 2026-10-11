@@ -134,6 +134,9 @@ final class Game
     /** @var array<string, int> Damage to prevent this turn, by target (`p:SEAT` or `o:ID`) (rule 615). */
     public array $prevent = [];
 
+    /** @var array<int, array{seat: int, cost: string, turn: int, name: string, lose: bool}> The Pacts: pay at its caster's next upkeep or lose the game. */
+    public array $pacts = [];
+
     /** @var array<string, int> Who gains life equal to the damage a shield in {@see $prevent} prevents, by target. */
     public array $preventGain = [];
 
@@ -663,6 +666,7 @@ final class Game
                 }
                 if ($step === Step::Upkeep) {
                     $this->dayNightCheck();
+                    $this->payPacts();
                 }
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
@@ -1091,7 +1095,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak', 'emerge'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1148,7 +1152,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak', 'emerge'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1373,6 +1377,9 @@ final class Game
         // Miracle: while its reveal trigger would be resolving, at any speed.
         if ($options['alt'] === 'miracle' && ($object->zone !== GameObject::HAND || $object->miracle !== $this->turn.':'.$this->step->name)) {
             return "{$card->name} can be cast for its miracle cost only right after it is drawn as your first card this turn.";
+        }
+        if ($options['alt'] === 'emerge' && $this->emergeFodder($seat, $id) === null) {
+            return "{$card->name} needs a creature to sacrifice to emerge.";
         }
         // Sneak: during the declare blockers step, returning an unblocked attacker, at any speed.
         if ($options['alt'] === 'sneak' && ($this->step !== Step::DeclareBlockers || $this->active !== $seat || $this->unblockedAttackers($seat) === [])) {
@@ -1679,6 +1686,9 @@ final class Game
         $card = $this->objects[$id]->printed();
         if ($options['grave'] === 'harmonize' && ($helper = $this->harmonizer($seat, $id)) !== null) {
             $tax -= $this->power($helper);
+        }
+        if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
+            $tax -= $fodder->definition()->cost->manaValue();
         }
         // Affinity for artifacts (rule 702.41): {1} less for each artifact you control.
         if (! $options['faceDown'] && in_array('affinity for artifacts', $card->keywords, true)) {
@@ -2052,6 +2062,10 @@ final class Game
         if ($conspirators !== null) {
             $this->log("{$this->players[$seat]->name} taps ".implode(' and ', array_map(fn (GameObject $o) => $o->name(), $conspirators)).' (conspire).');
         }
+        if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
+            $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to emerge.");
+            $this->moveTo($fodder, GameObject::GRAVEYARD);
+        }
         $casualty = $options['casualty'] ? $this->casualtyFodder($seat, self::casualty($card)) : null;
         if ($casualty !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$casualty->name()} (casualty).");
@@ -2230,6 +2244,22 @@ final class Game
     {
         $creatures = array_filter($this->permanents($seat), fn (GameObject $o) => $o->id !== $id && $this->isCreature($o) && ! $o->tapped && $o->definition()->manaAbility === null && $this->power($o) > 0);
         usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
+
+        return $creatures[0] ?? null;
+    }
+
+    /**
+     * Emerge's sacrifice: the creature with the highest mana value, the weakest of those.
+     *
+     * @param int $seat
+     * @param int $id   The spell.
+     *
+     * @return GameObject|null
+     */
+    private function emergeFodder(int $seat, int $id): ?GameObject
+    {
+        $creatures = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $o->id !== $id && $this->isCreature($o)));
+        usort($creatures, fn (GameObject $a, GameObject $b) => [$b->definition()->cost->manaValue(), $this->power($a)] <=> [$a->definition()->cost->manaValue(), $this->power($b)]);
 
         return $creatures[0] ?? null;
     }
@@ -4400,6 +4430,10 @@ final class Game
                     $this->log("No {{$effect['color']}} was spent to cast {$self->name()}, so {$this->players[$self->controller]->name} sacrifices it.");
                     $this->moveTo($self, GameObject::GRAVEYARD);
                 }
+                break;
+
+            case 'pact':
+                $this->pacts[] = ['seat' => $controller, 'cost' => $effect['cost'], 'turn' => $this->turn, 'name' => $source->name(), 'lose' => (bool) ($effect['lose'] ?? false)];
                 break;
 
             case 'pay':
@@ -6939,6 +6973,29 @@ final class Game
     }
 
     /**
+     * The Pacts: at the active player's upkeep after the turn each was cast, its cost is paid when it can be, or they lose the game.
+     *
+     * @return void
+     */
+    private function payPacts(): void
+    {
+        foreach ($this->pacts as $index => $pact) {
+            if ($pact['seat'] !== $this->active || $pact['turn'] >= $this->turn) {
+                continue;
+            }
+            unset($this->pacts[$index]);
+            $player = $this->players[$pact['seat']];
+            if (($payment = $this->payFor($pact['seat'], $pact['cost'])) !== null) {
+                $this->pay($pact['seat'], $payment);
+                $this->log("{$player->name} pays {$pact['cost']} for {$pact['name']}.");
+            } elseif ($pact['lose']) {
+                $this->lose($player, "could not pay {$pact['cost']} for {$pact['name']}");
+            }
+        }
+        $this->pacts = array_values($this->pacts);
+    }
+
+    /**
      * Rule 704: checks state-based actions until none apply, then ends the
      * game if a player has lost.
      *
@@ -7837,6 +7894,7 @@ final class Game
             'extraTurns' => $this->extraTurns,
             'freerun' => $this->freerun,
             'prevent' => $this->prevent,
+            'pacts' => $this->pacts,
             'preventGain' => $this->preventGain,
         ];
     }
@@ -7937,6 +7995,7 @@ final class Game
         $game->extraTurns = array_map('intval', (array) ($data['extraTurns'] ?? []));
         $game->freerun = array_map('intval', (array) ($data['freerun'] ?? []));
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
+        $game->pacts = array_values((array) ($data['pacts'] ?? []));
         $game->preventGain = array_map('intval', (array) ($data['preventGain'] ?? []));
 
         return $game;

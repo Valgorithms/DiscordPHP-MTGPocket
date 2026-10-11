@@ -149,6 +149,10 @@ final class PracticeBot
             foreach ($plain as $play) {
                 $card = $game->objects[$play['id']]->printed();
                 $effects = $card->spellEffects();
+                // A Pact could lose it the game at its next upkeep.
+                if (in_array('pact', array_column($effects, 'type'), true)) {
+                    continue;
+                }
                 // Pump spells are for combat.
                 if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true) && array_intersect(array_column($effects, 'type'), self::HARMFUL) === []) {
                     continue;
