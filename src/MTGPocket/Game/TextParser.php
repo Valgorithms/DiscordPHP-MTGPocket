@@ -373,6 +373,10 @@ final class TextParser
                 // Daybound sets it to day as it enters when it is neither (rule 702.145); see Game::dayNight().
                 "If it's neither day nor night, it becomes day as CARDNAME enters." => 'daybound',
                 'If CARDNAME would be put into a graveyard from anywhere, exile it instead.' => 'exile instead of graveyard',
+                // Converge: counters for each color spent, as sunburst does for a creature.
+                'Converge — CARDNAME enters with a +1/+1 counter on it for each color of mana spent to cast it.' => 'sunburst',
+                // Read by Game::moveTo().
+                'If a creature an opponent controls would die, exile it instead.' => 'exile dying opponent creatures',
                 'CARDNAME escapes with a +1/+1 counter on it.' => 'escapes with 1',
                 'CARDNAME escapes with two +1/+1 counters on it.' => 'escapes with 2',
                 'CARDNAME escapes with three +1/+1 counters on it.' => 'escapes with 3',
@@ -407,11 +411,14 @@ final class TextParser
                 continue;
             }
             // `CARDNAME costs {1} less to cast for each creature in your party.`: read by Game::paymentFor().
-            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast for each (creature in your party|artifact you control|creature you control|land you control|card in your hand|opponent you have)\.$/', $line, $match)) {
+            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast for each (creature in your party|artifact you control|creature you control|land you control|card in your hand|opponent you have|instant and sorcery card in your graveyard|creature card in your graveyard|card in your graveyard)\.$/', $line, $match)) {
                 $result['keywords'][] = "costs {$match[1]} less for each ".match ($match[2]) {
                     'creature in your party' => 'party',
                     'opponent you have' => 'opponent',
                     'card in your hand' => 'card',
+                    'instant and sorcery card in your graveyard' => 'graveyard_spell',
+                    'creature card in your graveyard' => 'graveyard_creature',
+                    'card in your graveyard' => 'graveyard_card',
                     default => strtok($match[2], ' '),
                 };
 
@@ -715,6 +722,9 @@ final class TextParser
      */
     private static function sentences(string $line): array
     {
+        // `tap target creature an opponent controls and put a stun counter on it.`: two sentences, see modifies().
+        $line = preg_replace('/\b(tap target [^.]+?) and put a stun counter on it\./i', '$1. Put a stun counter on it.', $line);
+
         return array_values(array_filter(array_map(fn ($s) => trim($s, " .\t"), preg_split('/(?<=\.)\s+/', $line)), fn ($s) => $s !== ''));
     }
 
@@ -2348,6 +2358,9 @@ final class TextParser
         }
         if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
             return ['type' => 'fog'];
+        }
+        if (preg_match("/^damage can't be prevented this turn$/i", $s)) {
+            return ['type' => 'no_prevention'];
         }
         if (preg_match("/^prevent (the next (\\d+|one|two|three|four|five)|all) damage that would be dealt to ({$targets}|CARDNAME|you) this turn$/i", $s, $m)
             && (in_array(strtolower($m[3]), ['cardname', 'you'], true) || in_array(self::TARGETS[strtolower($m[3])] ?? '', ['any', ...self::CREATURE_KINDS], true))) {
