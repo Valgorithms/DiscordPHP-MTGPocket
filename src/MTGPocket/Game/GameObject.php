@@ -117,6 +117,9 @@ final class GameObject
     /** Miracle: `{turn}:{step}` when it was revealed as the first card drawn that turn. */
     public string $miracle = '';
 
+    /** Soulbond (rule 702.95): the creature it is paired with; see Game::partner(). */
+    public ?int $pairedWith = null;
+
     /** Monstrosity (rule 701.37) has made it monstrous. */
     public bool $monstrous = false;
 
@@ -227,6 +230,7 @@ final class GameObject
         $this->prepared = false;
         $this->spent = '';
         $this->miracle = '';
+        $this->pairedWith = null;
         $this->holding = [];
         $this->encoded = [];
         $this->exileIfDies = 0;
@@ -291,6 +295,7 @@ final class GameObject
             'prepared' => $this->prepared,
             'spent' => $this->spent,
             'miracle' => $this->miracle,
+            'pairedWith' => $this->pairedWith,
             'holding' => $this->holding,
             'encoded' => $this->encoded,
             'exileIfDies' => $this->exileIfDies,
@@ -345,6 +350,7 @@ final class GameObject
         $object->prepared = (bool) ($data['prepared'] ?? false);
         $object->spent = (string) ($data['spent'] ?? '');
         $object->miracle = (string) ($data['miracle'] ?? '');
+        $object->pairedWith = isset($data['pairedWith']) ? (int) $data['pairedWith'] : null;
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
         $object->encoded = array_map('intval', (array) ($data['encoded'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);

@@ -38,7 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound', 'cipher',
-        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'compleated', 'look at top any time', 'top revealed', 'lands from top', 'play from top', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound', 'exile instead of graveyard', 'exile dying opponent creatures', 'replicate', 'increment', 'enters prepared', 'fuse', "can't attack or block alone",
+        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'compleated', 'look at top any time', 'top revealed', 'lands from top', 'play from top', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound', 'exile instead of graveyard', 'exile dying opponent creatures', 'replicate', 'increment', 'enters prepared', 'fuse', "can't attack or block alone", 'soulbond',
     ];
 
     /**
