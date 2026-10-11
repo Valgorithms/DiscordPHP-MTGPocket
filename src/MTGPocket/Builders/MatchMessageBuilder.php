@@ -396,6 +396,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if ($player->energy > 0) {
             $line .= " · ⚡ {$player->energy}";
         }
+        if ($player->ring > 0) {
+            $line .= " · 💍 {$player->ring}";
+        }
         if ($player->poison > 0) {
             $line .= " · ☠️ {$player->poison}";
         }
@@ -894,7 +897,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $options['casualty'] ? 'casualty, copied' : '',
             $options['conspire'] ? 'conspire, copied' : '',
             $options['buyback'] ? "buyback +{$card->altCosts['buyback']}" : '',
-            $options['kicked'] && ! $options['bargained'] && ! $options['gifted'] ? (in_array('offspring', $card->keywords, true) ? "offspring +{$card->kicker}" : ($options['kicks'] > 1 ? "kicked {$options['kicks']}× +".str_repeat((string) $card->kicker, $options['kicks']) : "kicked +{$card->kicker}")) : '',
+            $options['kicked'] && ! $options['bargained'] && ! $options['gifted'] ? (in_array('offspring', $card->keywords, true) ? "offspring +{$card->kicker}" : (in_array('replicate', $card->keywords, true) ? 'replicated '.max(1, $options['kicks']).'× +'.str_repeat((string) $card->kicker, max(1, $options['kicks'])) : ($options['kicks'] > 1 ? "kicked {$options['kicks']}× +".str_repeat((string) $card->kicker, $options['kicks']) : "kicked +{$card->kicker}"))) : '',
             $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
         ]));
         $description = $options !== null && $options['modes'] !== []
