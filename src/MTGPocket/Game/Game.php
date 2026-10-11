@@ -1020,6 +1020,10 @@ final class Game
             $ways[] = implode(',', $base);
             if ($card->kicker !== null) {
                 $ways[] = implode(',', [...$base, 'kick']);
+                // Multikicker: twice or three times too.
+                foreach (in_array('multikicker', $card->keywords, true) ? [2, 3] : [] as $times) {
+                    $ways[] = implode(',', [...$base, "kick{$times}"]);
+                }
             }
             if (in_array('bargain', $card->keywords, true)) {
                 $ways[] = implode(',', [...$base, 'bargain']);
@@ -1059,17 +1063,21 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
         foreach (array_filter(explode(',', $how)) as $part) {
             if ($part === 'kick') {
                 $options['kicked'] = true;
+                $options['kicks'] = 1;
+            } elseif (preg_match('/^kick([2-9])$/', $part, $kicks)) {
+                $options['kicked'] = true;
+                $options['kicks'] = (int) $kicks[1];
             } elseif ($part === 'fb') {
                 $options['flashback'] = true;
             } elseif ($part === 'rb') {
@@ -1294,6 +1302,9 @@ final class Game
         if ($options['flashback'] && $card->flashback === null) {
             return "{$card->name} has no flashback.";
         }
+        if ($options['kicks'] > 1 && ! in_array('multikicker', $card->keywords, true)) {
+            return "{$card->name} can be kicked only once.";
+        }
         if ($options['kicked'] && ! $options['bargained'] && $card->kicker === null) {
             return "{$card->name} has no kicker.";
         }
@@ -1407,7 +1418,7 @@ final class Game
     {
         $options = self::castOptions($how);
         // Additional costs: kicker, entwine and each Spree mode's.
-        $more = ($options['kicked'] && ! $options['bargained'] ? (string) $card->kicker : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
+        $more = ($options['kicked'] && ! $options['bargained'] ? str_repeat((string) $card->kicker, max(1, $options['kicks'])) : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
             .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']));
         if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended', 'cascade'], true)) {
             // Without paying its mana cost (rule 118.9), but still its additional costs: X is 0.
@@ -1829,7 +1840,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'],
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'], 'kicks' => $options['kicks'] > 1 ? $options['kicks'] : 0,
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0,
             // Compleated (rule 702.150): life paid for Phyrexian mana.
             'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0]);
@@ -2762,6 +2773,10 @@ final class Game
 
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0), (bool) ($item['disturbed'] ?? false));
+            // Multikicker: a counter set for each time it was kicked.
+            if (($item['kicks'] ?? 0) > 1 && $card->kickerCounters > 0) {
+                $object->addCounters('+1/+1', $card->kickerCounters * ((int) $item['kicks'] - 1));
+            }
             $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
             foreach (($item['escaped'] ?? false) ? $card->keywords : [] as $keyword) {
                 if (preg_match('/^escapes with (\d+)$/', $keyword, $m)) {
@@ -7031,6 +7046,7 @@ final class Game
         ] : array_filter([
             'modes' => array_values(array_map('intval', (array) ($item['modes'] ?? []))),
             'kicked' => (bool) ($item['kicked'] ?? false),
+            'kicks' => (int) ($item['kicks'] ?? 0),
             'flashback' => (bool) ($item['flashback'] ?? false),
             'faceDown' => (bool) ($item['faceDown'] ?? false),
             'fromHand' => (bool) ($item['fromHand'] ?? false),
