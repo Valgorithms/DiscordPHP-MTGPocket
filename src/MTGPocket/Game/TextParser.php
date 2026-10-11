@@ -299,6 +299,10 @@ final class TextParser
 
                 continue;
             }
+            // Outlast (rule 702.107): `{cost}, {T}: Put a +1/+1 counter on CARDNAME. Activate only as a sorcery.`
+            if (preg_match('/^Outlast '.self::COST.'$/', $line, $match)) {
+                $line = "{$match[1]}, {T}: Put a +1/+1 counter on CARDNAME. Activate only as a sorcery.";
+            }
             // `{2}{B}: Return CARDNAME from your graveyard to your hand.`: see Game::regrow().
             if (preg_match('/^'.self::COST.': Return CARDNAME from your graveyard to your hand\.$/', $line, $match) && ! str_contains($match[1], 'X')) {
                 $result['altCosts']['regrow'] = $match[1];
@@ -1084,6 +1088,12 @@ final class TextParser
     {
         if (preg_match('/^Creatures enchanted player controls get ([+-]\d+)\/([+-]\d+)\.?$/', $line, $m) && in_array($result['aura']['enchant'] ?? null, ['player', 'opponent'], true)) {
             $result['anthem'][] = ['power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'other' => false, 'enchantedPlayer' => true];
+
+            return true;
+        }
+        // `Creatures your opponents control get -1/-1.` (see Game::anthems()).
+        if (preg_match('/^Creatures your opponents control get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?\.?$/', $line, $m) && ($keywords = self::keywordList($m[3] ?? '')) !== null) {
+            $result['anthem'][] = ['power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => $keywords, 'other' => false, 'opponents' => true];
 
             return true;
         }
@@ -1910,6 +1920,32 @@ final class TextParser
         $last = array_key_last($effects);
         if ($last === null) {
             return false;
+        }
+        // `Gain control of up to two target creatures until end of turn. Untap those creatures. They gain haste until end of turn.`:
+        // the follow-up for each of them, right after it (see Game::resolve(), which reads `sameTarget` as the previous target).
+        if (preg_match('/^(?:Untap those creatures|They gain (.+) until end of turn)$/', $sentence, $m)) {
+            $follow = isset($m[1]) ? (($keywords = self::keywordList($m[1])) === null ? null : ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'sameTarget' => true])
+                : ['type' => 'untap', 'sameTarget' => true];
+            $targeted = [];
+            for ($i = $last; $i >= 0 && (isset($effects[$i]['target']) || ($effects[$i]['sameTarget'] ?? false)); $i--) {
+                if (isset($effects[$i]['target'])) {
+                    $targeted[] = $i;
+                }
+            }
+            if ($follow !== null && count($targeted) >= 2 && count(array_unique(array_map(fn (int $i) => $effects[$i]['type'], $targeted))) === 1) {
+                $rebuilt = [];
+                foreach ($effects as $i => $effect) {
+                    $rebuilt[] = $effect;
+                    $next = $effects[$i + 1] ?? null;
+                    // After a targeted effect's own follow-ups.
+                    if ($i >= min($targeted) && ($next === null || isset($next['target']))) {
+                        $rebuilt[] = $follow;
+                    }
+                }
+                $effects = $rebuilt;
+
+                return true;
+            }
         }
         // "If that creature would die this turn, exile it instead." after damage.
         if (preg_match('/^If (?:that creature|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
