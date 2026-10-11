@@ -1495,7 +1495,7 @@ final class TextParser
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous',
-            'is put into a graveyard from the battlefield' => 'to_graveyard', 'becomes blocked' => 'blocked',
+            'is put into a graveyard from the battlefield' => 'to_graveyard', 'is put into a graveyard from anywhere' => 'to_graveyard_anywhere', 'becomes blocked' => 'blocked',
         ];
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
@@ -1504,7 +1504,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield|becomes the target of a spell or ability|becomes blocked)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability|becomes blocked)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -2167,7 +2167,7 @@ final class TextParser
         if (preg_match('/^exile CARDNAME, then return it to the battlefield transformed under (?:your|its owner\'s) control$/i', $s)) {
             return ['type' => 'exile_transformed', 'self' => true];
         }
-        if (preg_match("/^(?:you may )?shuffle CARDNAME into its owner's library$/i", $s)) {
+        if (preg_match("/^(?:you may )?shuffle (?:CARDNAME|it) into its owner's library$/i", $s)) {
             return ['type' => 'shuffle_self', 'self' => true];
         }
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {

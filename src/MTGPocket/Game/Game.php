@@ -1795,7 +1795,9 @@ final class Game
             'x' => $x,
             'targets' => $targets,
         ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'],
-            'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0]);
+            'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0,
+            // Compleated (rule 702.150): life paid for Phyrexian mana.
+            'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0]);
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
@@ -2706,6 +2708,10 @@ final class Game
             }
             if (($item['sunburst'] ?? 0) > 0) {
                 $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
+            }
+            // Compleated: two fewer loyalty counters for each Phyrexian symbol paid with 2 life.
+            if (($item['compleated'] ?? 0) > 0) {
+                $object->addCounters('loyalty', -min($object->counter('loyalty'), (int) $item['compleated']));
             }
             // Evoke (rule 702.74): sacrificed as it enters; its own enters abilities resolve first.
             if ($object->alt === 'evoke') {
@@ -3839,6 +3845,8 @@ final class Game
                 break;
 
             case 'shuffle_self':
+                // `When CARDNAME is put into a graveyard from anywhere, shuffle it …`: the card while it is still there.
+                $self ??= ($effect['event'] ?? null) === 'to_graveyard_anywhere' && $source->zone === GameObject::GRAVEYARD ? $source : null;
                 if ($self !== null && $self->zone !== GameObject::LIBRARY && $self->zone !== GameObject::STACK) {
                     $this->log("{$self->name()} is shuffled into {$this->players[$self->owner]->name}'s library.");
                     $this->moveTo($self, GameObject::LIBRARY);
@@ -4096,6 +4104,7 @@ final class Game
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
+                $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
                 default => $effect,
             }, $ability['effects']);
@@ -6027,6 +6036,10 @@ final class Game
         if ($toGraveyard) {
             $this->trigger($object, 'to_graveyard', $controller, $incarnation);
         }
+        // `When CARDNAME is put into a graveyard from anywhere, shuffle it into its owner's library.`: the card in the graveyard.
+        if ($zone === GameObject::GRAVEYARD) {
+            $this->trigger($object, 'to_graveyard_anywhere', $object->owner);
+        }
         // What it exiled "until this leaves the battlefield" returns.
         foreach ($held as $id) {
             if (isset($this->objects[$id]) && $this->objects[$id]->zone === GameObject::EXILE) {
@@ -6941,6 +6954,7 @@ final class Game
             'bestowed' => (bool) ($item['bestowed'] ?? false),
             'alt' => (string) ($item['alt'] ?? ''),
             'sunburst' => (int) ($item['sunburst'] ?? 0),
+            'compleated' => (int) ($item['compleated'] ?? 0),
             'escaped' => (bool) ($item['escaped'] ?? false),
             'disturbed' => (bool) ($item['disturbed'] ?? false),
             'buyback' => (bool) ($item['buyback'] ?? false),
