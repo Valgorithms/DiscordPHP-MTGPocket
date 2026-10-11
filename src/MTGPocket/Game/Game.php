@@ -86,7 +86,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard'];
 
     /** @var int[] */
     public array $exile = [];
@@ -944,6 +944,13 @@ final class Game
             $ways = $card->isLand() ? ($this->canPlayLand($seat, $id) ? [''] : []) : array_filter(self::castWays($card, false), fn (string $how) => $this->canCast($seat, $id, $how));
             foreach ($ways as $how) {
                 $plays[] = ['id' => $id, 'how' => $how];
+                // Splice onto Arcane: each card that could be spliced onto it, then all of them.
+                $splicers = $how === 'morph' ? [] : $this->splicers($seat, $id);
+                foreach (count($splicers) > 1 ? [...array_map(fn (int $splicer) => [$splicer], $splicers), $splicers] : ($splicers === [] ? [] : [$splicers]) as $set) {
+                    if ($this->canCast($seat, $id, $spliced = implode(',', array_filter([$how, 'splice'.implode('+', $set)])))) {
+                        $plays[] = ['id' => $id, 'how' => $spliced];
+                    }
+                }
             }
             if ($card->cycling !== null && $this->canCycle($seat, $id)) {
                 $plays[] = ['id' => $id, 'how' => 'cycle'];
@@ -1096,11 +1103,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int, gifted: bool}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int, gifted: bool, splice: int[]}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0, 'gifted' => false];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0, 'gifted' => false, 'splice' => []];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -1142,6 +1149,9 @@ final class Game
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
                 $options['exiled'] = ['pl' => 'plot', 'wx' => 'warp', 'md' => 'madness', 'sp' => 'suspended', 'ix' => 'impulse', 'ft' => 'foretell', 'cc' => 'cascade'][$part];
+            } elseif (preg_match('/^splice\d+(?:\+\d+)*$/', $part)) {
+                // Splice onto Arcane (rule 702.47): the cards in hand spliced onto it.
+                $options['splice'] = array_map('intval', explode('+', substr($part, 6)));
             } elseif (preg_match('/^m\d+(?:\+\d+)*$/', $part)) {
                 $options['modes'] = array_map('intval', explode('+', substr($part, 1)));
             } else {
@@ -1392,6 +1402,9 @@ final class Game
         if ($options['entwined'] && isset($card->altCosts['teamwork']) && $this->teamworkFodder($seat, (int) $card->altCosts['teamwork']) === null) {
             return "Teamwork needs untapped creatures with total power {$card->altCosts['teamwork']} or more.";
         }
+        if ($options['splice'] !== [] && ($why = $this->whyNotSplice($seat, $id, $card, $options)) !== null) {
+            return $why;
+        }
         // Fuse (rule 702.102): both halves only from its owner's hand.
         if ($card->split && count(array_unique($options['modes'])) > 1 && $object?->zone !== GameObject::HAND) {
             return "{$card->name}'s halves can be fused only from your hand.";
@@ -1446,7 +1459,78 @@ final class Game
      */
     private function castKinds(CardDefinition $card, array $options): array
     {
-        return self::castTargetKinds($card, $options);
+        return self::castTargetKinds($card, $options, $this);
+    }
+
+    /**
+     * Why cards cannot be spliced onto a spell, or null when they can: each
+     * a different card with splice onto Arcane in its caster's hand, onto an
+     * Arcane spell cast face up.
+     *
+     * @param int            $seat
+     * @param int            $id
+     * @param CardDefinition $card
+     * @param array          $options
+     *
+     * @return ?string
+     */
+    private function whyNotSplice(int $seat, int $id, CardDefinition $card, array $options): ?string
+    {
+        if (! in_array('Arcane', $card->subtypes, true) || $options['faceDown']) {
+            return "Only Arcane spells can be spliced onto, and {$card->name} isn't one.";
+        }
+        if (count(array_unique($options['splice'])) !== count($options['splice'])) {
+            return 'Each card can be spliced onto a spell only once.';
+        }
+        foreach ($options['splice'] as $splicer) {
+            $object = $this->objects[$splicer] ?? null;
+            if ($splicer === $id || $object === null || ! in_array($splicer, $this->players[$seat]->hand, true) || ! isset($object->printed()->altCosts['splice']) || $object->printed()->spellEffects() === []) {
+                return 'Only other cards with splice onto Arcane in your hand can be spliced onto it.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The cards in a player's hand that could be spliced onto a spell.
+     *
+     * @param int $seat
+     * @param int $id   The spell.
+     *
+     * @return int[]
+     */
+    private function splicers(int $seat, int $id): array
+    {
+        if (! in_array('Arcane', $this->objects[$id]->printed()->subtypes, true)) {
+            return [];
+        }
+
+        return array_values(array_filter($this->players[$seat]->hand, fn (int $card) => $card !== $id && isset($this->objects[$card]->printed()->altCosts['splice']) && $this->objects[$card]->printed()->spellEffects() !== []));
+    }
+
+    /**
+     * What splicing cards onto a spell adds to its cost.
+     *
+     * @param int[] $ids
+     *
+     * @return string
+     */
+    private function spliceCost(array $ids): string
+    {
+        return implode('', array_map(fn (int $id) => (string) ($this->objects[$id]->printed()->altCosts['splice'] ?? ''), $ids));
+    }
+
+    /**
+     * The effects spliced cards add to a spell, after its own (rule 702.47b).
+     *
+     * @param int[] $ids
+     *
+     * @return array[]
+     */
+    public function splicedEffects(array $ids): array
+    {
+        return array_merge([], ...array_map(fn (int $id) => isset($this->objects[$id]) ? $this->objects[$id]->printed()->spellEffects() : [], $ids));
     }
 
     /**
@@ -1455,17 +1539,18 @@ final class Game
      *
      * @param CardDefinition $card
      * @param string|array   $how
+     * @param ?Game          $game For the targets of the cards spliced onto it.
      *
      * @return string[]
      */
-    public static function castTargetKinds(CardDefinition $card, string|array $how): array
+    public static function castTargetKinds(CardDefinition $card, string|array $how, ?Game $game = null): array
     {
         $options = self::castOptions($how);
 
         return match (true) {
             $options['faceDown'], $options['alt'] === 'overload' => [],
             $options['bestowed'] => [$card->bestow['enchant']],
-            default => $card->targetKinds($options['modes'], $options['kicked']),
+            default => [...$card->targetKinds($options['modes'], $options['kicked']), ...($game === null ? [] : self::targetKindsOf($game->splicedEffects($options['splice'])))],
         };
     }
 
@@ -1597,7 +1682,7 @@ final class Game
                 }
             }
         }
-        $cost = self::castCost($card, $options).$wardMana;
+        $cost = self::castCost($card, $options).$this->spliceCost($options['splice']).$wardMana;
         $convoke = ! $options['faceDown'] && in_array('convoke', $card->keywords, true);
         $improvise = ! $options['faceDown'] && in_array('improvise', $card->keywords, true);
         // Delve (rule 702.66): cards exiled from your graveyard pay for generic mana, as many as can help.
@@ -1871,7 +1956,7 @@ final class Game
         }
         $payment = $this->paymentFor($seat, $id, $x, $options, $wardMana, $wardLife, $targets);
         if ($payment === null) {
-            $cost = ManaCost::parse(self::castCost($card, $options));
+            $cost = ManaCost::parse(self::castCost($card, $options).$this->spliceCost($options['splice']));
             throw new GameException("You cannot pay {$cost}".($xCount > 0 ? " with X = {$x}" : '').($wardMana !== '' || $wardLife > 0 ? ' and ward' : '').'.');
         }
         $this->pay($seat, $payment);
@@ -1936,7 +2021,9 @@ final class Game
         ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart', 'harmonize'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'], 'kicks' => $options['kicks'] > 1 ? $options['kicks'] : 0,
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0,
             // Compleated (rule 702.150): life paid for Phyrexian mana.
-            'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0]);
+            'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0,
+            // Splice onto Arcane: the spliced cards' effects, copied as it is cast (rule 702.47b).
+            'spliced' => $this->splicedEffects($options['splice'])]);
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
@@ -1953,6 +2040,7 @@ final class Game
             $options['kicked'] ? 'kicked' : '',
             $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
+            $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $this->objects[$splicer]->name(), $options['splice'])).' onto it',
             $options['modes'] === [] ? '' : 'choosing '.implode(' and ', array_map(fn (int $mode) => '"'.rtrim(str_replace('CARDNAME', $card->name, $card->modes[$mode]['text']), '.').'"', $options['modes'])),
             $xCount > 0 ? "(X = {$x})" : '',
         ]);
@@ -2154,7 +2242,7 @@ final class Game
         }
         $spell = $this->objects[$item['object']];
         $card = $spell->definition();
-        $effects = $card->isPermanentCard() ? [] : $card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false);
+        $effects = $card->isPermanentCard() ? [] : [...$card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false), ...$item['spliced'] ?? []];
         if ($effects === []) {
             return;
         }
@@ -2879,7 +2967,7 @@ final class Game
             return;
         }
         $card = $object->definition();
-        $effects = $ability ? $item['effects'] : ($card->isPermanentCard() ? [] : $card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false));
+        $effects = $ability ? $item['effects'] : ($card->isPermanentCard() ? [] : [...$card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false), ...$item['spliced'] ?? []]);
         $kinds = $ability ? $item['kinds'] : match (true) {
             (bool) ($item['bestowed'] ?? false) => [$card->bestow['enchant']],
             $card->aura !== null => [$card->aura['enchant']],
@@ -3383,6 +3471,8 @@ final class Game
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
                     'creature_without_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'))),
+                    // `… deals 1 damage to that creature.`: the creature it blocked or was blocked by.
+                    'that' => ($that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null) !== null && $that->zone === GameObject::BATTLEFIELD ? ["o:{$that->id}"] : [],
                     // `… deals 3 damage to that creature's controller.`
                     default => isset($effect['toController']) ? ($affected === null ? [] : ["p:{$affected->controller}"]) : [$target],
                 };
@@ -4535,6 +4625,7 @@ final class Game
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
+                ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
                 $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
@@ -5244,6 +5335,7 @@ final class Game
             'land_card_yours' => $object->printed()->isLand() && $object->owner === $controller,
             'enchantment_card_yours' => $object->printed()->is('Enchantment') && $object->owner === $controller,
             'permanent_card_yours' => $object->printed()->isPermanentCard() && $object->owner === $controller,
+            'creature_card_graveyard' => $object->printed()->isCreature(),
             'card_graveyard_nonbasic' => ! ($object->printed()->isLand() && in_array('Basic', $object->printed()->supertypes, true)),
             'nonbasic_land' => $card->isLand() && ! in_array('Basic', $card->supertypes, true),
             'creature_or_planeswalker_opponent' => ($creature || $card->isPlaneswalker()) && $object->controller !== $controller,
@@ -5279,6 +5371,7 @@ final class Game
                 || ((bool) preg_match('/^creature_power_(ge|le)_(\d+)$/', $kind, $m) && $creature && ($m[1] === 'ge' ? $this->power($object) >= (int) $m[2] : $this->power($object) <= (int) $m[2]))
                 || ((bool) preg_match('/^creature_(non)?color_([WUBRG])$/', $kind, $m) && $creature && in_array($m[2], $card->colors, true) === ($m[1] === ''))
                 || ((bool) preg_match('/^creature_mv_le_(\d+)$/', $kind, $m) && $creature && $card->cost->manaValue() <= (int) $m[1])
+                || ((bool) preg_match('/^creature_card_yours_mv_le_(\d+)$/', $kind, $m) && $object->printed()->isCreature() && $object->owner === $controller && $object->printed()->cost->manaValue() <= (int) $m[1])
                 // `Enchant artifact or creature you control`: any of the kinds, with an optional controller.
                 || ((bool) preg_match('/^any:([^@]+)(?:@(you|opp))?$/', $kind, $m)
                     && (! isset($m[2]) || ($m[2] === 'you') === ($object->controller === $controller))
@@ -5295,7 +5388,7 @@ final class Game
      */
     private static function isGraveyardKind(string $kind): bool
     {
-        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_');
+        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_') || str_starts_with($kind, 'creature_card_yours_mv_le_');
     }
 
     /**
@@ -5916,6 +6009,22 @@ final class Game
         foreach (array_keys($this->blocked) as $id) {
             $this->trigger($this->objects[$id], 'blocked', $this->objects[$id]->controller);
         }
+        // `Whenever CARDNAME blocks or becomes blocked by a creature, …`: once for each creature, knowing which.
+        $pairs = [];
+        foreach ($this->blockers as $blocker => $attacker) {
+            $pairs[] = [$blocker, $attacker];
+        }
+        foreach ($extra as $blocker => $others) {
+            foreach ($others as $attacker) {
+                $pairs[] = [(int) $blocker, (int) $attacker];
+            }
+        }
+        foreach ($pairs as [$blocker, $attacker]) {
+            foreach (['blocks_creature' => [$blocker, $attacker], 'blocked_by_creature' => [$attacker, $blocker]] as $event => [$one, $other]) {
+                $this->trigger($this->objects[$one], $event, $this->objects[$one]->controller, null, $other);
+                $this->trigger($this->objects[$one], 'block_pair', $this->objects[$one]->controller, null, $other);
+            }
+        }
         // Bushido (rule 702.45): +N/+N when it blocks or becomes blocked.
         foreach (array_unique([...array_keys($this->blockers), ...array_keys($this->blocked)]) as $id) {
             if (($n = $this->keywordAmount($this->objects[$id], 'bushido')) > 0) {
@@ -6218,6 +6327,16 @@ final class Game
     {
         if ($amount <= 0) {
             return;
+        }
+        // `Players can't gain life.` and `Your opponents can't gain life.`
+        foreach ($this->permanents() as $permanent) {
+            if ($this->hasKeyword($permanent, "players can't gain life") || ($permanent->controller !== $seat && $this->hasKeyword($permanent, "opponents can't gain life"))) {
+                return;
+            }
+        }
+        // `If you would gain life, you gain that much life plus 1 instead.`
+        foreach ($this->permanents($seat) as $permanent) {
+            $amount += $this->keywordAmount($permanent, 'gain life plus');
         }
         $player = $this->players[$seat];
         $player->life += $amount;

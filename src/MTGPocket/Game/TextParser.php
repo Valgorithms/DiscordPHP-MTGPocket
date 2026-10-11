@@ -127,6 +127,13 @@ final class TextParser
         'target creature that isn\'t enchanted' => 'creature_unenchanted',
         'target creature card from your graveyard' => 'creature_card_yours',
         'target legendary creature card from your graveyard' => 'legendary_creature_card_yours',
+        'target creature card with mana value 1 or less from your graveyard' => 'creature_card_yours_mv_le_1',
+        'target creature card with mana value 2 or less from your graveyard' => 'creature_card_yours_mv_le_2',
+        'target creature card with mana value 3 or less from your graveyard' => 'creature_card_yours_mv_le_3',
+        'target creature card with mana value 4 or less from your graveyard' => 'creature_card_yours_mv_le_4',
+        'target creature card with mana value 5 or less from your graveyard' => 'creature_card_yours_mv_le_5',
+        'target creature card with mana value 6 or less from your graveyard' => 'creature_card_yours_mv_le_6',
+        'target creature card from a graveyard' => 'creature_card_graveyard',
         'target card from your graveyard' => 'card_yours',
         'target instant or sorcery card from your graveyard' => 'instant_sorcery_card_yours',
         'target artifact card from your graveyard' => 'artifact_card_yours',
@@ -397,9 +404,18 @@ final class TextParser
                 'You may choose not to untap CARDNAME during your untap step.' => 'may not untap',
                 // Read by Game::declareAttackers() and Game::declareBlockers().
                 "CARDNAME can't attack or block alone." => "can't attack or block alone",
+                // Read by Game::gainLife().
+                "Players can't gain life." => "players can't gain life",
+                "Your opponents can't gain life." => "opponents can't gain life",
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
+
+                continue;
+            }
+            // `If you would gain life, you gain that much life plus 1 instead.`: see Game::gainLife().
+            if (! $spell && preg_match('/^If you would gain life, you gain that much life plus (\w+) instead\.$/', $line, $match) && is_int($n = self::amount($match[1]))) {
+                $result['keywords'][] = "gain life plus {$n}";
 
                 continue;
             }
@@ -764,6 +780,12 @@ final class TextParser
 
             return true;
         }
+        // Splice onto Arcane (rule 702.47): revealed from hand as an Arcane spell is cast, adding its effects for this cost; see Game::splicers().
+        if ($spell && preg_match('/^Splice onto Arcane '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['splice'] = $m[1];
+
+            return true;
+        }
         // Harmonize (rule 702.180): cast from your graveyard, tapping a creature for its power off the cost, then exiled.
         if ($spell && preg_match('/^Harmonize '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['harmonize'] = $m[1];
@@ -1105,6 +1127,9 @@ final class TextParser
         $ability = null;
         if (preg_match('/^one mana of any colou?r$/i', $what)) {
             $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
+        } elseif (preg_match('/^(two|three|four|five) mana of any one colou?r$/i', $what, $n)) {
+            // Gilded Lotus: all of one color; see ManaPayer::plan().
+            $ability = ['count' => self::amount($n[1]), 'colors' => ['W', 'U', 'B', 'R', 'G'], 'same' => true];
         } elseif (preg_match('/^one mana of the chosen color$/i', $what) && $result['chooses'] === 'color') {
             // See Game::manaSources().
             $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G'], 'chosen' => true];
@@ -1685,6 +1710,13 @@ final class TextParser
         // Frostwalk Bastion / Kashi-Tribe: on the creature it dealt combat damage to; see Game::combatDamage().
         if (preg_match("/^Whenever CARDNAME deals combat damage to a creature, tap that creature and it doesn't untap during its controller's next untap step\\.$/", $line)) {
             $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'tap', 'target' => 'creature', 'freeze' => true]]];
+
+            return true;
+        }
+        // Ornery Goblin: `Whenever CARDNAME blocks or becomes blocked by a creature, CARDNAME deals 1 damage to that creature.`; see Game::declareBlockers().
+        if (preg_match('/^Whenever CARDNAME (blocks|becomes blocked by|blocks or becomes blocked by) a creature, CARDNAME deals (\w+) damage to that creature\.$/', $line, $m) && is_int($n = self::amount($m[2]))) {
+            $event = ['blocks' => 'blocks_creature', 'becomes blocked by' => 'blocked_by_creature'][$m[1]] ?? 'block_pair';
+            $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => [['type' => 'damage', 'amount' => $n, 'each' => 'that']]];
 
             return true;
         }
@@ -2659,6 +2691,14 @@ final class TextParser
             && ($m[2] === 'your hand' || str_ends_with($kind, 'creature_card_yours'))) {
             return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind];
         }
+        // `Return target creature card with mana value 3 or less from your graveyard to the battlefield.`
+        if (preg_match("/^return ({$targets}) to (your hand|the battlefield)$/i", $s, $m) && str_starts_with($kind = self::TARGETS[strtolower($m[1])], 'creature_card_yours_mv_le_')) {
+            return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind];
+        }
+        // Reanimate: `Put target creature card from a graveyard onto the battlefield under your control.`
+        if (preg_match("/^put ({$targets}) onto the battlefield under your control$/i", $s, $m) && self::TARGETS[strtolower($m[1])] === 'creature_card_graveyard') {
+            return ['type' => 'reanimate', 'target' => 'creature_card_graveyard'];
+        }
         if (preg_match('/^empower jace (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'empower', 'amount' => $n];
         }
@@ -2829,6 +2869,7 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true);
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard'], true)
+            && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_');
     }
 }

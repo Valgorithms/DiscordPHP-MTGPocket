@@ -747,7 +747,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             }
             $message->addComponent(ActionRow::new()->addComponent($select));
         } else {
-            $kinds = Game::castTargetKinds($card, $options);
+            $kinds = Game::castTargetKinds($card, $options, $game);
             $slot = count((array) ($cast['targets'] ?? []));
             if (isset($kinds[$slot])) {
                 $message->addComponent(self::targetSelect(self::id($match->id, 'tgt'), $game, $seat, $game->targetOptions($seat, $kinds[$slot]), 'Choose a target for '.$card->name, $slot, count($kinds)));
@@ -902,6 +902,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $options['buyback'] ? "buyback +{$card->altCosts['buyback']}" : '',
             $options['kicked'] && ! $options['bargained'] && ! $options['gifted'] ? (in_array('offspring', $card->keywords, true) ? "offspring +{$card->kicker}" : (in_array('replicate', $card->keywords, true) ? 'replicated '.max(1, $options['kicks']).'× +'.str_repeat((string) $card->kicker, max(1, $options['kicks'])) : ($options['kicks'] > 1 ? "kicked {$options['kicks']}× +".str_repeat((string) $card->kicker, $options['kicks']) : "kicked +{$card->kicker}"))) : '',
             $options['modes'] === [] ? '' : 'mode '.implode(' + ', array_map(fn (int $mode) => $mode + 1, $options['modes'])),
+            $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $game->objects[$splicer]->name().' +'.($game->objects[$splicer]->printed()->altCosts['splice'] ?? ''), $options['splice'])),
         ]));
         $description = $options !== null && $options['modes'] !== []
             ? implode(' + ', array_map(fn (int $mode) => str_replace('CARDNAME', $card->name, $card->modes[$mode]['text']), $options['modes']))
