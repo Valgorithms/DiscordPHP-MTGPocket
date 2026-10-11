@@ -213,7 +213,7 @@ final class PracticeBot
             foreach ($game->targetOptions($seat, $kind) as $option) {
                 [$type, $id] = explode(':', $option) + [1 => ''];
                 $score = null;
-                if ($type === 'p' && $harmful && (int) $id !== $seat) {
+                if ($type === 'p' && $harmful !== ((int) $id === $seat)) {
                     $score = 1;
                 } elseif ($type === 'o' && (int) $id !== $self) {
                     $object = $game->objects[(int) $id];

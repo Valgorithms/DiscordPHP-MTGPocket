@@ -413,6 +413,13 @@ final class TextParser
 
                 continue;
             }
+            // Wild Growth / Fertile Ground: `Whenever enchanted land is tapped for mana, its controller adds an additional {G}.`; see Game::manaSources().
+            if (! $spell && ($result['aura']['enchant'] ?? null) !== null && preg_match('/^Whenever enchanted land is tapped for mana, its controller adds an additional ((?:\{[WUBRGC]\})+|one mana of any colou?r)\.$/', $line, $match)) {
+                preg_match_all('/\{([WUBRGC])\}/', $match[1], $symbols);
+                $result['keywords'][] = 'enchanted land adds '.($symbols[1] === [] ? 'any' : implode('', $symbols[1]));
+
+                continue;
+            }
             // `If you would gain life, you gain that much life plus 1 instead.`: see Game::gainLife().
             if (! $spell && preg_match('/^If you would gain life, you gain that much life plus (\w+) instead\.$/', $line, $match) && is_int($n = self::amount($match[1]))) {
                 $result['keywords'][] = "gain life plus {$n}";
@@ -1299,6 +1306,17 @@ final class TextParser
                 return false;
             }
             $result['anthem'][] = ['power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'other' => $m[1] !== '' || $m[2] !== '', 'withCounter' => true];
+
+            return true;
+        }
+        // `Other green creatures you control get +1/+1.` (the Lieges) and `Attacking creatures you control get +1/+0.` (Goblin Oriflamme); see Game::anthems().
+        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
+            $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
+            if ($keywords === null) {
+                return false;
+            }
+            $which = strtolower($m[2]) === 'attacking' ? ['attacking' => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
+            $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== ''] + $which;
 
             return true;
         }
@@ -2489,6 +2507,9 @@ final class TextParser
         }
         if (preg_match('/^you gain (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'gain_life', 'amount' => $n];
+        }
+        if (preg_match('/^target player gains (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'gain_life', 'amount' => $n, 'target' => 'player'];
         }
         if (preg_match('/^(target player|target opponent) loses (\w+) life$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
             return ['type' => 'lose_life', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]];
