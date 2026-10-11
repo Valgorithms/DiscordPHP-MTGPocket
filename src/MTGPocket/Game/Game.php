@@ -1028,6 +1028,9 @@ final class Game
             if (in_array('bargain', $card->keywords, true)) {
                 $ways[] = implode(',', [...$base, 'bargain']);
             }
+            if (isset($card->altCosts['gift'])) {
+                $ways[] = implode(',', [...$base, 'gift']);
+            }
             if (self::casualty($card) > 0) {
                 $ways[] = implode(',', [...$base, 'casualty']);
             }
@@ -1063,11 +1066,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int, gifted: bool}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0, 'gifted' => false];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -1093,6 +1096,9 @@ final class Game
             } elseif ($part === 'casualty') {
                 // Casualty (rule 702.153): sacrifice a creature with enough power, and the spell is copied.
                 $options['casualty'] = true;
+            } elseif ($part === 'gift') {
+                // Gift (rule 702.174): promised to an opponent; "if the gift was promised" reads as kicked.
+                $options['kicked'] = $options['gifted'] = true;
             } elseif ($part === 'bargain') {
                 // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
                 $options['kicked'] = $options['bargained'] = true;
@@ -1305,8 +1311,11 @@ final class Game
         if ($options['kicks'] > 1 && ! in_array('multikicker', $card->keywords, true)) {
             return "{$card->name} can be kicked only once.";
         }
-        if ($options['kicked'] && ! $options['bargained'] && $card->kicker === null) {
+        if ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] && $card->kicker === null) {
             return "{$card->name} has no kicker.";
+        }
+        if ($options['gifted'] && ! isset($card->altCosts['gift'])) {
+            return "{$card->name} has no gift.";
         }
         if ($options['bargained'] && (! in_array('bargain', $card->keywords, true) || $this->bargainFodder($seat) === null)) {
             return "{$card->name} cannot be bargained now.";
@@ -1418,7 +1427,7 @@ final class Game
     {
         $options = self::castOptions($how);
         // Additional costs: kicker, entwine and each Spree mode's.
-        $more = ($options['kicked'] && ! $options['bargained'] ? str_repeat((string) $card->kicker, max(1, $options['kicks'])) : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
+        $more = ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] ? str_repeat((string) $card->kicker, max(1, $options['kicks'])) : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
             .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']));
         if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended', 'cascade'], true)) {
             // Without paying its mana cost (rule 118.9), but still its additional costs: X is 0.
@@ -1852,6 +1861,7 @@ final class Game
             $options['flashback'] ? 'with flashback' : '',
             $options['grave'] !== '' ? "from the graveyard ({$options['grave']})" : '',
             $options['bargained'] ? 'bargained' : '',
+            $options['gifted'] ? 'with the gift promised' : '',
             $options['rebound'] ? 'from exile with rebound' : '',
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
@@ -2771,6 +2781,11 @@ final class Game
             return;
         }
 
+        // Gift: the opponent gets it before the spell's other effects.
+        if (! $ability && ($item['kicked'] ?? false) && isset($card->altCosts['gift'])) {
+            $this->giveGift($this->opponent($item['controller']), (string) $card->altCosts['gift'], $object);
+        }
+
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0), (bool) ($item['disturbed'] ?? false));
             // Multikicker: a counter set for each time it was kicked.
@@ -2900,6 +2915,29 @@ final class Game
         if (! self::isAbility($item) && $source->zone === GameObject::STACK) {
             $this->spellLeavesStack($source, $item, true);
         }
+    }
+
+    /**
+     * Gift (rule 702.174): what the promised opponent gets.
+     *
+     * @param int        $seat   The opponent.
+     * @param string     $gift   `card`, `food`, `treasure`, `clue` or `tapped fish`.
+     * @param GameObject $source
+     *
+     * @return void
+     */
+    private function giveGift(int $seat, string $gift, GameObject $source): void
+    {
+        $this->log("{$this->players[$seat]->name} gets {$source->name()}'s gift.");
+        if ($gift === 'card') {
+            $this->draw($seat, 1);
+
+            return;
+        }
+        $token = $gift === 'tapped fish'
+            ? ['name' => 'Fish Token', 'type' => 'Token Creature — Fish', 'types' => ['Creature'], 'subtypes' => ['Fish'], 'colors' => ['U'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null]
+            : TextParser::artifactToken(ucfirst($gift));
+        $this->createToken($token, $seat)->tapped = $gift === 'tapped fish';
     }
 
     /**

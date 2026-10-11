@@ -205,6 +205,18 @@ final class TextParser
     private const string COST = '((?:\{[0-9WUBRGCSX\/P]+\})+)';
 
     /**
+     * A predefined artifact token: `Food`, `Clue` or `Treasure`.
+     *
+     * @param string $name
+     *
+     * @return array
+     */
+    public static function artifactToken(string $name): array
+    {
+        return self::ARTIFACT_TOKENS[$name];
+    }
+
+    /**
      * @param CardDefinition $card With its name, types and text set.
      *
      * @return array{keywords: string[], mana: array|null, entersTapped: bool, counters: int, effects: array[], modes: array[], choose: array|null, aura: array|null, equipment: array|null, triggered: array[], activated: array[], ward: array|null, kicker: string|null, kickerCounters: int, flashback: string|null, cycling: string|null, morph: array|null, levels: array[], unsupported: string[]}
@@ -634,7 +646,10 @@ final class TextParser
      */
     private static function kickedSentence(string $sentence, array &$result): bool
     {
-        if (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
+        $unkicked = false;
+        if (isset($result['altCosts']['gift']) && preg_match("/^If the gift (was|wasn't) promised, (.+)$/", $sentence, $gift)) {
+            [$unkicked, $match] = [$gift[1] !== 'was', [$gift[0], $gift[2]]];
+        } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
             && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))) {
             return false;
         }
@@ -647,12 +662,12 @@ final class TextParser
 
             return true;
         }
-        $effects = self::effects($match[1]);
+        $effects = self::effects($match[1]) ?? self::thatCreature(preg_replace('/^that creature also /', 'that creature ', $match[1]), $result['effects']);
         if ($effects === null) {
             return false;
         }
         foreach ($effects as $effect) {
-            $result['effects'][] = $effect + ['kicked' => true];
+            $result['effects'][] = $effect + [$unkicked ? 'unkicked' : 'kicked' => true];
         }
 
         return true;
@@ -749,6 +764,9 @@ final class TextParser
             } elseif (preg_match('/^teamwork (\d+)$/i', $part, $m) && $spell) {
                 // Teamwork: tap creatures with that much total power as you cast it; see Game::teamworkFodder().
                 $found['altCosts']['teamwork'] = $m[1];
+            } elseif (preg_match('/^gift (a card|a food|a treasure|a clue|a tapped fish)$/i', $part, $m)) {
+                // Gift (rule 702.174): an opponent gets it as the spell resolves, if it was promised; see Game::giveGift().
+                $found['altCosts']['gift'] = substr(strtolower($m[1]), 2);
             } elseif (preg_match('/^entwine '.self::COST.'$/i', $part, $m) && $spell) {
                 // Entwine (rule 702.42): every mode, for this much more.
                 $found['entwine'] = $m[1];
@@ -1619,7 +1637,8 @@ final class TextParser
             $text = $match[1];
         }
         $kicked = false;
-        if ($event === 'enters' && $result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)) {
+        if ($event === 'enters' && ($result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)
+            || isset($result['altCosts']['gift']) && preg_match('/^if the gift was promised, (.+)$/', $text, $match))) {
             [$kicked, $text] = [true, $match[1]];
         }
         $effects = self::effects($text);
@@ -2015,7 +2034,7 @@ final class TextParser
      */
     private static function thatCreature(string $text, array $effects): ?array
     {
-        if (! in_array('creature', array_column($effects, 'target'), true)) {
+        if (array_intersect(array_column($effects, 'target'), self::CREATURE_KINDS) === []) {
             return null;
         }
         if (preg_match("/^CARDNAME deals (\\w+) damage to that creature's controller$/", $text, $m) && is_int($n = self::amount($m[1]))) {
