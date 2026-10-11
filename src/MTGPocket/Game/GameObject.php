@@ -96,6 +96,9 @@ final class GameObject
     /** How it was cast, when that matters later: `dash`, `evoke` or `warp`; `temporary` for a Mobilize token. */
     public ?string $alt = null;
 
+    /** Cipher: the exiled spell cards encoded on this creature. */
+    public array $encoded = [];
+
     /** The turn it was exiled by warp or plotted, to be cast from exile on a later turn. */
     public int $exiledOn = 0;
 
@@ -213,6 +216,7 @@ final class GameObject
         $this->renowned = false;
         $this->monstrous = false;
         $this->holding = [];
+        $this->encoded = [];
         $this->exileIfDies = 0;
         $this->alt = null;
         $this->exiledOn = 0;
@@ -273,6 +277,7 @@ final class GameObject
             'renowned' => $this->renowned,
             'monstrous' => $this->monstrous,
             'holding' => $this->holding,
+            'encoded' => $this->encoded,
             'exileIfDies' => $this->exileIfDies,
             'alt' => $this->alt,
             'exiledOn' => $this->exiledOn,
@@ -323,6 +328,7 @@ final class GameObject
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
+        $object->encoded = array_map('intval', (array) ($data['encoded'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
         $object->alt = isset($data['alt']) ? (string) $data['alt'] : null;
         $object->exiledOn = (int) ($data['exiledOn'] ?? 0);
