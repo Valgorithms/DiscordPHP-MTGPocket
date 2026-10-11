@@ -847,8 +847,8 @@ final class TextParser
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif ($word === 'enlist' && ! $spell) {
                 $found['keywords'][] = 'enlist';
-            } elseif (preg_match('/^protection from (white|blue|black|red|green)$/', $word) && ! $spell) {
-                // Protection from a color (rule 702.16): see Game::protectedFrom().
+            } elseif (preg_match('/^protection from (white|blue|black|red|green|artifacts|creatures|enchantments|instants|sorceries|planeswalkers)$/', $word) && ! $spell) {
+                // Protection from a color or a card type (rule 702.16): see Game::protectedFrom().
                 $found['keywords'][] = $word;
             } elseif (preg_match('/^prototype '.self::COST.' — (\d+)\/(\d+)$/iu', $part, $m) && ! $spell) {
                 // Prototype (rule 702.160): cast smaller for less, see Game::prototype().
@@ -2167,8 +2167,8 @@ final class TextParser
         if ($effects[$last]['type'] === 'copy_spell' && $sentence === 'You may choose new targets for the copy') {
             return true;
         }
-        // "Destroy target creature. Its controller loses 2 life."
-        if (isset($effects[$last]['target']) && in_array($effects[$last]['target'], self::CREATURE_KINDS, true)
+        // "Destroy target creature. Its controller loses 2 life.", also after a permanent or a spell.
+        if (isset($effects[$last]['target']) && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true) && ! str_contains($effects[$last]['target'], 'card')
             && preg_match('/^Its controller loses (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
             $effects[] = ['type' => 'lose_life', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
 
@@ -2538,6 +2538,10 @@ final class TextParser
         // `Choose a nonland card name.`: the search after it uses the name; see TextParser::modifies().
         if (preg_match('/^choose an? (?:(nonland|creature|artifact) )?card name$/i', $s, $m)) {
             return ['type' => 'choose_name', 'filter' => ($m[1] ?? '') === '' ? 'any' : strtolower($m[1])];
+        }
+        // Bolster (rule 701.39): counters on your creature with the least toughness.
+        if (preg_match('/^bolster (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
+            return ['type' => 'bolster', 'amount' => $n];
         }
         if (preg_match('/^proliferate$/i', $s)) {
             return ['type' => 'proliferate'];
