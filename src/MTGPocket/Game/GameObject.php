@@ -111,6 +111,9 @@ final class GameObject
     /** Prepared: its controller may cast a copy of its prepare spell. */
     public bool $prepared = false;
 
+    /** The colors of mana spent to cast it, as letters (`WU`): `sacrifice it unless {W} was spent to cast it`. */
+    public string $spent = '';
+
     /** Monstrosity (rule 701.37) has made it monstrous. */
     public bool $monstrous = false;
 
@@ -219,6 +222,7 @@ final class GameObject
         $this->renowned = false;
         $this->monstrous = false;
         $this->prepared = false;
+        $this->spent = '';
         $this->holding = [];
         $this->encoded = [];
         $this->exileIfDies = 0;
@@ -281,6 +285,7 @@ final class GameObject
             'renowned' => $this->renowned,
             'monstrous' => $this->monstrous,
             'prepared' => $this->prepared,
+            'spent' => $this->spent,
             'holding' => $this->holding,
             'encoded' => $this->encoded,
             'exileIfDies' => $this->exileIfDies,
@@ -333,6 +338,7 @@ final class GameObject
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->prepared = (bool) ($data['prepared'] ?? false);
+        $object->spent = (string) ($data['spent'] ?? '');
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
         $object->encoded = array_map('intval', (array) ($data['encoded'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);

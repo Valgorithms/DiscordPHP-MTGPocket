@@ -2036,6 +2036,7 @@ final class Game
             'targets' => $targets,
         ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart', 'harmonize'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'], 'kicks' => $options['kicks'] > 1 ? $options['kicks'] : 0,
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0,
+            'spent' => implode('', array_intersect(['W', 'U', 'B', 'R', 'G'], [...array_values($payment['made'] ?? []), ...array_keys(array_filter($payment['pool'] ?? []))])),
             // Compleated (rule 702.150): life paid for Phyrexian mana.
             'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0,
             // Splice onto Arcane: the spliced cards' effects, copied as it is cast (rule 702.47b).
@@ -3037,6 +3038,7 @@ final class Game
                     $object->addCounters('+1/+1', (int) $m[1]);
                 }
             }
+            $object->spent = (string) ($item['spent'] ?? '');
             if (($item['sunburst'] ?? 0) > 0) {
                 $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
             }
@@ -4319,6 +4321,14 @@ final class Game
                 $this->log("{$this->players[$seat]->name} shuffles their library.");
                 break;
 
+            case 'sacrifice_unless_spent':
+                // Court Hussar: `When CARDNAME enters, sacrifice it unless {W} was spent to cast it.`
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! str_contains($self->spent, $effect['color'])) {
+                    $this->log("No {{$effect['color']}} was spent to cast {$self->name()}, so {$this->players[$self->controller]->name} sacrifices it.");
+                    $this->moveTo($self, GameObject::GRAVEYARD);
+                }
+                break;
+
             case 'pay_transform':
                 // `At the beginning of your first main phase, you may pay {N}. If you do, transform CARDNAME.`: paid when it can be.
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! $self->transformed && ($payment = $this->payFor($controller, $effect['cost'])) !== null) {
@@ -4618,6 +4628,10 @@ final class Game
             'lands' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $object->definition()->is('Land'))) >= (int) $n,
             'died' => $this->diedTurn === $this->turn && $this->died >= (int) $n,
             'gained' => $this->players[$controller]->gainedTurn === $this->turn && $this->players[$controller]->gained >= (int) $n,
+            'artifacts', 'enchantments' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $object->definition()->is(ucfirst(rtrim($kind, 's'))))) >= (int) $n,
+            'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
+            'life' => $this->players[$controller]->life >= (int) $n,
+            'your_turn' => $this->active === $controller,
             'hand_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && count($player->hand) > count($this->players[$controller]->hand)) !== [],
             default => false,
         };
@@ -7432,6 +7446,10 @@ final class Game
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
                     continue;
                 }
+                // `CARDNAME gets +2/+2 as long as you control three or more artifacts.`
+                if (($anthem['self'] ?? false) && ($source->id !== $object->id || ! $this->conditionMet($anthem['if'], $source, $source->controller))) {
+                    continue;
+                }
                 if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id]))) {
                     continue;
                 }
@@ -7692,6 +7710,8 @@ final class Game
             'bestowed' => (bool) ($item['bestowed'] ?? false),
             'alt' => (string) ($item['alt'] ?? ''),
             'sunburst' => (int) ($item['sunburst'] ?? 0),
+            'spent' => (string) ($item['spent'] ?? ''),
+            'spliced' => array_values((array) ($item['spliced'] ?? [])),
             'compleated' => (int) ($item['compleated'] ?? 0),
             'escaped' => (bool) ($item['escaped'] ?? false),
             'disturbed' => (bool) ($item['disturbed'] ?? false),

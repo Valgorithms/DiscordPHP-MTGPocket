@@ -116,6 +116,11 @@ final class TextParser
         'target nonblue creature' => 'creature_noncolor_U',
         'target nonred creature' => 'creature_noncolor_R',
         'target nongreen creature' => 'creature_noncolor_G',
+        'target white creature' => 'creature_color_W',
+        'target blue creature' => 'creature_color_U',
+        'target black creature' => 'creature_color_B',
+        'target red creature' => 'creature_color_R',
+        'target green creature' => 'creature_color_G',
         'target non-zombie creature' => 'creature_nonsub_Zombie',
         'target non-human creature' => 'creature_nonsub_Human',
         'target non-vampire creature' => 'creature_nonsub_Vampire',
@@ -199,6 +204,7 @@ final class TextParser
         'creature_power_ge_2', 'creature_power_ge_3', 'creature_power_ge_4', 'creature_power_ge_5', 'creature_power_ge_6', 'creature_power_le_1', 'creature_power_le_2', 'creature_power_le_3', 'creature_power_le_4',
         'creature_mv_le_1', 'creature_mv_le_2', 'creature_mv_le_3', 'creature_mv_le_4', 'creature_mv_le_5',
         'creature_noncolor_W', 'creature_noncolor_U', 'creature_noncolor_R', 'creature_noncolor_G', 'creature_unenchanted',
+        'creature_color_W', 'creature_color_U', 'creature_color_B', 'creature_color_R', 'creature_color_G',
         'creature_nonsub_Zombie', 'creature_nonsub_Human', 'creature_nonsub_Vampire', 'creature_nonsub_Angel', 'creature_nonsub_Dragon', 'creature_nonsub_Elf', 'creature_nonsub_Goblin', 'creature_nonsub_Wall',
     ];
 
@@ -1309,6 +1315,13 @@ final class TextParser
 
             return true;
         }
+        // Metalcraft, Threshold: `CARDNAME gets +2/+2 as long as you control three or more artifacts.`; see Game::conditionMet().
+        if (preg_match('/^(?:[A-Z][a-z]+(?: [a-z]+)? — )?CARDNAME gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))? as long as (.+?)\.$/u', $line, $m)
+            && ($keywords = self::keywordList($m[3] ?? '')) !== null && ($if = self::staticCondition($m[4])) !== null) {
+            $result['anthem'][] = ['power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => $keywords, 'other' => false, 'self' => true, 'if' => $if];
+
+            return true;
+        }
         // `Other green creatures you control get +1/+1.` (the Lieges) and `Attacking creatures you control get +1/+0.` (Goblin Oriflamme); see Game::anthems().
         if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
             $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
@@ -1344,6 +1357,27 @@ final class TextParser
         $result['anthem'][] = ['power' => $power, 'toughness' => $toughness, 'keywords' => $keywords, 'other' => $m[1] !== ''] + ($m[2] !== '' ? ['chosenType' => true] : []);
 
         return true;
+    }
+
+    /**
+     * A condition of a static ability, as Game::conditionMet() reads it:
+     * `you control three or more artifacts`, `seven or more cards are in
+     * your graveyard`, `you have 25 or more life`, `it's your turn`.
+     *
+     * @param string $text
+     *
+     * @return ?string
+     */
+    private static function staticCondition(string $text): ?string
+    {
+        return match (true) {
+            (bool) preg_match('/^you control (\w+) or more (artifacts|lands|enchantments)$/', $text, $m) && is_int($n = self::amount($m[1])) => rtrim($m[2], 's')."s {$n}",
+            (bool) preg_match('/^you control an? (artifact|enchantment)$/', $text, $m) => "{$m[1]}s 1",
+            (bool) preg_match('/^(\w+) or more cards are in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "graveyard {$n}",
+            (bool) preg_match('/^you have (\w+) or more life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life {$n}",
+            $text === "it's your turn" => 'your_turn',
+            default => null,
+        };
     }
 
     /**
@@ -1728,6 +1762,12 @@ final class TextParser
         // Frostwalk Bastion / Kashi-Tribe: on the creature it dealt combat damage to; see Game::combatDamage().
         if (preg_match("/^Whenever CARDNAME deals combat damage to a creature, tap that creature and it doesn't untap during its controller's next untap step\\.$/", $line)) {
             $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'tap', 'target' => 'creature', 'freeze' => true]]];
+
+            return true;
+        }
+        // Court Hussar: `When CARDNAME enters, sacrifice it unless {W} was spent to cast it.`; see GameObject::$spent.
+        if (preg_match('/^When CARDNAME enters(?: the battlefield)?, sacrifice it unless \{([WUBRG])\} was spent to cast it\.$/', $line, $m)) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'enters', 'effects' => [['type' => 'sacrifice_unless_spent', 'color' => $m[1], 'self' => true]]];
 
             return true;
         }
