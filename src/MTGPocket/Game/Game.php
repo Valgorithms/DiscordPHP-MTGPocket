@@ -3587,6 +3587,7 @@ final class Game
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
                     'creature_without_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'))),
+                    'creature_opponents' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $o->controller !== $controller)),
                     // `… deals 1 damage to that creature.`: the creature it blocked or was blocked by.
                     'that' => ($that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null) !== null && $that->zone === GameObject::BATTLEFIELD ? ["o:{$that->id}"] : [],
                     // `… deals 3 damage to that creature's controller.`
@@ -3733,6 +3734,7 @@ final class Game
 
             case 'lose_life':
                 $seats = match (true) {
+                    ($effect['each'] ?? null) === 'player' => array_keys($this->players),
                     isset($effect['each']) => $opponents,
                     isset($effect['you']) => [$controller],
                     // "Its controller loses 2 life": whoever controlled the target; for a countered spell, see the counter effect.
@@ -3818,6 +3820,7 @@ final class Game
                     null => $affected === null ? [] : [$affected],
                     'yours' => $this->permanents($controller),
                     'opponents' => array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller),
+                    'without_flying' => array_filter($this->permanents(), fn (GameObject $o) => ! $this->hasKeyword($o, 'flying')),
                     default => $this->permanents(),
                 };
                 foreach ($pumped as $object) {
@@ -3995,7 +3998,10 @@ final class Game
             case 'mill':
                 $seats = match ($effect['each'] ?? null) {
                     'opponent' => array_values($opponents),
-                    default => [$target === null ? $controller : (int) substr($target, 2)],
+                    default => match (true) {
+                        isset($effect['toController']) => [str_starts_with((string) $target, 'p:') ? (int) substr((string) $target, 2) : $this->objects[(int) explode(':', (string) $target)[1]]->controller],
+                        default => [$target === null ? $controller : (int) substr($target, 2)],
+                    },
                 };
                 foreach ($seats as $seat) {
                     $this->mill($seat, $amount);
@@ -4878,6 +4884,8 @@ final class Game
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
+            'attacking' => isset($this->attackers[$source->id]),
+            'delirium' => count(array_filter(['Artifact', 'Battle', 'Creature', 'Enchantment', 'Instant', 'Kindred', 'Land', 'Planeswalker', 'Sorcery'], fn (string $type) => array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is($type)) !== [])) >= (int) $n,
             'always' => true,
             'untapped' => ! $source->tapped,
             'tapped' => $source->tapped,
@@ -4915,6 +4923,10 @@ final class Game
                 in_array($effect['target'] ?? null, ['creature_other', '?creature_other'], true) => ['target' => str_replace('creature_other', "creature_not_{$source->id}", $effect['target'])] + $effect,
                 default => $effect,
             }, $ability['effects']);
+            if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
+                || ! in_array($ability['subtype'], ($this->objects[$context] ?? null)?->definition()->subtypes ?? [], true))) {
+                continue;
+            }
             // "When this creature enters, if it was kicked, …"
             if (($ability['kicked'] ?? false) && ! $source->kicked) {
                 continue;
@@ -6863,6 +6875,12 @@ final class Game
             if ($this->keywordAmount($object, 'saga') > 0) {
                 $this->addLore($object);
             }
+            // Tribal enters triggers: `Whenever another Elf you control enters, …`.
+            if ($object->definition()->subtypes !== []) {
+                foreach ($this->permanents($controller) as $permanent) {
+                    $this->trigger($permanent, 'subtype_enters', $controller, null, $object->id);
+                }
+            }
             // Evolve (rule 702.100): a bigger creature entering under your control. Graft: any other creature of yours.
             if ($this->isCreature($object)) {
                 foreach ($this->permanents($controller) as $permanent) {
@@ -7039,6 +7057,12 @@ final class Game
         if ($dies) {
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
+            // `Whenever another creature (you control) dies, …`
+            if ($object->definition()->is('Creature')) {
+                foreach ($this->permanents() as $permanent) {
+                    $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id);
+                }
+            }
             // `When enchanted land dies, return that card to its owner's hand.` (the Zendikons)
             foreach ($enchanters as $aura) {
                 $this->trigger($aura, 'enchanted_dies', $aura->controller, null, $object->id);
@@ -7840,6 +7864,10 @@ final class Game
                     continue;
                 }
                 if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id]))) {
+                    continue;
+                }
+                // `Other creatures you control with flying get +1/+1.`: printed keywords, so anthems don't feed each other.
+                if (isset($anthem['withKeyword']) && ! in_array($anthem['withKeyword'], $object->definition()->keywords, true)) {
                     continue;
                 }
                 // A lord: only creatures of its type.
