@@ -1360,6 +1360,13 @@ final class TextParser
 
             return true;
         }
+        // `CARDNAME has hexproof as long as it's untapped.`
+        if (preg_match('/^(?:[A-Z][a-z]+(?: [a-z]+)? — )?CARDNAME has (.+?) as long as (.+?)\.$/u', $line, $m)
+            && ($keywords = self::keywordList($m[1])) !== null && ($if = self::staticCondition($m[2])) !== null) {
+            $result['anthem'][] = ['power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'other' => false, 'self' => true, 'if' => $if];
+
+            return true;
+        }
         // `Other green creatures you control get +1/+1.` (the Lieges) and `Attacking creatures you control get +1/+0.` (Goblin Oriflamme); see Game::anthems().
         if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
             $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
@@ -1411,7 +1418,9 @@ final class TextParser
         return match (true) {
             (bool) preg_match('/^you control (\w+) or more (artifacts|lands|enchantments)$/', $text, $m) && is_int($n = self::amount($m[1])) => rtrim($m[2], 's')."s {$n}",
             (bool) preg_match('/^you control an? (artifact|enchantment)$/', $text, $m) => "{$m[1]}s 1",
-            (bool) preg_match('/^(\w+) or more cards are in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "graveyard {$n}",
+            (bool) preg_match('/^(?:(\w+) or more cards are in your graveyard|there are (\w+) or more cards in your graveyard)$/', $text, $m) && is_int($n = self::amount($m[1] !== '' ? $m[1] : $m[2])) => "graveyard {$n}",
+            $text === "it's untapped" => 'untapped',
+            $text === "it's tapped" => 'tapped',
             (bool) preg_match('/^you have (\w+) or more life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life {$n}",
             $text === "it's your turn" => 'your_turn',
             default => null,
@@ -2173,7 +2182,8 @@ final class TextParser
      */
     private static function impulse(string $text): ?array
     {
-        if (! preg_match('/^Exile the top (card|(\w+) cards) of your library\. (.+?)\.?$/', trim($text), $m)) {
+        // Also inside a trigger: `When CARDNAME enters, exile the top card of your library. …`
+        if (! preg_match('/^[Ee]xile the top (card|(\w+) cards) of your library\. (.+?)\.?$/', trim($text), $m)) {
             return null;
         }
         $it = '(?:that card|those cards|them|it|the exiled cards?)';
@@ -2727,6 +2737,18 @@ final class TextParser
         if (preg_match("/^put ({$targets}) on (top|the bottom) of its owner's library$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'tuck', 'target' => self::TARGETS[strtolower($m[1])], 'bottom' => strtolower($m[2]) !== 'top'];
         }
+        // Flicker: `Exile target creature you control, then return that card to the battlefield under its owner's control.`
+        if (preg_match("/^exile ({$targets}), then return (?:that card|it) to the battlefield under (?:its owner's|your) control$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+            return ['type' => 'flicker', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        // Justice Strike: `Target creature deals damage to itself equal to its power.`
+        if (preg_match("/^({$targets}) deals damage to itself equal to its power$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])] ?? '', self::CREATURE_KINDS, true)) {
+            return ['type' => 'self_damage', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        // `Put target card from a graveyard on the bottom of its owner's library.` (Junktroller)
+        if (preg_match("/^put (target card from a graveyard|target card from your graveyard) on (top|the bottom) of (?:its owner's|your) library$/i", $s, $m)) {
+            return ['type' => 'tuck', 'target' => self::TARGETS[strtolower($m[1])], 'bottom' => strtolower($m[2]) !== 'top'];
+        }
         if (preg_match("/^({$targets})'s owner puts it on (?:their choice of )?the top or bottom of their library$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'tuck', 'target' => self::TARGETS[strtolower($m[1])], 'bottom' => false];
         }
@@ -2799,8 +2821,8 @@ final class TextParser
         }
         $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all'];
         $group = implode('|', array_keys($each));
-        if (preg_match('/^destroy (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
-            return ['type' => 'destroy', 'all' => strtolower($m[1])];
+        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
+            return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
         if (preg_match("/^({$group}) get ([+-]\\d+)\\/([+-]\\d+)(?: and gain (.+?))? until end of turn$/i", $s, $m)
             && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
