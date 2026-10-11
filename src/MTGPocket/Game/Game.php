@@ -1902,6 +1902,22 @@ final class Game
                 }
                 unset($ability['withCreature']);
             }
+            // `Whenever enchanted land is tapped for mana, its controller adds an additional {G}.`: one more unit for each.
+            $extra = [];
+            foreach ($object->definition()->isLand() && ! ($ability['same'] ?? false) && ! $noTap && ($ability['count'] ?? 0) > 0 ? $this->battlefield : [] as $auraId) {
+                if ($this->objects[$auraId]->attachedTo === $object->id) {
+                    foreach ($this->keywords($this->objects[$auraId]) as $keyword) {
+                        if (preg_match('/^enchanted land adds (\w+)$/', $keyword, $m)) {
+                            array_push($extra, ...($m[1] === 'any' ? [['W', 'U', 'B', 'R', 'G']] : array_map(fn (string $color) => [$color], str_split($m[1]))));
+                        }
+                    }
+                }
+            }
+            if ($extra !== []) {
+                $ability['fixed'] = [...($ability['fixed'] ?? array_fill(0, $ability['count'], $ability['colors'])), ...$extra];
+                $ability['count'] = count($ability['fixed']);
+                $ability['colors'] = array_values(array_unique(array_merge(...$ability['fixed'])));
+            }
             $sources[$object->id] = $ability;
         }
         // Lands and creatures before Treasures, which are used up.
@@ -3493,7 +3509,7 @@ final class Game
                 break;
 
             case 'gain_life':
-                $this->gainLife($controller, $amount);
+                $this->gainLife(isset($effect['target']) && str_starts_with((string) $target, 'p:') ? (int) substr((string) $target, 2) : $controller, $amount);
                 break;
 
             case 'sacrifice':
@@ -7414,6 +7430,9 @@ final class Game
                     continue;
                 }
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
+                    continue;
+                }
+                if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id]))) {
                     continue;
                 }
                 // A lord: only creatures of its type.
