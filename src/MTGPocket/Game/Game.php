@@ -1087,7 +1087,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1144,7 +1144,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1370,6 +1370,10 @@ final class Game
         if ($options['alt'] === 'miracle' && ($object->zone !== GameObject::HAND || $object->miracle !== $this->turn.':'.$this->step->name)) {
             return "{$card->name} can be cast for its miracle cost only right after it is drawn as your first card this turn.";
         }
+        // Sneak: during the declare blockers step, returning an unblocked attacker, at any speed.
+        if ($options['alt'] === 'sneak' && ($this->step !== Step::DeclareBlockers || $this->active !== $seat || $this->unblockedAttackers($seat) === [])) {
+            return "{$card->name} can be cast for its sneak cost only during the declare blockers step, returning an unblocked attacker.";
+        }
         if ($options['flashback'] && $card->flashback === null) {
             return "{$card->name} has no flashback.";
         }
@@ -1446,7 +1450,7 @@ final class Game
         // A plotted card is cast as a sorcery (rule 702.170d).
         // Madness casts it whenever its trigger waits (rule 702.35c).
         // Cascade casts it while its trigger waits (rule 702.85a).
-        if (! $options['rebound'] && $options['alt'] !== 'miracle' && ! in_array($options['exiled'], ['madness', 'suspended', 'cascade'], true) && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
+        if (! $options['rebound'] && ! in_array($options['alt'], ['miracle', 'sneak'], true) && ! in_array($options['exiled'], ['madness', 'suspended', 'cascade'], true) && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
             return "{$card->name} can be cast only in your own main phase, when the stack is empty.";
         }
 
@@ -2048,6 +2052,12 @@ final class Game
         if ($casualty !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$casualty->name()} (casualty).");
             $this->moveTo($casualty, GameObject::GRAVEYARD);
+        }
+        if ($options['alt'] === 'sneak') {
+            $unblocked = $this->unblockedAttackers($seat);
+            usort($unblocked, fn (GameObject $a, GameObject $b) => $this->power($a) <=> $this->power($b));
+            $this->log("{$this->players[$seat]->name} returns {$unblocked[0]->name()} to hand (sneak).");
+            $this->moveTo($unblocked[0], GameObject::HAND);
         }
         // Ward—Discard a card: the cheapest other cards in hand.
         $this->discardCheapest($seat, $wardDiscard, $id);
@@ -3068,6 +3078,12 @@ final class Game
                 $object->addCounters('+1/+1', $card->kickerCounters * ((int) $item['kicks'] - 1));
             }
             $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
+            // Sneak: a creature enters tapped and attacking.
+            if ($object->alt === 'sneak' && $this->isCreature($object) && in_array($this->step, [Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage], true)) {
+                $object->tapped = true;
+                $this->attackers[$object->id] = true;
+                $this->log("{$object->name()} enters tapped and attacking.");
+            }
             foreach (($item['escaped'] ?? false) ? $card->keywords : [] as $keyword) {
                 if (preg_match('/^escapes with (\d+)$/', $keyword, $m)) {
                     $object->addCounters('+1/+1', (int) $m[1]);

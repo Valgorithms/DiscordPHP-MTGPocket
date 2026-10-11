@@ -801,6 +801,12 @@ final class TextParser
 
             return true;
         }
+        // Sneak (rule 702.190): cast during the declare blockers step by returning an unblocked attacker; see Game::whyNotCast().
+        if (preg_match('/^Sneak '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['sneak'] = $m[1];
+
+            return true;
+        }
         // Miracle (rule 702.94): cast for this cost as the first card its owner draws in a turn; see Game::draw().
         if (preg_match('/^Miracle '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['miracle'] = $m[1];
