@@ -104,6 +104,24 @@ final class TextParser
         'target creature with power 2 or less' => 'creature_power_le_2',
         'target creature with power 3 or less' => 'creature_power_le_3',
         'target creature with power 4 or less' => 'creature_power_le_4',
+        'target creature with mana value 1 or less' => 'creature_mv_le_1',
+        'target creature with mana value 2 or less' => 'creature_mv_le_2',
+        'target creature with mana value 3 or less' => 'creature_mv_le_3',
+        'target creature with mana value 4 or less' => 'creature_mv_le_4',
+        'target creature with mana value 5 or less' => 'creature_mv_le_5',
+        'target nonwhite creature' => 'creature_noncolor_W',
+        'target nonblue creature' => 'creature_noncolor_U',
+        'target nonred creature' => 'creature_noncolor_R',
+        'target nongreen creature' => 'creature_noncolor_G',
+        'target non-zombie creature' => 'creature_nonsub_Zombie',
+        'target non-human creature' => 'creature_nonsub_Human',
+        'target non-vampire creature' => 'creature_nonsub_Vampire',
+        'target non-angel creature' => 'creature_nonsub_Angel',
+        'target non-dragon creature' => 'creature_nonsub_Dragon',
+        'target non-elf creature' => 'creature_nonsub_Elf',
+        'target non-goblin creature' => 'creature_nonsub_Goblin',
+        'target non-wall creature' => 'creature_nonsub_Wall',
+        'target creature that isn\'t enchanted' => 'creature_unenchanted',
         'target creature card from your graveyard' => 'creature_card_yours',
         'target card from your graveyard' => 'card_yours',
         'target instant or sorcery card from your graveyard' => 'instant_sorcery_card_yours',
@@ -167,6 +185,9 @@ final class TextParser
         'creature', 'creature_you_control', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
         'creature_flying', 'creature_no_flying', 'tapped_creature', 'untapped_creature',
         'creature_power_ge_2', 'creature_power_ge_3', 'creature_power_ge_4', 'creature_power_ge_5', 'creature_power_ge_6', 'creature_power_le_1', 'creature_power_le_2', 'creature_power_le_3', 'creature_power_le_4',
+        'creature_mv_le_1', 'creature_mv_le_2', 'creature_mv_le_3', 'creature_mv_le_4', 'creature_mv_le_5',
+        'creature_noncolor_W', 'creature_noncolor_U', 'creature_noncolor_R', 'creature_noncolor_G', 'creature_unenchanted',
+        'creature_nonsub_Zombie', 'creature_nonsub_Human', 'creature_nonsub_Vampire', 'creature_nonsub_Angel', 'creature_nonsub_Dragon', 'creature_nonsub_Elf', 'creature_nonsub_Goblin', 'creature_nonsub_Wall',
     ];
 
     /**
@@ -1738,15 +1759,16 @@ final class TextParser
      */
     private static function impulse(string $text): ?array
     {
-        if (! preg_match('/^Exile the top (card|(\w+) cards) of your library\. (?:Until the end of your next turn, you may play (?:that card|those cards|them)|You may play (?:that card|those cards|them) (this turn|until the end of your next turn))\.?$/', trim($text), $m)) {
+        if (! preg_match('/^Exile the top (card|(\w+) cards) of your library\. (?:Until (the end of your next turn|end of turn), you may play (?:that card|those cards|them)|You may play (?:that card|those cards|them|it|the exiled cards?) (this turn|until end of turn|until the end of your next turn))\.?$/', trim($text), $m)) {
             return null;
         }
+        $window = ($m[3] ?? '') !== '' ? $m[3] : ($m[4] ?? '');
         $n = $m[1] === 'card' ? 1 : self::amount($m[2]);
         if (! is_int($n) || $n < 1) {
             return null;
         }
 
-        return ['type' => 'impulse', 'amount' => $n, 'until' => ($m[3] ?? '') === 'this turn' ? 'this' : 'next'];
+        return ['type' => 'impulse', 'amount' => $n, 'until' => in_array($window, ['this turn', 'end of turn', 'until end of turn'], true) ? 'this' : 'next'];
     }
 
     /**
@@ -2237,7 +2259,7 @@ final class TextParser
         if (($token = self::token($s)) !== null) {
             return $token;
         }
-        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell) unless its controller pays \{(\d+)\}$/i', $s, $m)) {
+        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell) unless its controller pays \{(\d+|X)\}$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])], 'unless' => '{'.$m[2].'}'];
         }
         $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all'];
