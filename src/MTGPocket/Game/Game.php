@@ -86,7 +86,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'];
 
     /** @var int[] */
     public array $exile = [];
@@ -2947,6 +2947,44 @@ final class Game
     }
 
     /**
+     * Names a card for the caster and exiles up to that many cards with
+     * the name from a player's graveyard, hand and library. The name is
+     * the one seen most among their battlefield and graveyard, else among
+     * their other cards.
+     *
+     * @param int        $seat
+     * @param string     $filter `any`, `nonland`, `creature` or `artifact`.
+     * @param int        $amount
+     * @param GameObject $source
+     *
+     * @return void
+     */
+    private function nameExile(int $seat, string $filter, int $amount, GameObject $source): void
+    {
+        $player = $this->players[$seat];
+        $names = fn (array $ids) => array_count_values(array_map(fn (int $id) => $this->objects[$id]->printed()->name, array_filter($ids, fn (int $id) => $this->matchesFilter($this->objects[$id]->printed(), $filter))));
+        $seen = $names([...array_map(fn (GameObject $o) => $o->id, array_filter($this->permanents($seat), fn (GameObject $o) => $o->owner === $seat && ! $o->printed()->isToken())), ...$player->graveyard]);
+        if ($seen === []) {
+            $seen = $names([...$player->hand, ...$player->library]);
+        }
+        if ($seen === []) {
+            $this->log("{$source->name()} names nothing.");
+
+            return;
+        }
+        arsort($seen);
+        $name = (string) array_key_first($seen);
+        $exiled = 0;
+        foreach ([...$player->graveyard, ...$player->hand, ...$player->library] as $id) {
+            if ($exiled < $amount && $this->objects[$id]->printed()->name === $name) {
+                $this->moveTo($this->objects[$id], GameObject::EXILE);
+                $exiled++;
+            }
+        }
+        $this->log("{$source->name()} names {$name} and exiles {$exiled} card".($exiled === 1 ? '' : 's').'.');
+    }
+
+    /**
      * Gift (rule 702.174): what the promised opponent gets.
      *
      * @param int        $seat   The opponent.
@@ -4026,6 +4064,12 @@ final class Game
                 }
                 break;
 
+            case 'name_exile':
+                // `Choose a card name. Search target opponent's graveyard, hand, and library for … cards with that name and exile them.`
+                $seat = (int) substr((string) $target, 2);
+                $this->nameExile($seat, $effect['filter'], (int) $effect['amount'], $source);
+                break;
+
             case 'shuffle':
                 // `Then shuffle.`, or `Then that player shuffles.` after an effect on a player or their permanent.
                 $seat = ($effect['that'] ?? false) ? ($this->targetOwner($target) ?? $controller) : $controller;
@@ -4986,6 +5030,7 @@ final class Game
             'tapped_creature' => $creature && $object->tapped,
             'untapped_creature' => $creature && ! $object->tapped,
             'creature_card_yours' => $object->printed()->isCreature() && $object->owner === $controller,
+            'legendary_creature_card_yours' => $object->printed()->isCreature() && $object->printed()->isLegendary() && $object->owner === $controller,
             'card_yours' => $object->owner === $controller,
             'instant_sorcery_card_yours' => ($object->printed()->is('Instant') || $object->printed()->is('Sorcery')) && $object->owner === $controller,
             'artifact_card_yours' => $object->printed()->is('Artifact') && $object->owner === $controller,
