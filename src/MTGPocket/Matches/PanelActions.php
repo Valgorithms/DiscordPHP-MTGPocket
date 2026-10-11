@@ -310,7 +310,7 @@ final class PanelActions
      * @param Game                    $game
      * @param array<int, int[]>       $picks
      *
-     * @return array<int, int>
+     * @return array<int, int|int[]>
      */
     private static function blocks(Game $game, array $picks): array
     {
@@ -319,7 +319,13 @@ final class PanelActions
             foreach ((array) $blockers as $blocker) {
                 $blocker = (int) $blocker;
                 if (isset($blocks[$blocker])) {
-                    throw new GameException(($game->objects[$blocker] ?? null)?->name().' can block only one attacker.');
+                    // `can block an additional creature each combat`: Game::declareBlockers() checks it.
+                    if (! $game->hasKeyword($game->objects[$blocker], 'can block an additional creature each combat')) {
+                        throw new GameException(($game->objects[$blocker] ?? null)?->name().' can block only one attacker.');
+                    }
+                    $blocks[$blocker] = [...(array) $blocks[$blocker], (int) $attacker];
+
+                    continue;
                 }
                 $blocks[$blocker] = (int) $attacker;
             }

@@ -489,7 +489,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             $notes[] = '⚔️ attacking';
         }
         if (isset($game->blockers[$object->id])) {
-            $notes[] = '🛡️ blocking '.$game->objects[$game->blockers[$object->id]]->name();
+            $notes[] = '🛡️ blocking '.implode(' and ', array_map(fn (int $id) => $game->objects[$id]->name(), [$game->blockers[$object->id], ...$game->extraBlocks[$object->id] ?? []]));
         }
         foreach ($game->attachments($object) as $attached) {
             $notes[] = ($attached->definition()->isAura() ? 'enchanted by ' : 'equipped with ').$attached->name();
