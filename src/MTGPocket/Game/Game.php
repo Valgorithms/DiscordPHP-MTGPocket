@@ -1331,6 +1331,9 @@ final class Game
         if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_creature' && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) === []) {
             return "{$card->name} needs a creature to sacrifice.";
         }
+        if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_artifact' && array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')) === []) {
+            return "{$card->name} needs an artifact to sacrifice.";
+        }
         if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_artifact_or_creature'
             && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) || $o->definition()->is('Artifact')) === []) {
             return "{$card->name} needs an artifact or creature to sacrifice.";
@@ -1620,6 +1623,15 @@ final class Game
             if (($kind = $this->objects[$source]->definition()->manaAbility['counter'] ?? null) !== null) {
                 $this->objects[$source]->addCounters($kind, -1);
             }
+            // `{T}, Tap an untapped creature you control: Add …`: the weakest creature without a mana ability.
+            $ability = $this->objects[$source]->definition()->manaAbility ?? [];
+            if (($ability['tapCreature'] ?? false) || (isset($ability['withCreature']) && ($payment['made'][$source] ?? 'C') !== 'C')) {
+                $helpers = array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) && ! $o->tapped && $o->definition()->manaAbility === null);
+                usort($helpers, fn (GameObject $a, GameObject $b) => $this->power($a) <=> $this->power($b));
+                if ($helpers !== []) {
+                    $helpers[0]->tapped = true;
+                }
+            }
         }
         foreach ($payment['pool'] as $type => $amount) {
             $player->manaPool->remove($type, $amount);
@@ -1683,6 +1695,17 @@ final class Game
             }
             if (($ability['chosen'] ?? false) && $object->chosen !== null) {
                 $ability['colors'] = [$object->chosen];
+            }
+            // `{T}, Tap an untapped creature you control: Add …`: one creature without a mana ability for each.
+            if (($ability['tapCreature'] ?? false) || isset($ability['withCreature'])) {
+                $helpers ??= count(array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) && ! $o->tapped && $o->definition()->manaAbility === null));
+                if ($helpers > 0) {
+                    $helpers--;
+                    $ability = isset($ability['withCreature']) ? $ability['withCreature'] + ['tapCreature' => true] : $ability;
+                } elseif ($ability['tapCreature'] ?? false) {
+                    continue;
+                }
+                unset($ability['withCreature']);
             }
             $sources[$object->id] = $ability;
         }
@@ -2024,9 +2047,10 @@ final class Game
      */
     private function payAdditionalCost(int $seat, CardDefinition $card): void
     {
-        if ($card->additionalCost === 'sacrifice_creature' || $card->additionalCost === 'sacrifice_artifact_or_creature') {
-            $artifacts = $card->additionalCost === 'sacrifice_artifact_or_creature';
-            $weakest = $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) || ($artifacts && $o->definition()->is('Artifact')));
+        if (in_array($card->additionalCost, ['sacrifice_creature', 'sacrifice_artifact_or_creature', 'sacrifice_artifact'], true)) {
+            $creatures = $card->additionalCost !== 'sacrifice_artifact';
+            $artifacts = $card->additionalCost !== 'sacrifice_creature';
+            $weakest = $this->weakest($seat, fn (GameObject $o) => ($creatures && $this->isCreature($o)) || ($artifacts && $o->definition()->is('Artifact')));
             $this->log("{$this->players[$seat]->name} sacrifices {$weakest->name()} to cast {$card->name}.");
             $this->moveTo($weakest, GameObject::GRAVEYARD);
         } elseif ($card->additionalCost === 'exile_creature_card' || $card->additionalCost === 'exile_card') {
@@ -3497,9 +3521,23 @@ final class Game
                 break;
 
             case 'edict':
-                // Annihilator: the defending player sacrifices their weakest permanents.
-                foreach ($opponents as $seat) {
-                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, fn () => true)) !== null; $i++) {
+                // Annihilator, or `Target player sacrifices a creature`: each sacrifices their weakest that fit.
+                $seats = match ($effect['each'] ?? (isset($effect['kind']) && $target !== null ? 'target' : 'opponent')) {
+                    'target' => [(int) substr($target, 2)],
+                    'player' => array_keys($this->players),
+                    default => array_values($opponents),
+                };
+                $fits = fn (GameObject $o) => match ($effect['kind'] ?? 'permanent') {
+                    'creature' => $this->isCreature($o),
+                    'attacking creature' => $this->isCreature($o) && isset($this->attackers[$o->id]),
+                    'creature or planeswalker' => $this->isCreature($o) || $o->definition()->isPlaneswalker(),
+                    'artifact or creature' => $this->isCreature($o) || $o->definition()->is('Artifact'),
+                    'nonland permanent' => ! $o->definition()->isLand(),
+                    'permanent' => true,
+                    default => $o->definition()->is(ucfirst($effect['kind'])),
+                };
+                foreach ($seats as $seat) {
+                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, $fits)) !== null; $i++) {
                         $this->log("{$this->players[$seat]->name} sacrifices {$victim->name()}.");
                         $this->moveTo($victim, GameObject::GRAVEYARD);
                     }
