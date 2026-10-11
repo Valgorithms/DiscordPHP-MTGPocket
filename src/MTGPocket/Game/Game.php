@@ -108,7 +108,7 @@ final class Game
     public int $passes = 0;
 
     /** Ways in {@see plays()} that are not casting a spell. */
-    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'scavenge'];
+    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'scavenge', 'transmute'];
 
     /** @var array<int, true> Attacking creatures. */
     public array $attackers = [];
@@ -922,6 +922,9 @@ final class Game
             }
             if ($card->cycling !== null && $this->canCycle($seat, $id)) {
                 $plays[] = ['id' => $id, 'how' => 'cycle'];
+            }
+            if (isset($card->altCosts['transmute']) && $this->whyNotTransmute($seat, $id) === null) {
+                $plays[] = ['id' => $id, 'how' => 'transmute'];
             }
             if (isset($card->altCosts['plot']) && $this->whyNotPlot($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'plot'];
@@ -2313,6 +2316,57 @@ final class Game
         return null;
     }
 
+    /**
+     * Transmutes a card (rule 702.53): pay its transmute cost and discard it
+     * as a sorcery; an ability that finds a card with the same mana value goes
+     * on the stack.
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return void
+     */
+    public function transmute(int $seat, int $id): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotTransmute($seat, $id)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $this->pay($seat, $this->payFor($seat, $card->altCosts['transmute']));
+        $value = $card->cost->manaValue();
+        $this->moveTo($object, GameObject::GRAVEYARD);
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => [['type' => 'tutor', 'filter' => "mv_ge_{$value}&mv_le_{$value}", 'to' => 'hand']],
+            'kinds' => [],
+            'label' => "{$card->name}'s transmute",
+        ], [], 'is activated', "transmute {$card->name}");
+        $this->settle();
+    }
+
+    private function whyNotTransmute(int $seat, int $id): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::HAND || $object->owner !== $seat) {
+            return 'That card is not in your hand.';
+        }
+        if (! isset($object->printed()->altCosts['transmute'])) {
+            return "{$object->name()} has no transmute.";
+        }
+        if (! $this->sorcerySpeed($seat)) {
+            return 'Transmute only as a sorcery.';
+        }
+        if ($this->payFor($seat, $object->printed()->altCosts['transmute']) === null) {
+            return "You cannot pay {$object->printed()->altCosts['transmute']}.";
+        }
+
+        return null;
+    }
+
     private function whyNotPlot(int $seat, int $id): ?string
     {
         $object = $this->objects[$id] ?? null;
@@ -3194,7 +3248,7 @@ final class Game
                     if (isset($effect['each']) && ! $this->isCreature($object)) {
                         continue;
                     }
-                    $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => $effect['keywords']];
+                    $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])];
                 }
                 break;
 
@@ -3842,7 +3896,6 @@ final class Game
             'sorcery' => $card->is('Sorcery'),
             'planeswalker' => $card->isPlaneswalker(),
             'battle' => $card->is('Battle'),
-            'creature_unenchanted' => $creature && array_filter($this->permanents(), fn (GameObject $o) => $o->attachedTo === $object->id && $o->definition()->isAura()) === [],
             'permanent' => $card->isPermanentCard(),
             'nonland_permanent' => $card->isPermanentCard() && ! $card->isLand(),
             'any' => true,
@@ -5112,6 +5165,30 @@ final class Game
      *
      * @return bool
      */
+    /**
+     * The color a player picks for `protection from the color of your choice`:
+     * the most common one among their opponents' permanents and spells.
+     *
+     * @param int $seat
+     *
+     * @return string
+     */
+    private function colorToFear(int $seat): string
+    {
+        $count = ['W' => 0, 'U' => 0, 'B' => 0, 'R' => 0, 'G' => 0];
+        $objects = [...array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $seat), ...array_map(fn (array $item) => $this->objects[$item['object']] ?? null, array_filter($this->stack, fn (array $item) => $item['controller'] !== $seat && isset($item['object'])))];
+        foreach (array_filter($objects) as $object) {
+            foreach ($object->definition()->colors as $color) {
+                if (isset($count[$color])) {
+                    $count[$color] += $object->zone === GameObject::BATTLEFIELD ? 1 : 2;
+                }
+            }
+        }
+        arsort($count);
+
+        return ['W' => 'white', 'U' => 'blue', 'B' => 'black', 'R' => 'red', 'G' => 'green'][array_key_first($count)];
+    }
+
     private function protectedFrom(?GameObject $object, ?GameObject $source): bool
     {
         if ($object === null || $source === null || $object->zone !== GameObject::BATTLEFIELD) {
