@@ -4225,6 +4225,18 @@ final class Game
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
 
+            case 'bottom_draw':
+                // A spare land when it holds two or more, else nothing.
+                $player = $this->players[$controller];
+                $lands = array_values(array_filter($player->hand, fn (int $id) => $this->objects[$id]->printed()->isLand()));
+                if (($effect['draw'] ?? false) && count($lands) >= 2) {
+                    $this->moveTo($this->objects[$lands[0]], GameObject::LIBRARY);
+                    $player->library = [$lands[0], ...array_values(array_diff($player->library, [$lands[0]]))];
+                    $this->log("{$player->name} puts a card from their hand on the bottom of their library.");
+                    $this->draw($controller, 1);
+                }
+                break;
+
             case 'flicker':
                 // It comes back as a new object, untapped and without counters, under its owner's control.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
@@ -4733,6 +4745,15 @@ final class Game
         usort($found, fn (int $a, int $b) => max(array_map(fn ($c) => $need[$c] ?? 0, $this->objects[$b]->definition()->manaAbility['colors'] ?? ['C']))
             <=> max(array_map(fn ($c) => $need[$c] ?? 0, $this->objects[$a]->definition()->manaAbility['colors'] ?? ['C'])));
         $land = $this->objects[$found[0]];
+        // `… then shuffle and put that card on top.`
+        if ($to === 'top') {
+            $player->library = array_values(array_diff($player->library, [$land->id]));
+            $this->shuffle($seat);
+            $player->library[] = $land->id;
+            $this->log("{$player->name} searches their library for {$land->name()} and puts it on top.");
+
+            return;
+        }
         if ($to === 'hand') {
             $this->moveTo($land, GameObject::HAND);
         } else {

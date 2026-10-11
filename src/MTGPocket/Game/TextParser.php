@@ -2502,6 +2502,17 @@ final class TextParser
 
             return true;
         }
+        // Fire Prophecy: `You may put a card from your hand on the bottom of your library. If you do, draw a card.`
+        if ($sentence === 'You may put a card from your hand on the bottom of your library') {
+            $effects[] = ['type' => 'bottom_draw', 'draw' => false];
+
+            return true;
+        }
+        if ($sentence === 'If you do, draw a card' && ($effects[$last]['type'] ?? '') === 'bottom_draw') {
+            $effects[$last]['draw'] = true;
+
+            return true;
+        }
         // The Pacts: `At the beginning of your next upkeep, pay {2}{G}{G}. If you don't, you lose the game.`; see Game::$pacts.
         if (preg_match("/^If you don't, you lose the game$/", $sentence) && $effects[$last]['type'] === 'pact') {
             $effects[$last]['lose'] = true;
@@ -2939,6 +2950,10 @@ final class TextParser
                 'onto the battlefield tapped' => 'tapped',
                 default => 'battlefield',
             }];
+        }
+        // Spider-Bot: `… search your library for a basic land card, reveal it, then shuffle and put that card on top.`
+        if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, reveal it, then shuffle and put that card on top$/i', $s, $m)) {
+            return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => 'top'];
         }
         // Cultivate: `… for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.`
         if (preg_match('/^(?:you may )?search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle$/i', $s)) {
