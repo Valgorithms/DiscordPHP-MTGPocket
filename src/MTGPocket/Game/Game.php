@@ -554,6 +554,13 @@ final class Game
             return;
         }
         if ($this->step === Step::EndCombat) {
+            // The Ring, third level: `Whenever your Ring-bearer becomes blocked by a creature, that creature's controller sacrifices it at end of combat.`
+            foreach ($this->blockers as $blocker => $attacker) {
+                if ($this->ringLevel($this->objects[$attacker]) >= 3 && $this->objects[$blocker]->zone === GameObject::BATTLEFIELD) {
+                    $this->log("The Ring: {$this->objects[$blocker]->name()} is sacrificed.");
+                    $this->moveTo($this->objects[$blocker], GameObject::GRAVEYARD);
+                }
+            }
             $this->attackers = $this->blockers = $this->extraBlocks = $this->blocked = $this->struckFirst = [];
         }
         $this->enterStep($this->step->next());
@@ -2234,6 +2241,10 @@ final class Game
         for ($i = 0; $i < $before && in_array('storm', $card->keywords, true) && $item !== false && $item['object'] === $spell->id; $i++) {
             $this->copySpell($item, $seat, 'storm');
         }
+        // Replicate (rule 702.56): a copy for each time its replicate cost was paid.
+        for ($i = 0; $i < max(1, (int) ($item['kicks'] ?? 0)) && in_array('replicate', $card->keywords, true) && $item !== false && $item['object'] === $spell->id && ($item['kicked'] ?? false); $i++) {
+            $this->copySpell($item, $seat, 'replicate');
+        }
         if (in_array('cascade', $card->keywords, true)) {
             $this->cascade($seat, $spell);
         }
@@ -3473,6 +3484,10 @@ final class Game
             case 'fog':
                 $this->fogTurn = $this->turn;
                 $this->log('Combat damage is prevented this turn.');
+                break;
+
+            case 'ring':
+                $this->temptWithRing($controller);
                 break;
 
             case 'no_prevention':
@@ -5401,6 +5416,10 @@ final class Game
                 $this->objects[$id]->tapped = true;
             }
             $this->trigger($this->objects[$id], 'attacks', $seat);
+            // The Ring, second level: `Whenever your Ring-bearer attacks, draw a card, then discard a card.`
+            if ($this->ringLevel($this->objects[$id]) >= 2) {
+                $this->ringTrigger($this->objects[$id], 'Draw a card, then discard a card.');
+            }
         }
 
         // Battle cry (rule 702.91): each other attacking creature gets +1/+0.
@@ -5571,6 +5590,8 @@ final class Game
             $this->hasKeyword($blocker, 'can block only creatures with flying') && ! $this->hasKeyword($attacker, 'flying') => true,
             $this->evadesByPower($attacker, $this->power($blocker)) => true,
             $this->hasKeyword($attacker, "can't be blocked by lesser power") && $this->power($blocker) < $this->power($attacker) => true,
+            // Your Ring-bearer can't be blocked by creatures with greater power.
+            $this->ringLevel($attacker) >= 1 && $this->power($blocker) > $this->power($attacker) => true,
             default => false,
         };
     }
@@ -5721,6 +5742,49 @@ final class Game
         $this->settle();
     }
 
+    /**
+     * The Ring tempts a player (rule 701.54): its level goes up and they
+     * choose a creature they control as their Ring-bearer; the strongest one.
+     *
+     * @param int $seat
+     *
+     * @return void
+     */
+    private function temptWithRing(int $seat): void
+    {
+        $player = $this->players[$seat];
+        $player->ring++;
+        $creatures = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)));
+        usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
+        $current = $player->ringBearer === null ? null : $this->targetObject($player->ringBearer);
+        $bearer = $current !== null && $current->zone === GameObject::BATTLEFIELD && $current->controller === $seat && $creatures !== [] && $this->power($current) >= $this->power($creatures[0]) ? $current : ($creatures[0] ?? null);
+        $player->ringBearer = $bearer === null ? null : "o:{$bearer->id}:{$bearer->incarnation}";
+        $this->log("The Ring tempts {$player->name}".($bearer === null ? '.' : "; {$bearer->name()} is their Ring-bearer."));
+    }
+
+    /**
+     * How many times the Ring has tempted the controller of their Ring-bearer, or 0 for any other creature.
+     *
+     * @param GameObject $object
+     *
+     * @return int
+     */
+    public function ringLevel(GameObject $object): int
+    {
+        $player = $this->players[$object->controller] ?? null;
+
+        return $player !== null && $object->zone === GameObject::BATTLEFIELD && $player->ringBearer === "o:{$object->id}:{$object->incarnation}" ? min(4, $player->ring) : 0;
+    }
+
+    private function ringTrigger(GameObject $bearer, string $text): void
+    {
+        $effects = (new CardDefinition(['name' => 'The Ring', 'type' => 'Sorcery', 'text' => $text]))->spellEffects();
+        $this->pendingTriggers[] = [
+            'source' => $bearer->id, 'incarnation' => $bearer->incarnation, 'controller' => $bearer->controller,
+            'effects' => $effects, 'kinds' => self::targetKindsOf($effects), 'label' => 'The Ring', 'text' => $text,
+        ];
+    }
+
     private function anyFirstStrike(): bool
     {
         foreach ([...array_keys($this->attackers), ...array_keys($this->blockers)] as $id) {
@@ -5848,6 +5912,10 @@ final class Game
         }
         foreach ($hitPlayer as $source) {
             $this->trigger($source, 'combat_damage', $source->controller);
+            // The Ring, fourth level.
+            if ($this->ringLevel($source) >= 4) {
+                $this->ringTrigger($source, 'Each opponent loses 3 life.');
+            }
             // Cipher: a copy of each card encoded on it, cast without paying its mana cost.
             foreach ($source->encoded as $encoded) {
                 $card = $this->objects[$encoded];

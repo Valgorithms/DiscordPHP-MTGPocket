@@ -777,6 +777,11 @@ final class TextParser
                 // Multikicker (rule 702.33c): kicker paid any number of times; see Game::castOptions().
                 $found['kicker'] = $m[1];
                 $found['keywords'][] = 'multikicker';
+            } elseif (preg_match('/^replicate '.self::COST.'\.?$/i', $part, $m) && $spell && ! isset($found['kicker'])) {
+                // Replicate (rule 702.56): paid like multikicker, a copy for each payment; see Game::castTriggers().
+                $found['kicker'] = $m[1];
+                $found['keywords'][] = 'multikicker';
+                $found['keywords'][] = 'replicate';
             } elseif (preg_match('/^teamwork (\d+)$/i', $part, $m) && $spell) {
                 // Teamwork: tap creatures with that much total power as you cast it; see Game::teamworkFodder().
                 $found['altCosts']['teamwork'] = $m[1];
@@ -2358,6 +2363,10 @@ final class TextParser
         }
         if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
             return ['type' => 'fog'];
+        }
+        // The Ring tempts you (rule 701.54): see Game::temptWithRing().
+        if (preg_match('/^the ring tempts you$/i', $s)) {
+            return ['type' => 'ring'];
         }
         if (preg_match("/^damage can't be prevented this turn$/i", $s)) {
             return ['type' => 'no_prevention'];

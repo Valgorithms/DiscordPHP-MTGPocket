@@ -35,6 +35,11 @@ final class GamePlayer
     /** Speed, 0 to 4 (rule 702.179); 0 until a permanent with "Start your engines!" is theirs. */
     public int $speed = 0;
 
+    /** How many times the Ring has tempted them (rule 701.54), and their Ring-bearer as `o:ID:INCARNATION`. */
+    public int $ring = 0;
+
+    public ?string $ringBearer = null;
+
     /** The city's blessing (rule 702.131): kept for the rest of the game. */
     public bool $blessed = false;
 
@@ -106,6 +111,8 @@ final class GamePlayer
             'poison' => $this->poison,
             'energy' => $this->energy,
             'speed' => $this->speed,
+            'ring' => $this->ring,
+            'ringBearer' => $this->ringBearer,
             'blessed' => $this->blessed,
             'speedTurn' => $this->speedTurn,
             'lifeMark' => $this->lifeMark,
@@ -134,6 +141,8 @@ final class GamePlayer
         $player->poison = (int) ($data['poison'] ?? 0);
         $player->energy = (int) ($data['energy'] ?? 0);
         $player->speed = (int) ($data['speed'] ?? 0);
+        $player->ring = (int) ($data['ring'] ?? 0);
+        $player->ringBearer = isset($data['ringBearer']) ? (string) $data['ringBearer'] : null;
         $player->blessed = (bool) ($data['blessed'] ?? false);
         $player->speedTurn = (int) ($data['speedTurn'] ?? 0);
         $player->lifeMark = (int) ($data['lifeMark'] ?? $player->life);
