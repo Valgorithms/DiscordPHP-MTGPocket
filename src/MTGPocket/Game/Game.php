@@ -985,7 +985,7 @@ final class Game
                 }
             }
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
-            foreach (['es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
+            foreach (['hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
                     if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
@@ -1132,9 +1132,9 @@ final class Game
             } elseif ($part === 'bargain') {
                 // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
                 $options['kicked'] = $options['bargained'] = true;
-            } elseif (in_array($part, ['es', 'js', 'rt', 'db'], true)) {
-                // From the graveyard: escape, jump-start, retrace, or disturb (transformed, rule 702.146).
-                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb'][$part];
+            } elseif (in_array($part, ['es', 'js', 'rt', 'db', 'hz'], true)) {
+                // From the graveyard: escape, jump-start, retrace, disturb (transformed, rule 702.146) or harmonize.
+                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning'], true)) {
@@ -1495,7 +1495,7 @@ final class Game
         if (in_array($options['exiled'], ['madness', 'foretell'], true)) {
             return $card->altCosts[$options['exiled']].$more;
         }
-        if (in_array($options['grave'], ['escape', 'disturb'], true)) {
+        if (in_array($options['grave'], ['escape', 'disturb', 'harmonize'], true)) {
             return $card->altCosts[$options['grave']].$more;
         }
         if ($options['bestowed']) {
@@ -1549,6 +1549,9 @@ final class Game
         $tax = $this->objects[$id]->zone === GameObject::COMMAND ? $this->commanderTax($id) : 0;
 
         $card = $this->objects[$id]->printed();
+        if ($options['grave'] === 'harmonize' && ($helper = $this->harmonizer($seat, $id)) !== null) {
+            $tax -= $this->power($helper);
+        }
         // Affinity for artifacts (rule 702.41): {1} less for each artifact you control.
         if (! $options['faceDown'] && in_array('affinity for artifacts', $card->keywords, true)) {
             $tax -= count(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')));
@@ -1930,7 +1933,7 @@ final class Game
             'controller' => $seat,
             'x' => $x,
             'targets' => $targets,
-        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'], 'kicks' => $options['kicks'] > 1 ? $options['kicks'] : 0,
+        ] + array_filter(['modes' => $options['modes'], 'kicked' => $options['kicked'], 'flashback' => $options['flashback'] || in_array($options['grave'], ['escape', 'jumpstart', 'harmonize'], true), 'escaped' => $options['grave'] === 'escape', 'disturbed' => $options['grave'] === 'disturb', 'faceDown' => $options['faceDown'], 'fromHand' => $fromHand, 'bestowed' => $options['bestowed'], 'alt' => $options['exiled'] === 'suspended' ? 'suspend' : $options['alt'], 'buyback' => $options['buyback'], 'kicks' => $options['kicks'] > 1 ? $options['kicks'] : 0,
             'sunburst' => in_array('sunburst', $card->keywords, true) && ! $options['faceDown'] ? $colorsSpent : 0,
             // Compleated (rule 702.150): life paid for Phyrexian mana.
             'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0]);
@@ -2005,6 +2008,7 @@ final class Game
                 : (count($this->players[$seat]->graveyard) - 1 < self::escapeExile($card) ? 'Not enough other cards in your graveyard to escape.' : null),
             'jumpstart' => ! in_array('jump-start', $card->keywords, true) ? "{$card->name} has no jump-start." : ($hand === [] ? 'Jump-start needs a card to discard.' : null),
             'disturb' => ! isset($card->altCosts['disturb']) || $card->back === null || $card->back->isAura() ? "{$card->name} can't be cast with disturb." : null,
+            'harmonize' => ! isset($card->altCosts['harmonize']) ? "{$card->name} has no harmonize." : null,
             'retrace' => ! in_array('retrace', $card->keywords, true) ? "{$card->name} has no retrace."
                 : (array_filter($hand, fn (int $card) => $this->objects[$card]->printed()->isLand()) === [] ? 'Retrace needs a land card to discard.' : null),
             default => null,
@@ -2048,7 +2052,27 @@ final class Game
         } elseif ($options['grave'] === 'retrace') {
             $lands = array_values(array_filter($player->hand, fn (int $card) => $this->objects[$card]->printed()->isLand()));
             $this->discardCards($seat, [$lands[0]]);
+        } elseif ($options['grave'] === 'harmonize' && ($helper = $this->harmonizer($seat, $id)) !== null
+            && (ManaCost::parse($this->objects[$id]->printed()->altCosts['harmonize'])->payments(0)[0]['mana']['generic'] ?? 0) > 0) {
+            $helper->tapped = true;
+            $this->log("{$player->name} taps {$helper->name()} to harmonize.");
         }
+    }
+
+    /**
+     * Harmonize's creature: the untapped one with the most power and no mana ability, tapped for its power off the generic cost.
+     *
+     * @param int $seat
+     * @param int $id   The spell, which isn't on the battlefield.
+     *
+     * @return GameObject|null
+     */
+    private function harmonizer(int $seat, int $id): ?GameObject
+    {
+        $creatures = array_filter($this->permanents($seat), fn (GameObject $o) => $o->id !== $id && $this->isCreature($o) && ! $o->tapped && $o->definition()->manaAbility === null && $this->power($o) > 0);
+        usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
+
+        return $creatures[0] ?? null;
     }
 
     /**
@@ -4514,7 +4538,7 @@ final class Game
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
                 $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
-                ($effect['target'] ?? null) === 'creature_other' => ['target' => "creature_not_{$source->id}"] + $effect,
+                in_array($effect['target'] ?? null, ['creature_other', '?creature_other'], true) => ['target' => str_replace('creature_other', "creature_not_{$source->id}", $effect['target'])] + $effect,
                 default => $effect,
             }, $ability['effects']);
             // "When this creature enters, if it was kicked, …"
@@ -4918,8 +4942,26 @@ final class Game
         if (($cost['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             return 'You have no card to discard.';
         }
+        if (isset($cost['fodder']) && $this->fodder($seat, $object, $cost['fodder']) === null) {
+            return 'You have no creature to sacrifice.';
+        }
 
         return null;
+    }
+
+    /**
+     * What `Sacrifice a creature` sacrifices: the weakest other creature, or the source itself when that is all there is.
+     *
+     * @param int        $seat
+     * @param GameObject $source
+     * @param string     $which  `any`, or `other` for `Sacrifice another creature`.
+     *
+     * @return GameObject|null
+     */
+    private function fodder(int $seat, GameObject $source, string $which): ?GameObject
+    {
+        return $this->weakest($seat, fn (GameObject $o) => $o->id !== $source->id && $this->isCreature($o))
+            ?? ($which === 'any' && $source->zone === GameObject::BATTLEFIELD && $source->controller === $seat && $this->isCreature($source) ? $source : null);
     }
 
     /**
@@ -5010,6 +5052,10 @@ final class Game
         }
         foreach ($crew as $creature) {
             $this->objects[$creature]->tapped = true;
+        }
+        if (isset($cost['fodder']) && ($fodder = $this->fodder($seat, $object, $cost['fodder'])) !== null) {
+            $this->log("{$player->name} sacrifices {$fodder->name()}.");
+            $this->moveTo($fodder, GameObject::GRAVEYARD);
         }
         $effects = $ability['effects'];
         if ($cost['station'] ?? false) {
@@ -5535,6 +5581,11 @@ final class Game
             }
         }
 
+        // `CARDNAME can't attack or block alone.`: a lone attacker with it stays back.
+        if (count($ids) === 1 && $this->hasKeyword($this->objects[$ids[0]], "can't attack or block alone")) {
+            $this->note("{$this->objects[$ids[0]]->name()} can't attack alone.", $seat);
+            $ids = [];
+        }
         $this->declared['attack'] = true;
         if ($ids !== []) {
             $this->players[$seat]->attackedTurn = $this->turn;
@@ -5797,6 +5848,11 @@ final class Game
                     unset($extra[$candidate]);
                 }
             }
+        }
+        // `CARDNAME can't attack or block alone.`: a lone blocker with it stays back.
+        if (count($blocks) === 1 && ($alone = $this->objects[(int) array_key_first($blocks)] ?? null) !== null && $this->hasKeyword($alone, "can't attack or block alone")) {
+            $this->note("{$alone->name()} can't block alone.", $seat);
+            [$blocks, $extra] = [[], []];
         }
         $count = [];
         foreach ($blocks as $blocker => $attacker) {
@@ -6522,7 +6578,7 @@ final class Game
         if ($object->unearthed && $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD) {
             $zone = GameObject::EXILE;
         }
-        if ($object->exileIfDies === $this->turn && $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object)) {
+        if ($object->exileIfDies === $this->turn && $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && ($this->isCreature($object) || $object->definition()->is('Planeswalker'))) {
             $zone = GameObject::EXILE;
         }
         // `If a creature an opponent controls would die, exile it instead.`
