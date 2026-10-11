@@ -395,6 +395,8 @@ final class TextParser
                 'Read ahead' => 'read ahead',
                 // Rule 502.3: untapping it anyway is always one of the legal choices, and Game always does.
                 'You may choose not to untap CARDNAME during your untap step.' => 'may not untap',
+                // Read by Game::declareAttackers() and Game::declareBlockers().
+                "CARDNAME can't attack or block alone." => "can't attack or block alone",
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -759,6 +761,12 @@ final class TextParser
         if (preg_match('/^Escape—'.self::COST.', Exile (\w+) other cards? from your graveyard\.?$/u', $line, $m) && is_int($n = self::amount($m[2])) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['escape'] = $m[1];
             $result['keywords'][] = "escape {$n}";
+
+            return true;
+        }
+        // Harmonize (rule 702.180): cast from your graveyard, tapping a creature for its power off the cost, then exiled.
+        if ($spell && preg_match('/^Harmonize '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['harmonize'] = $m[1];
 
             return true;
         }
@@ -1823,6 +1831,9 @@ final class TextParser
                 $cost['mana'] = ($cost['mana'] ?? '').$part;
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
+            } elseif ($part === 'Sacrifice a creature' || $part === 'Sacrifice another creature') {
+                // Nantuko Husk: the weakest creature; see Game::fodder().
+                $cost['fodder'] = $part === 'Sacrifice another creature' ? 'other' : 'any';
             } elseif ($part === 'Discard a card') {
                 // Paid with the cheapest card in hand; see Game::discardCheapest().
                 $cost['discard'] = 1;
@@ -2122,6 +2133,10 @@ final class TextParser
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
+        // Support N (rule 701.41): a +1/+1 counter on each of up to N other target creatures.
+        if (preg_match('/^support (\w+)$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1 && $n <= 5) {
+            return array_fill(0, $n, ['type' => 'counters', 'amount' => 1, 'target' => '?creature_other']);
+        }
         // A bounce land's `When this land enters, return a land you control to its owner's hand.`
         if (preg_match("/^return an? (land|creature|nonland permanent) you control to its owner's hand$/i", $sentence, $m)) {
             return [['type' => 'return_own', 'filter' => str_replace(' ', '_', strtolower($m[1]))]];
@@ -2137,7 +2152,7 @@ final class TextParser
         }
         // "Return up to two target creature cards from your graveyard to your hand": that many optional targets.
         if (preg_match('/^(.*)\bup to (two|three|four|five) target (.+)$/i', $sentence, $m) && is_int($n = self::amount($m[2]))
-            && ($found = self::sentenceEffects($m[1].'target '.preg_replace('/^((?:\w+ )*?)(\w+)s\b/', '$1$2', $m[3]))) !== null
+            && ($found = self::sentenceEffects($m[1].'target '.str_replace("to their owners' hands", "to its owner's hand", preg_replace('/^((?:\w+ )*?)(\w+)s\b/', '$1$2', $m[3])))) !== null
             && count($withTarget = array_keys(array_filter($found, fn (array $effect) => isset($effect['target'])))) === 1) {
             $effect = $found[$withTarget[0]];
             $effect['target'] = '?'.$effect['target'];
@@ -2260,7 +2275,7 @@ final class TextParser
             }
         }
         // "If that creature would die this turn, exile it instead." after damage.
-        if (preg_match('/^If (?:that creature|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
+        if (preg_match('/^If (?:that creature(?: or planeswalker)?|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
             $damages = array_keys(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage'));
             foreach ($damages as $i) {
                 $effects[$i]['exileIfDies'] = true;
