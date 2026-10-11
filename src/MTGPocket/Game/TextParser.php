@@ -811,6 +811,9 @@ final class TextParser
             } elseif ($word === 'ingest' && ! $spell) {
                 // Ingest (rule 702.115): the damaged player exiles the top card of their library.
                 $found['triggered'][] = ['text' => 'Ingest', 'event' => 'combat_damage', 'effects' => [['type' => 'ingest']]];
+            } elseif (preg_match('/^transmute '.self::COST.'$/i', $part, $m)) {
+                // Transmute (rule 702.53): discard it as a sorcery to search for a card with the same mana value; see Game::transmute().
+                $found['altCosts']['transmute'] = $m[1];
             } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
@@ -2053,14 +2056,15 @@ final class TextParser
      *
      * @return string[]|null
      */
-    private static function keywordList(string $text): ?array
+    private static function keywordList(string $text, bool $untilEndOfTurn = false): ?array
     {
         if (trim($text) === '') {
             return [];
         }
         $words = array_map(fn ($word) => strtolower(trim($word)), preg_split('/,\s*(?:and\s+)?|\s+and\s+/', $text));
         foreach ($words as $word) {
-            if (! in_array($word, CardDefinition::KEYWORDS, true)) {
+            // `gains protection from the color of your choice until end of turn`: the color is picked as it resolves (see Game::applyEffect()).
+            if (! in_array($word, CardDefinition::KEYWORDS, true) && ! ($untilEndOfTurn && $word === 'protection from the color of your choice')) {
                 return null;
             }
         }
@@ -2184,7 +2188,7 @@ final class TextParser
             && ($keywords = self::keywordList($m[3] ?? '')) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => $keywords, 'self' => true];
         }
-        if (preg_match('/^CARDNAME gains (.+?) until end of turn$/i', $s, $m) && ($keywords = self::keywordList($m[1])) !== null) {
+        if (preg_match('/^CARDNAME gains (.+?) until end of turn$/i', $s, $m) && ($keywords = self::keywordList($m[1], true)) !== null) {
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'self' => true];
         }
         // Incubate (rule 701.53): an Incubator token with N +1/+1 counters and `{2}: Transform this artifact.`
@@ -2391,7 +2395,7 @@ final class TextParser
         }
         if (preg_match("/^({$targets}) gains (.+?) until end of turn$/i", $s, $m)
             && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)
-            && ($keywords = self::keywordList($m[2])) !== null) {
+            && ($keywords = self::keywordList($m[2], true)) !== null) {
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'target' => self::TARGETS[strtolower($m[1])]];
         }
 
