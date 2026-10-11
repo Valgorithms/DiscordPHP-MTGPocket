@@ -904,6 +904,9 @@ final class TextParser
             } elseif (preg_match('/^soulshift (\d+)$/i', $part, $m) && ! $spell) {
                 // Soulshift (rule 702.46): when it dies, return a Spirit card with mana value N or less.
                 $found['triggered'][] = ['text' => $part, 'event' => 'dies', 'effects' => [['type' => 'bounce', 'target' => "spirit_card_yours_{$m[1]}"]]];
+            } elseif (preg_match('/^hideaway (\d+)$/i', $part, $m) && ! $spell) {
+                // Hideaway (rule 702.75): one of the top N exiled face down for later; see Game::hideaway().
+                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'hideaway', 'amount' => (int) $m[1], 'self' => true]]];
             } elseif (preg_match('/^fabricate (\d+)$/i', $part, $m) && ! $spell) {
                 // Fabricate (rule 702.123): always the counters, not the Servos.
                 $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'counters', 'amount' => (int) $m[1], 'self' => true]]];
@@ -2639,6 +2642,20 @@ final class TextParser
         }
         if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && (self::isPermanentTarget($m[1]) || (in_array(self::TARGETS[strtolower($m[1])], ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic'], true) && ($m[2] ?? '') === ''))) {
             return ['type' => 'exile', 'target' => self::TARGETS[strtolower($m[1])]] + (($m[2] ?? '') !== '' ? ['until' => true] : []);
+        }
+        // Hideaway's payoff: `You may play the exiled card without paying its mana cost if each player has no cards in hand.`
+        if (preg_match('/^(?:you may )?play the exiled card without paying its mana cost(?: if (.+))?$/i', $s, $m)) {
+            $if = match (strtolower($m[1] ?? '')) {
+                '' => '',
+                'your library has twenty or fewer cards in it' => 'library_le 20',
+                'each player has no cards in hand' => 'no_hands',
+                'creatures you control have total power 10 or greater' => 'total_power 10',
+                'you attacked with three or more creatures this turn' => 'attackers 3',
+                default => null,
+            };
+            if ($if !== null) {
+                return ['type' => 'play_hidden'] + ($if === '' ? [] : ['if' => $if]);
+            }
         }
         if (preg_match('/^at the beginning of your next upkeep, pay '.self::COST.'$/i', $s, $m) && ! str_contains($m[1], 'X')) {
             return ['type' => 'pact', 'cost' => $m[1]];

@@ -128,6 +128,9 @@ final class Game
     /** The turn in which damage can't be prevented (`Damage can't be prevented this turn.`). */
     public int $unpreventableTurn = 0;
 
+    /** How many creatures attacked in the last attack declared (Windbrisk Heights). */
+    public int $attackedWith = 0;
+
     /** @var array<string, string> A card returned to the battlefield, by its old target, for `It gains haste …` after it. */
     private array $followed = [];
 
@@ -4088,6 +4091,10 @@ final class Game
             case 'cascade':
                 // Not cast while the trigger waited: on the bottom of its owner's library.
                 $hit = $this->objects[(int) ($effect['hit'] ?? 0)] ?? null;
+                if ($hit !== null && $hit->zone === GameObject::EXILE && $hit->exiledBy === 'cascade' && ($effect['stay'] ?? false)) {
+                    $hit->exiledBy = 'hideaway';
+                    break;
+                }
                 if ($hit !== null && $hit->zone === GameObject::EXILE && $hit->exiledBy === 'cascade') {
                     $this->removeFromZone($hit);
                     $hit->moveTo(GameObject::LIBRARY);
@@ -4432,6 +4439,33 @@ final class Game
                 }
                 break;
 
+            case 'hideaway':
+                if ($self !== null) {
+                    $this->hideaway($self, $controller, $amount);
+                }
+                break;
+
+            case 'play_hidden':
+                $hidden = $self?->hidden === null ? null : ($this->objects[$self->hidden] ?? null);
+                if ($hidden === null || $hidden->zone !== GameObject::EXILE || $hidden->exiledBy !== 'hideaway' || ! $this->conditionMet($effect['if'] ?? 'always', $self, $controller)) {
+                    break;
+                }
+                $self->hidden = null;
+                if ($hidden->printed()->isLand()) {
+                    $this->putOntoBattlefield($hidden, $controller);
+                    $this->log("{$this->players[$controller]->name} plays {$hidden->name()} from exile.");
+                    break;
+                }
+                // Cast it for free while this waits on the stack, as cascade does; if not, it stays exiled.
+                $hidden->exiledBy = 'cascade';
+                $hidden->exiledOn = $this->turn;
+                $this->log("{$this->players[$controller]->name} may cast {$hidden->name()} without paying its mana cost.");
+                $this->pendingTriggers[] = [
+                    'source' => $self->id, 'incarnation' => $self->incarnation, 'controller' => $controller,
+                    'effects' => [['type' => 'cascade', 'hit' => $hidden->id, 'stay' => true]], 'kinds' => [], 'label' => "{$self->name()}'s hideaway", 'text' => "Cast {$hidden->name()} without paying its mana cost.",
+                ];
+                break;
+
             case 'pact':
                 $this->pacts[] = ['seat' => $controller, 'cost' => $effect['cost'], 'turn' => $this->turn, 'name' => $source->name(), 'lose' => (bool) ($effect['lose'] ?? false)];
                 break;
@@ -4755,6 +4789,11 @@ final class Game
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
+            'always' => true,
+            'library_le' => count($this->players[$controller]->library) <= (int) $n,
+            'no_hands' => array_filter($this->players, fn (GamePlayer $player) => $player->hand !== []) === [],
+            'total_power' => array_sum(array_map(fn (GameObject $o) => $this->power($o), array_filter($this->permanents($controller), fn (GameObject $o) => $this->isCreature($o)))) >= (int) $n,
+            'attackers' => $this->players[$controller]->attackedTurn === $this->turn && $this->attackedWith >= (int) $n,
             'hand_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && count($player->hand) > count($this->players[$controller]->hand)) !== [],
             default => false,
         };
@@ -5836,6 +5875,7 @@ final class Game
         $this->declared['attack'] = true;
         if ($ids !== []) {
             $this->players[$seat]->attackedTurn = $this->turn;
+            $this->attackedWith = count($ids);
         }
         foreach ($ids as $id) {
             $this->attackers[$id] = true;
@@ -6973,6 +7013,36 @@ final class Game
     }
 
     /**
+     * Hideaway (rule 702.75): looks at the top N cards, exiles the best nonland one face down (else a land), and puts the rest on the bottom in a random order.
+     *
+     * @param GameObject $source
+     * @param int        $seat
+     * @param int        $n
+     *
+     * @return void
+     */
+    private function hideaway(GameObject $source, int $seat, int $n): void
+    {
+        $player = $this->players[$seat];
+        $top = array_reverse(array_slice($player->library, -$n));
+        if ($top === []) {
+            return;
+        }
+        usort($top, fn (int $a, int $b) => [$this->objects[$b]->printed()->isLand() ? 0 : 1, $this->objects[$b]->printed()->cost->manaValue()] <=> [$this->objects[$a]->printed()->isLand() ? 0 : 1, $this->objects[$a]->printed()->cost->manaValue()]);
+        $player->library = array_values(array_diff($player->library, $top));
+        $hidden = $this->objects[array_shift($top)];
+        $hidden->moveTo(GameObject::EXILE);
+        $this->exile[] = $hidden->id;
+        $hidden->exiledBy = 'hideaway';
+        $source->hidden = $hidden->id;
+        shuffle($top);
+        foreach ($top as $id) {
+            array_unshift($player->library, $id);
+        }
+        $this->log("{$player->name} exiles a card face down with {$source->name()} (hideaway).");
+    }
+
+    /**
      * The Pacts: at the active player's upkeep after the turn each was cast, its cost is paid when it can be, or they lose the game.
      *
      * @return void
@@ -7885,6 +7955,7 @@ final class Game
             'shuffles' => $this->shuffles,
             'fogTurn' => $this->fogTurn,
             'unpreventableTurn' => $this->unpreventableTurn,
+            'attackedWith' => $this->attackedWith,
             'spellsCast' => $this->spellsCast,
             'died' => $this->died,
             'diedTurn' => $this->diedTurn,
@@ -7986,6 +8057,7 @@ final class Game
         $game->shuffles = (int) $data['shuffles'];
         $game->fogTurn = (int) ($data['fogTurn'] ?? 0);
         $game->unpreventableTurn = (int) ($data['unpreventableTurn'] ?? 0);
+        $game->attackedWith = (int) ($data['attackedWith'] ?? 0);
         $game->spellsCast = (int) ($data['spellsCast'] ?? 0);
         $game->died = (int) ($data['died'] ?? 0);
         $game->diedTurn = (int) ($data['diedTurn'] ?? 0);

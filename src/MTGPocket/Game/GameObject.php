@@ -87,6 +87,9 @@ final class GameObject
     /** @var int[] Objects it exiled `until this leaves the battlefield`. */
     public array $holding = [];
 
+    /** Hideaway: the card it exiled face down. */
+    public ?int $hidden = null;
+
     /** The Aura that gave its controller control of it (`You control enchanted creature.`). */
     public ?int $stolenBy = null;
 
@@ -232,6 +235,7 @@ final class GameObject
         $this->miracle = '';
         $this->pairedWith = null;
         $this->holding = [];
+        $this->hidden = null;
         $this->encoded = [];
         $this->exileIfDies = 0;
         $this->alt = null;
@@ -296,6 +300,7 @@ final class GameObject
             'spent' => $this->spent,
             'miracle' => $this->miracle,
             'pairedWith' => $this->pairedWith,
+            'hidden' => $this->hidden,
             'holding' => $this->holding,
             'encoded' => $this->encoded,
             'exileIfDies' => $this->exileIfDies,
@@ -351,6 +356,7 @@ final class GameObject
         $object->spent = (string) ($data['spent'] ?? '');
         $object->miracle = (string) ($data['miracle'] ?? '');
         $object->pairedWith = isset($data['pairedWith']) ? (int) $data['pairedWith'] : null;
+        $object->hidden = isset($data['hidden']) ? (int) $data['hidden'] : null;
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
         $object->encoded = array_map('intval', (array) ($data['encoded'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
