@@ -3265,9 +3265,11 @@ final class Game
                             break;
                         }
                         // "… unless its controller pays {N}": they pay when they can (rule 118.12).
-                        if (isset($effect['unless']) && ($payment = $this->payFor($item['controller'], $effect['unless'])) !== null) {
+                        // `{X}`: the X this spell was cast with.
+                        $unless = isset($effect['unless']) ? str_replace('{X}', '{'.max(0, $x).'}', $effect['unless']) : null;
+                        if ($unless !== null && ($payment = $this->payFor($item['controller'], $unless)) !== null) {
                             $this->pay($item['controller'], $payment);
-                            $this->log("{$this->players[$item['controller']]->name} pays {$effect['unless']}, so {$countered->name()} is not countered.");
+                            $this->log("{$this->players[$item['controller']]->name} pays {$unless}, so {$countered->name()} is not countered.");
                             break;
                         }
                         array_splice($this->stack, $index, 1);
@@ -3840,6 +3842,7 @@ final class Game
             'sorcery' => $card->is('Sorcery'),
             'planeswalker' => $card->isPlaneswalker(),
             'battle' => $card->is('Battle'),
+            'creature_unenchanted' => $creature && array_filter($this->permanents(), fn (GameObject $o) => $o->attachedTo === $object->id && $o->definition()->isAura()) === [],
             'permanent' => $card->isPermanentCard(),
             'nonland_permanent' => $card->isPermanentCard() && ! $card->isLand(),
             'any' => true,
@@ -4694,6 +4697,7 @@ final class Game
             'artifact_creature_enchantment_opponent' => ($card->is('Artifact') || $creature || $card->is('Enchantment')) && $object->controller !== $controller,
             'permanent' => true,
             'battle' => $card->is('Battle'),
+            'creature_unenchanted' => $creature && array_filter($this->permanents(), fn (GameObject $o) => $o->attachedTo === $object->id && $o->definition()->isAura()) === [],
             'basic_land' => $card->isLand() && in_array('Basic', $card->supertypes, true),
             'snow_land' => $card->isLand() && in_array('Snow', $card->supertypes, true),
             'legendary_creature' => $creature && in_array('Legendary', $card->supertypes, true),
@@ -4705,6 +4709,8 @@ final class Game
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1])
+                // `target non-Zombie creature`.
+                || ((bool) preg_match('/^creature_nonsub_(\w+)$/', $kind, $m) && $creature && ! in_array($m[1], $card->subtypes, true) && ! in_array('changeling', $card->keywords, true))
                 // `Enchant Forest`: a permanent with that subtype.
                 || ((bool) preg_match('/^sub_(\w+)$/', $kind, $m) && in_array($m[1], $card->subtypes, true))
                 // `target creature with power 4 or greater` / `… 2 or less`.
