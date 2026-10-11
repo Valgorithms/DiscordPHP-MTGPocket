@@ -6528,11 +6528,15 @@ final class Game
             if ($source->enchantedPlayer === $object->controller) {
                 array_push($anthems, ...array_filter($source->definition()->anthem, fn (array $anthem) => $anthem['enchantedPlayer'] ?? false));
             }
+            // "Creatures your opponents control get -1/-1."
+            if ($source->controller !== $object->controller && ! $source->faceDown) {
+                array_push($anthems, ...array_filter($source->definition()->anthem, fn (array $anthem) => ($anthem['opponents'] ?? false) && $this->gained($source, $anthem)));
+            }
             if ($source->controller !== $object->controller || $source->faceDown) {
                 continue;
             }
             foreach ($source->definition()->anthem as $anthem) {
-                if (($anthem['enchantedPlayer'] ?? false) || ! $this->gained($source, $anthem) || (($anthem['withCounter'] ?? false) && $object->counter('+1/+1') === 0)) {
+                if (($anthem['enchantedPlayer'] ?? false) || ($anthem['opponents'] ?? false) || ! $this->gained($source, $anthem) || (($anthem['withCounter'] ?? false) && $object->counter('+1/+1') === 0)) {
                     continue;
                 }
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
