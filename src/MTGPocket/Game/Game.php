@@ -140,6 +140,9 @@ final class Game
     /** @var array<int, array{seat: int, cost: string, turn: int, name: string, lose: bool}> The Pacts: pay at its caster's next upkeep or lose the game. */
     public array $pacts = [];
 
+    /** @var int[] Permanents with "Whenever CARDNAME becomes tapped" seen tapped at the last check. */
+    public array $seenTapped = [];
+
     /** @var array<string, int> Who gains life equal to the damage a shield in {@see $prevent} prevents, by target. */
     public array $preventGain = [];
 
@@ -4127,6 +4130,12 @@ final class Game
             case 'cascade':
                 // Not cast while the trigger waited: on the bottom of its owner's library.
                 $hit = $this->objects[(int) ($effect['hit'] ?? 0)] ?? null;
+                // Discover: into its owner's hand instead.
+                if ($hit !== null && $hit->zone === GameObject::EXILE && $hit->exiledBy === 'cascade' && ($effect['toHand'] ?? false)) {
+                    $this->moveTo($hit, GameObject::HAND);
+                    $this->log("{$hit->name()} goes to {$this->players[$hit->owner]->name}'s hand.");
+                    break;
+                }
                 if ($hit !== null && $hit->zone === GameObject::EXILE && $hit->exiledBy === 'cascade' && ($effect['stay'] ?? false)) {
                     $hit->exiledBy = 'hideaway';
                     break;
@@ -4137,6 +4146,38 @@ final class Game
                     array_unshift($this->players[$hit->owner]->library, $hit->id);
                     $this->log("{$hit->name()} goes to the bottom of the library.");
                 }
+                break;
+
+            case 'discover':
+                // Discover N (rule 701.57): the first nonland card with mana value N or less, cast free or put into your hand.
+                $player = $this->players[$controller];
+                $missed = [];
+                $hit = null;
+                while ($hit === null && ($id = array_pop($player->library)) !== null) {
+                    $card = $this->objects[$id]->printed();
+                    if (! $card->isLand() && $card->cost->manaValue() <= $amount) {
+                        $hit = $this->objects[$id];
+                    } else {
+                        $missed[] = $id;
+                    }
+                }
+                shuffle($missed);
+                foreach ($missed as $id) {
+                    array_unshift($player->library, $id);
+                }
+                if ($hit === null) {
+                    $this->log("{$player->name} discovers nothing.");
+                    break;
+                }
+                $hit->moveTo(GameObject::EXILE);
+                $this->exile[] = $hit->id;
+                $hit->exiledBy = 'cascade';
+                $hit->exiledOn = $this->turn;
+                $this->log("{$player->name} discovers {$hit->name()}.");
+                $this->pendingTriggers[] = [
+                    'source' => $source->id, 'incarnation' => $source->incarnation, 'controller' => $controller,
+                    'effects' => [['type' => 'cascade', 'hit' => $hit->id, 'toHand' => true]], 'kinds' => [], 'label' => "{$source->name()}'s discover", 'text' => "Cast {$hit->name()} without paying its mana cost, or put it into your hand.",
+                ];
                 break;
 
             case 'madness':
@@ -7222,6 +7263,17 @@ final class Game
     private function checkStateBasedActions(): void
     {
         $this->updateSpeed();
+        // `Whenever CARDNAME becomes tapped, …`: compared with the last check, wherever it was tapped.
+        $tapped = [];
+        foreach ($this->permanents() as $object) {
+            if ($object->tapped && $object->definition()->triggersOn('becomes_tapped') !== []) {
+                $tapped[] = $object->id;
+                if (! in_array($object->id, $this->seenTapped, true)) {
+                    $this->trigger($object, 'becomes_tapped', $object->controller);
+                }
+            }
+        }
+        $this->seenTapped = $tapped;
         // Ascend (rule 702.131): ten or more permanents and one with ascend.
         foreach ($this->players as $seat => $player) {
             $permanents = $this->permanents($seat);
@@ -8118,6 +8170,7 @@ final class Game
             'freerun' => $this->freerun,
             'prevent' => $this->prevent,
             'pacts' => $this->pacts,
+            'seenTapped' => $this->seenTapped,
             'preventGain' => $this->preventGain,
         ];
     }
@@ -8220,6 +8273,7 @@ final class Game
         $game->freerun = array_map('intval', (array) ($data['freerun'] ?? []));
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
         $game->pacts = array_values((array) ($data['pacts'] ?? []));
+        $game->seenTapped = array_map('intval', (array) ($data['seenTapped'] ?? []));
         $game->preventGain = array_map('intval', (array) ($data['preventGain'] ?? []));
 
         return $game;
