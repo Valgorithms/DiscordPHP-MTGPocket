@@ -82,6 +82,7 @@ final class TextParser
         'target nonland permanent you don\'t control' => 'nonland_permanent_opponent',
         'target artifact or creature an opponent controls' => 'artifact_or_creature_opponent',
         'target artifact, creature, or enchantment an opponent controls' => 'artifact_creature_enchantment_opponent',
+        'target artifact, enchantment, or creature with flying' => 'artifact_enchantment_flier',
         'target permanent' => 'permanent',
         'target creature you control' => 'creature_you_control',
         'target creature an opponent controls' => 'creature_opponent',
@@ -1172,6 +1173,12 @@ final class TextParser
         }
         if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[1]))) {
             $result['otherCounters'][$match[2]] = $n;
+
+            return true;
+        }
+        // Raid: `CARDNAME enters with a +1/+1 counter on it if you attacked this turn.`; see Game::resolve().
+        if (preg_match('/^Raid — CARDNAME enters(?: the battlefield)? with (an?|\w+) \+1\/\+1 counters? on it if you attacked this turn\.?$/u', $line, $match) && is_int($n = self::amount($match[1]))) {
+            $result['keywords'][] = "raid counters {$n}";
 
             return true;
         }
@@ -2560,6 +2567,13 @@ final class TextParser
         // `Choose a nonland card name.`: the search after it uses the name; see TextParser::modifies().
         if (preg_match('/^choose an? (?:(nonland|creature|artifact) )?card name$/i', $s, $m)) {
             return ['type' => 'choose_name', 'filter' => ($m[1] ?? '') === '' ? 'any' : strtolower($m[1])];
+        }
+        // `When CARDNAME dies, put its counters on target creature you control.`: its +1/+1 counters, as modular moves them.
+        if (preg_match('/^put its counters on target creature you control$/i', $s)) {
+            return ['type' => 'counters', 'amount' => 'counters', 'target' => 'creature_you_control'];
+        }
+        if (preg_match('/^(tap|untap) all creatures (you control|your opponents control)$/i', $s, $m)) {
+            return ['type' => strtolower($m[1]), 'each' => strtolower($m[2]) === 'you control' ? 'yours' : 'theirs'];
         }
         // Bolster (rule 701.39): counters on your creature with the least toughness.
         if (preg_match('/^bolster (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {

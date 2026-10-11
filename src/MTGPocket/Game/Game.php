@@ -2846,6 +2846,11 @@ final class Game
                     $object->addCounters('+1/+1', (int) $m[1]);
                 }
             }
+            foreach ($card->keywords as $keyword) {
+                if (preg_match('/^raid counters (\d+)$/', $keyword, $m) && $this->players[$item['controller']]->attackedTurn === $this->turn) {
+                    $object->addCounters('+1/+1', (int) $m[1]);
+                }
+            }
             if (($item['sunburst'] ?? 0) > 0) {
                 $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
             }
@@ -3557,6 +3562,15 @@ final class Game
 
             case 'tap':
             case 'untap':
+                // `Untap all creatures you control.` / `Tap all creatures your opponents control.`
+                if (isset($effect['each'])) {
+                    foreach ($this->permanents() as $object) {
+                        if ($this->isCreature($object) && ($object->controller === $controller) === ($effect['each'] === 'yours')) {
+                            $object->tapped = $effect['type'] === 'tap';
+                        }
+                    }
+                    break;
+                }
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $affected->tapped = $effect['type'] === 'tap';
                     $affected->frozen = $affected->frozen || ($effect['freeze'] ?? false);
@@ -5084,6 +5098,7 @@ final class Game
             'nonland_permanent' => ! $card->isLand(),
             'nonland_permanent_opponent' => ! $card->isLand() && $object->controller !== $controller,
             'artifact_or_creature_opponent' => ($card->is('Artifact') || $creature) && $object->controller !== $controller,
+            'artifact_enchantment_flier' => $card->is('Artifact') || $card->is('Enchantment') || ($creature && $this->hasKeyword($object, 'flying')),
             'artifact_creature_enchantment_opponent' => ($card->is('Artifact') || $creature || $card->is('Enchantment')) && $object->controller !== $controller,
             'permanent' => true,
             'battle' => $card->is('Battle'),
@@ -5410,6 +5425,9 @@ final class Game
         }
 
         $this->declared['attack'] = true;
+        if ($ids !== []) {
+            $this->players[$seat]->attackedTurn = $this->turn;
+        }
         foreach ($ids as $id) {
             $this->attackers[$id] = true;
             if (! $this->hasKeyword($this->objects[$id], 'vigilance')) {
