@@ -1920,10 +1920,18 @@ final class TextParser
             || isset($result['altCosts']['gift']) && preg_match('/^if the gift was promised, (.+)$/', $text, $match))) {
             [$kicked, $text] = [true, $match[1]];
         }
+        // The Thriving creatures: `you may pay {2}{G}. If you do, put a +1/+1 counter on it.`; paid when it can be (see Game::applyEffect()).
+        $pay = null;
+        if (preg_match('/^you may pay '.self::COST.'\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
+            [$pay, $text] = [$match[1], $match[2]];
+        }
         $effects = self::effects($text);
         // "Whenever CARDNAME attacks, put a +1/+1 counter on it.": with no target, "it" is CARDNAME.
         if ($effects === null && ! str_contains($text, 'target')) {
             $effects = self::effects(preg_replace('/\bit\b/', 'CARDNAME', $text));
+        }
+        if ($effects !== null && $pay !== null) {
+            $effects = [['type' => 'pay', 'cost' => $pay, 'then' => $effects]];
         }
         if ($effects === null) {
             return false;

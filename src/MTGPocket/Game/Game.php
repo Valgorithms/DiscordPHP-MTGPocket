@@ -4378,6 +4378,17 @@ final class Game
                 }
                 break;
 
+            case 'pay':
+                // `you may pay {2}{G}. If you do, …`: paid when it can be.
+                if (($payment = $this->payFor($controller, $effect['cost'])) !== null) {
+                    $this->pay($controller, $payment);
+                    $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$source->name()}.");
+                    foreach ($effect['then'] as $then) {
+                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                    }
+                }
+                break;
+
             case 'pay_transform':
                 // `At the beginning of your first main phase, you may pay {N}. If you do, transform CARDNAME.`: paid when it can be.
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! $self->transformed && ($payment = $this->payFor($controller, $effect['cost'])) !== null) {
