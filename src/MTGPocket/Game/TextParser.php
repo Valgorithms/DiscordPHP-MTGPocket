@@ -1845,6 +1845,10 @@ final class TextParser
             && isset(self::TARGETS[$phrase = 'target '.preg_replace('/s\b/', '', strtolower($m[3]))]) && self::isPermanentTarget($phrase)) {
             return array_fill(0, $n, ['type' => strtolower($m[1]), 'target' => '?'.self::TARGETS[$phrase]]);
         }
+        // `Up to two target creatures each get +2/+2 until end of turn.`: as `… target creatures gets …`.
+        if (preg_match('/^(up to \w+ target creatures) each get (.+)$/i', $sentence, $m)) {
+            return self::sentenceEffects($m[1].' gets '.preg_replace('/^(\S+ and) gain /', '$1 gains ', $m[2]));
+        }
         // "Return up to two target creature cards from your graveyard to your hand": that many optional targets.
         if (preg_match('/^(.*)\bup to (two|three|four|five) target (.+)$/i', $sentence, $m) && is_int($n = self::amount($m[2]))
             && ($found = self::sentenceEffects($m[1].'target '.preg_replace('/^((?:\w+ )*?)(\w+)s\b/', '$1$2', $m[3]))) !== null
@@ -2160,6 +2164,14 @@ final class TextParser
             if (in_array(self::TARGETS[strtolower($m[2])], self::CREATURE_KINDS, true)) {
                 return ['type' => 'counters', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
             }
+        }
+        // `Put a +1/+1 counter on each creature you control.` / `… each other creature you control.`
+        if (preg_match('/^put (\w+) \+1\/\+1 counters? on each (other )?creature you control$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []);
+        }
+        // A ritual: `Add {R}{R}{R}.`
+        if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {
+            return ['type' => 'add_mana', 'color' => strtoupper($m[2][1]), 'amount' => intdiv(strlen($m[1]), 3)];
         }
         if (preg_match("/^(tap|untap) ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[2])) {
             return ['type' => strtolower($m[1]), 'target' => self::TARGETS[strtolower($m[2])]];
