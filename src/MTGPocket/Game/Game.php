@@ -2872,6 +2872,20 @@ final class Game
         }
         while ($steps !== []) {
             [$effect, $target] = array_shift($steps);
+            if ($effect['type'] === 'clash') {
+                $item['won'] = $this->clash($item['controller'], $source);
+
+                continue;
+            }
+            if (($effect['ifWon'] ?? false) && ! ($item['won'] ?? false)) {
+                continue;
+            }
+            // `Return CARDNAME to its owner's hand.` on a spell: it goes there as it finishes resolving.
+            if ($effect['type'] === 'bounce' && ($effect['self'] ?? false) && ! self::isAbility($item)) {
+                $item['toHand'] = true;
+
+                continue;
+            }
             if ($this->applyEffect($effect, $source, $permanent, $item['controller'], $item['x'], $target)) {
                 $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self];
 
@@ -2886,6 +2900,31 @@ final class Game
         if (! self::isAbility($item) && $source->zone === GameObject::STACK) {
             $this->spellLeavesStack($source, $item, true);
         }
+    }
+
+    /**
+     * Clash (rule 701.23): the player and their opponent each reveal their
+     * library's top card; the player wins with a higher mana value. Both
+     * cards stay on top.
+     *
+     * @param int        $seat
+     * @param GameObject $source
+     *
+     * @return bool Whether the player won.
+     */
+    private function clash(int $seat, GameObject $source): bool
+    {
+        $values = [];
+        $shown = [];
+        foreach ([$seat, $this->opponent($seat)] as $player) {
+            $top = end($this->players[$player]->library);
+            $values[$player] = $top === false ? -1 : $this->objects[$top]->definition()->cost->manaValue();
+            $shown[] = $this->players[$player]->name.' reveals '.($top === false ? 'nothing' : $this->objects[$top]->name());
+        }
+        $won = $values[$seat] > $values[$this->opponent($seat)];
+        $this->log("{$source->name()}: clash. ".implode(', ', $shown).". {$this->players[$seat]->name} ".($won ? 'wins' : 'does not win').'.');
+
+        return $won;
     }
 
     /**
@@ -2928,6 +2967,12 @@ final class Game
             $this->moveTo($object, GameObject::EXILE);
             $object->rebound = true;
             $this->log("{$object->name()} is exiled with rebound.");
+
+            return;
+        }
+        if ($resolved && ($item['toHand'] ?? false)) {
+            $this->moveTo($object, GameObject::HAND);
+            $this->log("{$object->name()} returns to {$this->players[$object->owner]->name}'s hand.");
 
             return;
         }
@@ -3115,7 +3160,8 @@ final class Game
                 $hits = match ($effect['each'] ?? null) {
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
-                    default => [$target],
+                    // `… deals 3 damage to that creature's controller.`
+                    default => isset($effect['toController']) ? ($affected === null ? [] : ["p:{$affected->controller}"]) : [$target],
                 };
                 foreach ($hits as $hit) {
                     // `It can't be regenerated.`: its regeneration shields are gone.
