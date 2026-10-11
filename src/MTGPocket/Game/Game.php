@@ -4715,6 +4715,9 @@ final class Game
         if (isset($cost['remove']) && $object->counter($cost['remove'][0]) < $cost['remove'][1]) {
             return "{$object->name()} needs {$cost['remove'][1]} {$cost['remove'][0]} counters.";
         }
+        if (($cost['discard'] ?? 0) > count($this->players[$seat]->hand)) {
+            return 'You have no card to discard.';
+        }
 
         return null;
     }
@@ -4790,7 +4793,7 @@ final class Game
         $label = "{$object->name()}'s ability";
         $this->checkTargets($kinds, $targets, $seat, $label, $object);
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat);
-        if ($wardDiscard > count($this->players[$seat]->hand)) {
+        if ($wardDiscard + ($ability['cost']['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             throw new GameException('You need a card in your hand to discard for ward.');
         }
         $payment = $this->abilityPayment($seat, $object, $ability, $wardMana, $wardLife);
@@ -4819,7 +4822,8 @@ final class Game
             $object->addCounters('loyalty', $cost['loyalty']);
         }
         $player->energy -= $cost['energy'] ?? 0;
-        $this->discardCheapest($seat, $wardDiscard);
+        // `Discard a card` as a cost, with ward's: the cheapest cards.
+        $this->discardCheapest($seat, $wardDiscard + ($cost['discard'] ?? 0));
         if (isset($cost['remove'])) {
             $object->addCounters($cost['remove'][0], -$cost['remove'][1]);
         }
