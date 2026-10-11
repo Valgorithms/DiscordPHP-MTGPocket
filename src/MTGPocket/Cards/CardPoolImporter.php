@@ -171,6 +171,10 @@ class CardPoolImporter
             if (($row['layout'] ?? null) === 'prepare' && isset($backs[$row['name']])) {
                 $card['prepare'] = $backs[$row['name']];
             }
+            // A split card's right half (rule 709): either half can be cast, or both with fuse.
+            if (($row['layout'] ?? null) === 'split' && isset($backs[$row['name']])) {
+                $card['split'] = $backs[$row['name']];
+            }
             $pool->add($card);
         }
 
@@ -201,7 +205,7 @@ class CardPoolImporter
         $backs = [];
         foreach ($rows as $row) {
             $row = $this->database->decode('cards', $row);
-            if (isset($backs[$row['name']]) || ! in_array($row['layout'] ?? null, [...self::DOUBLE_FACED, 'prepare'], true)) {
+            if (isset($backs[$row['name']]) || ! in_array($row['layout'] ?? null, [...self::DOUBLE_FACED, 'prepare', 'split'], true)) {
                 continue;
             }
             $back = [

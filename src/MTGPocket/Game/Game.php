@@ -1392,6 +1392,10 @@ final class Game
         if ($options['entwined'] && isset($card->altCosts['teamwork']) && $this->teamworkFodder($seat, (int) $card->altCosts['teamwork']) === null) {
             return "Teamwork needs untapped creatures with total power {$card->altCosts['teamwork']} or more.";
         }
+        // Fuse (rule 702.102): both halves only from its owner's hand.
+        if ($card->split && count(array_unique($options['modes'])) > 1 && $object?->zone !== GameObject::HAND) {
+            return "{$card->name}'s halves can be fused only from your hand.";
+        }
         if (! $options['faceDown'] && ! $options['entwined'] && ! in_array(array_values(array_unique(array_map('intval', $options['modes']))), $card->modeChoices(), true)) {
             return $card->choose === null ? "{$card->name} has no modes." : "Choose {$card->choose['min']}".($card->choose['max'] > $card->choose['min'] ? " to {$card->choose['max']}" : '')." of {$card->name}'s modes.";
         }
@@ -1496,7 +1500,8 @@ final class Game
         if ($options['bestowed']) {
             return $card->bestow['cost'];
         }
-        $cost = $options['faceDown'] ? '{3}' : ($options['flashback'] ? (string) $card->flashback : (string) $card->cost);
+        // A split card's halves each bring their own cost, as Spree's modes do (rule 709.3).
+        $cost = $options['faceDown'] ? '{3}' : ($options['flashback'] ? (string) $card->flashback : ($card->split ? '' : (string) $card->cost));
 
         return $cost.$more;
     }
