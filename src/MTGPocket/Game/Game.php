@@ -3740,6 +3740,7 @@ final class Game
                 break;
 
             case 'destroy':
+            case 'exile':
                 if (isset($effect['all'])) {
                     $doomed = array_filter($this->permanents(), fn (GameObject $o) => match ($effect['all']) {
                         'all creatures' => $this->isCreature($o),
@@ -3750,14 +3751,18 @@ final class Game
                         default => ! $o->definition()->isLand(),
                     });
                     foreach ($doomed as $object) {
-                        $this->destroy($object, ! ($effect['noRegen'] ?? false));
+                        if ($effect['type'] === 'exile') {
+                            $this->moveTo($object, GameObject::EXILE);
+                        } else {
+                            $this->destroy($object, ! ($effect['noRegen'] ?? false));
+                        }
                     }
                     break;
                 }
-                $this->destroy($affected, ! ($effect['noRegen'] ?? false));
-                break;
-
-            case 'exile':
+                if ($effect['type'] === 'destroy') {
+                    $this->destroy($affected, ! ($effect['noRegen'] ?? false));
+                    break;
+                }
                 // "… until this leaves the battlefield": nothing is exiled if it already has (rule 610.3c).
                 if ($effect['until'] ?? false) {
                     if ($self === null || $self->zone !== GameObject::BATTLEFIELD || $affected === null) {
@@ -4220,8 +4225,25 @@ final class Game
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
 
-            case 'tuck':
+            case 'flicker':
+                // It comes back as a new object, untapped and without counters, under its owner's control.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $this->moveTo($affected, GameObject::EXILE);
+                    if ($affected->zone === GameObject::EXILE) {
+                        $this->putOntoBattlefield($affected, $affected->owner);
+                        $this->log("{$affected->name()} is exiled and returns to the battlefield.");
+                    }
+                }
+                break;
+
+            case 'self_damage':
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $this->dealDamage($affected, "o:{$affected->id}:{$affected->incarnation}", $this->power($affected));
+                }
+                break;
+
+            case 'tuck':
+                if ($affected !== null && in_array($affected->zone, [GameObject::BATTLEFIELD, GameObject::GRAVEYARD], true)) {
                     $this->moveTo($affected, GameObject::LIBRARY);
                     $library = &$this->players[$affected->owner]->library;
                     if (($effect['bottom'] ?? false) && in_array($affected->id, $library, true)) {
@@ -4790,6 +4812,8 @@ final class Game
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
             'always' => true,
+            'untapped' => ! $source->tapped,
+            'tapped' => $source->tapped,
             'library_le' => count($this->players[$controller]->library) <= (int) $n,
             'no_hands' => array_filter($this->players, fn (GamePlayer $player) => $player->hand !== []) === [],
             'total_power' => array_sum(array_map(fn (GameObject $o) => $this->power($o), array_filter($this->permanents($controller), fn (GameObject $o) => $this->isCreature($o)))) >= (int) $n,
