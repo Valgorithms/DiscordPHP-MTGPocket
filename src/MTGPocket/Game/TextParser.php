@@ -2004,6 +2004,36 @@ final class TextParser
     }
 
     /**
+     * `that creature gets an additional +2/+2 …` after an effect on target
+     * creature: the same effect on that creature again; `CARDNAME deals 3
+     * damage to that creature's controller`.
+     *
+     * @param string  $text
+     * @param array[] $effects So far.
+     *
+     * @return array[]|null
+     */
+    private static function thatCreature(string $text, array $effects): ?array
+    {
+        if (! in_array('creature', array_column($effects, 'target'), true)) {
+            return null;
+        }
+        if (preg_match("/^CARDNAME deals (\\w+) damage to that creature's controller$/", $text, $m) && is_int($n = self::amount($m[1]))) {
+            return [['type' => 'damage', 'amount' => $n, 'sameTarget' => true, 'toController' => true]];
+        }
+        if (! preg_match('/^that creature (.+)$/', $text, $m)) {
+            return null;
+        }
+        $found = self::effects('target creature '.preg_replace('/^gets an additional /', 'gets ', $m[1]));
+        if ($found === null || count($found) !== 1 || ($found[0]['target'] ?? null) !== 'creature') {
+            return null;
+        }
+        unset($found[0]['target']);
+
+        return [$found[0] + ['sameTarget' => true]];
+    }
+
+    /**
      * A sentence that changes the effect before it: `It can't be
      * regenerated.` after destroy, `It gains haste until end of turn.`
      * after creating a token.
@@ -2079,6 +2109,15 @@ final class TextParser
         }
         if (preg_match('/^If you do, draw (\w+) cards?$/', $sentence, $m) && is_int($n = self::amount($m[1])) && $effects[$last]['type'] === 'discard' && ($effects[$last]['may'] ?? false)) {
             $effects[$last]['draw'] = $n;
+
+            return true;
+        }
+        // `Clash with an opponent. If you win, …`: those effects only when the clash is won.
+        if (preg_match('/^If you win, (.+)$/', $sentence, $m) && in_array('clash', array_column($effects, 'type'), true)
+            && (($won = self::effects($m[1])) !== null || ($won = self::thatCreature($m[1], $effects)) !== null)) {
+            foreach ($won as $effect) {
+                $effects[] = $effect + ['ifWon' => true];
+            }
 
             return true;
         }
@@ -2402,6 +2441,10 @@ final class TextParser
         // `Copy target instant or sorcery spell. You may choose new targets for the copy.`: the copy keeps its targets.
         if (preg_match("/^copy ({$targets})$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])] ?? null, ['instant_sorcery_spell', 'instant_sorcery_spell_yours'], true)) {
             return ['type' => 'copy_spell', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        // Clash (rule 701.23); `If you win, …` follows (see TextParser::modifies()).
+        if (preg_match('/^clash with an opponent$/i', $s)) {
+            return ['type' => 'clash'];
         }
         if (preg_match('/^proliferate$/i', $s)) {
             return ['type' => 'proliferate'];

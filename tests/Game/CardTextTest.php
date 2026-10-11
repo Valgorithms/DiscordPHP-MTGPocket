@@ -101,12 +101,12 @@ final class CardTextTest extends GameTestCase
             $this->assertSame($effect, TextParser::effect($sentence), $sentence);
         }
         $this->assertNull(TextParser::effect('Destroy target player'));
-        $this->assertNull(TextParser::effect('Clash with an opponent'));
+        $this->assertNull(TextParser::effect('Fateseal 2'));
 
-        $charm = new CardDefinition(['name' => 'Twin Bolt', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'Twin Bolt deals 2 damage to target creature. You gain 2 life. Clash with an opponent.']);
+        $charm = new CardDefinition(['name' => 'Twin Bolt', 'type' => 'Instant', 'manaCost' => '{1}{R}', 'text' => 'Twin Bolt deals 2 damage to target creature. You gain 2 life. Fateseal 2.']);
         $this->assertSame(['creature'], $charm->targetKinds());
         $this->assertCount(2, $charm->effects);
-        $this->assertSame(['Clash with an opponent.'], $charm->unsupported);
+        $this->assertSame(['Fateseal 2.'], $charm->unsupported);
     }
 
     public function testAuras(): void
