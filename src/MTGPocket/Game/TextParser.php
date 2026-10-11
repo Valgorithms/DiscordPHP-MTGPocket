@@ -969,6 +969,20 @@ final class TextParser
 
             return true;
         }
+        // Springleaf Drum: `{T}, Tap an untapped creature you control: Add one mana of any color.`; see Game::manaSources().
+        if (preg_match('/^\{T\}, Tap an untapped creature you control: Add one mana of any colou?r\.$/', $line)) {
+            $any = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G']];
+            if ($result['mana'] === null) {
+                $result['mana'] = $any + ['tapCreature' => true];
+            } elseif ($result['mana']['count'] === 1 && ! isset($result['mana']['withCreature']) && array_diff(array_keys($result['mana']), ['count', 'colors']) === []) {
+                // Scene of the Crime: `{T}: Add {C}.` too, so either.
+                $result['mana']['withCreature'] = $any;
+            } else {
+                return false;
+            }
+
+            return true;
+        }
         if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME|, Remove an? (?:charge|storage|oil) counter from CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
             return false;
         }
@@ -1018,6 +1032,15 @@ final class TextParser
         }
 
         $existing = $result['mana'];
+        if (($existing['tapCreature'] ?? false) && $ability['count'] === 1 && array_diff(array_keys($ability), ['count', 'colors']) === []) {
+            // The creature-tapping ability came first.
+            $result['mana'] = $ability + ['withCreature' => array_diff_key($existing, ['tapCreature' => true])];
+
+            return true;
+        }
+        if ($existing !== null && (isset($existing['tapCreature']) || isset($existing['withCreature']))) {
+            return false;
+        }
         if ($existing !== null && $existing['count'] === 0) {
             // The filter ability came first.
             $ability += array_intersect_key($existing, ['filter' => true, 'filterAs' => true, 'filterPays' => true]);
@@ -1156,12 +1179,13 @@ final class TextParser
      */
     private static function additionalCost(string $line, array &$result): bool
     {
-        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)\.?$/', $line, $m)) {
+        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)\.?$/', $line, $m)) {
             return false;
         }
         $result['additionalCost'] = match ($m[1]) {
             'sacrifice a creature' => 'sacrifice_creature',
             'sacrifice an artifact or creature' => 'sacrifice_artifact_or_creature',
+            'sacrifice an artifact' => 'sacrifice_artifact',
             'exile a creature card from your graveyard' => 'exile_creature_card',
             'exile a card from your graveyard' => 'exile_card',
             default => 'discard',
@@ -2383,6 +2407,13 @@ final class TextParser
         }
         if (preg_match('/^discard (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'discard', 'amount' => $n];
+        }
+        // An edict: `Target player sacrifices a creature of their choice.`, `Each opponent sacrifices a creature or planeswalker.`
+        if (preg_match("/^(target player|target opponent|each opponent|each player) sacrifices (a|an|one|two|three) (creature|artifact|enchantment|land|permanent|nonland permanent|creature or planeswalker|artifact or creature|attacking creature)s?(?: of their choice)?$/i", $s, $m)
+            && is_int($n = self::amount($m[2] === 'an' ? 'a' : $m[2]))) {
+            $who = strtolower($m[1]);
+
+            return ['type' => 'edict', 'amount' => $n, 'kind' => strtolower($m[3])] + (str_starts_with($who, 'target') ? ['target' => self::TARGETS[$who]] : ['each' => substr($who, 5)]);
         }
         // Graveyard hate: `Exile target player's graveyard.`, `Exile each opponent's graveyard.`, `Exile all graveyards.`
         if (preg_match("/^exile (target player|target opponent)'s graveyard$/i", $s, $m)) {
