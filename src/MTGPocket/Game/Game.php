@@ -4403,9 +4403,14 @@ final class Game
                 break;
 
             case 'pay':
-                // `you may pay {2}{G}. If you do, …`: paid when it can be.
-                if (($payment = $this->payFor($controller, $effect['cost'])) !== null) {
-                    $this->pay($controller, $payment);
+                // `you may pay {2}{G}. If you do, …`: paid when it can be; `{E}{E}` from its controller's energy.
+                $energy = str_contains($effect['cost'], '{E}') ? substr_count($effect['cost'], '{E}') : 0;
+                if ($energy > 0 ? $this->players[$controller]->energy >= $energy : ($payment = $this->payFor($controller, $effect['cost'])) !== null) {
+                    if ($energy > 0) {
+                        $this->players[$controller]->energy -= $energy;
+                    } else {
+                        $this->pay($controller, $payment);
+                    }
                     $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$source->name()}.");
                     foreach ($effect['then'] as $then) {
                         $this->applyEffect($then, $source, $self, $controller, $x, $target);
@@ -6652,6 +6657,7 @@ final class Game
         if ($card->entersWithMinusCounters > 0) {
             $object->addCounters('-1/-1', $card->entersWithMinusCounters);
         }
+        $this->soulbond($object);
         if ($card->chooses !== null) {
             $object->chosen = $this->choiceFor($controller, $card->chooses);
             $this->log("{$this->players[$controller]->name} chooses {$object->chosen} for {$object->name()}.");
@@ -7532,6 +7538,49 @@ final class Game
     }
 
     /**
+     * Soulbond (rule 702.95): as a creature enters, a soulbond creature and
+     * another unpaired creature its controller controls pair up; its
+     * controller always chooses to.
+     *
+     * @param GameObject $entered
+     *
+     * @return void
+     */
+    private function soulbond(GameObject $entered): void
+    {
+        if (! $this->isCreature($entered)) {
+            return;
+        }
+        $unpaired = array_values(array_filter($this->permanents($entered->controller), fn (GameObject $o) => $o->id !== $entered->id && $this->isCreature($o) && $this->partner($o) === null));
+        $bonded = in_array('soulbond', $entered->definition()->keywords, true)
+            ? ($unpaired[0] ?? null)
+            : (array_values(array_filter($unpaired, fn (GameObject $o) => in_array('soulbond', $o->definition()->keywords, true)))[0] ?? null);
+        if ($bonded !== null) {
+            $entered->pairedWith = $bonded->id;
+            $bonded->pairedWith = $entered->id;
+            $this->log("{$entered->name()} is paired with {$bonded->name()}.");
+        }
+    }
+
+    /**
+     * Soulbond: the creature it is paired with, while both stay creatures on the battlefield under the same control.
+     *
+     * @param GameObject $object
+     *
+     * @return GameObject|null
+     */
+    public function partner(GameObject $object): ?GameObject
+    {
+        $partner = $object->pairedWith === null ? null : ($this->objects[$object->pairedWith] ?? null);
+        if ($partner === null || $partner->pairedWith !== $object->id || $partner->zone !== GameObject::BATTLEFIELD || $object->zone !== GameObject::BATTLEFIELD
+            || $partner->controller !== $object->controller || ! $this->isCreature($partner) || ! $this->isCreature($object)) {
+            return null;
+        }
+
+        return $partner;
+    }
+
+    /**
      * The static bonuses its controller's permanents give it, as a creature
      * on the battlefield (`Creatures you control get +1/+1`).
      *
@@ -7574,6 +7623,10 @@ final class Game
                 }
                 // A lord: only creatures of its type.
                 if (isset($anthem['subtype']) && ! in_array($anthem['subtype'], $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
+                    continue;
+                }
+                // Soulbond: only it and the creature it is paired with.
+                if (($anthem['paired'] ?? false) && ($object->id !== $source->id && $object->id !== $this->partner($source)?->id || $this->partner($source) === null)) {
                     continue;
                 }
                 if (! ($anthem['other'] && $source->id === $object->id)) {

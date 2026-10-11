@@ -1326,6 +1326,15 @@ final class TextParser
 
             return true;
         }
+        // Soulbond (rule 702.95): `As long as CARDNAME is paired with another creature, each of those creatures gets +1/+1 (and has flying).`
+        if (preg_match('/^As long as CARDNAME is paired with another creature, (?:each of those creatures|both creatures) (?:gets? \+(\d+)\/\+(\d+)(?: and ha(?:s|ve) (.+?))?|ha(?:s|ve) (.+?))\.?$/', $line, $m)) {
+            if (($keywords = self::keywordList(($m[3] ?? '') !== '' ? $m[3] : ($m[4] ?? ''))) === null) {
+                return false;
+            }
+            $result['anthem'][] = ['power' => (int) ($m[1] ?? 0), 'toughness' => (int) ($m[2] ?? 0), 'keywords' => $keywords, 'other' => false, 'paired' => true];
+
+            return true;
+        }
         // `Each creature you control with a +1/+1 counter on it has trample.`
         if (preg_match('/^(?:Each (other )?creature you control with a \+1\/\+1 counter on it has|(Other )?[Cc]reatures you control with \+1\/\+1 counters on them have) (.+?)\.?$/', $line, $m)) {
             if (($keywords = self::keywordList($m[3])) === null) {
@@ -1928,7 +1937,8 @@ final class TextParser
         }
         // The Thriving creatures: `you may pay {2}{G}. If you do, put a +1/+1 counter on it.`; paid when it can be (see Game::applyEffect()).
         $pay = null;
-        if (preg_match('/^you may pay '.self::COST.'\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
+        // Energy too (Scrapper Champion): `you may pay {E}{E}. If you do, …`.
+        if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
             [$pay, $text] = [$match[1], $match[2]];
         }
         $effects = self::effects($text);
