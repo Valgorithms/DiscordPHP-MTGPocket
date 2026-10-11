@@ -4490,6 +4490,13 @@ final class Game
                 $this->setTriggerModes($options[0]);
                 $trigger = $this->pendingTriggers[0];
             }
+            // Not targeted: the object the event named.
+            if (isset($trigger['targets'])) {
+                array_shift($this->pendingTriggers);
+                $this->pushAbility(array_diff_key($trigger, ['targets' => true]), $trigger['targets'], 'triggers');
+
+                continue;
+            }
             $targets = [];
             foreach ($trigger['kinds'] as $kind) {
                 $options = $this->targetOptions($trigger['controller'], $kind);
@@ -5910,8 +5917,17 @@ final class Game
         // All combat damage is dealt at once (rule 510.2).
         $lines = $hitPlayer = $toPlayers = [];
         foreach ($assignments as [$source, $target, $amount]) {
+            $hurt = $target[0] === 'o' ? $this->objects[(int) substr($target, 2)] : null;
             $this->dealDamage($source, $target, $amount);
             $lines[] = "{$source->name()} deals {$amount} to ".$this->describeTarget($target);
+            // `Whenever CARDNAME deals combat damage to a creature, tap that creature …`: that creature, not targeted.
+            foreach ($hurt !== null ? $source->definition()->triggersOn('combat_damage_creature') : [] as $ability) {
+                $this->pendingTriggers[] = [
+                    'source' => $source->id, 'incarnation' => $source->incarnation, 'controller' => $source->controller,
+                    'effects' => $ability['effects'], 'kinds' => self::targetKindsOf($ability['effects']), 'targets' => ["o:{$hurt->id}:{$hurt->incarnation}"],
+                    'label' => "{$source->name()}'s ability", 'text' => str_replace('CARDNAME', $source->name(), $ability['text']),
+                ];
+            }
             if ($target[0] === 'p') {
                 // Toxic (rule 702.164): poison counters too.
                 if (($toxic = $this->keywordAmount($source, 'toxic')) > 0) {
