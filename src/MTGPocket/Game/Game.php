@@ -3750,6 +3750,7 @@ final class Game
                 break;
 
             case 'pump':
+            case 'base_pt':
                 $pumped = match ($effect['each'] ?? null) {
                     null => $affected === null ? [] : [$affected],
                     'yours' => $this->permanents($controller),
@@ -3760,7 +3761,7 @@ final class Game
                     if (isset($effect['each']) && ! $this->isCreature($object)) {
                         continue;
                     }
-                    $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])];
+                    $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])] + (isset($effect['base']) ? ['base' => $effect['base']] : []);
                 }
                 break;
 
@@ -7419,7 +7420,12 @@ final class Game
 
     public function power(GameObject $object): int
     {
-        $power = ($this->levelBand($object)['power'] ?? $this->counted($object, 'power') ?? $this->prototype($object)[0] ?? $object->definition()->power ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $power = $this->levelBand($object)['power'] ?? $this->counted($object, 'power') ?? $this->prototype($object)[0] ?? $object->definition()->power ?? 0;
+        foreach ($object->untilEndOfTurn as $effect) {
+            // `has base power and toughness N/N until end of turn` replaces it; the newest one wins (rule 613.4b).
+            $power = $effect['base'][0] ?? $power;
+        }
+        $power += $object->counter('+1/+1') - $object->counter('-1/-1');
         $power += $this->maxSpeedBonus($object)['power'] ?? 0;
         $power += $this->scaling($object)[0];
         foreach ($this->attachments($object) as $attached) {
@@ -7437,7 +7443,12 @@ final class Game
 
     public function toughness(GameObject $object): int
     {
-        $toughness = ($this->levelBand($object)['toughness'] ?? $this->counted($object, 'toughness') ?? $this->prototype($object)[1] ?? $object->definition()->toughness ?? 0) + $object->counter('+1/+1') - $object->counter('-1/-1');
+        $toughness = $this->levelBand($object)['toughness'] ?? $this->counted($object, 'toughness') ?? $this->prototype($object)[1] ?? $object->definition()->toughness ?? 0;
+        foreach ($object->untilEndOfTurn as $effect) {
+            // `has base power and toughness N/N until end of turn` replaces it; the newest one wins (rule 613.4b).
+            $toughness = $effect['base'][1] ?? $toughness;
+        }
+        $toughness += $object->counter('+1/+1') - $object->counter('-1/-1');
         $toughness += $this->maxSpeedBonus($object)['toughness'] ?? 0;
         $toughness += $this->scaling($object)[1];
         foreach ($this->attachments($object) as $attached) {

@@ -2647,6 +2647,11 @@ final class TextParser
         if (preg_match('/^counter (target spell|target creature spell|target noncreature spell)$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])]];
         }
+        // `Target creature has base power and toughness 0/1 until end of turn.` (rule 613.4b); see Game::power().
+        if (preg_match("/^({$targets}) has base power and toughness (\\d+)\\/(\\d+) until end of turn$/i", $s, $m)
+            && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
+            return ['type' => 'base_pt', 'power' => 0, 'toughness' => 0, 'keywords' => [], 'base' => [(int) $m[2], (int) $m[3]], 'target' => self::TARGETS[strtolower($m[1])]];
+        }
         if (preg_match("/^({$targets}) gets ([+-]\\w+)\\/([+-]\\w+)(?: and gains (.+?))? until end of turn$/i", $s, $m)
             && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
             $power = self::signed($m[2]);
