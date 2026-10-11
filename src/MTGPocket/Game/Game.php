@@ -2245,6 +2245,16 @@ final class Game
         for ($i = 0; $i < max(1, (int) ($item['kicks'] ?? 0)) && in_array('replicate', $card->keywords, true) && $item !== false && $item['object'] === $spell->id && ($item['kicked'] ?? false); $i++) {
             $this->copySpell($item, $seat, 'replicate');
         }
+        // Increment: `Whenever you cast a spell, if the amount of mana you spent is greater than this creature's power or toughness, put a +1/+1 counter on this creature.`
+        // The mana spent is read as the spell's mana value with its X.
+        $spent = $card->cost->manaValue($item !== false && $item['object'] === $spell->id ? (int) ($item['x'] ?? 0) : 0);
+        foreach ($this->permanents($seat) as $permanent) {
+            if ($permanent->id !== $spell->id && $this->hasKeyword($permanent, 'increment') && $this->isCreature($permanent)
+                && ($spent > $this->power($permanent) || $spent > $this->toughness($permanent))) {
+                $permanent->addCounters('+1/+1', 1);
+                $this->log("Increment: {$permanent->name()} gets a +1/+1 counter.");
+            }
+        }
         if (in_array('cascade', $card->keywords, true)) {
             $this->cascade($seat, $spell);
         }
@@ -4425,6 +4435,7 @@ final class Game
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
                 $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
+                ($effect['target'] ?? null) === 'creature_other' => ['target' => "creature_not_{$source->id}"] + $effect,
                 default => $effect,
             }, $ability['effects']);
             // "When this creature enters, if it was kicked, …"
@@ -5117,10 +5128,13 @@ final class Game
             'modified_creature' => $creature && (array_filter($object->counters) !== []
                 || array_filter($this->objects, fn (GameObject $other) => $other->zone === GameObject::BATTLEFIELD && $other->attachedTo === $object->id && $other->controller === $object->controller) !== []),
             'nonaura_enchantment' => $card->is('Enchantment') && ! in_array('Aura', $card->subtypes, true),
+            'creature_other' => $creature,
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1])
+                // `another target creature`: not the source.
+                || ((bool) preg_match('/^creature_not_(\d+)$/', $kind, $m) && $creature && $object->id !== (int) $m[1])
                 // `target non-Zombie creature`.
                 || ((bool) preg_match('/^creature_nonsub_(\w+)$/', $kind, $m) && $creature && ! in_array($m[1], $card->subtypes, true) && ! in_array('changeling', $card->keywords, true))
                 // `Enchant Forest`: a permanent with that subtype.

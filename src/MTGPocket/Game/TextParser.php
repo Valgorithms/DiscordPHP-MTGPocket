@@ -61,6 +61,8 @@ final class TextParser
         'any target' => 'any',
         'target creature or player' => 'any',
         'target creature' => 'creature',
+        // Not the source itself; see Game::trigger().
+        'another target creature' => 'creature_other',
         'target player' => 'player',
         'target opponent' => 'opponent',
         'target creature or planeswalker' => 'creature_or_planeswalker',
@@ -180,11 +182,12 @@ final class TextParser
         'Food' => ['name' => 'Food', 'type' => 'Token Artifact — Food', 'types' => ['Artifact'], 'subtypes' => ['Food'], 'colors' => [], 'text' => '{2}, {T}, Sacrifice this token: You gain 3 life.', 'manaCost' => null],
         'Clue' => ['name' => 'Clue', 'type' => 'Token Artifact — Clue', 'types' => ['Artifact'], 'subtypes' => ['Clue'], 'colors' => [], 'text' => '{2}, Sacrifice this token: Draw a card.', 'manaCost' => null],
         'Treasure' => ['name' => 'Treasure', 'type' => 'Token Artifact — Treasure', 'types' => ['Artifact'], 'subtypes' => ['Treasure'], 'colors' => [], 'text' => '{T}, Sacrifice this token: Add one mana of any color.', 'manaCost' => null],
+        'Blood' => ['name' => 'Blood', 'type' => 'Token Artifact — Blood', 'types' => ['Artifact'], 'subtypes' => ['Blood'], 'colors' => [], 'text' => '{1}, {T}, Discard a card, Sacrifice this token: Draw a card.', 'manaCost' => null],
     ];
 
     /** Target kinds that are always a creature. */
     private const array CREATURE_KINDS = [
-        'creature', 'creature_you_control', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
+        'creature', 'creature_other', 'creature_you_control', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
         'creature_flying', 'creature_no_flying', 'tapped_creature', 'untapped_creature',
         'creature_power_ge_2', 'creature_power_ge_3', 'creature_power_ge_4', 'creature_power_ge_5', 'creature_power_ge_6', 'creature_power_le_1', 'creature_power_le_2', 'creature_power_le_3', 'creature_power_le_4',
         'creature_mv_le_1', 'creature_mv_le_2', 'creature_mv_le_3', 'creature_mv_le_4', 'creature_mv_le_5',
@@ -861,6 +864,9 @@ final class TextParser
             } elseif (preg_match('/^(eternalize|embalm) '.self::COST.'$/i', $part, $m) && ! $spell) {
                 // Eternalize and embalm: see Game::embalm().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
+            } elseif ($word === 'increment' && ! $spell) {
+                // Increment: a +1/+1 counter when you cast a spell with more mana than its power or toughness; see Game::castTriggers().
+                $found['keywords'][] = 'increment';
             } elseif ($word === 'enlist' && ! $spell) {
                 $found['keywords'][] = 'enlist';
             } elseif (preg_match('/^protection from (white|blue|black|red|green|artifacts|creatures|enchantments|instants|sorceries|planeswalkers)$/', $word) && ! $spell) {
@@ -1642,6 +1648,20 @@ final class TextParser
             $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'tap', 'target' => 'creature', 'freeze' => true]]];
 
             return true;
+        }
+        // Fiend Hunter: `When CARDNAME leaves the battlefield, return the exiled card to the battlefield under its owner's control.`
+        // makes its enters exile last until it leaves, as `exile … until CARDNAME leaves the battlefield` does.
+        if (preg_match("/^When CARDNAME leaves the battlefield, return the exiled (?:card|creature) to the battlefield under its owner's control\\.$/", $line)) {
+            foreach ($result['triggered'] as $i => $ability) {
+                $last = count($ability['effects']) - 1;
+                if ($ability['event'] === 'enters' && $last >= 0 && $ability['effects'][$last]['type'] === 'exile' && isset($ability['effects'][$last]['target']) && ! isset($ability['effects'][$last]['until'])) {
+                    $result['triggered'][$i]['effects'][$last]['until'] = true;
+
+                    return true;
+                }
+            }
+
+            return false;
         }
         $saddled = false;
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
@@ -2542,7 +2562,7 @@ final class TextParser
         if (preg_match('/^investigate$/i', $s)) {
             return ['type' => 'token', 'amount' => 1, 'token' => self::ARTIFACT_TOKENS['Clue']];
         }
-        if (preg_match('/^create (\w+) (Food|Clue|Treasure) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+        if (preg_match('/^create (\w+) (Food|Clue|Treasure|Blood) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'token', 'amount' => $n, 'token' => self::ARTIFACT_TOKENS[ucfirst(strtolower($m[2]))]];
         }
         if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
