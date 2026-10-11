@@ -708,6 +708,13 @@ final class TextParser
         $unkicked = false;
         if (isset($result['altCosts']['gift']) && preg_match("/^If the gift (was|wasn't) promised, (.+)$/", $sentence, $gift)) {
             [$unkicked, $match] = [$gift[1] !== 'was', [$gift[0], $gift[2]]];
+        } elseif (preg_match('/^If (?:an? ([A-Z][a-z]+) card was revealed|you revealed an? ([A-Z][a-z]+) card(?: or controlled an? \\2)?) as you cast CARDNAME, (.+)$/', $sentence, $reveal)
+            && in_array('reveal '.($reveal[1] !== '' ? $reveal[1] : $reveal[2]), $result['keywords'], true)) {
+            // The reveal reads as kicked; `or controlled a Dragon` too (Game::revealed()).
+            if (str_contains($sentence, 'or controlled')) {
+                $result['keywords'][] = 'reveal or control';
+            }
+            $match = [$reveal[0], $reveal[3]];
         } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
             && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))) {
             return false;
@@ -1420,6 +1427,12 @@ final class TextParser
      */
     private static function additionalCost(string $line, array &$result): bool
     {
+        // Dragons of Tarkir: `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`; revealed whenever one can be (see Game::cast()).
+        if (preg_match('/^As an additional cost to cast CARDNAME, you may reveal an? ([A-Z][a-z]+) card from your hand\.$/', $line, $m)) {
+            $result['keywords'][] = "reveal {$m[1]}";
+
+            return true;
+        }
         if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)\.?$/', $line, $m)) {
             return false;
         }
@@ -1617,6 +1630,21 @@ final class TextParser
         if (preg_match('/^You control enchanted (?:creature|permanent|artifact|land|planeswalker)\.?$/', $line)) {
             $result['aura'] ??= ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []];
             $result['aura']['control'] = true;
+
+            return true;
+        }
+        // A Zendikon: `Enchanted land is a 2/2 white Knight creature with first strike. It's still a land.`; see Game::isCreature().
+        if (($result['aura']['enchant'] ?? null) !== null && preg_match("/^Enchanted land is an? (\\d+)\\/(\\d+) [A-Za-z ]+? creature(?: with (.+?))?\\. It's still a land\\.$/", $line, $match)
+            && ($keywords = self::keywordList($match[3] ?? '')) !== null) {
+            $result['aura']['power'] += (int) $match[1];
+            $result['aura']['toughness'] += (int) $match[2];
+            $result['aura']['keywords'] = array_values(array_unique([...$result['aura']['keywords'], ...$keywords]));
+            $result['aura']['animates'] = true;
+
+            return true;
+        }
+        if (($result['aura']['enchant'] ?? null) !== null && preg_match("/^When enchanted (?:land|creature) dies, return that card to its owner's hand\\.$/", $line)) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'enchanted_dies', 'effects' => [['type' => 'return_that', 'each' => 'that']]];
 
             return true;
         }

@@ -1514,6 +1514,37 @@ final class Game
     }
 
     /**
+     * The card a spell's `you may reveal a Dragon card from your hand` cost
+     * reveals (or the Dragon its caster controls, for `or controlled a
+     * Dragon`), or null.
+     *
+     * @param int            $seat
+     * @param int            $id
+     * @param CardDefinition $card
+     *
+     * @return ?GameObject
+     */
+    private function revealed(int $seat, int $id, CardDefinition $card): ?GameObject
+    {
+        foreach ($card->keywords as $keyword) {
+            if (preg_match('/^reveal ([A-Z][a-z]+)$/', $keyword, $m)) {
+                foreach ($this->players[$seat]->hand as $other) {
+                    if ($other !== $id && in_array($m[1], $this->objects[$other]->printed()->subtypes, true)) {
+                        return $this->objects[$other];
+                    }
+                }
+                foreach (in_array('reveal or control', $card->keywords, true) ? $this->permanents($seat) : [] as $permanent) {
+                    if (in_array($m[1], $permanent->definition()->subtypes, true)) {
+                        return $permanent;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * What splicing cards onto a spell adds to its cost.
      *
      * @param int[] $ids
@@ -1953,6 +1984,11 @@ final class Game
         }
         $object = $this->objects[$id];
         $card = $object->printed();
+        // `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`: always, when one can be.
+        $revealed = $options['faceDown'] || $card->targetKinds($options['modes'], true) !== $card->targetKinds($options['modes'], false) ? null : $this->revealed($seat, $id, $card);
+        if ($revealed !== null) {
+            $options['kicked'] = true;
+        }
         $xCount = ManaCost::parse(self::castCost($card, $options))->xCount;
         if ($x < 0 || ($x > 0 && $xCount === 0)) {
             throw new GameException("{$card->name} has no X to choose.");
@@ -2058,7 +2094,7 @@ final class Game
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
             $options['exiled'] !== '' ? "from exile ({$options['exiled']})" : '',
-            $options['kicked'] ? 'kicked' : '',
+            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] ? 'kicked' : ''),
             $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $this->objects[$splicer]->name(), $options['splice'])).' onto it',
@@ -4323,6 +4359,15 @@ final class Game
                 $seat = ($effect['that'] ?? false) ? ($this->targetOwner($target) ?? $controller) : $controller;
                 $this->shuffle($seat);
                 $this->log("{$this->players[$seat]->name} shuffles their library.");
+                break;
+
+            case 'return_that':
+                // `When enchanted land dies, return that card to its owner's hand.`
+                $that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null;
+                if ($that !== null && $that->zone === GameObject::GRAVEYARD) {
+                    $this->moveTo($that, GameObject::HAND);
+                    $this->log("{$that->name()} returns to its owner's hand.");
+                }
                 break;
 
             case 'sacrifice_unless_spent':
@@ -6764,6 +6809,8 @@ final class Game
         }
 
         $held = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? $object->holding : [];
+        // The Auras on it as it dies, before they come off.
+        $enchanters = $dies ? array_filter($this->permanents(), fn (GameObject $aura) => $aura->attachedTo === $object->id) : [];
         $this->removeFromZone($object);
         $object->moveTo($zone);
         $owner = $this->players[$object->owner];
@@ -6778,6 +6825,10 @@ final class Game
         if ($dies) {
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
+            // `When enchanted land dies, return that card to its owner's hand.` (the Zendikons)
+            foreach ($enchanters as $aura) {
+                $this->trigger($aura, 'enchanted_dies', $aura->controller, null, $object->id);
+            }
         }
         // Blitz (rule 702.152): `When this creature dies, draw a card.`
         if ($blitzed) {
@@ -7054,6 +7105,14 @@ final class Game
         }
         if ($object->definition()->isCreature() || $object->awakened) {
             return true;
+        }
+        // A Zendikon: `Enchanted land is a 2/2 white Knight creature with first strike. It's still a land.`
+        if ($object->zone === GameObject::BATTLEFIELD && $object->definition()->isLand()) {
+            foreach ($this->battlefield as $id) {
+                if ($this->objects[$id]->attachedTo === $object->id && ($this->objects[$id]->definition()->aura['animates'] ?? false)) {
+                    return true;
+                }
+            }
         }
         foreach ($object->untilEndOfTurn as $effect) {
             if ($effect['creature'] ?? false) {
