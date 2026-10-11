@@ -371,8 +371,12 @@ final class TextParser
                 $line = "{$match[1]}, {T}: Put a +1/+1 counter on CARDNAME. Activate only as a sorcery.";
             }
             // `{2}{B}: Return CARDNAME from your graveyard to your hand.`: see Game::regrow().
-            if (preg_match('/^'.self::COST.': Return CARDNAME from your graveyard to your hand\.$/', $line, $match) && ! str_contains($match[1], 'X')) {
+            // Also `… to the battlefield tapped.` (Haunted Dead, Tunnel Rats).
+            if (preg_match('/^'.self::COST.': Return CARDNAME from your graveyard to (your hand|the battlefield(?: tapped)?)\.$/', $line, $match) && ! str_contains($match[1], 'X')) {
                 $result['altCosts']['regrow'] = $match[1];
+                if ($match[2] !== 'your hand') {
+                    $result['altCosts']['regrowTo'] = str_replace(['the ', ' '], ['', '_'], $match[2]);
+                }
 
                 continue;
             }
@@ -1097,6 +1101,17 @@ final class TextParser
 
             return true;
         }
+        // The Devotees: `{1}: Add {R}, {W}, or {B}. Activate only once each turn.`
+        if (preg_match('/^\{(\d)\}: Add (\{[WUBRG]\}(?:,? (?:or )?\{[WUBRG]\})+)\.( Activate only once each turn\.)?$/', $line, $match)) {
+            if ($result['mana'] !== null) {
+                return false;
+            }
+            preg_match_all('/\{([WUBRG])\}/', $match[2], $symbols);
+            $result['mana'] = ['count' => 0, 'colors' => ['C'], 'filter' => true, 'noTap' => true, 'filterAs' => ['count' => 1, 'colors' => array_values(array_unique($symbols[1]))]]
+                + ((int) $match[1] !== 1 ? ['filterCost' => (int) $match[1]] : []) + (($match[3] ?? '') !== '' ? ['once' => true] : []);
+
+            return true;
+        }
         if ($result['mana']['noTap'] ?? false) {
             return false;
         }
@@ -1506,6 +1521,10 @@ final class TextParser
     {
         if (preg_match('/^(\w+) or (more|fewer) other lands$/', $text, $match) && is_int($n = self::amount($match[1]))) {
             return [$match[2] === 'more' ? 'lands_min' : 'lands_max' => $n];
+        }
+        // The Battlebond lands: `… unless you control two or more basic lands.`
+        if (preg_match('/^(\w+) or more basic lands$/', $text, $match) && is_int($n = self::amount($match[1]))) {
+            return ['basics_min' => $n];
         }
         $any = [];
         foreach (preg_split('/,? or |, /', $text) as $noun) {
@@ -2031,6 +2050,11 @@ final class TextParser
      */
     private static function activated(string $line, array &$result): bool
     {
+        // Exhaust (rule 702.177): `Exhaust — {cost}: …` activates only once.
+        $ever = false;
+        if (str_starts_with($line, 'Exhaust — ')) {
+            [$ever, $line] = [true, substr($line, strlen('Exhaust — '))];
+        }
         if (! preg_match('/^([^:"]+): (.+)$/', $line, $match)) {
             return false;
         }
@@ -2069,6 +2093,9 @@ final class TextParser
         } elseif (preg_match('/^(.+?)\s*Activate only once each turn\.$/', $text, $limit)) {
             [$text, $once] = [$limit[1], true];
         }
+        if (preg_match('/^(.+?)\s*Activate only once\.$/', $text, $limit)) {
+            [$text, $ever] = [$limit[1], true];
+        }
         if ($cost['sacrifice'] ?? false) {
             // `Sacrifice CARDNAME: It deals 2 damage to target creature.`: "it" is the sacrificed permanent.
             $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
@@ -2077,7 +2104,7 @@ final class TextParser
         if ($effects === null) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery, 'once' => $once];
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery, 'once' => $once] + ($ever ? ['ever' => true] : []);
 
         return true;
     }
@@ -2950,6 +2977,10 @@ final class TextParser
         }
         if (preg_match('/^each opponent mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'mill', 'amount' => $n, 'each' => 'opponent'];
+        }
+        // `When CARDNAME enters, it endures 2.`
+        if (preg_match('/^(?:CARDNAME|it) endures (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'endure', 'amount' => $n, 'self' => true];
         }
         if (preg_match('/^you get ((?:\{E\})+)$/i', $s, $m)) {
             return ['type' => 'energy', 'amount' => substr_count($m[1], '{E}')];
