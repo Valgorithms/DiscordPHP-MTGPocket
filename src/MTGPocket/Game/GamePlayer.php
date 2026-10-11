@@ -49,6 +49,16 @@ final class GamePlayer
     /** The turn their speed last went up: once each turn. */
     public int $speedTurn = 0;
 
+    /** Life gained this turn, and the turn that was. */
+    public int $gained = 0;
+
+    public int $gainedTurn = 0;
+
+    /** Spells they cast this turn, and the turn that was. */
+    public int $cast = 0;
+
+    public int $castTurn = 0;
+
     /** Cards drawn this turn, and the turn that was. */
     public int $drawn = 0;
 
@@ -121,6 +131,10 @@ final class GamePlayer
             'speedTurn' => $this->speedTurn,
             'lifeMark' => $this->lifeMark,
             'drawn' => $this->drawn,
+            'gained' => $this->gained,
+            'gainedTurn' => $this->gainedTurn,
+            'cast' => $this->cast,
+            'castTurn' => $this->castTurn,
             'drawnTurn' => $this->drawnTurn,
             'library' => $this->library,
             'hand' => $this->hand,
@@ -153,6 +167,10 @@ final class GamePlayer
         $player->lifeMark = (int) ($data['lifeMark'] ?? $player->life);
         $player->drawn = (int) ($data['drawn'] ?? 0);
         $player->drawnTurn = (int) ($data['drawnTurn'] ?? 0);
+        $player->gained = (int) ($data['gained'] ?? 0);
+        $player->gainedTurn = (int) ($data['gainedTurn'] ?? 0);
+        $player->cast = (int) ($data['cast'] ?? 0);
+        $player->castTurn = (int) ($data['castTurn'] ?? 0);
         $player->library = array_map('intval', (array) $data['library']);
         $player->hand = array_map('intval', (array) $data['hand']);
         $player->graveyard = array_map('intval', (array) $data['graveyard']);

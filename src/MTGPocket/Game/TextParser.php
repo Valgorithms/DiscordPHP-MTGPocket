@@ -1685,7 +1685,10 @@ final class TextParser
             $result['triggered'][] = ['text' => $line, 'event' => 'first_main', 'effects' => [['type' => 'pay_transform', 'cost' => $match[1], 'self' => true]]];
 
             return true;
-        } elseif (preg_match('/^At the beginning of the end step, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^At the beginning of your (first|precombat|second|postcombat) main phase, (.+)$/', $line, $match)) {
+            $event = in_array($match[1], ['first', 'precombat'], true) ? 'first_main' : 'second_main';
+            $text = $match[2];
+        } elseif (preg_match('/^At the beginning of (?:the|each) end step, (.+)$/', $line, $match)) {
             $event = 'each_end_step';
             $text = $match[1];
         } elseif (preg_match("/^At the beginning of enchanted player's upkeep, (.+)$/", $line, $match) && in_array($result['aura']['enchant'] ?? null, ['player', 'opponent'], true)) {
@@ -1717,8 +1720,11 @@ final class TextParser
         } elseif (preg_match('/^Whenever you draw your second card each turn, (.+)$/', $line, $match)) {
             $event = 'second_draw';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you gain life, (.+)$/', $line, $match)) {
-            $event = 'gain_life';
+        } elseif (preg_match('/^Whenever you gain life( for the first time each turn)?, (.+)$/', $line, $match)) {
+            $event = $match[1] !== '' ? 'first_gain_life' : 'gain_life';
+            $text = $match[2];
+        } elseif (preg_match('/^Whenever you cast your third spell each turn, (.+)$/', $line, $match)) {
+            $event = 'third_spell';
             $text = $match[1];
         } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell|a Spirit or Arcane spell|a creature spell|an artifact spell|an enchantment spell), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
@@ -1728,6 +1734,21 @@ final class TextParser
         }
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {
             $text = $match[1];
+        }
+        // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
+        $if = null;
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn), (.+)$/", $text, $match)) {
+            $if = match (true) {
+                $match[1] === "CARDNAME isn't prepared" => 'unprepared',
+                $match[2] !== '' => 'lands '.self::amount($match[2]),
+                $match[3] !== '' => 'died '.self::amount($match[3]),
+                $match[4] !== '' => 'gained '.self::amount($match[4]),
+                default => 'hand_behind',
+            };
+            if (! preg_match('/^\w+( \d+)?$/', $if)) {
+                return false;
+            }
+            $text = $match[5];
         }
         $kicked = false;
         if ($event === 'enters' && ($result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)
@@ -1742,7 +1763,7 @@ final class TextParser
         if ($effects === null) {
             return false;
         }
-        $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($kicked ? ['kicked' => true] : []) + ($saddled ? ['saddled' => true] : []);
+        $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($kicked ? ['kicked' => true] : []) + ($saddled ? ['saddled' => true] : []) + ($if !== null ? ['if' => $if] : []);
 
         return true;
     }
@@ -2419,6 +2440,10 @@ final class TextParser
         }
         if (preg_match('/^transform CARDNAME$/i', $s)) {
             return ['type' => 'transform', 'self' => true];
+        }
+        // A preparation card's later way to become prepared again; see CardDefinition::$prepare.
+        if (preg_match('/^(?:CARDNAME|it) becomes prepared$/i', $s)) {
+            return ['type' => 'prepare', 'self' => true];
         }
         // A Saga's last chapter: `Exile CARDNAME, then return it to the battlefield transformed under your control.`
         if (preg_match('/^exile CARDNAME, then return it to the battlefield transformed under (?:your|its owner\'s) control$/i', $s)) {

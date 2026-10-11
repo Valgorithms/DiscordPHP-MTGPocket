@@ -251,10 +251,12 @@ final class CardDefinition
         $this->prepare = is_array($card['prepare'] ?? null) ? new CardDefinition(['uuid' => $this->key.'-prepare'] + $card['prepare']) : null;
         $activated = $parsed['activated'];
         $prepareUnsupported = [];
-        if (in_array('enters prepared', $parsed['keywords'], true)) {
+        $entersPrepared = in_array('enters prepared', $parsed['keywords'], true);
+        $becomesPrepared = array_filter([...$parsed['triggered'], ...$activated], fn (array $ability) => in_array('prepare', array_column($ability['effects'], 'type'), true)) !== [];
+        if ($entersPrepared || $becomesPrepared) {
             // While prepared, its controller may cast a copy of the prepare spell, which unprepares it; see Game::activate().
             if ($this->prepare === null || $this->prepare->modes !== [] || $this->prepare->effects === [] || $this->prepare->cost->xCount > 0) {
-                $prepareUnsupported[] = 'CARDNAME enters prepared.';
+                $prepareUnsupported[] = $entersPrepared ? 'CARDNAME enters prepared.' : 'CARDNAME becomes prepared.';
             } else {
                 $activated[] = [
                     'text' => "Prepared: cast a copy of {$this->prepare->name}", 'cost' => ['mana' => (string) $this->prepare->cost],
