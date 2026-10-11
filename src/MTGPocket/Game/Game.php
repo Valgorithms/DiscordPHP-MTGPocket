@@ -3341,6 +3341,21 @@ final class Game
                 }
                 break;
 
+            case 'exile_graveyard':
+                $seats = match ($effect['each'] ?? null) {
+                    'opponent' => array_values($opponents),
+                    'player' => array_keys($this->players),
+                    default => $target === null ? [] : [(int) substr($target, 2)],
+                };
+                foreach ($seats as $seat) {
+                    $exiled = $this->players[$seat]->graveyard;
+                    foreach ($exiled as $id) {
+                        $this->moveTo($this->objects[$id], GameObject::EXILE);
+                    }
+                    $this->log("{$this->players[$seat]->name}'s graveyard is exiled (".count($exiled).' '.(count($exiled) === 1 ? 'card' : 'cards').').');
+                }
+                break;
+
             case 'reveal_hand':
                 $victim = (int) substr((string) $target, 2);
                 $hand = $this->players[$victim]->hand;

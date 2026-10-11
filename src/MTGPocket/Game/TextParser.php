@@ -2384,6 +2384,17 @@ final class TextParser
         if (preg_match('/^discard (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'discard', 'amount' => $n];
         }
+        // Graveyard hate: `Exile target player's graveyard.`, `Exile each opponent's graveyard.`, `Exile all graveyards.`
+        if (preg_match("/^exile (target player|target opponent)'s graveyard$/i", $s, $m)) {
+            return ['type' => 'exile_graveyard', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        if (preg_match("/^exile (each opponent's graveyard|all graveyards)$/i", $s, $m)) {
+            return ['type' => 'exile_graveyard', 'each' => str_starts_with(strtolower($m[1]), 'each') ? 'opponent' : 'player'];
+        }
+        // Learn (rule 701.48): without Lessons outside the game, the choice is to discard a card and draw one, or not.
+        if (preg_match('/^learn$/i', $s)) {
+            return ['type' => 'discard', 'amount' => 1, 'may' => true, 'draw' => 1];
+        }
         // `You may discard a card. If you do, draw a card.`: see TextParser::modifies() for the draw.
         if (preg_match('/^you may discard a card$/i', $s)) {
             return ['type' => 'discard', 'amount' => 1, 'may' => true];
