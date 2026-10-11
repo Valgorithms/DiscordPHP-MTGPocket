@@ -1682,6 +1682,9 @@ final class TextParser
                 $cost['mana'] = ($cost['mana'] ?? '').$part;
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
+            } elseif ($part === 'Discard a card') {
+                // Paid with the cheapest card in hand; see Game::discardCheapest().
+                $cost['discard'] = 1;
             } elseif (preg_match('/^Pay (\d+) life$/', $part, $life)) {
                 $cost['life'] = (int) $life[1];
             } elseif (preg_match('/^Pay ((?:\{E\})+)$/', $part, $energy)) {
@@ -1794,6 +1797,12 @@ final class TextParser
             $n = 'lands';
         }
         $head[3] = $head[4];
+        // `Put up to two creature cards with mana value 3 or less from among them onto the battlefield.` (Collected Company)
+        $mv = null;
+        if (preg_match('/^(\. (?:You may put|Put) (?:an?|up to \w+) .+?) cards? with mana value (\d+) or (less|greater)( from among them.*)$/s', $head[3], $w)) {
+            [$head[3], $mv] = [$w[1].' cards'.$w[4], 'mv_'.($w[3] === 'less' ? 'le' : 'ge').'_'.$w[2]];
+        }
+        $head[3] = (string) preg_replace('/^\. Put (up to \w+) /', '. You may put $1 ', $head[3]);
         $where = '(on the bottom of your library(?: in (?:a random|any) order)?|into your graveyard)';
         $to = '(into your hand|onto the battlefield tapped|onto the battlefield)';
         $after = '(?:\.|$)\s*(.*)$/s';
@@ -1817,9 +1826,13 @@ final class TextParser
                 // `a creature card and/or a land card`: one of each, at most two.
                 [$words, $take] = ["{$pair[1]} or {$pair[2]}", 2];
             }
-            $filter = $words === '' ? 'any' : self::cardFilter($words);
+            // `noncreature, nonland permanent`: all of them, not any.
+            $filter = $words === '' ? 'any' : (preg_match('/^non[a-z]+, /', $words) ? self::revealFilter("{$words} cards") : self::cardFilter($words));
             if ($filter === null || ! is_int($take)) {
                 return null;
+            }
+            if ($mv !== null) {
+                $filter .= "&{$mv}";
             }
             [$rest, $tail, $dest] = [$m[7], $m[8], match ($place) {
                 'onto the battlefield tapped' => 'tapped',
@@ -1941,10 +1954,10 @@ final class TextParser
         if (! preg_match('/^(.+?) cards?$/', $words, $m)) {
             return null;
         }
-        // `noncreature, nonland`: every one of them.
-        if (preg_match('/^non[a-z]+(?:, non[a-z]+)+$/', $m[1])) {
+        // `noncreature, nonland`: every one of them; `noncreature, nonland permanent`: and a permanent.
+        if (preg_match('/^non[a-z]+(?:, non[a-z]+)+(?: permanent)?$/', $m[1])) {
             foreach (explode(', ', $m[1]) as $piece) {
-                $all[] = 'not:'.substr($piece, 3);
+                $all[] = str_contains($piece, ' ') ? self::cardFilter($piece) : 'not:'.substr($piece, 3);
             }
         } elseif (($filter = self::cardFilter($m[1])) !== null) {
             $all[] = $filter;
