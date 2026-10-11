@@ -32,12 +32,25 @@ final class ManaPayer
      *
      * @param array{mana: array<string, int>, life: int}               $payment One of {@see ManaCost::payments()}.
      * @param ManaPool                                                 $pool
-     * @param array<int, array{count: int, colors: string[], fixed?: string[][]}> $sources Untapped mana sources by object id: each makes `count` mana of one of `colors`, or one mana of each of `fixed`.
+     * @param array<int, array{count: int, colors: string[], fixed?: string[][], same?: bool}> $sources Untapped mana sources by object id: each makes `count` mana of one of `colors` (all the same one when `same`), or one mana of each of `fixed`.
      *
      * @return array{pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null What to take from the pool, which sources to tap, the mana they make beyond the cost (it stays in the pool) and the type each tapped source made. Null when it cannot be paid.
      */
     public static function plan(array $payment, ManaPool $pool, array $sources): ?array
     {
+        // `Add three mana of any one color.`: each color in turn, all its mana that color.
+        foreach ($sources as $id => $source) {
+            if ($source['same'] ?? false) {
+                foreach ($source['colors'] as $color) {
+                    $plan = self::plan($payment, $pool, [$id => ['colors' => [$color], 'same' => false] + $source] + $sources);
+                    if ($plan !== null) {
+                        return $plan;
+                    }
+                }
+
+                return null;
+            }
+        }
         // Every mana that could be spent, floating mana first.
         $units = [];
         foreach (ManaCost::TYPES as $type) {
