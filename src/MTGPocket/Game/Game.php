@@ -3843,6 +3843,15 @@ final class Game
                 $affected?->addCounters($effect['kind'] ?? '+1/+1', $amount);
                 break;
 
+            case 'endure':
+                // Endure N: counters while it's here, else an N/N Spirit.
+                if ($source->zone === GameObject::BATTLEFIELD) {
+                    $source->addCounters('+1/+1', $amount);
+                } else {
+                    $this->createToken(['name' => 'Spirit Token', 'type' => 'Token Creature — Spirit', 'types' => ['Creature'], 'subtypes' => ['Spirit'], 'colors' => ['W'], 'power' => (string) $amount, 'toughness' => (string) $amount, 'text' => '', 'manaCost' => null], $controller);
+                }
+                break;
+
             case 'cumulative_upkeep':
                 // Cumulative upkeep: an age counter, then its cost once for each, paid when its controller can, or sacrificed (rule 702.24a).
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
@@ -4128,7 +4137,11 @@ final class Game
                 break;
 
             case 'regrow':
-                if ($source->zone === GameObject::GRAVEYARD) {
+                if ($source->zone === GameObject::GRAVEYARD && isset($source->printed()->altCosts['regrowTo'])) {
+                    $this->putOntoBattlefield($source, $source->owner);
+                    $source->tapped = $source->printed()->altCosts['regrowTo'] === 'battlefield_tapped';
+                    $this->log("{$source->name()} returns to the battlefield.");
+                } elseif ($source->zone === GameObject::GRAVEYARD) {
                     $this->moveTo($source, GameObject::HAND);
                     $this->log("{$source->name()} returns to {$this->players[$source->owner]->name}'s hand.");
                 }
@@ -5292,6 +5305,9 @@ final class Game
         }
         if ($ability['once'] && ($object->used[$index] ?? 0) === $this->turn) {
             return "You have already activated that ability of {$card->name} this turn.";
+        }
+        if (($ability['ever'] ?? false) && isset($object->used[$index])) {
+            return "You have already activated that ability of {$card->name}.";
         }
         $cost = $ability['cost'];
         if (isset($cost['loyalty'])) {
@@ -6974,6 +6990,9 @@ final class Game
         }
         $others = array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $object->id);
         $lands = count(array_filter($others, fn (GameObject $o) => $o->definition()->isLand()));
+        if (isset($unless['basics_min'])) {
+            return count(array_filter($others, fn (GameObject $o) => $o->definition()->isLand() && in_array('Basic', $o->definition()->supertypes, true))) >= $unless['basics_min'];
+        }
         if (isset($unless['lands_min']) || isset($unless['lands_max'])) {
             return $lands >= ($unless['lands_min'] ?? 0) && $lands <= ($unless['lands_max'] ?? PHP_INT_MAX);
         }

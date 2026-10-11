@@ -876,7 +876,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $way = $options === null ? match ($how) {
             'cycle' => "cycle {$card->cycling}",
             'unearth' => "unearth {$card->unearth}",
-            'regrow' => "return to hand for {$card->altCosts['regrow']}",
+            'regrow' => (isset($card->altCosts['regrowTo']) ? 'return to the battlefield' : 'return to hand')." for {$card->altCosts['regrow']}",
             'foretell' => 'foretell for {2}',
             default => "{$how} {$card->altCosts[$how]}",
         } : implode(', ', array_filter([
