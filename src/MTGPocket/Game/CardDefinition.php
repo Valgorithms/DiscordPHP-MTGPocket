@@ -235,10 +235,11 @@ final class CardDefinition
             ];
             $parsed['choose'] = ['min' => 1, 'max' => in_array('fuse', $parsed['keywords'], true) ? 2 : 1];
             $parsed['effects'] = [];
-        } elseif ($right !== null) {
+        } elseif ($right !== null && $right->unsupported === [] && $parsed['unsupported'] === []) {
+            // Both halves read, but not as two modes (a modal or X half): the card as a whole isn't.
             $parsed['unsupported'][] = "Split card: {$right->name}";
         }
-        if (in_array('fuse', $parsed['keywords'], true) && ! $halves) {
+        if (in_array('fuse', $parsed['keywords'], true) && $right === null) {
             $parsed['unsupported'][] = 'Fuse';
         }
         $parsed['unsupported'] = [...$parsed['unsupported'], ...array_diff($right?->unsupported ?? [], ['Fuse'])];

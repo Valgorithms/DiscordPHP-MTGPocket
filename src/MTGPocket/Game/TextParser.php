@@ -401,6 +401,12 @@ final class TextParser
 
                 continue;
             }
+            // `Spells your opponents cast that target CARDNAME cost {2} more to cast.`: ward's cost without the counter; see Game::wardCost().
+            if (! $spell && $result['ward'] === null && preg_match('/^Spells your opponents cast that target CARDNAME cost ((?:\{\d+\})+) more to cast\.$/', $line, $match)) {
+                $result['ward'] = ['mana' => $match[1], 'tax' => true];
+
+                continue;
+            }
             // A characteristic-defining ability (rule 604.3): `CARDNAME's power and toughness are each equal to the number of lands you control.`
             if (! $spell && preg_match("/^CARDNAME's (power and toughness are each|power is|toughness is) equal to the number of (?:(lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control|cards in your (hand|graveyard)|(creature) cards in your graveyard)\\.$/", $line, $match)) {
                 $of = match (true) {
@@ -886,6 +892,9 @@ final class TextParser
             } elseif (preg_match('/^buyback '.self::COST.'$/i', $part, $m) && $spell) {
                 // Buyback (rule 702.27): an additional cost that returns the spell to its owner's hand.
                 $found['altCosts']['buyback'] = $m[1];
+            } elseif (preg_match('/^escalate '.self::COST.'$/i', $part, $m) && $spell) {
+                // Escalate (rule 702.120): paid for each mode chosen beyond the first; see Game::castCost().
+                $found['altCosts']['escalate'] = $m[1];
             } elseif ($word === 'ingest' && ! $spell) {
                 // Ingest (rule 702.115): the damaged player exiles the top card of their library.
                 $found['triggered'][] = ['text' => 'Ingest', 'event' => 'combat_damage', 'effects' => [['type' => 'ingest']]];
@@ -1743,6 +1752,9 @@ final class TextParser
         } elseif (preg_match('/^Whenever you gain life( for the first time each turn)?, (.+)$/', $line, $match)) {
             $event = $match[1] !== '' ? 'first_gain_life' : 'gain_life';
             $text = $match[2];
+        } elseif (preg_match('/^Heroic — Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
+            $event = 'heroic';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you cast your third spell each turn, (.+)$/', $line, $match)) {
             $event = 'third_spell';
             $text = $match[1];
@@ -2215,6 +2227,12 @@ final class TextParser
         if ($last === null) {
             return false;
         }
+        // Tenacity: `Creatures you control get +1/+1 … until end of turn. Untap those creatures.`
+        if ($sentence === 'Untap those creatures' && $effects[$last]['type'] === 'pump' && ($effects[$last]['each'] ?? null) === 'yours') {
+            $effects[] = ['type' => 'untap', 'each' => 'yours'];
+
+            return true;
+        }
         // `Gain control of up to two target creatures until end of turn. Untap those creatures. They gain haste until end of turn.`:
         // the follow-up for each of them, right after it (see Game::resolve(), which reads `sameTarget` as the previous target).
         if (preg_match('/^(?:Untap those creatures|They gain (.+) until end of turn)$/', $sentence, $m)) {
@@ -2413,8 +2431,8 @@ final class TextParser
         if (preg_match('/^CARDNAME deals (\w+) damage to each opponent$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'opponent'];
         }
-        if (preg_match('/^CARDNAME deals (\w+) damage to each creature$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
-            return ['type' => 'damage', 'amount' => $n, 'each' => 'creature'];
+        if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'damage', 'amount' => $n, 'each' => ($m[2] ?? '') !== '' ? 'creature_without_flying' : 'creature'];
         }
         if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
