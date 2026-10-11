@@ -1210,6 +1210,17 @@ final class TextParser
 
             return true;
         }
+        // A lord: `Other Kithkin you control get +1/+1.`, `Elf creatures you control get +1/+1 and have trample.`
+        if (preg_match('/^(Other )?([A-Z][a-z]+(?:-[a-z]+)?)(?: creatures)? you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)
+            && ($type = self::subtypeOf($m[2])) !== null) {
+            $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
+            if ($keywords === null) {
+                return false;
+            }
+            $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== '', 'subtype' => $type];
+
+            return true;
+        }
         if (preg_match('/^(Other )?[Cc]reatures you control( of the chosen type)? get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?\.?$/', $line, $m)) {
             [$power, $toughness, $keywords] = [(int) $m[3], (int) $m[4], self::keywordList($m[5] ?? '')];
         } elseif (preg_match('/^(Other )?[Cc]reatures you control( of the chosen type)? have (.+?)\.?$/', $line, $m)) {
@@ -1223,6 +1234,28 @@ final class TextParser
         $result['anthem'][] = ['power' => $power, 'toughness' => $toughness, 'keywords' => $keywords, 'other' => $m[1] !== ''] + ($m[2] !== '' ? ['chosenType' => true] : []);
 
         return true;
+    }
+
+    /**
+     * A creature type as a lord names it, singular: `Elves` is `Elf`,
+     * `Kithkin` stays. Null for words that are not a creature type.
+     *
+     * @param string $word
+     *
+     * @return string|null
+     */
+    private static function subtypeOf(string $word): ?string
+    {
+        if (in_array($word, ['Other', 'Creatures', 'Artifact', 'Artifacts', 'Enchantment', 'Legendary', 'Token', 'Tokens', 'Nontoken', 'Attacking', 'Blocking', 'Tapped', 'Untapped', 'White', 'Blue', 'Black', 'Red', 'Green', 'Colorless', 'Multicolored', 'Monocolored', 'Snow', 'Land', 'Lands', 'Permanents', 'Equipped', 'Enchanted'], true)) {
+            return null;
+        }
+
+        return match (true) {
+            isset(['Elves' => 1, 'Wolves' => 1, 'Dwarves' => 1][$word]) => substr($word, 0, -3).'f',
+            in_array($word, ['Allies', 'Mercenaries'], true) => substr($word, 0, -3).'y',
+            str_ends_with($word, 's') && ! str_ends_with($word, 'ss') => substr($word, 0, -1),
+            default => $word,
+        };
     }
 
     /**
@@ -1580,6 +1613,7 @@ final class TextParser
         ];
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
+            'a creature spell' => 'cast_creature', 'an artifact spell' => 'cast_artifact', 'an enchantment spell' => 'cast_enchantment',
         ];
         $saddled = false;
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
@@ -1627,13 +1661,16 @@ final class TextParser
         } elseif (preg_match('/^Whenever another creature you control enters(?: the battlefield)?, (.+)$/', $line, $match)) {
             $event = 'creature_enters_other';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you draw a card, (.+)$/', $line, $match)) {
+            $event = 'you_draw';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you draw your second card each turn, (.+)$/', $line, $match)) {
             $event = 'second_draw';
             $text = $match[1];
         } elseif (preg_match('/^Whenever you gain life, (.+)$/', $line, $match)) {
             $event = 'gain_life';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell|a Spirit or Arcane spell), (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell|a Spirit or Arcane spell|a creature spell|an artifact spell|an enchantment spell), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
         } else {
