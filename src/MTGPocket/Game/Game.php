@@ -134,6 +134,11 @@ final class Game
     /** @var array<string, int> Damage to prevent this turn, by target (`p:SEAT` or `o:ID`) (rule 615). */
     public array $prevent = [];
 
+    /** Creatures that died in turn `$diedTurn`, for `if N or more creatures died this turn`. */
+    public int $died = 0;
+
+    public int $diedTurn = 0;
+
     /** Spells cast in turn `$spellsTurn`, by anyone, for storm (rule 702.40). */
     public int $spellsCast = 0;
 
@@ -692,6 +697,13 @@ final class Game
                 // "At the beginning of your first main phase, …"
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, 'first_main', $object->controller);
+                }
+                break;
+
+            case Step::PostcombatMain:
+                // "At the beginning of your second main phase, …"
+                foreach ($this->permanents($this->active) as $object) {
+                    $this->trigger($object, 'second_main', $object->controller);
                 }
                 break;
 
@@ -2258,7 +2270,9 @@ final class Game
         if (in_array('cascade', $card->keywords, true)) {
             $this->cascade($seat, $spell);
         }
-        $events = ['cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
+        $caster = $this->players[$seat];
+        [$caster->cast, $caster->castTurn] = [$caster->castTurn === $this->turn ? $caster->cast + 1 : 1, $this->turn];
+        $events = [...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : [])];
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
@@ -4164,6 +4178,13 @@ final class Game
                 }
                 break;
 
+            case 'prepare':
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! $self->prepared && $self->printed()->prepare !== null) {
+                    $self->prepared = true;
+                    $this->log("{$self->name()} becomes prepared.");
+                }
+                break;
+
             case 'exile_transformed':
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD && $self->printed()->back !== null) {
                     $this->moveTo($self, GameObject::EXILE);
@@ -4415,6 +4436,29 @@ final class Game
     }
 
     /**
+     * A triggered ability's intervening "if" clause (rule 603.4).
+     *
+     * @param string     $condition  See TextParser::triggered().
+     * @param GameObject $source
+     * @param int        $controller
+     *
+     * @return bool
+     */
+    private function conditionMet(string $condition, GameObject $source, int $controller): bool
+    {
+        [$kind, $n] = explode(' ', $condition.' 0');
+
+        return match ($kind) {
+            'unprepared' => ! $source->prepared,
+            'lands' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $object->definition()->is('Land'))) >= (int) $n,
+            'died' => $this->diedTurn === $this->turn && $this->died >= (int) $n,
+            'gained' => $this->players[$controller]->gainedTurn === $this->turn && $this->players[$controller]->gained >= (int) $n,
+            'hand_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && count($player->hand) > count($this->players[$controller]->hand)) !== [],
+            default => false,
+        };
+    }
+
+    /**
      * Queues a permanent's abilities that trigger on an event (rule 603.2).
      *
      * @param GameObject $source
@@ -4444,6 +4488,9 @@ final class Game
             }
             // "Whenever this creature attacks while saddled, …"
             if (($ability['saddled'] ?? false) && ! $this->hasKeyword($source, 'saddled')) {
+                continue;
+            }
+            if (isset($ability['if']) && ! $this->conditionMet($ability['if'], $source, $controller)) {
                 continue;
             }
             if (! $this->gained($source, $ability)) {
@@ -6081,9 +6128,15 @@ final class Game
         if ($amount <= 0) {
             return;
         }
-        $this->players[$seat]->life += $amount;
+        $player = $this->players[$seat];
+        $player->life += $amount;
+        $first = $player->gainedTurn !== $this->turn;
+        [$player->gained, $player->gainedTurn] = [($first ? 0 : $player->gained) + $amount, $this->turn];
         foreach ($this->permanents($seat) as $permanent) {
             $this->trigger($permanent, 'gain_life', $seat);
+            if ($first) {
+                $this->trigger($permanent, 'first_gain_life', $seat);
+            }
         }
     }
 
@@ -6473,6 +6526,7 @@ final class Game
             GameObject::GONE => null,
         };
         if ($dies) {
+            [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
         }
         // Blitz (rule 702.152): `When this creature dies, draw a card.`
@@ -7356,6 +7410,8 @@ final class Game
             'fogTurn' => $this->fogTurn,
             'unpreventableTurn' => $this->unpreventableTurn,
             'spellsCast' => $this->spellsCast,
+            'died' => $this->died,
+            'diedTurn' => $this->diedTurn,
             'spellsTurn' => $this->spellsTurn,
             'spellsBefore' => $this->spellsBefore,
             'dayNight' => $this->dayNight,
@@ -7451,6 +7507,8 @@ final class Game
         $game->fogTurn = (int) ($data['fogTurn'] ?? 0);
         $game->unpreventableTurn = (int) ($data['unpreventableTurn'] ?? 0);
         $game->spellsCast = (int) ($data['spellsCast'] ?? 0);
+        $game->died = (int) ($data['died'] ?? 0);
+        $game->diedTurn = (int) ($data['diedTurn'] ?? 0);
         $game->spellsTurn = (int) ($data['spellsTurn'] ?? 0);
         $game->spellsBefore = (int) ($data['spellsBefore'] ?? 0);
         $game->dayNight = isset($data['dayNight']) ? (string) $data['dayNight'] : null;
