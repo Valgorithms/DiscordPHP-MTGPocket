@@ -408,13 +408,13 @@ final class CardDefinition
     {
         $effects = [];
         foreach ($this->effects as $effect) {
-            if (($effect['kicked'] ?? false) && ! $kicked) {
+            if ((($effect['kicked'] ?? false) && ! $kicked) || (($effect['unkicked'] ?? false) && $kicked)) {
                 continue;
             }
             if ($kicked && isset($effect['kickedAmount'])) {
                 $effect['amount'] = $effect['kickedAmount'];
             }
-            unset($effect['kicked'], $effect['kickedAmount']);
+            unset($effect['kicked'], $effect['unkicked'], $effect['kickedAmount']);
             $effects[] = $effect;
         }
         sort($modes);
