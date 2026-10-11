@@ -86,7 +86,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard'];
 
     /** @var int[] */
     public array $exile = [];
@@ -1087,7 +1087,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1144,7 +1144,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1366,6 +1366,10 @@ final class Game
         if ($card->isLand()) {
             return 'Lands are played, not cast.';
         }
+        // Miracle: while its reveal trigger would be resolving, at any speed.
+        if ($options['alt'] === 'miracle' && ($object->zone !== GameObject::HAND || $object->miracle !== $this->turn.':'.$this->step->name)) {
+            return "{$card->name} can be cast for its miracle cost only right after it is drawn as your first card this turn.";
+        }
         if ($options['flashback'] && $card->flashback === null) {
             return "{$card->name} has no flashback.";
         }
@@ -1442,7 +1446,7 @@ final class Game
         // A plotted card is cast as a sorcery (rule 702.170d).
         // Madness casts it whenever its trigger waits (rule 702.35c).
         // Cascade casts it while its trigger waits (rule 702.85a).
-        if (! $options['rebound'] && ! in_array($options['exiled'], ['madness', 'suspended', 'cascade'], true) && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
+        if (! $options['rebound'] && $options['alt'] !== 'miracle' && ! in_array($options['exiled'], ['madness', 'suspended', 'cascade'], true) && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
             return "{$card->name} can be cast only in your own main phase, when the stack is empty.";
         }
 
@@ -5366,6 +5370,7 @@ final class Game
             'enchantment_card_yours' => $object->printed()->is('Enchantment') && $object->owner === $controller,
             'permanent_card_yours' => $object->printed()->isPermanentCard() && $object->owner === $controller,
             'creature_card_graveyard' => $object->printed()->isCreature(),
+            'card_graveyard' => true,
             'card_graveyard_nonbasic' => ! ($object->printed()->isLand() && in_array('Basic', $object->printed()->supertypes, true)),
             'nonbasic_land' => $card->isLand() && ! in_array('Basic', $card->supertypes, true),
             'creature_or_planeswalker_opponent' => ($creature || $card->isPlaneswalker()) && $object->controller !== $controller,
@@ -6507,6 +6512,11 @@ final class Game
                 // "Whenever you draw a card, …"
                 foreach ($this->permanents($seat) as $permanent) {
                     $this->trigger($permanent, 'you_draw', $seat);
+                }
+                // Miracle (rule 702.94): revealed as the first card drawn this turn.
+                if ($player->drawn === 0 && isset($this->objects[$id]->printed()->altCosts['miracle'])) {
+                    $this->objects[$id]->miracle = $this->turn.':'.$this->step->name;
+                    $this->log("{$player->name} reveals {$this->objects[$id]->name()} (miracle {$this->objects[$id]->printed()->altCosts['miracle']}).");
                 }
                 // "Whenever you draw your second card each turn, …"
                 if (++$player->drawn === 2) {

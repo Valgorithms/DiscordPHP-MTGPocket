@@ -139,6 +139,7 @@ final class TextParser
         'target creature card with mana value 5 or less from your graveyard' => 'creature_card_yours_mv_le_5',
         'target creature card with mana value 6 or less from your graveyard' => 'creature_card_yours_mv_le_6',
         'target creature card from a graveyard' => 'creature_card_graveyard',
+        'target card from a graveyard' => 'card_graveyard',
         'target card from your graveyard' => 'card_yours',
         'target instant or sorcery card from your graveyard' => 'instant_sorcery_card_yours',
         'target artifact card from your graveyard' => 'artifact_card_yours',
@@ -790,6 +791,12 @@ final class TextParser
         if (preg_match('/^Escape—'.self::COST.', Exile (\w+) other cards? from your graveyard\.?$/u', $line, $m) && is_int($n = self::amount($m[2])) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['escape'] = $m[1];
             $result['keywords'][] = "escape {$n}";
+
+            return true;
+        }
+        // Miracle (rule 702.94): cast for this cost as the first card its owner draws in a turn; see Game::draw().
+        if (preg_match('/^Miracle '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['miracle'] = $m[1];
 
             return true;
         }
@@ -2560,7 +2567,7 @@ final class TextParser
         if (preg_match("/^destroy ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'destroy', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+        if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && (self::isPermanentTarget($m[1]) || (in_array(self::TARGETS[strtolower($m[1])], ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic'], true) && ($m[2] ?? '') === ''))) {
             return ['type' => 'exile', 'target' => self::TARGETS[strtolower($m[1])]] + (($m[2] ?? '') !== '' ? ['until' => true] : []);
         }
         if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
@@ -2930,7 +2937,7 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard'], true)
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard'], true)
             && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_');
     }
 }
