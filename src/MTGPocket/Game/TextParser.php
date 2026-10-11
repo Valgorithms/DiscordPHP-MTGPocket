@@ -1235,6 +1235,7 @@ final class TextParser
             "attacks each combat if able" => ["attacks each combat if able"],
             // Read by Game::declareBlockers().
             'must be blocked if able' => ['must be blocked if able'],
+            'can block an additional creature each combat' => ['can block an additional creature each combat'],
             // Read by Game::attackCandidates().
             "can't attack unless defending player controls an Island" => ["can't attack unless defending player controls an Island"],
             "can't attack unless defending player controls a Swamp" => ["can't attack unless defending player controls a Swamp"],

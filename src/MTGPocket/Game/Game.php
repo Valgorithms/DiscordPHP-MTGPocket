@@ -116,6 +116,9 @@ final class Game
     /** @var array<int, int> Blocking creature => the attacker it blocks, in declaration order. */
     public array $blockers = [];
 
+    /** @var array<int, int[]> Blocking creature => the other attackers it blocks (`can block an additional creature each combat`). */
+    public array $extraBlocks = [];
+
     /** @var array<int, true> Attackers that were blocked, even if their blockers have left. */
     public array $blocked = [];
 
@@ -548,7 +551,7 @@ final class Game
             return;
         }
         if ($this->step === Step::EndCombat) {
-            $this->attackers = $this->blockers = $this->blocked = $this->struckFirst = [];
+            $this->attackers = $this->blockers = $this->extraBlocks = $this->blocked = $this->struckFirst = [];
         }
         $this->enterStep($this->step->next());
     }
@@ -5271,16 +5274,32 @@ final class Game
     }
 
     /**
-     * Declares blockers: each blocker blocks one attacker (rule 509.1).
+     * Declares blockers: each blocker blocks one attacker (rule 509.1), or
+     * two with `can block an additional creature each combat`.
      *
-     * @param int             $seat
-     * @param array<int, int> $blocks Blocker id => attacker id. May be empty.
+     * @param int                   $seat
+     * @param array<int, int|int[]> $blocks Blocker id => attacker id, or attacker ids. May be empty.
      *
      * @return void
      */
     public function declareBlockers(int $seat, array $blocks): void
     {
         $this->expect($seat, 'block');
+        $extra = [];
+        foreach ($blocks as $blocker => $attackers) {
+            if (is_array($attackers)) {
+                $attackers = array_values(array_unique(array_map('intval', $attackers)));
+                if ($attackers === []) {
+                    unset($blocks[$blocker]);
+
+                    continue;
+                }
+                $blocks[$blocker] = $attackers[0];
+                if (count($attackers) > 1) {
+                    $extra[(int) $blocker] = array_slice($attackers, 1);
+                }
+            }
+        }
         // An attacker that must be blocked if able gets a free creature that can block it (rule 509.1c).
         foreach (array_keys($this->attackers) as $attacker) {
             if (in_array($attacker, array_map('intval', $blocks), true) || ! $this->hasKeyword($this->objects[$attacker], 'must be blocked if able') || $this->minBlockers($this->objects[$attacker]) > 1) {
@@ -5302,6 +5321,7 @@ final class Game
                 $current = isset($blocks[$candidate]) ? $this->objects[(int) $blocks[$candidate]] ?? null : null;
                 if (($current === null || ! $this->hasKeyword($current, 'all creatures able to block it do so')) && $this->canBlock($this->objects[$candidate], $this->objects[$attacker])) {
                     $blocks[$candidate] = $attacker;
+                    unset($extra[$candidate]);
                 }
             }
         }
@@ -5313,6 +5333,19 @@ final class Game
                 throw new GameException(($blockerObject?->name() ?? 'That creature').' cannot block '.($attackerObject?->name() ?? 'that').'.');
             }
             $count[(int) $attacker] = ($count[(int) $attacker] ?? 0) + 1;
+        }
+        foreach ($extra as $blocker => $others) {
+            $blockerObject = $this->objects[$blocker];
+            if (count($others) > 1 || ! $this->hasKeyword($blockerObject, 'can block an additional creature each combat')) {
+                throw new GameException("{$blockerObject->name()} can block only one attacker.");
+            }
+            foreach ($others as $attacker) {
+                $attackerObject = $this->objects[$attacker] ?? null;
+                if ($attackerObject === null || $attacker === (int) $blocks[$blocker] || ! $this->canBlock($blockerObject, $attackerObject)) {
+                    throw new GameException("{$blockerObject->name()} cannot block ".($attackerObject?->name() ?? 'that').'.');
+                }
+                $count[$attacker] = ($count[$attacker] ?? 0) + 1;
+            }
         }
         foreach ($count as $attacker => $n) {
             if ($n < ($min = $this->minBlockers($this->objects[$attacker])) && $min > 2) {
@@ -5333,6 +5366,14 @@ final class Game
             $this->blocked[(int) $attacker] = true;
             $lines[] = $this->objects[(int) $blocker]->name().' blocks '.$this->objects[(int) $attacker]->name();
             $moves[] = $this->objects[(int) $blocker]->name().':'.$this->objects[(int) $attacker]->name();
+        }
+        $this->extraBlocks = $extra;
+        foreach ($extra as $blocker => $others) {
+            foreach ($others as $attacker) {
+                $this->blocked[$attacker] = true;
+                $lines[] = $this->objects[$blocker]->name().' also blocks '.$this->objects[$attacker]->name();
+                $moves[] = $this->objects[$blocker]->name().':'.$this->objects[$attacker]->name();
+            }
         }
         $this->log($lines === [] ? "{$this->players[$seat]->name} does not block." : implode('; ', $lines).'.', $seat, $moves === [] ? null : 'blk '.implode(', ', $moves));
         // Flanking (rule 702.25): a blocker without flanking gets -1/-1 for each instance.
@@ -5409,7 +5450,7 @@ final class Game
             }
 
             $blockers = array_values(array_filter(
-                array_keys($this->blockers, $id, true),
+                [...array_keys($this->blockers, $id, true), ...array_keys(array_filter($this->extraBlocks, fn (array $others) => in_array($id, $others, true)))],
                 fn (int $blocker) => $this->objects[$blocker]->zone === GameObject::BATTLEFIELD
             ));
             $trample = $this->hasKeyword($attacker, 'trample');
@@ -5437,8 +5478,19 @@ final class Game
         }
         foreach ($this->blockers as $blocker => $attacker) {
             $object = $this->objects[$blocker];
-            if ($deals($object) && ($power = $this->power($object)) > 0 && $this->objects[$attacker]->zone === GameObject::BATTLEFIELD) {
-                $assignments[] = [$object, "o:{$attacker}", $power];
+            if (! $deals($object) || ($power = $this->power($object)) <= 0) {
+                continue;
+            }
+            // Blocking more than one: lethal damage to each in order, the rest to the last.
+            $blocked = array_values(array_filter([$attacker, ...$this->extraBlocks[$blocker] ?? []], fn (int $id) => $this->objects[$id]->zone === GameObject::BATTLEFIELD));
+            $deathtouch = $this->hasKeyword($object, 'deathtouch');
+            foreach ($blocked as $index => $id) {
+                $target = $this->objects[$id];
+                $amount = $index === count($blocked) - 1 ? $power : min($power, $deathtouch ? 1 : max(0, $this->toughness($target) - $target->damage));
+                if ($amount > 0) {
+                    $assignments[] = [$object, "o:{$id}", $amount];
+                }
+                $power -= $amount;
             }
         }
 
@@ -5635,7 +5687,7 @@ final class Game
         $object->tapped = true;
         $object->damage = 0;
         $object->deathtouched = false;
-        unset($this->attackers[$object->id], $this->blockers[$object->id]);
+        unset($this->attackers[$object->id], $this->blockers[$object->id], $this->extraBlocks[$object->id]);
         $this->log("{$object->name()} regenerates.");
 
         return true;
@@ -5981,7 +6033,7 @@ final class Game
         switch ($object->zone) {
             case GameObject::BATTLEFIELD:
                 $this->battlefield = $remove($this->battlefield);
-                unset($this->attackers[$object->id], $this->blockers[$object->id]);
+                unset($this->attackers[$object->id], $this->blockers[$object->id], $this->extraBlocks[$object->id]);
                 // What was attached to it is no longer attached (state-based actions deal with it).
                 foreach ($this->battlefield as $id) {
                     if ($this->objects[$id]->attachedTo === $object->id) {
@@ -6811,7 +6863,7 @@ final class Game
             'command' => $this->command,
             'commanders' => array_map(fn ($id, $casts) => [$id, $casts], array_keys($this->commanders), $this->commanders),
             'attackers' => array_keys($this->attackers),
-            'blockers' => array_map(fn ($blocker, $attacker) => [$blocker, $attacker], array_keys($this->blockers), $this->blockers),
+            'blockers' => array_map(fn ($blocker, $attacker) => [$blocker, $attacker, ...$this->extraBlocks[$blocker] ?? []], array_keys($this->blockers), $this->blockers),
             'blocked' => array_keys($this->blocked),
             'struckFirst' => array_keys($this->struckFirst),
             'declared' => array_keys($this->declared),
@@ -6894,8 +6946,12 @@ final class Game
             $game->commanders[(int) $id] = (int) $casts;
         }
         $game->attackers = array_fill_keys(array_map('intval', (array) ($data['attackers'] ?? [])), true);
-        foreach ((array) ($data['blockers'] ?? []) as [$blocker, $attacker]) {
+        foreach ((array) ($data['blockers'] ?? []) as $row) {
+            [$blocker, $attacker] = $row;
             $game->blockers[(int) $blocker] = (int) $attacker;
+            if (count($row) > 2) {
+                $game->extraBlocks[(int) $blocker] = array_map('intval', array_slice($row, 2));
+            }
         }
         $game->blocked = array_fill_keys(array_map('intval', (array) ($data['blocked'] ?? [])), true);
         $game->struckFirst = array_fill_keys(array_map('intval', (array) ($data['struckFirst'] ?? [])), true);
