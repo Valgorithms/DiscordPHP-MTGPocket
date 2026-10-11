@@ -4779,6 +4779,9 @@ final class Game
         if (! self::isSpecialAction($ability) && $this->hasKeyword($object, "abilities can't be activated")) {
             return "{$card->name}'s activated abilities can't be activated.";
         }
+        if (($ability['prepare'] ?? false) && ! $object->prepared) {
+            return "{$card->name} is not prepared.";
+        }
         if ($ability['sorcery'] && ! $this->sorcerySpeed($seat)) {
             return "That ability of {$card->name} can be activated only in your own main phase, when the stack is empty.";
         }
@@ -4950,6 +4953,11 @@ final class Game
             return;
         }
         $object->used[$index] = $this->turn;
+        // Casting the copy of its prepare spell unprepares it.
+        if ($ability['prepare'] ?? false) {
+            $object->prepared = false;
+            $label = "A copy of {$object->definition()->prepare?->name}";
+        }
 
         $this->pushAbility([
             'source' => $object->id,
@@ -6244,6 +6252,7 @@ final class Game
         $card = $object->definition();
         $object->controller = $controller;
         $object->sick = true;
+        $object->prepared = ! $faceDown && in_array('enters prepared', $card->keywords, true) && $card->prepare !== null;
         $object->tapped = $card->entersTapped || ($card->entersTappedUnless !== null && ! $this->entersUntapped($object, $controller));
         if ($card->isPlaneswalker() && $card->loyalty !== null) {
             $object->addCounters('loyalty', $card->loyalty);

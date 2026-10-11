@@ -167,6 +167,10 @@ class CardPoolImporter
             if (in_array($row['layout'] ?? null, self::DOUBLE_FACED, true) && isset($backs[$row['name']])) {
                 $card['back'] = $backs[$row['name']];
             }
+            // A preparation card's spell (`This creature enters prepared.`): never cast itself, but copied while it is prepared.
+            if (($row['layout'] ?? null) === 'prepare' && isset($backs[$row['name']])) {
+                $card['prepare'] = $backs[$row['name']];
+            }
             $pool->add($card);
         }
 
@@ -197,7 +201,7 @@ class CardPoolImporter
         $backs = [];
         foreach ($rows as $row) {
             $row = $this->database->decode('cards', $row);
-            if (isset($backs[$row['name']]) || ! in_array($row['layout'] ?? null, self::DOUBLE_FACED, true)) {
+            if (isset($backs[$row['name']]) || ! in_array($row['layout'] ?? null, [...self::DOUBLE_FACED, 'prepare'], true)) {
                 continue;
             }
             $back = [
