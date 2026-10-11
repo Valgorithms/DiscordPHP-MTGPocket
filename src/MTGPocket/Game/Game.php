@@ -2229,7 +2229,7 @@ final class Game
         if (in_array('cascade', $card->keywords, true)) {
             $this->cascade($seat, $spell);
         }
-        $events = ['cast_spell', ...($card->isCreature() ? [] : ['cast_noncreature']), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
+        $events = ['cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : [])];
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
@@ -6058,6 +6058,10 @@ final class Game
                 if ($player->drawnTurn !== $this->turn) {
                     [$player->drawn, $player->drawnTurn] = [0, $this->turn];
                 }
+                // "Whenever you draw a card, …"
+                foreach ($this->permanents($seat) as $permanent) {
+                    $this->trigger($permanent, 'you_draw', $seat);
+                }
                 // "Whenever you draw your second card each turn, …"
                 if (++$player->drawn === 2) {
                     foreach ($this->permanents($seat) as $permanent) {
@@ -6987,6 +6991,10 @@ final class Game
                     continue;
                 }
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
+                    continue;
+                }
+                // A lord: only creatures of its type.
+                if (isset($anthem['subtype']) && ! in_array($anthem['subtype'], $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
                     continue;
                 }
                 if (! ($anthem['other'] && $source->id === $object->id)) {
