@@ -412,6 +412,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
         foreach ($player->commanderDamage as $id => $damage) {
             $line .= "\n⚔️ {$damage}/".Game::COMMANDER_DAMAGE." commander damage from {$game->objects[$id]->name()}";
         }
+        // `Play with the top card of your library revealed.`
+        $top = end($player->library);
+        if ($top !== false && array_filter($game->permanents($seat), fn (GameObject $o) => in_array('top revealed', $o->definition()->keywords, true)) !== []) {
+            $line .= "\n🔝 Top of library (revealed): {$game->objects[$top]->name()}";
+        }
 
         $lands = [];
         $others = [];

@@ -303,6 +303,9 @@ final class ModernCardTextTest extends GameTestCase
         'Gift Pump Lite' => ['manaCost' => '{W}', 'type' => 'Instant', 'text' => "Gift a Food (You may promise an opponent a gift as you cast this spell. If you do, they create a Food token before its other effects.)\nTarget creature you control gets +2/+2 until end of turn. If the gift was promised, that creature also gains indestructible until end of turn.", 'colors' => ['W']],
         'Gift Draw Lite' => ['manaCost' => '{1}{U}', 'type' => 'Sorcery', 'text' => "Gift a card (You may promise an opponent a gift as you cast this spell. If you do, they draw a card before its other effects.)\nDraw a card. If the gift wasn't promised, you gain 3 life.", 'colors' => ['U']],
         'Gift Otter Lite' => ['manaCost' => '{1}{U}', 'type' => 'Creature — Otter', 'power' => '2', 'toughness' => '1', 'text' => "Gift a tapped Fish (You may promise an opponent a gift as you cast this spell. If you do, they create a tapped 1/1 blue Fish creature token before its other effects.)\nWhen this creature enters, if the gift was promised, draw a card.", 'colors' => ['U']],
+        'Courser Lite' => ['manaCost' => '{1}{G}{G}', 'type' => 'Enchantment Creature — Centaur', 'power' => '2', 'toughness' => '4', 'text' => "Play with the top card of your library revealed.\nYou may play lands from the top of your library.", 'colors' => ['G']],
+        'Future Lite' => ['manaCost' => '{2}{U}{U}{U}', 'type' => 'Enchantment', 'text' => "Play with the top card of your library revealed.\nYou may play lands and cast spells from the top of your library.", 'colors' => ['U']],
+        'Cipher Lite' => ['manaCost' => '{U}', 'type' => 'Sorcery', 'text' => "Draw a card.\nCipher (Then you may exile this spell card encoded on a creature you control. Whenever that creature deals combat damage to a player, its controller may cast a copy of the encoded card without paying its mana cost.)", 'colors' => ['U']],
         'Small Aura Lite' => ['manaCost' => '{W}', 'type' => 'Enchantment — Aura', 'text' => "Enchant creature with power 3 or less\nEnchanted creature has flying.", 'colors' => ['W']],
         'Cultivate' => ['manaCost' => '{2}{G}', 'type' => 'Sorcery', 'text' => 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', 'colors' => ['G']],
     ];
@@ -3195,6 +3198,50 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertTrue($fish[0]->tapped);
     }
 
+    public function testPlayingFromTheTopOfTheLibrary(): void
+    {
+        $game = $this->newGame();
+        $this->assertSame([], self::read('Courser Lite')->unsupported);
+        $this->assertSame([], self::read('Future Lite')->unsupported);
+        $this->put(0, 'Courser Lite', GameObject::BATTLEFIELD);
+        $bears = $game->addCard(0, self::card('Grizzly Bears'), GameObject::LIBRARY)->id;
+        $this->assertSame([], array_filter($game->plays(0), fn (array $play) => $play['id'] === $bears), 'Only lands from the top.');
+        $forest = $game->addCard(0, self::card('Forest'), GameObject::LIBRARY)->id;
+        $this->assertContains(['id' => $forest, 'how' => ''], $game->plays(0));
+        $game->playLand(0, $forest);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($forest));
+
+        $this->put(0, 'Future Lite', GameObject::BATTLEFIELD);
+        $this->lands(0, 'Forest', 1);
+        $this->assertContains(['id' => $bears, 'how' => ''], $game->plays(0));
+        $game->cast(0, $bears);
+        $this->resolve();
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($bears));
+    }
+
+    public function testCipher(): void
+    {
+        $game = $this->newGame();
+        $this->assertSame([], self::read('Cipher Lite')->unsupported);
+        $this->lands(0, 'Island', 1);
+        $bears = $game->addCard(0, self::card('Grizzly Bears'), GameObject::BATTLEFIELD)->id;
+        $cipher = $this->put(0, 'Cipher Lite', GameObject::HAND);
+        $hand = count($game->players[0]->hand);
+        $game->cast(0, $cipher);
+        $this->resolve();
+        $this->assertSame($hand, count($game->players[0]->hand), 'Cast, then drew.');
+        $this->assertSame(GameObject::EXILE, $this->zone($cipher));
+        $this->assertSame([$cipher], $game->objects[$bears]->encoded);
+
+        $this->passUntil(Step::DeclareAttackers, 3);
+        $game->declareAttackers(0, [$bears]);
+        $hand = count($game->players[0]->hand);
+        $this->passUntil(Step::PostcombatMain);
+        $this->assertSame(18, $this->life(1));
+        $this->assertSame($hand + 1, count($game->players[0]->hand), 'The copy draws a card.');
+        $this->assertSame(GameObject::EXILE, $this->zone($cipher), 'The card stays encoded.');
+    }
+
     public function testUntapSelfAbility(): void
     {
         $game = $this->newGame();
@@ -3368,7 +3415,7 @@ final class ModernCardTextTest extends GameTestCase
         $orzhov = $deck(['Plains' => 9, 'Swamp' => 8], [
             'Kitchen Finks' => 3, 'Akrasan Squire' => 3, 'Devoted Retainer' => 3, 'Toxic Lite' => 3, 'Glorious Anthem' => 2, 'Benalish Marshal' => 2,
             'Bake into a Pie' => 2, 'Thraben Inspector' => 3, 'Village Rites' => 2, 'Thoughtseize' => 3, 'Unburial Rites' => 2, 'Raise Dead' => 1,
-            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1, 'Path Lite' => 1, 'Stress Lite' => 2, 'Seismic Lite' => 2, 'Extraction Lite' => 1, 'Bribery Lite' => 1, 'Werewolf Lite // Howler Lite' => 2, 'Daybound Lite // Nightbound Lite' => 2, 'Flip Lite // Flipped Lite' => 2, 'Ghost Lite // Spirit Lite' => 2, 'Pay Flip Lite // Paid Lite' => 2, 'Saga Lite' => 2, 'Flip Saga Lite // Saga Dragon Lite' => 2, 'Lure Lite' => 2, 'Bully Lite' => 2, 'Hand Lite' => 1, 'Grave Lite' => 1, 'Read Ahead Lite' => 1, 'Ramp Lite' => 1, 'Cultivate' => 1, 'Training Lite' => 2, 'Scaler Lite' => 1, 'Trample Counters Lite' => 1, 'Party Lite' => 1, 'Sac Ping Lite' => 1, 'Afflict Lite' => 2, 'Dredge Lite' => 2, 'Incubate Lite' => 2, 'Ki Lite' => 1, 'Arcane Lite' => 1, 'Night Lite' => 1, 'Blitz Lite' => 2, 'Buyback Lite' => 2, 'Ingest Lite' => 2, 'Ally Lite' => 2, 'Conspire Lite' => 2, 'Awaken Lite' => 2, 'Connive Lite' => 2, 'Tapped Discount Lite' => 2, 'Grave Lands Lite' => 1, 'Big Game Lite' => 2, 'Tutor Lite' => 1, 'Demonic Lite' => 1, 'Regrowth Lite' => 2, 'Loot Enter Lite' => 2, 'Extra Turn Lite' => 1, 'Grave Exile Lite' => 2, 'Scavenge Lite' => 2, 'Filter Land Lite' => 1, 'Double White Lite' => 1, 'Freerun Lite' => 2, 'Tapped Aura Lite' => 1, 'Forest Aura Lite' => 1, 'Mixed Aura Lite' => 1, 'Color Aura Lite' => 1, 'Small Aura Lite' => 1, 'Inquisition Lite' => 2, 'Peek Hand Lite' => 1, 'Untapper Lite' => 2, 'No Regen Burn Lite' => 1, 'Shield Lite' => 2, 'Island Walker Lite' => 2, 'Lure Beast Lite' => 2, 'Charge Relic Lite' => 1, 'Amass Lite' => 2, 'Permanent Regrowth Lite' => 1, 'Lazy Untap Lite' => 1, 'Freeze Aura Lite' => 1, 'Crowd Lite' => 2, 'Tuck Lite' => 1, 'Team Counters Lite' => 2, 'Double Pump Lite' => 1, 'Ritual Lite' => 1, 'Outlast Lite' => 2, 'Shrink Lite' => 1, 'Double Threaten Lite' => 1, 'Smother Lite' => 2, 'X Leak Lite' => 1, 'Impulse Today Lite' => 1, 'Transmute Lite' => 1, 'Transmute Beast Lite' => 1, 'Mother Lite' => 2, 'Two Block Lite' => 2, 'Learn Lite' => 1, 'Grave Hate Lite' => 1, 'Titan Lite' => 1, 'Compleated Lite' => 1, 'Drum Lite' => 1, 'Edict Lite' => 1, 'Artifact Sac Lite' => 1, 'Haste Magic Lite' => 1, 'Relay Lite' => 1, 'Stirrings Lite' => 1, 'Teamwork Lite' => 1, 'Multikick Lite' => 2, 'Clash Burn Lite' => 1, 'Clash Rat Lite' => 2, 'Clash Pump Lite' => 1, 'Lash Lite' => 1, 'Gift Pump Lite' => 1, 'Gift Draw Lite' => 1, 'Gift Otter Lite' => 2,
+            'Divine Verdict' => 2, 'Mode Sprite' => 2, 'Steppe Lynx Lite' => 2, 'Sword Lite' => 1, 'Amrou Kithkin' => 2, 'Frogmite' => 2, 'Brightfield Mustang' => 2, 'Brightfield Glider' => 2, 'Hopeful Eidolon' => 2, 'Patchwork Banner' => 1, 'Lumen-Class Frigate' => 2, 'Burnout Bashtronaut' => 2, 'Frost Breath' => 1, 'Outpace Oblivion' => 1, 'Lava Coil' => 2, 'Electromancer Lite' => 1, 'Hyena Umbra' => 1, 'Treasure Cruise' => 1, 'Banisher Lite' => 1, 'Mind Control' => 1, 'Firebending Lite' => 2, 'Simic Initiate' => 2, 'Monster Lite' => 2, 'Riot Lite' => 2, 'Merfolk Branchwalker' => 2, 'Mentor Lite' => 2, 'Exploit Lite' => 1, 'Topan Freeblade' => 2, 'Glint-Sleeve Artisan' => 2, 'Syndic of Tithes' => 1, "Ajani's Pridemate" => 2, "Curse of Death's Hold" => 1, 'Wicked Akuba Lite' => 2, 'Scuttling Death' => 2, 'Soul Warden Lite' => 2, 'Relentless Rats' => 1, 'Murderous Compulsion' => 2, 'Boon-Bringer Valkyrie' => 1, 'Offspring Lite' => 2, 'Blessed Ghoul' => 2, 'Terror' => 2, 'Syndicate Messenger' => 2, 'Azorius Chancery' => 1, 'Prismatic Lens' => 1, 'Intimidation Tactics' => 1, 'Leyline of Sanctity' => 1, 'Ascend Lite' => 2, 'Echo Lite' => 2, 'Escape Lite' => 2, 'Retrace Lite' => 2, 'Skulking Ghost' => 1, 'Grapeshot' => 2, 'Cumulative Lite' => 2, 'Murder Lite' => 2, 'Bloodbraid Elf' => 2, 'Ward Discard Lite' => 2, 'Search Lite' => 2, 'Embalm Lite' => 2, 'Enlist Lite' => 2, 'Life Land Lite' => 1, 'Pro Black Lite' => 2, 'Tribute Lite' => 2, 'Healer Lite' => 2, 'Reconfigure Lite' => 2, 'Zenith Lite' => 1, 'Look Land Lite' => 2, 'Reveal Lands Lite' => 1, 'Shuffle Lite' => 1, 'Temporary Lite' => 1, 'Path Lite' => 1, 'Stress Lite' => 2, 'Seismic Lite' => 2, 'Extraction Lite' => 1, 'Bribery Lite' => 1, 'Werewolf Lite // Howler Lite' => 2, 'Daybound Lite // Nightbound Lite' => 2, 'Flip Lite // Flipped Lite' => 2, 'Ghost Lite // Spirit Lite' => 2, 'Pay Flip Lite // Paid Lite' => 2, 'Saga Lite' => 2, 'Flip Saga Lite // Saga Dragon Lite' => 2, 'Lure Lite' => 2, 'Bully Lite' => 2, 'Hand Lite' => 1, 'Grave Lite' => 1, 'Read Ahead Lite' => 1, 'Ramp Lite' => 1, 'Cultivate' => 1, 'Training Lite' => 2, 'Scaler Lite' => 1, 'Trample Counters Lite' => 1, 'Party Lite' => 1, 'Sac Ping Lite' => 1, 'Afflict Lite' => 2, 'Dredge Lite' => 2, 'Incubate Lite' => 2, 'Ki Lite' => 1, 'Arcane Lite' => 1, 'Night Lite' => 1, 'Blitz Lite' => 2, 'Buyback Lite' => 2, 'Ingest Lite' => 2, 'Ally Lite' => 2, 'Conspire Lite' => 2, 'Awaken Lite' => 2, 'Connive Lite' => 2, 'Tapped Discount Lite' => 2, 'Grave Lands Lite' => 1, 'Big Game Lite' => 2, 'Tutor Lite' => 1, 'Demonic Lite' => 1, 'Regrowth Lite' => 2, 'Loot Enter Lite' => 2, 'Extra Turn Lite' => 1, 'Grave Exile Lite' => 2, 'Scavenge Lite' => 2, 'Filter Land Lite' => 1, 'Double White Lite' => 1, 'Freerun Lite' => 2, 'Tapped Aura Lite' => 1, 'Forest Aura Lite' => 1, 'Mixed Aura Lite' => 1, 'Color Aura Lite' => 1, 'Small Aura Lite' => 1, 'Inquisition Lite' => 2, 'Peek Hand Lite' => 1, 'Untapper Lite' => 2, 'No Regen Burn Lite' => 1, 'Shield Lite' => 2, 'Island Walker Lite' => 2, 'Lure Beast Lite' => 2, 'Charge Relic Lite' => 1, 'Amass Lite' => 2, 'Permanent Regrowth Lite' => 1, 'Lazy Untap Lite' => 1, 'Freeze Aura Lite' => 1, 'Crowd Lite' => 2, 'Tuck Lite' => 1, 'Team Counters Lite' => 2, 'Double Pump Lite' => 1, 'Ritual Lite' => 1, 'Outlast Lite' => 2, 'Shrink Lite' => 1, 'Double Threaten Lite' => 1, 'Smother Lite' => 2, 'X Leak Lite' => 1, 'Impulse Today Lite' => 1, 'Transmute Lite' => 1, 'Transmute Beast Lite' => 1, 'Mother Lite' => 2, 'Two Block Lite' => 2, 'Learn Lite' => 1, 'Grave Hate Lite' => 1, 'Titan Lite' => 1, 'Compleated Lite' => 1, 'Drum Lite' => 1, 'Edict Lite' => 1, 'Artifact Sac Lite' => 1, 'Haste Magic Lite' => 1, 'Relay Lite' => 1, 'Stirrings Lite' => 1, 'Teamwork Lite' => 1, 'Multikick Lite' => 2, 'Clash Burn Lite' => 1, 'Clash Rat Lite' => 2, 'Clash Pump Lite' => 1, 'Lash Lite' => 1, 'Gift Pump Lite' => 1, 'Gift Draw Lite' => 1, 'Gift Otter Lite' => 2, 'Courser Lite' => 2, 'Future Lite' => 1, 'Cipher Lite' => 2,
         ]);
         $gruul = $deck(['Mountain' => 9, 'Forest' => 8, 'Island' => 2], [
             'Strangleroot Geist' => 3, 'Stormblood Berserker' => 3, 'Strike It Rich' => 3, 'Act of Treason' => 3, 'Tormenting Voice' => 3,

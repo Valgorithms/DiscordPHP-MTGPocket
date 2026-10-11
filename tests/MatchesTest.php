@@ -270,6 +270,17 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$bears]->zone);
     }
 
+    public function testRevealedTopCardShowsOnTheBoard(): void
+    {
+        $match = $this->startMatch();
+        $match = $this->modifyGame($match, function (Game $game) use (&$oracle): void {
+            $oracle = $game->addCard(0, ['uuid' => 'oracle', 'name' => 'Open Oracle', 'type' => 'Creature — Human Wizard', 'manaCost' => '{1}{G}', 'power' => '1', 'toughness' => '1', 'text' => 'Play with the top card of your library revealed.'], GameObject::BATTLEFIELD);
+            $game->addCard(0, ['uuid' => 'giant', 'name' => 'Hill Giant', 'type' => 'Creature — Giant', 'manaCost' => '{3}{R}', 'power' => '3', 'toughness' => '3', 'text' => ''], GameObject::LIBRARY);
+        });
+        $this->assertSame([], $match->game->objects[$oracle->id]->definition()->unsupported);
+        $this->assertStringContainsString('Top of library (revealed): Hill Giant', json_encode(MatchMessageBuilder::board($match), JSON_UNESCAPED_UNICODE));
+    }
+
     public function testFinishedGamesKeepTheirRecordForReview(): void
     {
         $matches = $this->pocket->matches;

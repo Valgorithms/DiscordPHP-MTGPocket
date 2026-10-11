@@ -364,6 +364,11 @@ final class TextParser
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
                 'You may look at the top card of your library any time.' => 'look at top any time',
+                // Shown on the board; see MatchMessageBuilder::side().
+                'Play with the top card of your library revealed.' => 'top revealed',
+                // Read by Game::playableFromTop().
+                'You may play lands from the top of your library.' => 'lands from top',
+                'You may play lands and cast spells from the top of your library.' => 'play from top',
                 // Daybound sets it to day as it enters when it is neither (rule 702.145); see Game::dayNight().
                 "If it's neither day nor night, it becomes day as CARDNAME enters." => 'daybound',
                 'If CARDNAME would be put into a graveyard from anywhere, exile it instead.' => 'exile instead of graveyard',

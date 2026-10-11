@@ -942,6 +942,14 @@ final class Game
                 $plays[] = ['id' => $id, 'how' => 'ninjutsu'];
             }
         }
+        $top = end($this->players[$seat]->library);
+        if ($top !== false && $this->playableFromTop($seat, $top)) {
+            $card = $this->objects[$top]->printed();
+            $ways = $card->isLand() ? ($this->canPlayLand($seat, $top) ? [''] : []) : array_filter(self::castWays($card, false), fn (string $how) => $this->canCast($seat, $top, $how));
+            foreach ($ways as $how) {
+                $plays[] = ['id' => $top, 'how' => $how];
+            }
+        }
         foreach ($this->players[$seat]->graveyard as $id) {
             $card = $this->objects[$id]->printed();
             if ($card->isLand() && $this->canPlayLand($seat, $id)) {
@@ -1187,6 +1195,27 @@ final class Game
         return $object !== null && $object->zone === GameObject::EXILE && $object->exiledBy === 'impulse' && $object->owner === $seat && $this->turn <= $object->exiledOn && $this->turn >= $object->playableFrom;
     }
 
+    /**
+     * `You may play lands from the top of your library.` and `You may play
+     * lands and cast spells from the top of your library.`: the top card,
+     * while a permanent of the player's says so.
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return bool
+     */
+    private function playableFromTop(int $seat, int $id): bool
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::LIBRARY || end($this->players[$seat]->library) !== $id) {
+            return false;
+        }
+        $land = $object->printed()->isLand();
+
+        return array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'play from top') || ($land && $this->hasKeyword($o, 'lands from top'))) !== [];
+    }
+
     public function canPlayLand(int $seat, int $id): bool
     {
         return $this->whyNotPlayLand($seat, $id) === null;
@@ -1198,7 +1227,7 @@ final class Game
         // `You may play lands from your graveyard.`
         $fromGraveyard = $object !== null && in_array($id, $this->players[$seat]->graveyard, true)
             && array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'lands from graveyard')) !== [];
-        if ($object === null || (! in_array($id, $this->players[$seat]->hand, true) && ! $this->impulsePlayable($seat, $id) && ! $fromGraveyard)) {
+        if ($object === null || (! in_array($id, $this->players[$seat]->hand, true) && ! $this->impulsePlayable($seat, $id) && ! $fromGraveyard && ! $this->playableFromTop($seat, $id))) {
             return 'That card is not in your hand.';
         }
         if (! $object->definition()->isLand()) {
@@ -1295,7 +1324,7 @@ final class Game
             if (! in_array($options['exiled'], ['madness', 'suspended', 'impulse', 'cascade'], true) && $object->exiledOn >= $this->turn) {
                 return 'It can be cast from exile on a later turn.';
             }
-        } elseif ($object === null || ! (in_array($id, $player->hand, true) || in_array($id, $this->commandCards($seat), true))) {
+        } elseif ($object === null || ! (in_array($id, $player->hand, true) || in_array($id, $this->commandCards($seat), true) || $this->playableFromTop($seat, $id))) {
             return 'That card is not in your hand.';
         }
         $card = $object->printed();
@@ -3005,6 +3034,17 @@ final class Game
             $this->moveTo($object, GameObject::EXILE);
             $object->rebound = true;
             $this->log("{$object->name()} is exiled with rebound.");
+
+            return;
+        }
+        // Cipher (rule 702.99): exiled encoded on the controller's strongest creature.
+        if ($resolved && ! ($item['flashback'] ?? false) && in_array('cipher', $object->printed()->keywords, true)
+            && ($creatures = array_filter($this->permanents($item['controller']), fn (GameObject $o) => $this->isCreature($o))) !== []) {
+            usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
+            $this->moveTo($object, GameObject::EXILE);
+            $object->exiledBy = 'cipher';
+            $creatures[0]->encoded[] = $object->id;
+            $this->log("{$object->name()} is encoded on {$creatures[0]->name()}.");
 
             return;
         }
@@ -5731,6 +5771,19 @@ final class Game
         }
         foreach ($hitPlayer as $source) {
             $this->trigger($source, 'combat_damage', $source->controller);
+            // Cipher: a copy of each card encoded on it, cast without paying its mana cost.
+            foreach ($source->encoded as $encoded) {
+                $card = $this->objects[$encoded];
+                if ($card->zone !== GameObject::EXILE) {
+                    continue;
+                }
+                $effects = $card->printed()->spellEffects();
+                $this->pendingTriggers[] = [
+                    'source' => $source->id, 'incarnation' => $source->incarnation, 'controller' => $source->controller,
+                    'effects' => $effects, 'kinds' => self::targetKindsOf($effects),
+                    'label' => "{$card->name()} (cipher copy)", 'text' => trim((string) preg_replace('/\s*\([^)]*\)/', '', $card->printed()->text)),
+                ];
+            }
         }
         if ($lines !== []) {
             $hits = array_map(fn (int $seat, int $amount) => "{$this->players[$seat]->name} -{$amount}", array_keys($toPlayers), $toPlayers);
