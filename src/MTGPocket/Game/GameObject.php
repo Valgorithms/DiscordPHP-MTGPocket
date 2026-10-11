@@ -99,6 +99,9 @@ final class GameObject
     /** The turn it was exiled by warp or plotted, to be cast from exile on a later turn. */
     public int $exiledOn = 0;
 
+    /** The first turn an impulse-exiled card may be played (`During your next turn, you may play that card`). */
+    public int $playableFrom = 0;
+
     /** `warp` or `plot`: why it waits in exile. */
     public ?string $exiledBy = null;
 
@@ -213,6 +216,7 @@ final class GameObject
         $this->exileIfDies = 0;
         $this->alt = null;
         $this->exiledOn = 0;
+        $this->playableFrom = 0;
         $this->exiledBy = null;
         $this->stolenBy = null;
         $this->rebound = false;
@@ -272,6 +276,7 @@ final class GameObject
             'exileIfDies' => $this->exileIfDies,
             'alt' => $this->alt,
             'exiledOn' => $this->exiledOn,
+            'playableFrom' => $this->playableFrom,
             'exiledBy' => $this->exiledBy,
             'rebound' => $this->rebound,
             'bestowed' => $this->bestowed,
@@ -321,6 +326,7 @@ final class GameObject
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
         $object->alt = isset($data['alt']) ? (string) $data['alt'] : null;
         $object->exiledOn = (int) ($data['exiledOn'] ?? 0);
+        $object->playableFrom = (int) ($data['playableFrom'] ?? 0);
         $object->exiledBy = isset($data['exiledBy']) ? (string) $data['exiledBy'] : null;
         $object->stolenBy = isset($data['stolenBy']) ? (int) $data['stolenBy'] : null;
         $object->rebound = (bool) ($data['rebound'] ?? false);
