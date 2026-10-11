@@ -1661,7 +1661,7 @@ final class Game
                     $next = [];
                     foreach ($ways as $way) {
                         foreach ($sources[$id]['filterPays'] ?? ['generic'] as $type) {
-                            $next[] = [$type => ($way[$type] ?? 0) + 1] + $way;
+                            $next[] = [$type => ($way[$type] ?? 0) + ($sources[$id]['filterCost'] ?? 1)] + $way;
                         }
                     }
                     $ways = $next;
@@ -1694,7 +1694,12 @@ final class Game
     {
         $player = $this->players[$seat];
         foreach ($payment['tap'] as $source) {
-            $this->objects[$source]->tapped = true;
+            $ability = $this->objects[$source]->definition()->manaAbility ?? [];
+            if (! ($ability['noTap'] ?? false)) {
+                $this->objects[$source]->tapped = true;
+            } elseif ($ability['once'] ?? false) {
+                $this->objects[$source]->used[-1] = $this->turn;
+            }
         }
         // A Treasure is sacrificed for its mana.
         foreach ($payment['tap'] as $source) {
@@ -1703,6 +1708,10 @@ final class Game
             }
             // `{T}, Remove a charge counter from this artifact: Add …`.
             if (($kind = $this->objects[$source]->definition()->manaAbility['counter'] ?? null) !== null) {
+                $this->objects[$source]->addCounters($kind, -1);
+            }
+            [$kind, $base] = [$this->objects[$source]->definition()->manaAbility['withCounter'][0] ?? null, $this->objects[$source]->definition()->manaAbility['colors'] ?? []];
+            if ($kind !== null && ! in_array($payment['made'][$source] ?? $base[0], $base, true)) {
                 $this->objects[$source]->addCounters($kind, -1);
             }
             // `{T}, Tap an untapped creature you control: Add …`: the weakest creature without a mana ability.
@@ -1768,15 +1777,24 @@ final class Game
         $sources = [];
         foreach ($this->permanents($seat) as $object) {
             $ability = $object->definition()->manaAbility;
-            if ($ability === null || $object->tapped || $this->hasKeyword($object, "abilities can't be activated") || (isset($ability['counter']) && $object->counter($ability['counter']) <= 0)) {
+            // A filter that doesn't tap: `{2}: Add one mana of any color.`, or once each turn.
+            $noTap = $ability['noTap'] ?? false;
+            if ($noTap && ($ability['once'] ?? false) && ($object->used[-1] ?? 0) === $this->turn) {
+                continue;
+            }
+            if ($ability === null || ($object->tapped && ! $noTap) || $this->hasKeyword($object, "abilities can't be activated") || (isset($ability['counter']) && $object->counter($ability['counter']) <= 0)) {
                 continue;
             }
             // A creature's {T} abilities need it to have been under your control since your turn began (rule 302.6).
-            if ($this->isCreature($object) && $object->sick && ! $this->hasKeyword($object, 'haste')) {
+            if ($this->isCreature($object) && $object->sick && ! $noTap && ! $this->hasKeyword($object, 'haste')) {
                 continue;
             }
             if (($ability['chosen'] ?? false) && $object->chosen !== null) {
                 $ability['colors'] = [$object->chosen];
+            }
+            // `{T}, Remove a charge counter from this land: Add one mana of any color.` beside `{T}: Add {R}.`
+            if (isset($ability['withCounter']) && $object->counter($ability['withCounter'][0]) > 0) {
+                $ability['colors'] = array_values(array_unique([...$ability['colors'], ...$ability['withCounter'][1]]));
             }
             // `{T}, Tap an untapped creature you control: Add …`: one creature without a mana ability for each.
             if (($ability['tapCreature'] ?? false) || isset($ability['withCreature'])) {

@@ -1005,6 +1005,18 @@ final class TextParser
      */
     private static function manaAbility(string $line, array &$result): bool
     {
+        // `{2}: Add one mana of any color.` and `{1}: … Activate only once each turn.`: a filter that doesn't tap; see Game::payFor().
+        if (preg_match('/^\{(\d)\}: Add one mana of any colou?r\.( Activate only once each turn\.)?$/', $line, $match)) {
+            if ($result['mana'] !== null) {
+                return false;
+            }
+            $result['mana'] = ['count' => 0, 'colors' => ['C'], 'filter' => true, 'noTap' => true] + ((int) $match[1] !== 1 ? ['filterCost' => (int) $match[1]] : []) + (($match[2] ?? '') !== '' ? ['once' => true] : []);
+
+            return true;
+        }
+        if ($result['mana']['noTap'] ?? false) {
+            return false;
+        }
         // `{1}, {T}: Add one mana of any color.`: see Game::payFor().
         if (preg_match('/^\{1\}, \{T\}: Add one mana of any colou?r\.$/', $line)) {
             if ($result['mana'] === null) {
@@ -1065,7 +1077,8 @@ final class TextParser
         $sacrifice = ($match[1] ?? '') === ', Sacrifice CARDNAME';
         // `{T}, Remove a charge counter from CARDNAME: Add one mana of any color.`: see Game::manaSources().
         $counter = preg_match('/Remove an? (\w+) counter/', $match[1] ?? '', $c) ? $c[1] : null;
-        if ($counter !== null && $result['mana'] !== null) {
+        $plain = fn (?array $mana) => $mana !== null && $mana['count'] === 1 && array_diff(array_keys($mana), ['count', 'colors']) === [];
+        if ($counter !== null && $result['mana'] !== null && ! $plain($result['mana'])) {
             return false;
         }
         $pain = (($match[1] ?? '') !== '' && ! $sacrifice && $counter === null) || str_ends_with($line, 'deals 1 damage to you.');
@@ -1093,7 +1106,10 @@ final class TextParser
             $ability['pain'] = $ability['colors'];
         }
         if ($counter !== null) {
-            $result['mana'] = $ability + ['counter' => $counter];
+            // Vivid Crag / Tendo Ice Bridge: `{T}: Add {R}.` as well, so the counter is only spent for the other colors.
+            $result['mana'] = $result['mana'] !== null && $ability['count'] === 1 && ! isset($ability['pain'])
+                ? $result['mana'] + ['withCounter' => [$counter, $ability['colors']]]
+                : $ability + ['counter' => $counter];
 
             return true;
         }
@@ -1179,8 +1195,10 @@ final class TextParser
 
             return true;
         }
-        if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[1]))) {
-            $result['otherCounters'][$match[2]] = $n;
+        // Vivid lands: `This land enters tapped with two charge counters on it.`
+        if (preg_match('/^CARDNAME enters(?: the battlefield)?( tapped)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[2]))) {
+            $result['otherCounters'][$match[3]] = $n;
+            $result['entersTapped'] = $result['entersTapped'] || $match[1] !== '';
 
             return true;
         }
