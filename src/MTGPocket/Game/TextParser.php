@@ -2473,6 +2473,12 @@ final class TextParser
 
             return true;
         }
+        // `Prevent the next 3 damage … You gain life equal to the damage prevented this way.`: see Game::dealDamage().
+        if ($sentence === 'You gain life equal to the damage prevented this way' && $effects[$last]['type'] === 'prevent') {
+            $effects[$last]['gain'] = true;
+
+            return true;
+        }
         if ($sentence === 'Then shuffle' || $sentence === 'Then that player shuffles') {
             $effects[] = ['type' => 'shuffle'] + ($sentence === 'Then shuffle' ? [] : ['that' => true, 'sameTarget' => true]);
 

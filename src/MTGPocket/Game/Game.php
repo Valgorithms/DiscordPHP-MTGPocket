@@ -134,6 +134,9 @@ final class Game
     /** @var array<string, int> Damage to prevent this turn, by target (`p:SEAT` or `o:ID`) (rule 615). */
     public array $prevent = [];
 
+    /** @var array<string, int> Who gains life equal to the damage a shield in {@see $prevent} prevents, by target. */
+    public array $preventGain = [];
+
     /** Creatures that died in turn `$diedTurn`, for `if N or more creatures died this turn`. */
     public int $died = 0;
 
@@ -762,6 +765,7 @@ final class Game
     private function cleanup(): void
     {
         $this->prevent = [];
+        $this->preventGain = [];
         foreach ($this->battlefield as $id) {
             $object = $this->objects[$id];
             $object->damage = 0;
@@ -4319,9 +4323,12 @@ final class Game
                 break;
 
             case 'prevent':
-                $shielded = ($effect['you'] ?? false) ? "p:{$controller}" : ($affected !== null ? "o:{$affected->id}" : $target);
+                $shielded = ($effect['you'] ?? false) ? "p:{$controller}" : ($affected !== null ? "o:{$affected->id}" : ($target === null ? null : implode(':', array_slice(explode(':', $target), 0, 2))));
                 if ($shielded !== null) {
                     $this->prevent[$shielded] = ($effect['amount'] ?? 0) === 'all' ? PHP_INT_MAX : ($this->prevent[$shielded] ?? 0) + $amount;
+                    if ($effect['gain'] ?? false) {
+                        $this->preventGain[$shielded] = $controller;
+                    }
                 }
                 break;
 
@@ -6367,12 +6374,17 @@ final class Game
             return;
         }
         // Prevention shields (rule 615.7): `Prevent the next N damage that would be dealt to …`.
+        // Shields are keyed without a target's incarnation (`o:ID`, not `o:ID:N`).
+        $shielded = implode(':', array_slice(explode(':', $target), 0, 2));
         $preventable = $this->unpreventableTurn !== $this->turn;
-        if ($preventable && ($shield = $this->prevent[$target] ?? 0) > 0) {
+        if ($preventable && ($shield = $this->prevent[$shielded] ?? 0) > 0) {
             $prevented = min($shield, $amount);
-            $this->prevent[$target] = $shield - $prevented;
+            $this->prevent[$shielded] = $shield - $prevented;
             $amount -= $prevented;
             $this->log("{$prevented} damage from {$source->name()} is prevented.");
+            if (isset($this->preventGain[$shielded])) {
+                $this->gainLife($this->preventGain[$shielded], $prevented);
+            }
             if ($amount <= 0) {
                 return;
             }
@@ -7772,6 +7784,7 @@ final class Game
             'extraTurns' => $this->extraTurns,
             'freerun' => $this->freerun,
             'prevent' => $this->prevent,
+            'preventGain' => $this->preventGain,
         ];
     }
 
@@ -7871,6 +7884,7 @@ final class Game
         $game->extraTurns = array_map('intval', (array) ($data['extraTurns'] ?? []));
         $game->freerun = array_map('intval', (array) ($data['freerun'] ?? []));
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
+        $game->preventGain = array_map('intval', (array) ($data['preventGain'] ?? []));
 
         return $game;
     }
