@@ -474,6 +474,12 @@ final class TextParser
 
                 continue;
             }
+            // `CARDNAME costs {1} less to cast if you control a Wizard.`
+            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast if you control an? ([A-Z][a-z]+|artifact|enchantment|legendary creature)\.$/', $line, $match)) {
+                $result['keywords'][] = "costs {$match[1]} less if you control {$match[2]}";
+
+                continue;
+            }
             if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast if it targets a tapped creature\.$/', $line, $match)) {
                 $result['keywords'][] = "costs {$match[1]} less if it targets a tapped creature";
 
@@ -1974,7 +1980,7 @@ final class TextParser
         } elseif (preg_match('/^Whenever you gain life( for the first time each turn)?, (.+)$/', $line, $match)) {
             $event = $match[1] !== '' ? 'first_gain_life' : 'gain_life';
             $text = $match[2];
-        } elseif (preg_match('/^Heroic — Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
+        } elseif (preg_match('/^(?:Heroic — )?Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
             $event = 'heroic';
             $text = $match[1];
         } elseif (preg_match('/^Whenever you cast your third spell each turn, (.+)$/', $line, $match)) {
@@ -2719,6 +2725,10 @@ final class TextParser
         }
         if (preg_match("/^CARDNAME deals (\\w+) damage to ({$targets})$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
+        }
+        // Rumbling Rockslide: `CARDNAME deals damage to target creature equal to the number of lands you control.`
+        if (preg_match("/^CARDNAME deals damage to ({$targets}) equal to the number of (lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control$/i", $s, $m)) {
+            return ['type' => 'damage', 'amount' => 'yours:'.$m[2], 'target' => self::TARGETS[strtolower($m[1])]];
         }
         if (preg_match('/^CARDNAME deals (\w+) damage to each opponent$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'opponent'];

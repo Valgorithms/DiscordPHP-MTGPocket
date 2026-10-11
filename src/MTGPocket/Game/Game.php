@@ -1715,6 +1715,14 @@ final class Game
                     default => 0,
                 };
             }
+            if (preg_match('/^costs (\d+) less if you control (.+)$/', $keyword, $m)
+                && array_filter($this->permanents($seat), fn (GameObject $o) => match ($m[2]) {
+                    'legendary creature' => $this->isCreature($o) && $o->definition()->isLegendary(),
+                    'artifact', 'enchantment' => $o->definition()->is(ucfirst($m[2])),
+                    default => in_array($m[2], $o->definition()->subtypes, true) || in_array('changeling', $o->definition()->keywords, true) && $this->isCreature($o),
+                }) !== []) {
+                $tax -= (int) $m[1];
+            }
             // `This spell costs {2} less to cast if it targets a tapped creature.`; before targets are chosen, if one could.
             if (preg_match('/^costs (\d+) less if it targets a tapped creature$/', $keyword, $m)) {
                 $candidates = $targets === null ? $this->permanents() : array_filter(array_map(fn ($target) => $this->targetObject((string) $target), $targets));
@@ -3572,6 +3580,9 @@ final class Game
             'X' => $x,
             // `Look at the top X cards of your library, where X is the number of lands you control.`
             'lands' => count(array_filter($this->permanents($controller), fn (GameObject $o) => $o->definition()->isLand())),
+            // `… equal to the number of Mountains you control.`
+            'yours:lands', 'yours:creatures', 'yours:artifacts', 'yours:enchantments' => $this->countYours($controller, rtrim(substr($effect['amount'], 6), 's')),
+            'yours:Forests', 'yours:Islands', 'yours:Mountains', 'yours:Plains', 'yours:Swamps' => count(array_filter($this->permanents($controller), fn (GameObject $o) => in_array($effect['amount'] === 'yours:Plains' ? 'Plains' : rtrim(substr($effect['amount'], 6), 's'), $o->definition()->subtypes, true))),
             default => (int) ($effect['amount'] ?? 0),
         };
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
