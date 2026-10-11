@@ -1483,7 +1483,8 @@ final class Game
         $options = self::castOptions($how);
         // Additional costs: kicker, entwine and each Spree mode's.
         $more = ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] ? str_repeat((string) $card->kicker, max(1, $options['kicks'])) : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
-            .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']));
+            .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']))
+            .str_repeat((string) ($card->altCosts['escalate'] ?? ''), max(0, count($options['modes']) - 1));
         if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended', 'cascade'], true)) {
             // Without paying its mana cost (rule 118.9), but still its additional costs: X is 0.
             return $more;
@@ -1750,16 +1751,17 @@ final class Game
      *
      * @param string[] $targets
      * @param int      $seat
+     * @param bool     $spell   Whether a spell targets them: only spells pay a targeting tax.
      *
      * @return array{0: string, 1: int} Mana, and life.
      */
-    private function wardCost(array $targets, int $seat): array
+    private function wardCost(array $targets, int $seat, bool $spell = true): array
     {
         $mana = '';
         $life = $discard = 0;
         foreach ($targets as $target) {
             $object = $this->targetObject($target);
-            if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller === $seat || ($ward = $object->definition()->ward) === null) {
+            if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller === $seat || ($ward = $object->definition()->ward) === null || (($ward['tax'] ?? false) && ! $spell)) {
                 continue;
             }
             $mana .= $ward['mana'] ?? '';
@@ -2300,6 +2302,15 @@ final class Game
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
+            }
+        }
+        // Heroic: `Whenever you cast a spell that targets CARDNAME, …`, once however often it is targeted.
+        $targeted = [];
+        foreach ($item !== false && $item['object'] === $spell->id ? $item['targets'] : [] as $target) {
+            $object = $this->targetObject((string) $target);
+            if ($object !== null && $object->zone === GameObject::BATTLEFIELD && $object->controller === $seat && ! isset($targeted[$object->id])) {
+                $targeted[$object->id] = true;
+                $this->trigger($object, 'heroic', $seat);
             }
         }
     }
@@ -3347,6 +3358,7 @@ final class Game
                 $hits = match ($effect['each'] ?? null) {
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
+                    'creature_without_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'))),
                     // `… deals 3 damage to that creature's controller.`
                     default => isset($effect['toController']) ? ($affected === null ? [] : ["p:{$affected->controller}"]) : [$target],
                 };
@@ -4688,7 +4700,7 @@ final class Game
      */
     private function pushTriggered(array $trigger, array $targets): void
     {
-        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $trigger['controller']);
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $trigger['controller'], false);
         if ($wardMana !== '' || $wardLife > 0 || $wardDiscard > 0) {
             $payment = $this->payFor($trigger['controller'], $wardMana, $wardLife);
             if ($payment === null || $wardDiscard > count($this->players[$trigger['controller']]->hand)) {
@@ -4980,7 +4992,7 @@ final class Game
         $targets = array_values($targets);
         $label = "{$object->name()}'s ability";
         $this->checkTargets($kinds, $targets, $seat, $label, $object);
-        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat);
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat, false);
         if ($wardDiscard + ($ability['cost']['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             throw new GameException('You need a card in your hand to discard for ward.');
         }
