@@ -3422,8 +3422,8 @@ final class Game
                 $seats = match (true) {
                     isset($effect['each']) => $opponents,
                     isset($effect['you']) => [$controller],
-                    // "Its controller loses 2 life": whoever controlled the target.
-                    isset($effect['toController']) => [$this->objects[(int) explode(':', (string) $target)[1]]->controller],
+                    // "Its controller loses 2 life": whoever controlled the target; for a countered spell, see the counter effect.
+                    isset($effect['toController']) => [str_starts_with((string) $target, 'p:') ? (int) substr((string) $target, 2) : $this->objects[(int) explode(':', (string) $target)[1]]->controller],
                     default => [(int) substr((string) $target, 2)],
                 };
                 foreach ($seats as $seat) {
@@ -3576,6 +3576,8 @@ final class Game
                         }
                         array_splice($this->stack, $index, 1);
                         $this->log("{$countered->name()} is countered.", null, "{$countered->name()} countered");
+                        // `Its controller loses 2 life.` after it: that player.
+                        $this->followed[(string) $target] = "p:{$item['controller']}";
                         if (($effect['exileCountered'] ?? false) && ! self::isAbility($item)) {
                             $this->moveTo($countered, GameObject::EXILE);
                         } else {
@@ -4061,6 +4063,15 @@ final class Game
                         $this->log("{$this->players[$controller]->name} puts {$this->objects[$found[0]]->name()} from {$this->players[$seat]->name}'s library onto the battlefield.");
                     }
                     $this->shuffle($seat);
+                }
+                break;
+
+            case 'bolster':
+                $creatures = array_values(array_filter($this->permanents($controller), fn (GameObject $o) => $this->isCreature($o)));
+                if ($creatures !== []) {
+                    usort($creatures, fn (GameObject $a, GameObject $b) => $this->toughness($a) <=> $this->toughness($b));
+                    $creatures[0]->addCounters('+1/+1', $amount);
+                    $this->log("{$this->players[$controller]->name} bolsters {$amount}: {$creatures[0]->name()}.");
                 }
                 break;
 
@@ -5495,6 +5506,10 @@ final class Game
         $colors = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'];
         foreach ($this->keywords($object) as $keyword) {
             if (preg_match('/^protection from (white|blue|black|red|green)$/', $keyword, $m) && in_array($colors[$m[1]], $source->definition()->colors, true)) {
+                return true;
+            }
+            $types = ['artifacts' => 'Artifact', 'creatures' => 'Creature', 'enchantments' => 'Enchantment', 'instants' => 'Instant', 'sorceries' => 'Sorcery', 'planeswalkers' => 'Planeswalker'];
+            if (preg_match('/^protection from (\w+)$/', $keyword, $m) && isset($types[$m[1]]) && $source->definition()->is($types[$m[1]])) {
                 return true;
             }
         }
