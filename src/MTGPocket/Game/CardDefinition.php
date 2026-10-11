@@ -38,7 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound', 'cipher',
-        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'compleated', 'look at top any time', 'top revealed', 'lands from top', 'play from top', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound', 'exile instead of graveyard', 'exile dying opponent creatures', 'replicate', 'increment', 'enters prepared',
+        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'compleated', 'look at top any time', 'top revealed', 'lands from top', 'play from top', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound', 'exile instead of graveyard', 'exile dying opponent creatures', 'replicate', 'increment', 'enters prepared', 'fuse',
     ];
 
     /**
@@ -179,6 +179,9 @@ final class CardDefinition
     /** The back face of a transforming or modal double-faced card (rule 712). */
     public readonly ?CardDefinition $back;
 
+    /** A split card (rule 709): its halves are its modes, each with its own cost; see Game::castCost(). */
+    public readonly bool $split;
+
     /** A preparation card's prepare spell: a copy can be cast while the creature is prepared. */
     public readonly ?CardDefinition $prepare;
 
@@ -200,11 +203,11 @@ final class CardDefinition
         // Playtest and Un- cards print symbols that are not mana, such as {D} for a land drop: pay their mana value as generic.
         $costUnsupported = [];
         try {
-            $this->cost = array_key_exists('manaCost', $card)
+            $cost = array_key_exists('manaCost', $card)
                 ? ManaCost::parse($card['manaCost'])
                 : ManaCost::generic((int) ($card['manaValue'] ?? 0));
         } catch (\InvalidArgumentException) {
-            $this->cost = ManaCost::generic((int) ($card['manaValue'] ?? 0));
+            $cost = ManaCost::generic((int) ($card['manaValue'] ?? 0));
             $costUnsupported[] = "Mana cost {$card['manaCost']} (paid as generic mana)";
         }
 
@@ -218,6 +221,27 @@ final class CardDefinition
         $this->manaAbility = $parsed['mana'] ?? self::basicLandMana($this->subtypes);
         $this->entersTapped = $parsed['entersTapped'];
         $this->entersWithCounters = $parsed['counters'];
+        // A split card: each half is a mode with its own cost, one of them or (with fuse) both; its mana value is both halves'.
+        $right = is_array($card['split'] ?? null) ? new CardDefinition(['uuid' => $this->key.'-right'] + $card['split']) : null;
+        $halves = $right !== null && ! $this->isPermanentCard() && ! $right->isPermanentCard() && $parsed['modes'] === [] && $right->modes === []
+            && $parsed['effects'] !== [] && $right->effects !== [] && $cost->xCount === 0 && $right->cost->xCount === 0;
+        $this->split = $halves;
+        $this->cost = $halves ? ManaCost::parse($cost.$right->cost) : $cost;
+        if ($halves) {
+            $left = (string) $cost;
+            $parsed['modes'] = [
+                ['text' => explode(' // ', $this->name)[0].': '.self::halfText($this->text), 'effects' => $parsed['effects'], 'cost' => $left],
+                ['text' => "{$right->name}: ".self::halfText($right->text), 'effects' => $right->effects, 'cost' => (string) $right->cost],
+            ];
+            $parsed['choose'] = ['min' => 1, 'max' => in_array('fuse', $parsed['keywords'], true) ? 2 : 1];
+            $parsed['effects'] = [];
+        } elseif ($right !== null) {
+            $parsed['unsupported'][] = "Split card: {$right->name}";
+        }
+        if (in_array('fuse', $parsed['keywords'], true) && ! $halves) {
+            $parsed['unsupported'][] = 'Fuse';
+        }
+        $parsed['unsupported'] = [...$parsed['unsupported'], ...array_diff($right?->unsupported ?? [], ['Fuse'])];
         $this->effects = $parsed['effects'];
         $this->modes = $parsed['modes'];
         $this->choose = $parsed['choose'];
@@ -276,6 +300,18 @@ final class CardDefinition
      *
      * @return array{0: string[], 1: string[], 2: string[]}
      */
+    /**
+     * A split card half's rules text without its fuse line.
+     *
+     * @param string $text
+     *
+     * @return string
+     */
+    private static function halfText(string $text): string
+    {
+        return trim(preg_replace('/\n?Fuse\b.*$/s', '', $text));
+    }
+
     public static function splitTypeLine(string $line): array
     {
         [$left, $right] = array_pad(preg_split('/\s+[—-]\s+/u', $line, 2), 2, '');

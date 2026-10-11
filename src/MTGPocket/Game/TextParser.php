@@ -379,6 +379,8 @@ final class TextParser
                 'If CARDNAME would be put into a graveyard from anywhere, exile it instead.' => 'exile instead of graveyard',
                 // A preparation card; see CardDefinition::$prepare.
                 'CARDNAME enters prepared.' => 'enters prepared',
+                // Both halves of a split card at once; see CardDefinition::$split.
+                'Fuse' => 'fuse', 'Fuse.' => 'fuse',
                 // Converge: counters for each color spent, as sunburst does for a creature.
                 'Converge — CARDNAME enters with a +1/+1 counter on it for each color of mana spent to cast it.' => 'sunburst',
                 // Read by Game::moveTo().
