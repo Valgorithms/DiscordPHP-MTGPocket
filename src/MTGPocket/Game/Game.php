@@ -1170,7 +1170,7 @@ final class Game
     {
         $object = $this->objects[$id] ?? null;
 
-        return $object !== null && $object->zone === GameObject::EXILE && $object->exiledBy === 'impulse' && $object->owner === $seat && $this->turn <= $object->exiledOn;
+        return $object !== null && $object->zone === GameObject::EXILE && $object->exiledBy === 'impulse' && $object->owner === $seat && $this->turn <= $object->exiledOn && $this->turn >= $object->playableFrom;
     }
 
     public function canPlayLand(int $seat, int $id): bool
@@ -1275,6 +1275,9 @@ final class Game
             if ($options['exiled'] === 'impulse' && $this->turn > $object->exiledOn) {
                 return 'The time to play it has passed.';
             }
+            if ($options['exiled'] === 'impulse' && $this->turn < $object->playableFrom) {
+                return 'It can be played during your next turn.';
+            }
             if (! in_array($options['exiled'], ['madness', 'suspended', 'impulse', 'cascade'], true) && $object->exiledOn >= $this->turn) {
                 return 'It can be cast from exile on a later turn.';
             }
@@ -1314,6 +1317,9 @@ final class Game
         }
         if ($options['entwined'] && ($card->entwine === null || array_values(array_unique(array_map('intval', $options['modes']))) !== array_keys($card->modes))) {
             return "{$card->name} has no entwine.";
+        }
+        if ($options['entwined'] && isset($card->altCosts['teamwork']) && $this->teamworkFodder($seat, (int) $card->altCosts['teamwork']) === null) {
+            return "Teamwork needs untapped creatures with total power {$card->altCosts['teamwork']} or more.";
         }
         if (! $options['faceDown'] && ! $options['entwined'] && ! in_array(array_values(array_unique(array_map('intval', $options['modes']))), $card->modeChoices(), true)) {
             return $card->choose === null ? "{$card->name} has no modes." : "Choose {$card->choose['min']}".($card->choose['max'] > $card->choose['min'] ? " to {$card->choose['max']}" : '')." of {$card->name}'s modes.";
@@ -1780,6 +1786,12 @@ final class Game
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
         }
+        if ($options['entwined'] && isset($card->altCosts['teamwork']) && ($team = $this->teamworkFodder($seat, (int) $card->altCosts['teamwork'])) !== null) {
+            foreach ($team as $member) {
+                $member->tapped = true;
+            }
+            $this->log("{$this->players[$seat]->name} taps ".implode(' and ', array_map(fn (GameObject $o) => $o->name(), $team)).' (teamwork).');
+        }
         $conspirators = $options['conspire'] ? $this->conspirators($seat, $card, $id) : null;
         foreach ($conspirators ?? [] as $conspirator) {
             $conspirator->tapped = true;
@@ -2045,6 +2057,32 @@ final class Game
      *
      * @return void
      */
+    /**
+     * Teamwork: the fewest untapped creatures with at least that much total
+     * power, the strongest first and those that make mana last, or null.
+     *
+     * @param int $seat
+     * @param int $power
+     *
+     * @return GameObject[]|null
+     */
+    private function teamworkFodder(int $seat, int $power): ?array
+    {
+        $creatures = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) && ! $o->tapped && $this->power($o) > 0));
+        usort($creatures, fn (GameObject $a, GameObject $b) => [$a->definition()->manaAbility !== null, $this->power($b)] <=> [$b->definition()->manaAbility !== null, $this->power($a)]);
+        $team = [];
+        $total = 0;
+        foreach ($creatures as $creature) {
+            if ($total >= $power) {
+                break;
+            }
+            $team[] = $creature;
+            $total += $this->power($creature);
+        }
+
+        return $total >= $power ? $team : null;
+    }
+
     private function payAdditionalCost(int $seat, CardDefinition $card): void
     {
         if (in_array($card->additionalCost, ['sacrifice_creature', 'sacrifice_artifact_or_creature', 'sacrifice_artifact'], true)) {
@@ -3746,7 +3784,8 @@ final class Game
             case 'impulse':
                 // Exiled from the top; playable until the end of this turn or the controller's next.
                 $until = $this->turn;
-                if ($effect['until'] === 'next') {
+                $window = $effect['until'] === 'end_step' ? ($this->active === $controller ? 'this' : 'next') : $effect['until'];
+                if ($window !== 'this') {
                     for ($seat = $this->active, $until++; ($seat = $this->opponent($seat)) !== $controller && $until < $this->turn + 8; $until++);
                 }
                 $exiled = [];
@@ -3755,10 +3794,15 @@ final class Game
                     $this->moveTo($this->objects[$top], GameObject::EXILE);
                     $this->objects[$top]->exiledBy = 'impulse';
                     $this->objects[$top]->exiledOn = $until;
+                    $this->objects[$top]->playableFrom = $window === 'during_next' ? $until : 0;
                     $exiled[] = $this->objects[$top]->name();
                 }
                 if ($exiled !== []) {
-                    $this->log("{$this->players[$controller]->name} exiles ".implode(', ', $exiled).' and may play '.(count($exiled) === 1 ? 'it' : 'them').($effect['until'] === 'this' ? ' this turn.' : ' until the end of their next turn.'));
+                    $this->log("{$this->players[$controller]->name} exiles ".implode(', ', $exiled).' and may play '.(count($exiled) === 1 ? 'it' : 'them').match ($window) {
+                        'this' => ' this turn.',
+                        'during_next' => ' during their next turn.',
+                        default => ' until the end of their next turn.',
+                    });
                 }
                 break;
 
@@ -3960,6 +4004,7 @@ final class Game
             'sorcery' => $card->is('Sorcery'),
             'planeswalker' => $card->isPlaneswalker(),
             'battle' => $card->is('Battle'),
+            'colorless' => $card->colors === [],
             'permanent' => $card->isPermanentCard(),
             'nonland_permanent' => $card->isPermanentCard() && ! $card->isLand(),
             'any' => true,

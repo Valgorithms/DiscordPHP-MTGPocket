@@ -251,6 +251,21 @@ final class TextParser
 
                 continue;
             }
+            // Teamwork's `Choose one. If this spell was cast using teamwork, choose both instead.`: entwined by tapping the team.
+            if ($spell && isset($result['altCosts']['teamwork']) && preg_match('/^Choose one\. If CARDNAME was cast using teamwork, choose both instead\.?$/', $line)) {
+                $bullets = [];
+                while (isset($lines[$i + 1]) && str_starts_with($lines[$i + 1], '•')) {
+                    // `• Street Justice — Exile …`: the mode's name is flavor.
+                    $bullets[] = preg_replace('/^[A-Z][\w\'’ ]* — /u', '', trim(mb_substr($lines[++$i], 1)));
+                }
+                if (count($bullets) === 2 && self::modes($spell, 'one', $bullets, $result)) {
+                    $result['entwine'] = '';
+                } else {
+                    $result['unsupported'][] = $line;
+                }
+
+                continue;
+            }
             // A modal spell's `Choose one —` and its `•` modes, or a triggered ability's `When CARDNAME enters, choose one —`.
             if (preg_match('/^(?:(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks), )?[Cc]hoose (one|two|three|one or both|one or more) —$/u', $line, $match)) {
                 $bullets = [];
@@ -476,6 +491,12 @@ final class TextParser
 
             if (($impulse = self::impulse($line)) !== null) {
                 $result['effects'][] = $impulse;
+
+                continue;
+            }
+            // Haste Magic: other sentences, then the impulse.
+            if (preg_match('/^(.+?\.)\s+(Exile the top .*)$/s', $line, $split) && ($impulse = self::impulse($split[2])) !== null && ($before = self::effects($split[1])) !== null) {
+                array_push($result['effects'], ...$before, ...[$impulse]);
 
                 continue;
             }
@@ -721,6 +742,9 @@ final class TextParser
                 $found['ward'] = ['discard' => 1];
             } elseif (preg_match('/^kicker '.self::COST.'$/i', $part, $m)) {
                 $found['kicker'] = $m[1];
+            } elseif (preg_match('/^teamwork (\d+)$/i', $part, $m) && $spell) {
+                // Teamwork: tap creatures with that much total power as you cast it; see Game::teamworkFodder().
+                $found['altCosts']['teamwork'] = $m[1];
             } elseif (preg_match('/^entwine '.self::COST.'$/i', $part, $m) && $spell) {
                 // Entwine (rule 702.42): every mode, for this much more.
                 $found['entwine'] = $m[1];
@@ -1672,6 +1696,12 @@ final class TextParser
         if (($impulse = self::impulse($text)) !== null) {
             return [$impulse];
         }
+        // Haste Magic: `Target creature gets +3/+1 … Exile the top card of your library. You may play it until your next end step.`
+        if (preg_match('/^(.+?\.)\s+(Exile the top .*)$/s', trim($text), $split) && ($impulse = self::impulse($split[2])) !== null) {
+            $before = self::effects($split[1]);
+
+            return $before === null ? null : [...$before, $impulse];
+        }
         $effects = [];
         // `Stress Dream deals 5 damage … Look at the top two cards …`: the sentences before the look, then the look.
         if (preg_match('/^(.+?\.)\s+((?:Look at|Reveal) the top .*)$/s', trim($text), $split) && self::look($split[2]) !== null) {
@@ -1739,7 +1769,7 @@ final class TextParser
             [$take, $may, $filter, $rest, $tail] = [0, true, 'any', 'top', $m[1]];
         } elseif (preg_match("/^\\. Put (up to )?(\\w+) of (?:them|those cards) into your hand and the (?:rest|other|others) {$where}{$after}", $head[3], $m) && is_int($take = self::amount($m[2]))) {
             [$may, $filter, $rest, $tail] = [$m[1] !== '', 'any', $m[3], $m[4]];
-        } elseif (preg_match("/^\\. (?:You may (?:reveal|put|choose) (an?|up to \\w+|any number of) (?:(.+?) )?cards? from among them(?: and put (?:it|that card|them|those cards|the revealed cards) {$to}| {$to})?|Put all (.+?) cards revealed this way {$to})(?:\\. Put the rest| and the rest) {$where}{$after}", $head[3], $m)) {
+        } elseif (preg_match("/^\\. (?:You may (?:reveal|put|choose) (an?|up to \\w+|any number of) (?:(.+?) )?cards? from among them(?: and put (?:it|that card|them|those cards|the revealed cards) {$to}| {$to})?|Put all (.+?) cards revealed this way {$to})(?:\\. (?:Then p|P)ut the rest| and the rest) {$where}{$after}", $head[3], $m)) {
             if (($m[5] ?? '') !== '') {
                 [$take, $may, $words, $place] = [is_int($n) ? $n : 99, false, $m[5], $m[6]];
             } else {
@@ -1787,16 +1817,25 @@ final class TextParser
      */
     private static function impulse(string $text): ?array
     {
-        if (! preg_match('/^Exile the top (card|(\w+) cards) of your library\. (?:Until (the end of your next turn|end of turn), you may play (?:that card|those cards|them)|You may play (?:that card|those cards|them|it|the exiled cards?) (this turn|until end of turn|until the end of your next turn))\.?$/', trim($text), $m)) {
+        if (! preg_match('/^Exile the top (card|(\w+) cards) of your library\. (.+?)\.?$/', trim($text), $m)) {
             return null;
         }
-        $window = ($m[3] ?? '') !== '' ? $m[3] : ($m[4] ?? '');
+        $it = '(?:that card|those cards|them|it|the exiled cards?)';
+        $until = match (true) {
+            (bool) preg_match("/^(?:Until end of turn, you may play {$it}|You may play {$it} (?:this turn|until end of turn))$/", $m[3]) => 'this',
+            (bool) preg_match("/^(?:Until the end of your next turn, you may play {$it}|You may play {$it} until the end of your next turn)$/", $m[3]) => 'next',
+            // Haste Magic: the end step of this turn when it is yours, else of your next turn.
+            (bool) preg_match("/^You may play {$it} until your next end step$/", $m[3]) => 'end_step',
+            // Galvanic Relay: only during your next turn.
+            (bool) preg_match("/^During your next turn, you may play {$it}$/", $m[3]) => 'during_next',
+            default => null,
+        };
         $n = $m[1] === 'card' ? 1 : self::amount($m[2]);
-        if (! is_int($n) || $n < 1) {
+        if ($until === null || ! is_int($n) || $n < 1) {
             return null;
         }
 
-        return ['type' => 'impulse', 'amount' => $n, 'until' => in_array($window, ['this turn', 'end of turn', 'until end of turn'], true) ? 'this' : 'next'];
+        return ['type' => 'impulse', 'amount' => $n, 'until' => $until];
     }
 
     /**
@@ -1813,7 +1852,7 @@ final class TextParser
         $kinds = [
             'creature' => 'creature', 'land' => 'land', 'artifact' => 'artifact', 'enchantment' => 'enchantment', 'instant' => 'instant',
             'sorcery' => 'sorcery', 'planeswalker' => 'planeswalker', 'permanent' => 'permanent', 'nonland' => 'nonland',
-            'noncreature' => 'noncreature', 'nonland permanent' => 'nonland_permanent', 'battle' => 'battle',
+            'noncreature' => 'noncreature', 'nonland permanent' => 'nonland_permanent', 'battle' => 'battle', 'colorless' => 'colorless',
         ];
         $pieces = [];
         foreach (preg_split('/,? or |, /', $words) as $piece) {
