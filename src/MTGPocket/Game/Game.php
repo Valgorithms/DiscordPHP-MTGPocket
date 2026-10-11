@@ -125,6 +125,9 @@ final class Game
     /** The turn in which all combat damage is prevented (`Prevent all combat damage that would be dealt this turn.`). */
     public int $fogTurn = 0;
 
+    /** The turn in which damage can't be prevented (`Damage can't be prevented this turn.`). */
+    public int $unpreventableTurn = 0;
+
     /** @var array<string, string> A card returned to the battlefield, by its old target, for `It gains haste …` after it. */
     private array $followed = [];
 
@@ -1535,6 +1538,11 @@ final class Game
                     'land' => $this->countYours($seat, 'land'),
                     'card' => count(array_diff($this->players[$seat]->hand, [$id])),
                     'opponent' => count($this->players) - 1,
+                    'graveyard_spell', 'graveyard_creature', 'graveyard_card' => count(array_filter($this->players[$seat]->graveyard, fn (int $card) => match ($m[2]) {
+                        'graveyard_spell' => $this->objects[$card]->definition()->is('Instant') || $this->objects[$card]->definition()->is('Sorcery'),
+                        'graveyard_creature' => $this->objects[$card]->definition()->is('Creature'),
+                        default => true,
+                    })),
                     default => 0,
                 };
             }
@@ -3465,6 +3473,11 @@ final class Game
             case 'fog':
                 $this->fogTurn = $this->turn;
                 $this->log('Combat damage is prevented this turn.');
+                break;
+
+            case 'no_prevention':
+                $this->unpreventableTurn = $this->turn;
+                $this->log("Damage can't be prevented this turn.");
                 break;
 
             case 'add_mana':
@@ -5731,7 +5744,7 @@ final class Game
      */
     private function combatDamage(bool $first): void
     {
-        if ($this->fogTurn === $this->turn) {
+        if ($this->fogTurn === $this->turn && $this->unpreventableTurn !== $this->turn) {
             $this->log('All combat damage is prevented this turn.');
 
             return;
@@ -5875,7 +5888,8 @@ final class Game
             return;
         }
         // Prevention shields (rule 615.7): `Prevent the next N damage that would be dealt to …`.
-        if (($shield = $this->prevent[$target] ?? 0) > 0) {
+        $preventable = $this->unpreventableTurn !== $this->turn;
+        if ($preventable && ($shield = $this->prevent[$target] ?? 0) > 0) {
             $prevented = min($shield, $amount);
             $this->prevent[$target] = $shield - $prevented;
             $amount -= $prevented;
@@ -5898,13 +5912,13 @@ final class Game
             if ($object === null || $object->zone !== GameObject::BATTLEFIELD) {
                 return;
             }
-            if ($this->protectedFrom($object, $source)) {
+            if ($preventable && $this->protectedFrom($object, $source)) {
                 $this->log("Protection prevents the damage {$source->name()} would deal to {$object->name()}.");
 
                 return;
             }
             // A shield counter (rule 122.1c): prevent the damage and remove the counter instead.
-            if ($object->counter('shield') > 0) {
+            if ($preventable && $object->counter('shield') > 0) {
                 $object->addCounters('shield', -1);
                 $this->log("A shield counter on {$object->name()} prevents the damage and is removed.");
 
@@ -6296,6 +6310,11 @@ final class Game
             $zone = GameObject::EXILE;
         }
         if ($object->exileIfDies === $this->turn && $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object)) {
+            $zone = GameObject::EXILE;
+        }
+        // `If a creature an opponent controls would die, exile it instead.`
+        if ($object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object)
+            && array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $object->controller && $this->hasKeyword($o, 'exile dying opponent creatures')) !== []) {
             $zone = GameObject::EXILE;
         }
         // A disturbed back face: `If CARDNAME would be put into a graveyard from anywhere, exile it instead.`
@@ -7210,6 +7229,7 @@ final class Game
             'nextStackId' => $this->nextStackId,
             'shuffles' => $this->shuffles,
             'fogTurn' => $this->fogTurn,
+            'unpreventableTurn' => $this->unpreventableTurn,
             'spellsCast' => $this->spellsCast,
             'spellsTurn' => $this->spellsTurn,
             'spellsBefore' => $this->spellsBefore,
@@ -7304,6 +7324,7 @@ final class Game
         $game->nextStackId = (int) $data['nextStackId'];
         $game->shuffles = (int) $data['shuffles'];
         $game->fogTurn = (int) ($data['fogTurn'] ?? 0);
+        $game->unpreventableTurn = (int) ($data['unpreventableTurn'] ?? 0);
         $game->spellsCast = (int) ($data['spellsCast'] ?? 0);
         $game->spellsTurn = (int) ($data['spellsTurn'] ?? 0);
         $game->spellsBefore = (int) ($data['spellsBefore'] ?? 0);
