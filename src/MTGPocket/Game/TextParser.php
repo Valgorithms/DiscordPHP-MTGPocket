@@ -1353,6 +1353,10 @@ final class TextParser
 
             return true;
         }
+        // `During your turn, CARDNAME gets +2/+0.` and `As long as …, CARDNAME has flying.`: the same, condition last.
+        if (preg_match('/^(?:([A-Z][a-z]+(?: [a-z]+)? — ))?(?:During your turn|As long as (.+?)), (CARDNAME (?:gets|has) .+?)\.$/u', $line, $m)) {
+            $line = $m[1].$m[3].' as long as '.($m[2] !== '' ? $m[2] : "it's your turn").'.';
+        }
         // Metalcraft, Threshold: `CARDNAME gets +2/+2 as long as you control three or more artifacts.`; see Game::conditionMet().
         if (preg_match('/^(?:[A-Z][a-z]+(?: [a-z]+)? — )?CARDNAME gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))? as long as (.+?)\.$/u', $line, $m)
             && ($keywords = self::keywordList($m[3] ?? '')) !== null && ($if = self::staticCondition($m[4])) !== null) {
@@ -1386,6 +1390,12 @@ final class TextParser
                 return false;
             }
             $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== '', 'subtype' => $type];
+
+            return true;
+        }
+        // `Other creatures you control with flying get +1/+1.`
+        if (preg_match('/^(Other )?[Cc]reatures you control with (flying|haste|trample|vigilance|deathtouch|lifelink) get ([+-]\d+)\/([+-]\d+)\.?$/', $line, $m)) {
+            $result['anthem'][] = ['power' => (int) $m[3], 'toughness' => (int) $m[4], 'keywords' => [], 'other' => $m[1] !== '', 'withKeyword' => $m[2]];
 
             return true;
         }
@@ -1423,6 +1433,8 @@ final class TextParser
             $text === "it's tapped" => 'tapped',
             (bool) preg_match('/^you have (\w+) or more life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life {$n}",
             $text === "it's your turn" => 'your_turn',
+            $text === "it's attacking" => 'attacking',
+            (bool) preg_match('/^there are (\w+) or more card types among cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "delirium {$n}",
             default => null,
         };
     }
@@ -1827,6 +1839,15 @@ final class TextParser
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
             'a creature spell' => 'cast_creature', 'an artifact spell' => 'cast_artifact', 'an enchantment spell' => 'cast_enchantment',
         ];
+        // `When CARDNAME enters or dies, surveil 1.`: the same ability on both events.
+        if (preg_match('/^When(?:ever)? CARDNAME (enters|attacks|dies) or (attacks|dies)(?: the battlefield)?, (.+)\.$/', $line, $m) && $m[1] !== $m[2]
+            && (($effects = self::effects($m[3].'.')) !== null || ! str_contains($m[3], 'target') && ($effects = self::effects(preg_replace('/\bit\b/', 'CARDNAME', $m[3]).'.')) !== null)) {
+            foreach ([$m[1], $m[2]] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $events[$event], 'effects' => $effects];
+            }
+
+            return true;
+        }
         // Frostwalk Bastion / Kashi-Tribe: on the creature it dealt combat damage to; see Game::combatDamage().
         if (preg_match("/^Whenever CARDNAME deals combat damage to a creature, tap that creature and it doesn't untap during its controller's next untap step\\.$/", $line)) {
             $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'tap', 'target' => 'creature', 'freeze' => true]]];
@@ -1915,6 +1936,16 @@ final class TextParser
         } elseif (preg_match('/^Whenever another creature you control enters(?: the battlefield)?, (.+)$/', $line, $match)) {
             $event = 'creature_enters_other';
             $text = $match[1];
+        } elseif (preg_match('/^(?:When|Whenever) (a|another) ([A-Z][a-z]+) you control enters(?: the battlefield)?, (.+)$/', $line, $match) && $match[2] !== 'Creature') {
+            // Tribal enters triggers: `Whenever another Elf you control enters, …`.
+            $event = 'subtype_enters';
+            $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
+            $text = $match[3];
+        } elseif (preg_match('/^Whenever another creature (you control )?dies, (.+)$/', $line, $match)) {
+            // `creature_dies_any` fires for other players' creatures; "another creature dies" listens to both.
+            $event = 'creature_dies_other';
+            $extra = $match[1] === '' ? ['anyController' => true] : [];
+            $text = $match[2];
         } elseif (preg_match('/^Whenever you draw a card, (.+)$/', $line, $match)) {
             $event = 'you_draw';
             $text = $match[1];
@@ -1954,6 +1985,10 @@ final class TextParser
             }
             $text = $match[5];
         }
+        // `Whenever CARDNAME deals combat damage to a player, that player discards a card.`: the opponent, untargeted.
+        if ($event === 'combat_damage' && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
+            $text = 'each opponent '.substr($text, strlen('that player '));
+        }
         $kicked = false;
         if ($event === 'enters' && ($result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)
             || isset($result['altCosts']['gift']) && preg_match('/^if the gift was promised, (.+)$/', $text, $match))) {
@@ -1976,7 +2011,10 @@ final class TextParser
         if ($effects === null) {
             return false;
         }
-        $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($kicked ? ['kicked' => true] : []) + ($saddled ? ['saddled' => true] : []) + ($if !== null ? ['if' => $if] : []);
+        $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($kicked ? ['kicked' => true] : []) + ($saddled ? ['saddled' => true] : []) + ($if !== null ? ['if' => $if] : []) + array_diff_key($extra ?? [], ['anyController' => true]);
+        if ($extra['anyController'] ?? false) {
+            $result['triggered'][] = ['event' => 'creature_dies_any'] + $result['triggered'][count($result['triggered']) - 1];
+        }
 
         return true;
     }
@@ -2477,8 +2515,8 @@ final class TextParser
         }
         // "Destroy target creature. Its controller loses 2 life.", also after a permanent or a spell.
         if (isset($effects[$last]['target']) && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true) && ! str_contains($effects[$last]['target'], 'card')
-            && preg_match('/^Its controller loses (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
-            $effects[] = ['type' => 'lose_life', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
+            && preg_match('/^Its controller (loses (\w+) life|mills (\w+) cards?)$/', $sentence, $m) && is_int($n = self::amount($m[2] !== '' ? $m[2] : $m[3]))) {
+            $effects[] = ['type' => $m[2] !== '' ? 'lose_life' : 'mill', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
 
             return true;
         }
@@ -2658,8 +2696,12 @@ final class TextParser
         if (preg_match('/^CARDNAME deals (\w+) damage to each opponent$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'opponent'];
         }
-        if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
-            return ['type' => 'damage', 'amount' => $n, 'each' => ($m[2] ?? '') !== '' ? 'creature_without_flying' : 'creature'];
+        if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying| your opponents control)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'damage', 'amount' => $n, 'each' => match ($m[2] ?? '') {
+                ' without flying' => 'creature_without_flying',
+                ' your opponents control' => 'creature_opponents',
+                default => 'creature',
+            }];
         }
         if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
@@ -2678,6 +2720,9 @@ final class TextParser
         }
         if (preg_match('/^each opponent loses (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'lose_life', 'amount' => $n, 'each' => 'opponent'];
+        }
+        if (preg_match('/^each player loses (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'lose_life', 'amount' => $n, 'each' => 'player'];
         }
         if (preg_match("/^destroy ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'destroy', 'target' => self::TARGETS[strtolower($m[1])]];
@@ -2848,6 +2893,11 @@ final class TextParser
         if (preg_match('/^(tap|untap) CARDNAME$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'self' => true];
         }
+        // `When CARDNAME enters, enchanted creature gains first strike until end of turn.`
+        if (preg_match('/^enchanted creature (?:gets ([+-]\d+)\/([+-]\d+)(?: and gains (.+?))?|gains (.+?)) until end of turn$/i', $s, $m)
+            && ($keywords = self::keywordList(($m[4] ?? '') !== '' ? $m[4] : ($m[3] ?? ''))) !== null) {
+            return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => $keywords, 'enchanted' => true];
+        }
         if (preg_match('/^(tap|untap) enchanted (?:creature|permanent|artifact|land)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'enchanted' => true];
         }
@@ -2860,7 +2910,7 @@ final class TextParser
         if (preg_match('/^counter (target spell|target creature spell|target noncreature spell) unless its controller pays \{(\d+|X)\}$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])], 'unless' => '{'.$m[2].'}'];
         }
-        $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all'];
+        $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying'];
         $group = implode('|', array_keys($each));
         if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
@@ -2901,7 +2951,7 @@ final class TextParser
         if (preg_match('/^each opponent mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'mill', 'amount' => $n, 'each' => 'opponent'];
         }
-        if (preg_match('/^you get ((?:\{E\})+)$/', $s, $m)) {
+        if (preg_match('/^you get ((?:\{E\})+)$/i', $s, $m)) {
             return ['type' => 'energy', 'amount' => substr_count($m[1], '{E}')];
         }
         if (preg_match('/^investigate$/i', $s)) {
