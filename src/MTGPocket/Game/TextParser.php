@@ -742,6 +742,10 @@ final class TextParser
                 $found['ward'] = ['discard' => 1];
             } elseif (preg_match('/^kicker '.self::COST.'$/i', $part, $m)) {
                 $found['kicker'] = $m[1];
+            } elseif (preg_match('/^multikicker '.self::COST.'$/i', $part, $m)) {
+                // Multikicker (rule 702.33c): kicker paid any number of times; see Game::castOptions().
+                $found['kicker'] = $m[1];
+                $found['keywords'][] = 'multikicker';
             } elseif (preg_match('/^teamwork (\d+)$/i', $part, $m) && $spell) {
                 // Teamwork: tap creatures with that much total power as you cast it; see Game::teamworkFodder().
                 $found['altCosts']['teamwork'] = $m[1];
@@ -1134,6 +1138,11 @@ final class TextParser
         }
         if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) \+1\/\+1 counters? on it\.?$/', $line, $match) && ($n = self::amount($match[1])) !== null) {
             $result['counters'] = $n;
+
+            return true;
+        }
+        if (in_array('multikicker', $result['keywords'], true) && preg_match('/^CARDNAME enters(?: the battlefield)? with an? \+1\/\+1 counter on it for each time it was kicked\.?$/', $line)) {
+            $result['kickerCounters'] = 1;
 
             return true;
         }
