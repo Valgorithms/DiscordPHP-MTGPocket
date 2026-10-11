@@ -3219,8 +3219,13 @@ final class Game
         if ($permanent !== null && ($permanent->zone !== GameObject::BATTLEFIELD || $permanent->incarnation !== $self[1])) {
             $permanent = null;
         }
+        // Divided damage: how many targets share it.
+        $sharing = count(array_filter($steps, fn (array $step) => $step[0]['type'] === 'divided' && $step[1] !== null && $step[1] !== '-'));
         while ($steps !== []) {
             [$effect, $target] = array_shift($steps);
+            if ($effect['type'] === 'divided') {
+                $effect['sharing'] = max(1, $sharing);
+            }
             if ($effect['type'] === 'clash') {
                 $item['won'] = $this->clash($item['controller'], $source);
 
@@ -4223,6 +4228,29 @@ final class Game
                     'back' => ['name' => 'Phyrexian Token', 'type' => 'Token Artifact Creature — Phyrexian', 'types' => ['Artifact', 'Creature'], 'subtypes' => ['Phyrexian'], 'colors' => [], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null]], $controller);
                 $incubator->addCounters('+1/+1', $amount);
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
+                break;
+
+            case 'divided':
+                if ($target !== null && $target !== '-') {
+                    $this->dealDamage($source, $target, intdiv($effect['total'], $effect['sharing']) + ($effect['slot'] === 0 ? $effect['total'] % $effect['sharing'] : 0));
+                }
+                break;
+
+            case 'land_from_hand':
+                $land = array_values(array_filter($this->players[$controller]->hand, fn (int $id) => $this->objects[$id]->printed()->isLand()))[0] ?? null;
+                if ($land !== null) {
+                    $this->putOntoBattlefield($this->objects[$land], $controller);
+                    $this->objects[$land]->tapped = $this->objects[$land]->tapped || ($effect['tapped'] ?? false);
+                    $this->log("{$this->players[$controller]->name} puts {$this->objects[$land]->name()} onto the battlefield from their hand.");
+                }
+                break;
+
+            case 'copy_token':
+                // A copy of its printed card (rule 707.2), as a token.
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $copy = $this->createToken($affected->printed()->card, $controller);
+                    $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()}.");
+                }
                 break;
 
             case 'bottom_draw':
@@ -6262,6 +6290,9 @@ final class Game
             foreach (['blocks_creature' => [$blocker, $attacker], 'blocked_by_creature' => [$attacker, $blocker]] as $event => [$one, $other]) {
                 $this->trigger($this->objects[$one], $event, $this->objects[$one]->controller, null, $other);
                 $this->trigger($this->objects[$one], 'block_pair', $this->objects[$one]->controller, null, $other);
+            }
+            if ($this->hasKeyword($this->objects[$attacker], 'flying')) {
+                $this->trigger($this->objects[$blocker], 'blocks_flyer', $this->objects[$blocker]->controller, null, $attacker);
             }
         }
         // Bushido (rule 702.45): +N/+N when it blocks or becomes blocked.

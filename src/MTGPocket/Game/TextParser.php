@@ -1846,6 +1846,12 @@ final class TextParser
 
             return true;
         }
+        // Skystinger: `Whenever CARDNAME blocks a creature with flying, CARDNAME gets +5/+0 until end of turn.`
+        if (preg_match('/^Whenever CARDNAME blocks a creature with flying, (.+)\.$/', $line, $m) && ($effects = self::effects($m[1].'.')) !== null) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'blocks_flyer', 'effects' => $effects];
+
+            return true;
+        }
         // Fiend Hunter: `When CARDNAME leaves the battlefield, return the exiled card to the battlefield under its owner's control.`
         // makes its enters exile last until it leaves, as `exile … until CARDNAME leaves the battlefield` does.
         if (preg_match("/^When CARDNAME leaves the battlefield, return the exiled (?:card|creature) to the battlefield under its owner's control\\.$/", $line)) {
@@ -2301,6 +2307,16 @@ final class TextParser
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
+        // Fire // Ice: `CARDNAME deals 2 damage divided as you choose among one or two targets.`; split evenly, the rest to the first (see Game::runSteps()).
+        if (preg_match('/^CARDNAME deals (\w+) damage divided as you choose among (one or two|one, two, or three|any number of) targets$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1) {
+            $slots = min($n, match (strtolower($m[2])) {
+                'one or two' => 2,
+                'one, two, or three' => 3,
+                default => 5,
+            });
+
+            return array_map(fn (int $i) => ['type' => 'divided', 'total' => $n, 'slot' => $i, 'target' => $i === 0 ? 'any' : '?any'], range(0, $slots - 1));
+        }
         // Support N (rule 701.41): a +1/+1 counter on each of up to N other target creatures.
         if (preg_match('/^support (\w+)$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1 && $n <= 5) {
             return array_fill(0, $n, ['type' => 'counters', 'amount' => 1, 'target' => '?creature_other']);
@@ -2620,6 +2636,11 @@ final class TextParser
         $targets = implode('|', array_map(fn ($phrase) => preg_quote($phrase, '/'), array_keys(self::TARGETS)));
         $s = $sentence;
 
+        // `you may draw a card`, `you may mill two cards`: the game always does.
+        if (preg_match('/^you may ((?:draw|mill) .+)$/i', $s, $m) && ($effect = self::effect($m[1])) !== null && in_array($effect['type'], ['draw', 'mill'], true)) {
+            return $effect;
+        }
+
         // Adapt and monstrosity (rules 701.46 and 701.37).
         if (preg_match('/^(adapt|monstrosity) (\d+)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'amount' => (int) $m[2], 'self' => true];
@@ -2751,6 +2772,14 @@ final class TextParser
         // Flicker: `Exile target creature you control, then return that card to the battlefield under its owner's control.`
         if (preg_match("/^exile ({$targets}), then return (?:that card|it) to the battlefield under (?:its owner's|your) control$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'flicker', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        // Scaled Herbalist: `You may put a land card from your hand onto the battlefield.`
+        if (preg_match('/^(?:you may )?put a land card from your hand onto the battlefield( tapped)?$/i', $s, $m)) {
+            return ['type' => 'land_from_hand', 'tapped' => ($m[1] ?? '') !== ''];
+        }
+        // Cackling Counterpart: `Create a token that's a copy of target creature you control.`
+        if (preg_match("/^create a token that's a copy of ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+            return ['type' => 'copy_token', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // Justice Strike: `Target creature deals damage to itself equal to its power.`
         if (preg_match("/^({$targets}) deals damage to itself equal to its power$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])] ?? '', self::CREATURE_KINDS, true)) {
