@@ -3199,6 +3199,14 @@ final class Game
                 break;
 
             case 'counters':
+                if (($effect['each'] ?? null) === 'yours') {
+                    foreach ($this->permanents($controller) as $object) {
+                        if ($this->isCreature($object) && (! ($effect['other'] ?? false) || $object->id !== $source->id)) {
+                            $object->addCounters('+1/+1', $amount);
+                        }
+                    }
+                    break;
+                }
                 $affected?->addCounters($effect['kind'] ?? '+1/+1', $amount);
                 break;
 
