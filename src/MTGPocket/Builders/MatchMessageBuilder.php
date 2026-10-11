@@ -487,6 +487,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if ($object->tapped) {
             $notes[] = 'tapped';
         }
+        if ($object->prepared) {
+            $notes[] = 'prepared: '.$object->definition()->prepare?->name;
+        }
         if ($object->sick && $game->isCreature($object) && ! $game->hasKeyword($object, 'haste')) {
             $notes[] = 'summoning sick';
         }

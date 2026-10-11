@@ -66,6 +66,8 @@ final class CardPoolImporterTest extends StorageTestCase
             ['island', 'Island', '8', 'common', null, 'Basic', null, 0, 'default'],
             ['deck-only', 'Deck Card', '9', 'rare', 'G', null, null, 0, 'deck'],
             ['token-ish', 'Special', '10', 'special', 'G', null, null, 0, 'default'],
+            ['prep-front', 'Seed Angel', '11', 'common', 'G', null, 'a', 0, 'default'],
+            ['prep-back', 'Seed Angel', '11', 'common', 'G', null, 'b', 0, 'default'],
         ];
         $card = $pdo->prepare('INSERT INTO "cards" VALUES (?, ?, \'TST\', ?, ?, ?, 1, \'Card\', ?, ?, ?, ?)');
         $identifier = $pdo->prepare('INSERT INTO "cardIdentifiers" VALUES (?, ?)');
@@ -81,6 +83,8 @@ final class CardPoolImporterTest extends StorageTestCase
         $pdo->exec('UPDATE "cards" SET "manaCost" = \'{3}{W}{W}\', "power" = \'4\', "toughness" = \'4\', "text" = \'Flying, vigilance\', "types" = \'Creature\', "subtypes" = \'Angel\', "keywords" = \'Flying, Vigilance\' WHERE "uuid" = \'angel\'');
         $pdo->exec('UPDATE "cards" SET "name" = \'Delver of Secrets // Insectile Aberration\', "layout" = \'transform\' WHERE "uuid" LIKE \'dfc-%\'');
         $pdo->exec('UPDATE "cards" SET "faceName" = \'Insectile Aberration\', "power" = \'3\', "toughness" = \'2\', "text" = \'Flying\', "types" = \'Creature\' WHERE "uuid" = \'dfc-back\'');
+        $pdo->exec('UPDATE "cards" SET "name" = \'Seed Angel // Seed Suture\', "layout" = \'prepare\' WHERE "uuid" LIKE \'prep-%\'');
+        $pdo->exec('UPDATE "cards" SET "faceName" = \'Seed Suture\', "manaCost" = \'{G/W}\', "text" = \'Put a +1/+1 counter on target creature. You gain 1 life.\', "types" = \'Sorcery\' WHERE "uuid" = \'prep-back\'');
         $pdo->exec('UPDATE "cards" SET "manaCost" = \'{R}\', "text" = \'Lightning Bolt deals 3 damage to any target.\', "types" = \'Instant\' WHERE "uuid" = \'bolt\'');
         // Official decks, for rentals.
         $pdo->exec('CREATE TABLE "setDecks" ("code" TEXT, "name" TEXT, "type" TEXT, "releaseDate" TEXT, "mainBoard" TEXT, "sideBoard" TEXT, "commander" TEXT)');
@@ -123,7 +127,7 @@ final class CardPoolImporterTest extends StorageTestCase
         $this->assertSame('TST', $pool->setCode);
         $this->assertSame('Test Set', $pool->setName);
         $this->assertSame('5.3.0+test', $pool->mtgjsonVersion);
-        $this->assertSame(6, $pool->size(), 'No back faces, promos, basics, deck-only cards, specials or second printings.');
+        $this->assertSame(7, $pool->size(), 'No back faces, promos, basics, deck-only cards, specials or second printings.');
 
         $this->assertSame(['bolt'], $pool->uuids('R', 'common'));
         $this->assertSame(['dragon'], $pool->uuids('R', 'rare'));
@@ -131,12 +135,14 @@ final class CardPoolImporterTest extends StorageTestCase
         $this->assertSame(['dfc-front'], $pool->uuids('U'));
         $this->assertSame(['nicol'], $pool->uuids(CardPool::MULTICOLOR, 'mythic'));
         $this->assertSame(['ring'], $pool->uuids(CardPool::COLORLESS));
-        $this->assertSame(['W', 'U', 'R', 'M', 'C'], $pool->colors());
+        $this->assertSame(['W', 'U', 'R', 'G', 'M', 'C'], $pool->colors());
         $this->assertSame('scry-dragon', $pool->card('dragon')['scryfallId']);
 
         $back = $pool->card('dfc-front')['back'];
         $this->assertSame(['Insectile Aberration', '3', '2', 'Flying'], [$back['name'], $back['power'], $back['toughness'], $back['text']], 'A double-faced card keeps its back face.');
         $this->assertArrayNotHasKey('back', $pool->card('angel'));
+        $this->assertSame(['Seed Suture', '{G/W}'], [$pool->card('prep-front')['prepare']['name'], $pool->card('prep-front')['prepare']['manaCost']], 'A preparation card keeps its spell, not as a back face.');
+        $this->assertArrayNotHasKey('back', $pool->card('prep-front'));
 
         $angel = $pool->card('angel');
         $this->assertSame(['{3}{W}{W}', '4', '4', ['Creature'], ['Angel']], [$angel['manaCost'], $angel['power'], $angel['toughness'], $angel['types'], $angel['subtypes']]);

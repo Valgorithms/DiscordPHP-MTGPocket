@@ -108,6 +108,9 @@ final class GameObject
     /** `warp` or `plot`: why it waits in exile. */
     public ?string $exiledBy = null;
 
+    /** Prepared: its controller may cast a copy of its prepare spell. */
+    public bool $prepared = false;
+
     /** Monstrosity (rule 701.37) has made it monstrous. */
     public bool $monstrous = false;
 
@@ -215,6 +218,7 @@ final class GameObject
         $this->frozen = false;
         $this->renowned = false;
         $this->monstrous = false;
+        $this->prepared = false;
         $this->holding = [];
         $this->encoded = [];
         $this->exileIfDies = 0;
@@ -276,6 +280,7 @@ final class GameObject
             'frozen' => $this->frozen,
             'renowned' => $this->renowned,
             'monstrous' => $this->monstrous,
+            'prepared' => $this->prepared,
             'holding' => $this->holding,
             'encoded' => $this->encoded,
             'exileIfDies' => $this->exileIfDies,
@@ -327,6 +332,7 @@ final class GameObject
         $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
+        $object->prepared = (bool) ($data['prepared'] ?? false);
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
         $object->encoded = array_map('intval', (array) ($data['encoded'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);

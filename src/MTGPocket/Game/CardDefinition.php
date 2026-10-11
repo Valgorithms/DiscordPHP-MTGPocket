@@ -38,7 +38,7 @@ final class CardDefinition
         'vigilance', 'haste', 'defender', 'menace', 'indestructible', 'hexproof', 'shroud', 'flash', 'prowess',
         'fear', 'intimidate', 'shadow', 'skulk', 'infect', 'wither', 'devoid', 'changeling',
         'plainswalk', 'islandwalk', 'swampwalk', 'mountainwalk', 'forestwalk', 'exalted', 'persist', 'undying', 'convoke', 'affinity for artifacts', 'rebound', 'cipher',
-        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'compleated', 'look at top any time', 'top revealed', 'lands from top', 'play from top', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound', 'exile instead of graveyard', 'exile dying opponent creatures', 'replicate', 'increment',
+        'evolve', 'improvise', 'no maximum hand size', 'additional land', 'leyline', 'unleash', 'split second', 'umbra armor', 'totem armor', 'delve', 'any number', 'you have hexproof', 'sunburst', 'compleated', 'look at top any time', 'top revealed', 'lands from top', 'play from top', 'ascend', 'jump-start', 'retrace', 'bargain', 'flanking', 'storm', 'battle cry', 'daybound', 'nightbound', 'exile instead of graveyard', 'exile dying opponent creatures', 'replicate', 'increment', 'enters prepared',
     ];
 
     /**
@@ -179,6 +179,9 @@ final class CardDefinition
     /** The back face of a transforming or modal double-faced card (rule 712). */
     public readonly ?CardDefinition $back;
 
+    /** A preparation card's prepare spell: a copy can be cast while the creature is prepared. */
+    public readonly ?CardDefinition $prepare;
+
     /**
      * @param array $card Pool card data (see {@see \MTGPocket\Cards\CardPool}) or a basic land's.
      */
@@ -244,9 +247,23 @@ final class CardDefinition
         $this->aura = $parsed['aura'];
         $this->equipment = $parsed['equipment'];
         $this->triggered = $parsed['triggered'];
-        $this->activated = $parsed['activated'];
         $this->back = is_array($card['back'] ?? null) ? new CardDefinition(['uuid' => $this->key] + $card['back']) : null;
-        $this->unsupported = [...$costUnsupported, ...$parsed['unsupported'], ...($this->back?->unsupported ?? [])];
+        $this->prepare = is_array($card['prepare'] ?? null) ? new CardDefinition(['uuid' => $this->key.'-prepare'] + $card['prepare']) : null;
+        $activated = $parsed['activated'];
+        $prepareUnsupported = [];
+        if (in_array('enters prepared', $parsed['keywords'], true)) {
+            // While prepared, its controller may cast a copy of the prepare spell, which unprepares it; see Game::activate().
+            if ($this->prepare === null || $this->prepare->modes !== [] || $this->prepare->effects === [] || $this->prepare->cost->xCount > 0) {
+                $prepareUnsupported[] = 'CARDNAME enters prepared.';
+            } else {
+                $activated[] = [
+                    'text' => "Prepared: cast a copy of {$this->prepare->name}", 'cost' => ['mana' => (string) $this->prepare->cost],
+                    'effects' => $this->prepare->effects, 'sorcery' => ! $this->prepare->is('Instant'), 'once' => false, 'prepare' => true,
+                ];
+            }
+        }
+        $this->activated = $activated;
+        $this->unsupported = [...$costUnsupported, ...$parsed['unsupported'], ...$prepareUnsupported, ...($this->back?->unsupported ?? []), ...($this->prepare?->unsupported ?? [])];
     }
 
     /**
