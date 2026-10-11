@@ -4245,10 +4245,28 @@ final class Game
                 }
                 break;
 
+            case 'gy_shuffle':
+                // The best cards back: highest mana value nonlands first.
+                $player = $this->players[$controller];
+                $cards = $player->graveyard;
+                usort($cards, fn (int $a, int $b) => [$this->objects[$a]->printed()->isLand(), $this->objects[$b]->definition()->cost->manaValue()] <=> [$this->objects[$b]->printed()->isLand(), $this->objects[$a]->definition()->cost->manaValue()]);
+                foreach (array_slice($cards, 0, $effect['amount'] ?? count($cards)) as $id) {
+                    $this->moveTo($this->objects[$id], GameObject::LIBRARY);
+                }
+                $this->shuffle($controller);
+                $this->log("{$player->name} shuffles cards from their graveyard into their library.");
+                break;
+
             case 'copy_token':
                 // A copy of its printed card (rule 707.2), as a token.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $copy = $this->createToken($affected->printed()->card, $controller);
+                    if ($effect['haste'] ?? false) {
+                        $copy->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
+                    }
+                    if (isset($effect['endStep'])) {
+                        $copy->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
+                    }
                     $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()}.");
                 }
                 break;

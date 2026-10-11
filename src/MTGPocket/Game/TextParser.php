@@ -2498,7 +2498,7 @@ final class TextParser
         }
         // "It gains haste. Exile it at the beginning of the next end step." after a token or a creature returned to the battlefield.
         for ($made = $last; $made > 0 && $effects[$made]['type'] === 'pump' && ($effects[$made]['sameTarget'] ?? false); $made--);
-        if (in_array($effects[$made]['type'], ['token', 'reanimate'], true)
+        if (in_array($effects[$made]['type'], ['token', 'reanimate', 'copy_token'], true)
             && preg_match('/^(Exile|Sacrifice) (?:it|them|that token|those tokens|that creature) at the beginning of the next end step$/', $sentence, $m)) {
             $effects[$made]['endStep'] = strtolower($m[1]);
 
@@ -2778,8 +2778,9 @@ final class TextParser
             return ['type' => 'land_from_hand', 'tapped' => ($m[1] ?? '') !== ''];
         }
         // Cackling Counterpart: `Create a token that's a copy of target creature you control.`
-        if (preg_match("/^create a token that's a copy of ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
-            return ['type' => 'copy_token', 'target' => self::TARGETS[strtolower($m[1])]];
+        // Kiki-style: `…, except it has haste`.
+        if (preg_match("/^create a token that's a copy of ({$targets})(, except it has haste)?$/i", $s, $m) && self::isPermanentTarget($m[1])) {
+            return ['type' => 'copy_token', 'target' => self::TARGETS[strtolower($m[1])]] + (isset($m[2]) ? ['haste' => true] : []);
         }
         // Justice Strike: `Target creature deals damage to itself equal to its power.`
         if (preg_match("/^({$targets}) deals damage to itself equal to its power$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])] ?? '', self::CREATURE_KINDS, true)) {
@@ -2883,6 +2884,13 @@ final class TextParser
             if (in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
                 return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $restriction, 'target' => self::TARGETS[strtolower($m[1])]];
             }
+        }
+        // Memory's Journey: `Target player shuffles up to three target cards from their graveyard into their library.` The caster picks themself.
+        if (preg_match('/^(?:target player shuffles|shuffle) up to (\w+) target cards? from (?:their|your) graveyard into (?:their|your) library$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'gy_shuffle', 'amount' => $n];
+        }
+        if (preg_match('/^shuffle your graveyard into your library$/i', $s)) {
+            return ['type' => 'gy_shuffle', 'amount' => null];
         }
         if (preg_match('/^(target player|target opponent) mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
             return ['type' => 'mill', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]];
