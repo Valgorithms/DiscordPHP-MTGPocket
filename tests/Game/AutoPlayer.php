@@ -249,11 +249,12 @@ final class AutoPlayer
                 return true;
             }
             foreach ($game->plays($seat) as $play) {
-                if (in_array($play['how'], ['unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'transmute'], true)) {
+                if (in_array($play['how'], ['unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'transmute', 'bloodrush'], true)) {
                     match ($play['how']) {
                         'unearth' => $game->unearth($seat, $play['id']),
                         'plot' => $game->plot($seat, $play['id']),
                         'transmute' => $game->transmute($seat, $play['id']),
+                        'bloodrush' => $game->bloodrush($seat, $play['id']),
                         'foretell' => $game->foretell($seat, $play['id']),
                         'eternalize', 'embalm' => $game->embalm($seat, $play['id'], $play['how']),
                         'suspend' => $game->suspend($seat, $play['id']),

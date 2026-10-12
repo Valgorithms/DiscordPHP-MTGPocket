@@ -878,6 +878,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'unearth' => "unearth {$card->unearth}",
             'regrow' => (isset($card->altCosts['regrowTo']) ? 'return to the battlefield' : 'return to hand')." for {$card->altCosts['regrow']}",
             'foretell' => 'foretell for {2}',
+            'bloodrush' => "bloodrush {$card->altCosts['bloodrush']}",
             default => "{$how} {$card->altCosts[$how]}",
         } : implode(', ', array_filter([
             $options['exiled'] === 'plot' ? 'plotted, free' : '',
