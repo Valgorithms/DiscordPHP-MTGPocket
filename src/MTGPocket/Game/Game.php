@@ -1013,7 +1013,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['mh' => isset($card->altCosts['mayhem']), 'hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1038,7 +1038,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1106,7 +1106,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'miracle', 'sneak', 'emerge'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1163,7 +1163,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize', 'mh' => 'mayhem'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'miracle', 'sneak', 'emerge'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1619,7 +1619,7 @@ final class Game
         return match (true) {
             $options['faceDown'], $options['alt'] === 'overload' => [],
             $options['bestowed'] => [$card->bestow['enchant']],
-            default => [...$card->targetKinds($options['modes'], $options['kicked'] || in_array($options['alt'], ['surge', 'spectacle', 'cleave'], true)), ...($game === null ? [] : self::targetKindsOf($game->splicedEffects($options['splice'])))],
+            default => [...$card->targetKinds($options['modes'], $options['kicked'] || in_array($options['alt'], ['surge', 'spectacle', 'cleave', 'mastery'], true)), ...($game === null ? [] : self::targetKindsOf($game->splicedEffects($options['splice'])))],
         };
     }
 
@@ -2039,7 +2039,7 @@ final class Game
         $card = $object->printed();
         // `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`: always, when one can be.
         $revealed = $options['faceDown'] || $card->targetKinds($options['modes'], true) !== $card->targetKinds($options['modes'], false) ? null : $this->revealed($seat, $id, $card);
-        if ($revealed !== null || in_array($options['alt'], ['surge', 'spectacle', 'cleave'], true)) {
+        if ($revealed !== null || in_array($options['alt'], ['surge', 'spectacle', 'cleave', 'mastery'], true)) {
             $options['kicked'] = true;
         }
         $xCount = ManaCost::parse(self::castCost($card, $options))->xCount;
@@ -2158,7 +2158,7 @@ final class Game
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
             $options['exiled'] !== '' ? "from exile ({$options['exiled']})" : '',
-            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && ! in_array($options['alt'], ['surge', 'spectacle', 'cleave'], true) ? 'kicked' : ''),
+            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && ! in_array($options['alt'], ['surge', 'spectacle', 'cleave', 'mastery'], true) ? 'kicked' : ''),
             $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $this->objects[$splicer]->name(), $options['splice'])).' onto it',
@@ -3800,7 +3800,7 @@ final class Game
                 break;
 
             case 'draw':
-                $this->draw($target !== null ? (int) substr($target, 2) : $controller, $amount);
+                $this->draw($target !== null ? (int) substr($target, 2) : (isset($effect['opponent']) ? $this->opponent($controller) : $controller), $amount);
                 break;
 
             case 'gain_life':
@@ -4017,6 +4017,12 @@ final class Game
             case 'cant_block_source':
                 if ($affected !== null) {
                     $affected->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ["can't block o{$source->id}"]];
+                }
+                break;
+
+            case 'must_block_source':
+                if ($affected !== null) {
+                    $affected->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ["blocks o{$source->id} if able"]];
                 }
                 break;
 
@@ -5638,14 +5644,16 @@ final class Game
      *
      * @param int        $seat
      * @param GameObject $source
-     * @param string     $which  `any`, or `other` for `Sacrifice another creature`.
+     * @param string     $which  `any`, or `other` for `Sacrifice another creature`; with ` artifact` for an artifact.
      *
      * @return GameObject|null
      */
     private function fodder(int $seat, GameObject $source, string $which): ?GameObject
     {
-        return $this->weakest($seat, fn (GameObject $o) => $o->id !== $source->id && $this->isCreature($o))
-            ?? ($which === 'any' && $source->zone === GameObject::BATTLEFIELD && $source->controller === $seat && $this->isCreature($source) ? $source : null);
+        $fits = str_ends_with($which, ' artifact') ? fn (GameObject $o) => $o->definition()->is('Artifact') : fn (GameObject $o) => $this->isCreature($o);
+
+        return $this->weakest($seat, fn (GameObject $o) => $o->id !== $source->id && $fits($o))
+            ?? (str_starts_with($which, 'any') && $source->zone === GameObject::BATTLEFIELD && $source->controller === $seat && $fits($source) ? $source : null);
     }
 
     /**
@@ -6529,6 +6537,16 @@ final class Game
             foreach ($this->blockCandidates() as $candidate) {
                 if (! isset($blocks[$candidate]) && $this->canBlock($this->objects[$candidate], $this->objects[$attacker])) {
                     $blocks[$candidate] = $attacker;
+                    break;
+                }
+            }
+        }
+        // Vortex Elemental: a creature told to block it does if able (rule 509.1c).
+        foreach ($this->blockCandidates() as $candidate) {
+            foreach (array_keys($this->attackers) as $attacker) {
+                if ($this->hasKeyword($this->objects[$candidate], "blocks o{$attacker} if able") && $this->canBlock($this->objects[$candidate], $this->objects[$attacker])) {
+                    $blocks[$candidate] = $attacker;
+                    unset($extra[$candidate]);
                     break;
                 }
             }
@@ -8239,7 +8257,7 @@ final class Game
                 if (($anthem['self'] ?? false) && ($source->id !== $object->id || ! $this->conditionMet($anthem['if'], $source, $source->controller))) {
                     continue;
                 }
-                if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id]))) {
+                if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id])) || (($anthem['artifact'] ?? false) && ! $object->definition()->is('Artifact'))) {
                     continue;
                 }
                 // `Other creatures you control with flying get +1/+1.`: printed keywords, so anthems don't feed each other.
