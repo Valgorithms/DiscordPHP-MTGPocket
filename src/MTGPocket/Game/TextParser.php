@@ -850,6 +850,18 @@ final class TextParser
 
             return true;
         }
+        // Recover (rule 702.59): see Game::recover().
+        if (preg_match('/^Recover '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['recover'] = $m[1];
+
+            return true;
+        }
+        // Mayhem: cast from your graveyard the turn you discarded it; see Game::whyNotFromGraveyard().
+        if (preg_match('/^Mayhem '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
+            $result['altCosts']['mayhem'] = $m[1];
+
+            return true;
+        }
         // Sneak (rule 702.190): cast during the declare blockers step by returning an unblocked attacker; see Game::whyNotCast().
         if (preg_match('/^Sneak '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['sneak'] = $m[1];

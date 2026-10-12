@@ -915,6 +915,8 @@ final class Game
                 $this->log("{$object->name()} is exiled (madness).");
             } else {
                 $this->moveTo($object, GameObject::GRAVEYARD);
+                // For mayhem: discarded this turn.
+                [$object->exiledBy, $object->exiledOn] = ['discarded', $this->turn];
             }
         }
     }
@@ -1009,7 +1011,7 @@ final class Game
                 }
             }
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
-            foreach (['hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
+            foreach (['mh' => isset($card->altCosts['mayhem']), 'hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
                     if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
@@ -1156,9 +1158,9 @@ final class Game
             } elseif ($part === 'bargain') {
                 // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
                 $options['kicked'] = $options['bargained'] = true;
-            } elseif (in_array($part, ['es', 'js', 'rt', 'db', 'hz'], true)) {
+            } elseif (in_array($part, ['es', 'js', 'rt', 'db', 'hz', 'mh'], true)) {
                 // From the graveyard: escape, jump-start, retrace, disturb (transformed, rule 702.146) or harmonize.
-                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
+                $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize', 'mh' => 'mayhem'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'miracle', 'sneak', 'emerge'], true)) {
@@ -1647,7 +1649,7 @@ final class Game
         if (in_array($options['exiled'], ['madness', 'foretell'], true)) {
             return $card->altCosts[$options['exiled']].$more;
         }
-        if (in_array($options['grave'], ['escape', 'disturb', 'harmonize'], true)) {
+        if (in_array($options['grave'], ['escape', 'disturb', 'harmonize', 'mayhem'], true)) {
             return $card->altCosts[$options['grave']].$more;
         }
         if ($options['bestowed']) {
@@ -2216,6 +2218,8 @@ final class Game
             'jumpstart' => ! in_array('jump-start', $card->keywords, true) ? "{$card->name} has no jump-start." : ($hand === [] ? 'Jump-start needs a card to discard.' : null),
             'disturb' => ! isset($card->altCosts['disturb']) || $card->back === null || $card->back->isAura() ? "{$card->name} can't be cast with disturb." : null,
             'harmonize' => ! isset($card->altCosts['harmonize']) ? "{$card->name} has no harmonize." : null,
+            'mayhem' => ! isset($card->altCosts['mayhem']) ? "{$card->name} has no mayhem."
+                : ($this->objects[$id]->exiledBy !== 'discarded' || $this->objects[$id]->exiledOn !== $this->turn ? 'Mayhem needs you to have discarded it this turn.' : null),
             'retrace' => ! in_array('retrace', $card->keywords, true) ? "{$card->name} has no retrace."
                 : (array_filter($hand, fn (int $card) => $this->objects[$card]->printed()->isLand()) === [] ? 'Retrace needs a land card to discard.' : null),
             default => null,
@@ -2915,6 +2919,20 @@ final class Game
         }
 
         return null;
+    }
+
+    private function recover(GameObject $card): void
+    {
+        $payment = $this->payFor($card->owner, $card->printed()->altCosts['recover']);
+        if ($payment !== null) {
+            $this->pay($card->owner, $payment);
+            $this->log("{$this->players[$card->owner]->name} pays recover and returns {$card->name()} to their hand.");
+            $this->moveTo($card, GameObject::HAND);
+
+            return;
+        }
+        $this->log("{$card->name()} is exiled (recover wasn't paid).");
+        $this->moveTo($card, GameObject::EXILE);
     }
 
     private function whyNotTransmute(int $seat, int $id): ?string
@@ -7344,6 +7362,14 @@ final class Game
             if ($object->definition()->is('Creature')) {
                 foreach ($this->permanents() as $permanent) {
                     $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id);
+                }
+            }
+            // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
+            if ($object->definition()->is('Creature')) {
+                foreach ($owner->graveyard as $other) {
+                    if ($other !== $object->id && isset($this->objects[$other]->printed()->altCosts['recover'])) {
+                        $this->recover($this->objects[$other]);
+                    }
                 }
             }
             // `When enchanted land dies, return that card to its owner's hand.` (the Zendikons)
