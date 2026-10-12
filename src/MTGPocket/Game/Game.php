@@ -1022,7 +1022,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['mh' => isset($card->altCosts['mayhem']), 'hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging|mutate/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1047,7 +1047,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging|mutate/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1115,7 +1115,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1172,7 +1172,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize', 'mh' => 'mayhem'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1631,6 +1631,7 @@ final class Game
         return match (true) {
             $options['faceDown'], $options['alt'] === 'overload' => [],
             $options['bestowed'] => [$card->bestow['enchant']],
+            $options['alt'] === 'mutate' => ['mutate_host'],
             default => [...$card->targetKinds($options['modes'], $options['kicked'] || in_array($options['alt'], ['surge', 'spectacle', 'cleave', 'mastery'], true)), ...($game === null ? [] : self::targetKindsOf($game->splicedEffects($options['splice'])))],
         };
     }
@@ -3277,6 +3278,7 @@ final class Game
         $effects = $ability ? $item['effects'] : ($card->isPermanentCard() ? [] : [...$card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false), ...$item['spliced'] ?? []]);
         $kinds = $ability ? $item['kinds'] : match (true) {
             (bool) ($item['bestowed'] ?? false) => [$card->bestow['enchant']],
+            ($item['alt'] ?? '') === 'mutate' => ['mutate_host'],
             $card->aura !== null => [$card->aura['enchant']],
             default => self::targetKindsOf($effects),
         };
@@ -3290,6 +3292,15 @@ final class Game
             if ($target !== '-') {
                 $chosen[] = $legal[$slot];
             }
+        }
+        if ($chosen !== [] && ! in_array(true, $chosen, true) && ! $ability && ($item['alt'] ?? '') === 'mutate') {
+            // A mutating creature spell with an illegal target resolves as a creature spell (rule 702.140b).
+            [$item['alt'], $item['targets'], $legal, $chosen] = ['', [], [], []];
+        }
+        if (! $ability && ($item['alt'] ?? '') === 'mutate' && ($host = $this->targetObject((string) ($item['targets'][0] ?? ''))) !== null) {
+            $this->mutate($object, $host);
+
+            return;
         }
         if ($chosen !== [] && ! in_array(true, $chosen, true) && ! $ability && ($item['bestowed'] ?? false)) {
             // A bestowed Aura with nothing to enchant resolves as a creature (rule 702.103e).
@@ -5691,6 +5702,26 @@ final class Game
     }
 
     /**
+     * Merges a mutating creature spell into its target (rule 721): on top
+     * when it is the bigger creature, else under it. The merged permanent
+     * has every card's abilities (see GameObject::definition()).
+     *
+     * @param GameObject $spell
+     * @param GameObject $host
+     *
+     * @return void
+     */
+    private function mutate(GameObject $spell, GameObject $host): void
+    {
+        $over = (int) $spell->printed()->power + (int) $spell->printed()->toughness > $this->power($host) + $this->toughness($host);
+        $this->removeFromZone($spell);
+        $spell->moveTo(GameObject::GONE);
+        $host->addMutation($spell->id, $spell->card, $over);
+        $this->log("{$spell->printed()->name} mutates ".($over ? 'onto' : 'under')." {$host->name()}.");
+        $this->trigger($host, 'mutates', $host->controller);
+    }
+
+    /**
      * Exiles a haunt card haunting a creature (rule 702.55): an opponent's weakest, else its controller's own.
      *
      * @param GameObject $card
@@ -6025,6 +6056,8 @@ final class Game
             'any' => $creature || $card->isPlaneswalker() || $card->is('Battle'),
             'creature' => $creature,
             'creature_you_control' => $creature && $object->controller === $controller,
+            // Mutate (rule 702.140): a non-Human creature with the same owner.
+            'mutate_host' => $creature && $object->owner === $controller && ! in_array('Human', $card->subtypes, true),
             'creature_opponent' => $creature && $object->controller !== $controller,
             'creature_or_planeswalker' => $creature || $card->isPlaneswalker(),
             'player_or_planeswalker', 'planeswalker' => $card->isPlaneswalker(),
@@ -7483,11 +7516,14 @@ final class Game
             $this->hasKeyword($object, 'undying') && $object->counter('+1/+1') === 0 => '+1/+1',
             default => null,
         };
+        $intended = $zone;
         if ($object->definition()->isToken()) {
             $zone = GameObject::GONE;
         }
 
         $held = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? $object->holding : [];
+        // A mutated permanent's other cards go with it (rule 721.3).
+        $merged = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? array_column($object->mutations, 'id') : [];
         // The Auras on it as it dies, before they come off.
         $enchanters = $dies ? array_filter($this->permanents(), fn (GameObject $aura) => $aura->attachedTo === $object->id) : [];
         $this->removeFromZone($object);
@@ -7501,6 +7537,19 @@ final class Game
             GameObject::COMMAND => $this->command[] = $object->id,
             GameObject::GONE => null,
         };
+        foreach ($merged as $id) {
+            $card = $this->objects[$id];
+            $to = $card->printed()->isToken() ? GameObject::GONE : $intended;
+            $card->moveTo($to);
+            match ($to) {
+                GameObject::HAND => $this->players[$card->owner]->hand[] = $id,
+                GameObject::GRAVEYARD => $this->players[$card->owner]->graveyard[] = $id,
+                GameObject::LIBRARY => $this->players[$card->owner]->library[] = $id,
+                GameObject::EXILE => $this->exile[] = $id,
+                GameObject::COMMAND => $this->command[] = $id,
+                default => null,
+            };
+        }
         if ($dies) {
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);

@@ -1069,7 +1069,7 @@ final class TextParser
             } elseif (preg_match('/^transmute '.self::COST.'$/i', $part, $m)) {
                 // Transmute (rule 702.53): discard it as a sorcery to search for a card with the same mana value; see Game::transmute().
                 $found['altCosts']['transmute'] = $m[1];
-            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle|cleave|web-slinging) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle|cleave|web-slinging|mutate) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][str_replace('-', '', strtolower($m[1]))] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
@@ -2005,7 +2005,7 @@ final class TextParser
             'becomes the target of a spell or ability' => 'targeted',
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
-            'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous',
+            'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
             'is put into a graveyard from the battlefield' => 'to_graveyard', 'is put into a graveyard from anywhere' => 'to_graveyard_anywhere', 'becomes blocked' => 'blocked',
         ];
         $casts = [
@@ -2074,7 +2074,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability|becomes blocked|becomes tapped)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability|becomes blocked|becomes tapped)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];

@@ -146,6 +146,16 @@ final class GameObject
     /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
     public array $used = [];
 
+    /**
+     * The cards merged with it by mutate (rule 721), each on top or under
+     * it: `['id' => int, 'card' => array, 'over' => bool]`.
+     *
+     * @var array<int, array{id: int, card: array, over: bool}>
+     */
+    public array $mutations = [];
+
+    private ?CardDefinition $mutatedDefinition = null;
+
     private ?CardDefinition $definition = null;
     private ?CardDefinition $faceDownDefinition = null;
 
@@ -178,11 +188,48 @@ final class GameObject
         if ($this->faceDown) {
             return $this->faceDownDefinition ??= new CardDefinition($this->printed()->faceDownCard());
         }
+        if ($this->mutations !== []) {
+            return $this->mutatedDefinition ??= new CardDefinition($this->mergedCard());
+        }
         if ($this->transformed && $this->printed()->back !== null) {
             return $this->printed()->back;
         }
 
         return $this->printed();
+    }
+
+    /**
+     * Merges a mutating card with it (rule 721.2).
+     *
+     * @param int   $id   The mutating card's object.
+     * @param array $card
+     * @param bool  $over Whether it goes on top.
+     *
+     * @return void
+     */
+    public function addMutation(int $id, array $card, bool $over): void
+    {
+        $this->mutations[] = ['id' => $id, 'card' => $card, 'over' => $over];
+        $this->mutatedDefinition = null;
+    }
+
+    /**
+     * The merged permanent: the top card's characteristics with every card's abilities (rule 721.2).
+     *
+     * @return array
+     */
+    private function mergedCard(): array
+    {
+        $cards = [$this->card, ...array_column($this->mutations, 'card')];
+        $top = $this->card;
+        foreach ($this->mutations as $mutation) {
+            if ($mutation['over']) {
+                $top = $mutation['card'];
+            }
+        }
+        $texts = array_map(fn (array $card) => str_replace((string) ($card['name'] ?? ''), (string) ($top['name'] ?? ''), (string) ($card['text'] ?? '')), $cards);
+
+        return ['text' => implode("\n", array_filter($texts, fn (string $text) => $text !== ''))] + $top;
     }
 
     /**
@@ -244,6 +291,8 @@ final class GameObject
         $this->exiledBy = null;
         $this->stolenBy = null;
         $this->rebound = false;
+        $this->mutations = [];
+        $this->mutatedDefinition = null;
         $this->bestowed = false;
         $this->chosen = null;
         $this->enchantedPlayer = null;
@@ -309,6 +358,7 @@ final class GameObject
             'playableFrom' => $this->playableFrom,
             'exiledBy' => $this->exiledBy,
             'rebound' => $this->rebound,
+            'mutations' => $this->mutations,
             'bestowed' => $this->bestowed,
             'chosen' => $this->chosen,
         ];
@@ -366,6 +416,7 @@ final class GameObject
         $object->exiledBy = isset($data['exiledBy']) ? (string) $data['exiledBy'] : null;
         $object->stolenBy = isset($data['stolenBy']) ? (int) $data['stolenBy'] : null;
         $object->rebound = (bool) ($data['rebound'] ?? false);
+        $object->mutations = array_values((array) ($data['mutations'] ?? []));
         $object->bestowed = (bool) ($data['bestowed'] ?? false);
         $object->chosen = isset($data['chosen']) ? (string) $data['chosen'] : null;
         $object->enchantedPlayer = isset($data['enchantedPlayer']) ? (int) $data['enchantedPlayer'] : null;
