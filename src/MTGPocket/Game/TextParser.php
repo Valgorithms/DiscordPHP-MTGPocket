@@ -628,6 +628,10 @@ final class TextParser
                     continue;
                 }
             }
+            // A haunt spell's `When the creature CARDNAME haunts dies, …`, from exile.
+            if (str_starts_with($line, 'When the creature CARDNAME haunts dies, ') && self::triggered($line, $result)) {
+                continue;
+            }
             // Strive: `{2}{R}` more for each target beyond the first; see Game::paymentFor().
             if (preg_match('/^Strive — CARDNAME costs '.self::COST.' more to cast for each target beyond the first\.$/u', $line, $strive)) {
                 $result['altCosts']['strive'] = $strive[1];
@@ -1072,6 +1076,15 @@ final class TextParser
                 // Echo (rule 702.30): see Game::applyEffect().
                 $found['altCosts']['echo'] = $m[1];
                 $found['triggered'][] = ['text' => $part, 'event' => 'upkeep', 'effects' => [['type' => 'echo', 'self' => true]]];
+            } elseif ($word === 'haunt') {
+                // Haunt (rule 702.55): exiled haunting a creature as it dies (or as the spell resolves); see Game::haunt().
+                $found['keywords'][] = 'haunt';
+                if (! $spell) {
+                    $found['triggered'][] = ['text' => 'Haunt', 'event' => 'dies', 'effects' => [['type' => 'haunt', 'self' => true]]];
+                }
+            } elseif ($word === 'paradigm' && $spell) {
+                // Paradigm: exiled as it resolves, then copied for free each first main phase; see Game::spellLeavesStack().
+                $found['keywords'][] = 'paradigm';
             } elseif ($word === 'cascade') {
                 // Cascade (rule 702.85): see Game::cascade().
                 $found['keywords'][] = 'cascade';
@@ -2001,6 +2014,14 @@ final class TextParser
             'a white spell' => 'cast_color_W', 'a blue spell' => 'cast_color_U', 'a black spell' => 'cast_color_B', 'a red spell' => 'cast_color_R', 'a green spell' => 'cast_color_G',
             'a multicolored spell' => 'cast_multicolored',
         ];
+        // Haunt: `When CARDNAME enters or the creature it haunts dies, …` and `When the creature CARDNAME haunts dies, …`
+        if (preg_match('/^When (CARDNAME enters or the creature it haunts dies|the creature CARDNAME haunts dies), (.+)\.$/', $line, $m) && ($effects = self::effects($m[2].'.')) !== null) {
+            foreach (str_starts_with($m[1], 'CARDNAME enters') ? ['enters', 'haunted_dies'] : ['haunted_dies'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+            }
+
+            return true;
+        }
         // `When CARDNAME enters or dies, surveil 1.`: the same ability on both events.
         if (preg_match('/^When(?:ever)? CARDNAME (enters|attacks|dies) or (attacks|dies)(?: the battlefield)?, (.+)\.$/', $line, $m) && $m[1] !== $m[2]
             && (($effects = self::effects($m[3].'.')) !== null || ! str_contains($m[3], 'target') && ($effects = self::effects(preg_replace('/\bit\b/', 'CARDNAME', $m[3]).'.')) !== null)) {

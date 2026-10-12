@@ -712,6 +712,14 @@ final class Game
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, 'first_main', $object->controller);
                 }
+                // Paradigm: a free copy of each paradigm card its owner has resolved, from exile.
+                foreach ($this->exile as $id) {
+                    $object = $this->objects[$id];
+                    if ($object->exiledBy === 'paradigm' && $object->owner === $this->active && ($effects = $object->printed()->spellEffects()) !== []) {
+                        $this->pendingTriggers[] = ['source' => $id, 'incarnation' => $object->incarnation, 'controller' => $this->active, 'effects' => $effects,
+                            'kinds' => self::targetKindsOf($effects), 'label' => "A copy of {$object->name()}", 'text' => "A copy of {$object->name()} (paradigm)"];
+                    }
+                }
                 break;
 
             case Step::PostcombatMain:
@@ -3583,6 +3591,18 @@ final class Game
 
             return;
         }
+        // Haunt (rule 702.55): a haunt spell is exiled haunting a creature as it resolves.
+        if ($resolved && in_array('haunt', $object->printed()->keywords, true) && $this->haunt($object, $item['controller'], true)) {
+            return;
+        }
+        // Paradigm: exiled, to be copied at the beginning of each of its owner's first main phases.
+        if ($resolved && in_array('paradigm', $object->printed()->keywords, true)) {
+            $this->moveTo($object, GameObject::EXILE);
+            $object->exiledBy = 'paradigm';
+            $this->log("{$object->name()} is exiled (paradigm).");
+
+            return;
+        }
         // Cipher (rule 702.99): exiled encoded on the controller's strongest creature.
         if ($resolved && ! ($item['flashback'] ?? false) && in_array('cipher', $object->printed()->keywords, true)
             && ($creatures = array_filter($this->permanents($item['controller']), fn (GameObject $o) => $this->isCreature($o))) !== []) {
@@ -4671,6 +4691,12 @@ final class Game
                 }
                 break;
 
+            case 'haunt':
+                if ($source->zone === GameObject::GRAVEYARD) {
+                    $this->haunt($source, $controller);
+                }
+                break;
+
             case 'exile_spell':
                 if ($source->zone === GameObject::STACK) {
                     $this->moveTo($source, GameObject::EXILE);
@@ -5662,6 +5688,31 @@ final class Game
         }
 
         return null;
+    }
+
+    /**
+     * Exiles a haunt card haunting a creature (rule 702.55): an opponent's weakest, else its controller's own.
+     *
+     * @param GameObject $card
+     * @param int        $controller
+     * @param bool       $spell      Whether it is a resolving spell, still on the stack.
+     *
+     * @return bool Whether it found a creature to haunt.
+     */
+    private function haunt(GameObject $card, int $controller, bool $spell = false): bool
+    {
+        $creature = null;
+        foreach ([...array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller), $controller] as $seat) {
+            $creature ??= $this->weakest($seat, fn (GameObject $o) => $o->id !== $card->id && $this->isCreature($o));
+        }
+        if ($creature === null) {
+            return false;
+        }
+        $this->moveTo($card, GameObject::EXILE);
+        $card->exiledBy = "haunt:{$creature->id}:{$creature->incarnation}";
+        $this->log("{$card->name()} haunts {$creature->name()}.");
+
+        return true;
     }
 
     /**
@@ -7465,6 +7516,12 @@ final class Game
                     if ($other !== $object->id && isset($this->objects[$other]->printed()->altCosts['recover'])) {
                         $this->recover($this->objects[$other]);
                     }
+                }
+            }
+            // Haunt (rule 702.55): `When the creature it haunts dies, …`
+            foreach ($this->exile as $haunter) {
+                if ($this->objects[$haunter]->exiledBy === "haunt:{$object->id}:{$incarnation}") {
+                    $this->trigger($this->objects[$haunter], 'haunted_dies', $this->objects[$haunter]->owner);
                 }
             }
             // `When enchanted land dies, return that card to its owner's hand.` (the Zendikons)
