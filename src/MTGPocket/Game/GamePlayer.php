@@ -85,6 +85,9 @@ final class GamePlayer
     /** The last turn they were dealt damage, for bloodthirst. */
     public int $damagedOnTurn = 0;
 
+    /** The last turn they lost life, for spectacle. */
+    public int $lostLifeOnTurn = 0;
+
     /** Kept an opening hand. */
     public bool $kept = false;
 
@@ -143,6 +146,7 @@ final class GamePlayer
             'landsPlayed' => $this->landsPlayed,
             'mulligans' => $this->mulligans,
             'damagedOnTurn' => $this->damagedOnTurn,
+            'lostLifeOnTurn' => $this->lostLifeOnTurn,
             'kept' => $this->kept,
             'toBottom' => $this->toBottom,
             'drewFromEmpty' => $this->drewFromEmpty,
@@ -178,6 +182,7 @@ final class GamePlayer
         $player->landsPlayed = (int) ($data['landsPlayed'] ?? 0);
         $player->mulligans = (int) ($data['mulligans'] ?? 0);
         $player->damagedOnTurn = (int) ($data['damagedOnTurn'] ?? 0);
+        $player->lostLifeOnTurn = (int) ($data['lostLifeOnTurn'] ?? 0);
         $player->kept = (bool) ($data['kept'] ?? false);
         $player->toBottom = (int) ($data['toBottom'] ?? 0);
         $player->drewFromEmpty = (bool) ($data['drewFromEmpty'] ?? false);

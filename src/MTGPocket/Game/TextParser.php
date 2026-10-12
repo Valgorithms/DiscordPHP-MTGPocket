@@ -734,8 +734,9 @@ final class TextParser
                 $result['keywords'][] = 'reveal or control';
             }
             $match = [$reveal[0], $reveal[3]];
-        } elseif (isset($result['altCosts']['surge']) && preg_match("/^If CARDNAME's surge cost was paid, (.+)$/", $sentence, $match)) {
-            // Surge reads as kicked (see Game::cast()).
+        } elseif (preg_match("/^If CARDNAME's (surge|spectacle) cost was paid, (.+)$/", $sentence, $paid) && isset($result['altCosts'][$paid[1]])) {
+            // Surge and spectacle read as kicked (see Game::cast()).
+            $match = [$paid[0], $paid[2]];
         } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
             && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))) {
             return false;
@@ -1005,7 +1006,7 @@ final class TextParser
             } elseif (preg_match('/^transmute '.self::COST.'$/i', $part, $m)) {
                 // Transmute (rule 702.53): discard it as a sorcery to search for a card with the same mana value; see Game::transmute().
                 $found['altCosts']['transmute'] = $m[1];
-            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
@@ -1652,6 +1653,13 @@ final class TextParser
      */
     private static function restriction(string $line, array &$result): bool
     {
+        // The Theros gods: `As long as your devotion to white is less than five, CARDNAME isn't a creature.`; see Game::isCreature().
+        if (preg_match("/^As long as your devotion to (white|blue|black|red|green)(?: and (white|blue|black|red|green))? is less than (\\w+), CARDNAME isn't a creature\\.$/", $line, $m) && is_int($n = self::amount($m[3]))) {
+            $colors = implode('', array_map(fn (string $color) => self::COLOR_WORDS[$color], array_filter([$m[1], $m[2] ?? ''])));
+            $result['keywords'][] = "devotion {$colors} {$n}";
+
+            return true;
+        }
         // Lure: every creature able to block it must (see Game::declareBlockers()).
         if (preg_match('/^All creatures able to block CARDNAME do so\.?$/', $line)) {
             $result['keywords'] = array_values(array_unique([...$result['keywords'], 'all creatures able to block it do so']));
@@ -1873,7 +1881,8 @@ final class TextParser
      */
     private static function loyalty(string $line, array &$result): bool
     {
-        if (! preg_match('/^([+−-]?)(\d+): (.+)$/u', $line, $match) || ($effects = self::effects($match[3])) === null) {
+        // Printed as `+1: …` or, in newer card text, `[+1]: …`.
+        if (! preg_match('/^\[?([+−-]?)(\d+)\]?: (.+)$/u', $line, $match) || ($effects = self::effects($match[3])) === null) {
             return false;
         }
         $result['activated'][] = [
@@ -2742,8 +2751,14 @@ final class TextParser
         if (trim($text) === '') {
             return [];
         }
+        // The Swords: `protection from black and from green`.
+        $text = (string) preg_replace('/protection from (\w+) and from (\w+)/', 'protection from $1, protection from $2', $text);
         $words = array_map(fn ($word) => strtolower(trim($word)), preg_split('/,\s*(?:and\s+)?|\s+and\s+/', $text));
         foreach ($words as $word) {
+            // See Game::protectedFrom().
+            if (preg_match('/^protection from (white|blue|black|red|green|artifacts|creatures|enchantments|instants|sorceries|planeswalkers)$/', $word)) {
+                continue;
+            }
             // `gains protection from the color of your choice until end of turn`: the color is picked as it resolves (see Game::applyEffect()).
             if (! in_array($word, CardDefinition::KEYWORDS, true) && ! ($untilEndOfTurn && $word === 'protection from the color of your choice')) {
                 return null;
