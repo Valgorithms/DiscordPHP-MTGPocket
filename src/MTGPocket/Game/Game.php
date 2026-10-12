@@ -198,6 +198,9 @@ final class Game
     private int $nextStackId = 1;
     private int $shuffles = 0;
 
+    /** The creature type a resolving spell's `Choose a creature type.` picked. */
+    private ?string $chosenType = null;
+
     /** The spell whose casting is triggering abilities, for `copy that spell`; see {@see castTriggers()}. */
     private ?int $castSpell = null;
 
@@ -3371,6 +3374,7 @@ final class Game
      */
     private function resolveTop(): void
     {
+        $this->chosenType = null;
         $item = array_pop($this->stack);
         $object = $this->objects[$item['object']];
         $ability = self::isAbility($item);
@@ -4207,12 +4211,21 @@ final class Game
                     'attacking' => array_filter($this->permanents(), fn (GameObject $o) => isset($this->attackers[$o->id])),
                     default => $this->permanents(),
                 };
+                $subtype = ($effect['subtype'] ?? null) === 'chosen' ? $this->chosenType ?? $this->choiceFor($controller, 'type') : $effect['subtype'] ?? null;
                 foreach ($pumped as $object) {
                     if (isset($effect['each']) && ! $this->isCreature($object)) {
                         continue;
                     }
+                    if ($subtype !== null && ! in_array($subtype, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
+                        continue;
+                    }
                     $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])] + (isset($effect['base']) ? ['base' => $effect['base']] : []) + (($effect['animate'] ?? false) ? ['creature' => true] : []);
                 }
+                break;
+
+            case 'choose_type':
+                $this->chosenType = $this->choiceFor($controller, 'type');
+                $this->log("{$this->players[$controller]->name} chooses {$this->chosenType}.");
                 break;
 
             case 'counters':

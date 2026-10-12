@@ -3331,6 +3331,18 @@ final class TextParser
         if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
+        // `Choose a creature type.` for a spell: the game picks the type most of your creatures share; see Game::choiceFor().
+        if (preg_match('/^choose a creature type$/i', $s)) {
+            return ['type' => 'choose_type'];
+        }
+        // `Creatures (you control) of the chosen type get +1/+1 until end of turn.` and `Elves you control get +2/+2 until end of turn.`
+        if (preg_match('/^creatures( you control)? of the chosen type get ([+-]\d+)\/([+-]\d+)(?: and gain (.+?))? until end of turn$/i', $s, $m) && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
+            return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $m[1] !== '' ? 'yours' : 'all', 'subtype' => 'chosen'];
+        }
+        if (preg_match('/^([A-Z][a-z]+s?) you control get ([+-]\d+)\/([+-]\d+)(?: and gain (.+?))? until end of turn$/', $s, $m) && ($type = self::subtypeOf($m[1])) !== null
+            && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
+            return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => 'yours', 'subtype' => $type];
+        }
         if (preg_match("/^({$group}) get ([+-]\\d+)\\/([+-]\\d+)(?: and gain (.+?))? until end of turn$/i", $s, $m)
             && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]];
