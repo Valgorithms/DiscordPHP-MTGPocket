@@ -588,7 +588,7 @@ final class TextParser
                 || ($card->isPlaneswalker() && self::loyalty($line, $result))
                 || (in_array('Saga', $card->subtypes, true) && self::chapter($line, $result))
                 || (! $spell && self::triggered($line, $result))
-                || (! $spell && self::activated($line, $result))) {
+                || ((! $spell || str_contains($line, 'Discard CARDNAME:')) && self::activated($line, $result))) {
                 continue;
             }
 
@@ -2145,6 +2145,19 @@ final class TextParser
         if (str_starts_with($line, 'Exhaust — ')) {
             [$ever, $line] = [true, substr($line, strlen('Exhaust — '))];
         }
+        // Power-up: once, as a sorcery (the discount when it entered this turn is not taken).
+        $powerUp = false;
+        if (str_starts_with($line, 'Power-up — ')) {
+            [$ever, $powerUp, $line] = [true, true, substr($line, strlen('Power-up — '))];
+        }
+        // Channel: `Channel — {1}{G}, Discard CARDNAME: …`, activated from your hand; see Game::whyNotActivate().
+        if (str_starts_with($line, 'Channel — ')) {
+            $line = substr($line, strlen('Channel — '));
+        }
+        // Reinforce (rule 702.77): `Reinforce 2—{1}{W}`.
+        if (preg_match('/^Reinforce (\w+)—((?:\{[0-9WUBRGC\/]+\})+)$/u', $line, $reinforce) && is_int($n = self::amount($reinforce[1]))) {
+            $line = "{$reinforce[2]}, Discard CARDNAME: Put {$reinforce[1]} +1/+1 counter".($n === 1 ? '' : 's').' on target creature.';
+        }
         if (! preg_match('/^([^:"]+): (.+)$/', $line, $match)) {
             return false;
         }
@@ -2156,6 +2169,8 @@ final class TextParser
                 $cost['mana'] = ($cost['mana'] ?? '').$part;
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
+            } elseif ($part === 'Discard CARDNAME') {
+                $cost['discardSelf'] = true;
             } elseif ($part === 'Sacrifice a creature' || $part === 'Sacrifice another creature') {
                 // Nantuko Husk: the weakest creature; see Game::fodder().
                 $cost['fodder'] = $part === 'Sacrifice another creature' ? 'other' : 'any';
@@ -2194,7 +2209,7 @@ final class TextParser
         if ($effects === null) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery, 'once' => $once] + ($ever ? ['ever' => true] : []);
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []);
 
         return true;
     }
