@@ -695,7 +695,8 @@ final class Game
 
             case Step::Draw:
                 // The player who plays first skips their first draw (rule 103.8a).
-                if (! ($this->turn === 1 && $this->active === $this->startingPlayer)) {
+                // Necrodominance: `Skip your draw step.`
+                if (! ($this->turn === 1 && $this->active === $this->startingPlayer) && array_filter($this->permanents($this->active), fn (GameObject $o) => $this->hasKeyword($o, 'skip your draw step')) === []) {
                     $this->draw($this->active, 1);
                 }
                 break;
@@ -1981,6 +1982,12 @@ final class Game
             }
             if (($ability['chosen'] ?? false) && $object->chosen !== null) {
                 $ability['colors'] = [$object->chosen];
+            }
+            if ($ability['powerCount'] ?? false) {
+                $ability['count'] = $this->power($object);
+                if ($ability['count'] <= 0) {
+                    continue;
+                }
             }
             // `{T}, Remove a charge counter from this land: Add one mana of any color.` beside `{T}: Add {R}.`
             if (isset($ability['withCounter']) && $object->counter($ability['withCounter'][0]) > 0) {
@@ -4318,7 +4325,7 @@ final class Game
                     'creature' => $this->isCreature($o),
                     default => ! $o->definition()->isLand(),
                 };
-                $own = array_values(array_filter($this->permanents($controller), $pick));
+                $own = array_values(array_filter($this->permanents($controller), fn (GameObject $o) => $pick($o) && (! isset($effect['color']) || in_array($effect['color'], $o->definition()->colors, true))));
                 usort($own, fn (GameObject $a, GameObject $b) => [$a->id === $source->id, ! $a->tapped, ! in_array('Basic', $a->definition()->supertypes, true), $a->id]
                     <=> [$b->id === $source->id, ! $b->tapped, ! in_array('Basic', $b->definition()->supertypes, true), $b->id]);
                 if (($back = $own[0] ?? null) !== null) {

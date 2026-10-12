@@ -350,9 +350,10 @@ final class TextParser
                 continue;
             }
             // Spree (rule 702.172): `+ {1} — …` modes, each an additional cost; one or more of them.
-            if ($spell && preg_match('/^Spree\.?$/', $line)) {
-                [$modes, $read] = [[], true];
-                while (isset($lines[$i + 1]) && preg_match('/^\+ '.self::COST.' — (.+)$/u', $lines[$i + 1], $match)) {
+            // Tiered: `• Insight — {1} — …` modes, each an additional cost; exactly one of them.
+            if ($spell && preg_match('/^(Spree|Tiered)\.?$/', $line, $kind)) {
+                [$modes, $read, $tiered] = [[], true, $kind[1] === 'Tiered'];
+                while (isset($lines[$i + 1]) && preg_match($tiered ? '/^• [^—]+ — '.self::COST.' — (.+)$/u' : '/^\+ '.self::COST.' — (.+)$/u', $lines[$i + 1], $match)) {
                     $i++;
                     if (str_contains($match[1], 'X') || ($effects = self::effects($match[2])) === null) {
                         $result['unsupported'][] = $lines[$i];
@@ -366,9 +367,9 @@ final class TextParser
                 }
                 if (count($modes) >= 2 && $result['modes'] === []) {
                     $result['modes'] = $modes;
-                    $result['choose'] = ['min' => 1, 'max' => count($modes)];
+                    $result['choose'] = ['min' => 1, 'max' => $tiered ? 1 : count($modes)];
                 } else {
-                    $result['unsupported'][] = 'Spree';
+                    $result['unsupported'][] = $kind[1];
                 }
 
                 continue;
@@ -389,7 +390,7 @@ final class TextParser
             }
             // Static lines that work like keywords.
             $statics = [
-                'You have no maximum hand size.' => 'no maximum hand size', 'You may play an additional land on each of your turns.' => 'additional land', 'You may play lands from your graveyard.' => 'lands from graveyard',
+                'You have no maximum hand size.' => 'no maximum hand size', 'Skip your draw step.' => 'skip your draw step', 'You may play an additional land on each of your turns.' => 'additional land', 'You may play lands from your graveyard.' => 'lands from graveyard',
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
@@ -1244,6 +1245,12 @@ final class TextParser
             } else {
                 $result['mana'] += ['filter' => true, 'filterAs' => $two, 'filterPays' => $pair];
             }
+
+            return true;
+        }
+        // Topiary Lecturer: `{T}: Add an amount of {G} equal to CARDNAME's power.`; see Game::manaSources().
+        if (preg_match("/^\{T\}: Add an amount of \{([WUBRGC])\} equal to CARDNAME's power\.$/", $line, $match) && $result['mana'] === null) {
+            $result['mana'] = ['count' => 1, 'colors' => [$match[1]], 'same' => true, 'powerCount' => true];
 
             return true;
         }
@@ -2550,6 +2557,10 @@ final class TextParser
         // A bounce land's `When this land enters, return a land you control to its owner's hand.`
         if (preg_match("/^return an? (land|creature|nonland permanent) you control to its owner's hand$/i", $sentence, $m)) {
             return [['type' => 'return_own', 'filter' => str_replace(' ', '_', strtolower($m[1]))]];
+        }
+        // Stampeding Wildebeests: `return a green creature you control to its owner's hand`.
+        if (preg_match("/^return an? (white|blue|black|red|green) creature you control to its owner's hand$/i", $sentence, $m)) {
+            return [['type' => 'return_own', 'filter' => 'creature', 'color' => self::COLOR_WORDS[strtolower($m[1])]]];
         }
         // Dwarven Shortsword: `create a 2/2 red Dwarf creature token, then attach CARDNAME to it` (an Equipment carried in).
         if (preg_match('/^(create an? .+ creature token), then attach CARDNAME to it$/i', $sentence, $m) && ($found = self::sentenceEffects($m[1])) !== null
