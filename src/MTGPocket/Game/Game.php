@@ -666,6 +666,11 @@ final class Game
                             'end_exile' => $this->moveTo($object, GameObject::EXILE),
                             default => null,
                         };
+                        // Impending: a time counter off at the beginning of its controller's end step.
+                        if ($alt === 'impending' && $object->controller === $this->active && $object->counter('time') > 0) {
+                            $object->addCounters('time', -1);
+                            $this->log("A time counter is removed from {$object->name()}".($object->counter('time') === 0 ? '; it is a creature again.' : '.'));
+                        }
                         if ($alt === 'warp' && $object->zone === GameObject::EXILE) {
                             $object->exiledBy = 'warp';
                             $object->exiledOn = $this->turn;
@@ -792,6 +797,7 @@ final class Game
             $object = $this->objects[$id];
             $object->damage = 0;
             $object->deathtouched = false;
+            $object->damagedBy = [];
             $object->untilEndOfTurn = [];
             $object->shields = 0;
             if ($object->borrowedFrom !== null) {
@@ -1121,7 +1127,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1181,7 +1187,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize', 'mh' => 'mayhem'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -3408,6 +3414,14 @@ final class Game
                 $object->addCounters('+1/+1', $card->kickerCounters * ((int) $item['kicks'] - 1));
             }
             $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
+            // Impending (rule 702.176): with N time counters, not a creature until the last is removed.
+            if ($object->alt === 'impending') {
+                foreach ($card->keywords as $keyword) {
+                    if (preg_match('/^impending (\d+)$/', $keyword, $m)) {
+                        $object->addCounters('time', (int) $m[1]);
+                    }
+                }
+            }
             // Sneak: a creature enters tapped and attacking.
             if ($object->alt === 'sneak' && $this->isCreature($object) && in_array($this->step, [Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage], true)) {
                 $object->tapped = true;
@@ -7162,6 +7176,9 @@ final class Game
 
                 return;
             }
+            if ($this->isCreature($object) && ! in_array($source->id, $object->damagedBy, true)) {
+                $object->damagedBy[] = $source->id;
+            }
             if ($object->definition()->isPlaneswalker() && ! $this->isCreature($object)) {
                 $object->addCounters('loyalty', -$amount);
             } elseif ($this->hasKeyword($source, 'infect') || $this->hasKeyword($source, 'wither')) {
@@ -7598,6 +7615,7 @@ final class Game
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
         $plusCounters = $object->counter('+1/+1');
+        $damagedBy = $object->damagedBy;
         $blitzed = $dies && $object->alt === 'blitz';
         // Persist and undying (rules 702.79 and 702.93) look at its counters as it died.
         $returns = ! $dies ? null : match (true) {
@@ -7654,6 +7672,12 @@ final class Game
                     if ($other !== $object->id && isset($this->objects[$other]->printed()->altCosts['recover'])) {
                         $this->recover($this->objects[$other]);
                     }
+                }
+            }
+            // Sengir Vampire: `Whenever a creature dealt damage by CARDNAME this turn dies, …`
+            foreach ($damagedBy as $sourceId) {
+                if (($this->objects[$sourceId] ?? null)?->zone === GameObject::BATTLEFIELD) {
+                    $this->trigger($this->objects[$sourceId], 'damaged_dies', $this->objects[$sourceId]->controller);
                 }
             }
             // Haunt (rule 702.55): `When the creature it haunts dies, …`
@@ -8018,6 +8042,10 @@ final class Game
 
     public function isCreature(GameObject $object): bool
     {
+        // Impending: not a creature while it has a time counter (rule 702.176a).
+        if ($object->alt === 'impending' && $object->zone === GameObject::BATTLEFIELD && $object->counter('time') > 0) {
+            return false;
+        }
         // A bestowed Aura is not a creature while it is attached (rule 702.103b).
         if ($object->bestowed && $object->attachedTo !== null) {
             return false;

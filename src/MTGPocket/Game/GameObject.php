@@ -49,6 +49,9 @@ final class GameObject
     /** Dealt damage by a source with deathtouch since damage was last removed (rule 704.5h). */
     public bool $deathtouched = false;
 
+    /** @var int[] Objects that dealt it damage this turn, for `Whenever a creature dealt damage by CARDNAME this turn dies`. */
+    public array $damagedBy = [];
+
     /** @var array<string, int> Counter kind => how many, e.g. `+1/+1`, `-1/-1`, `loyalty`. */
     public array $counters = [];
 
@@ -262,6 +265,7 @@ final class GameObject
         $this->sick = false;
         $this->damage = 0;
         $this->deathtouched = false;
+        $this->damagedBy = [];
         $this->counters = [];
         $this->attachedTo = null;
         $this->untilEndOfTurn = [];
@@ -330,6 +334,7 @@ final class GameObject
             'sick' => $this->sick,
             'damage' => $this->damage,
             'deathtouched' => $this->deathtouched,
+            'damagedBy' => $this->damagedBy,
             'counters' => $this->counters,
             'attachedTo' => $this->attachedTo,
             'untilEndOfTurn' => $this->untilEndOfTurn,
@@ -388,6 +393,7 @@ final class GameObject
         $object->sick = (bool) ($data['sick'] ?? false);
         $object->damage = (int) ($data['damage'] ?? 0);
         $object->deathtouched = (bool) ($data['deathtouched'] ?? false);
+        $object->damagedBy = array_map('intval', (array) ($data['damagedBy'] ?? []));
         $object->counters = array_map('intval', (array) ($data['counters'] ?? []));
         $object->attachedTo = isset($data['attachedTo']) ? (int) $data['attachedTo'] : null;
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
