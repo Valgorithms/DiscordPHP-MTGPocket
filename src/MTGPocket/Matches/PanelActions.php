@@ -127,6 +127,7 @@ final class PanelActions
                 $how === 'unearth' => $game->unearth($seat, $id),
                 $how === 'plot' => $game->plot($seat, $id),
                 $how === 'transmute' => $game->transmute($seat, $id),
+                $how === 'bloodrush' => $game->bloodrush($seat, $id),
                 $how === 'foretell' => $game->foretell($seat, $id),
                 $how === 'eternalize', $how === 'embalm', $how === 'scavenge' => $game->embalm($seat, $id, $how),
                 $how === 'suspend' => $game->suspend($seat, $id),

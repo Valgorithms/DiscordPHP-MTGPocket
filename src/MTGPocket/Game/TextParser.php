@@ -734,6 +734,8 @@ final class TextParser
                 $result['keywords'][] = 'reveal or control';
             }
             $match = [$reveal[0], $reveal[3]];
+        } elseif (isset($result['altCosts']['surge']) && preg_match("/^If CARDNAME's surge cost was paid, (.+)$/", $sentence, $match)) {
+            // Surge reads as kicked (see Game::cast()).
         } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
             && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))) {
             return false;
@@ -817,6 +819,14 @@ final class TextParser
         if (preg_match('/^Escape—'.self::COST.', Exile (\w+) other cards? from your graveyard\.?$/u', $line, $m) && is_int($n = self::amount($m[2])) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['escape'] = $m[1];
             $result['keywords'][] = "escape {$n}";
+
+            return true;
+        }
+        // Bloodrush (an ability word): `Bloodrush — {R}, Discard CARDNAME: Target attacking creature gets +4/+4 until end of turn.`; see Game::bloodrush().
+        if (preg_match('/^Bloodrush — '.self::COST.', Discard CARDNAME: (Target attacking creature gets .+)\.$/u', $line, $m) && ! str_contains($m[1], 'X')
+            && ($effects = self::effects($m[2])) !== null && count($effects) === 1 && $effects[0]['type'] === 'pump' && ($effects[0]['target'] ?? null) === 'attacking') {
+            $result['altCosts']['bloodrush'] = $m[1];
+            $result['altCosts']['bloodrushText'] = $m[2];
 
             return true;
         }
@@ -995,7 +1005,7 @@ final class TextParser
             } elseif (preg_match('/^transmute '.self::COST.'$/i', $part, $m)) {
                 // Transmute (rule 702.53): discard it as a sorcery to search for a card with the same mana value; see Game::transmute().
                 $found['altCosts']['transmute'] = $m[1];
-            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {

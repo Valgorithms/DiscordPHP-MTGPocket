@@ -108,7 +108,7 @@ final class Game
     public int $passes = 0;
 
     /** Ways in {@see plays()} that are not casting a spell. */
-    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'scavenge', 'transmute'];
+    public const array SPECIAL_PLAYS = ['cycle', 'unearth', 'plot', 'suspend', 'ninjutsu', 'regrow', 'foretell', 'eternalize', 'embalm', 'scavenge', 'transmute', 'bloodrush'];
 
     /** @var array<int, true> Attacking creatures. */
     public array $attackers = [];
@@ -969,6 +969,9 @@ final class Game
             if ($card->cycling !== null && $this->canCycle($seat, $id)) {
                 $plays[] = ['id' => $id, 'how' => 'cycle'];
             }
+            if (isset($card->altCosts['bloodrush']) && $this->whyNotBloodrush($seat, $id) === null) {
+                $plays[] = ['id' => $id, 'how' => 'bloodrush'];
+            }
             if (isset($card->altCosts['transmute']) && $this->whyNotTransmute($seat, $id) === null) {
                 $plays[] = ['id' => $id, 'how' => 'transmute'];
             }
@@ -1008,7 +1011,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1033,7 +1036,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1101,7 +1104,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak', 'emerge'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'miracle', 'sneak', 'emerge'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1158,7 +1161,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'miracle', 'sneak', 'emerge'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'miracle', 'sneak', 'emerge'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1411,6 +1414,10 @@ final class Game
         }
         if ($options['conspire'] && (! in_array('conspire', $card->keywords, true) || $this->conspirators($seat, $card, $id) === null)) {
             return "{$card->name} needs two untapped creatures that share a color with it to conspire.";
+        }
+        // Surge (rule 702.117): you've cast another spell this turn.
+        if ($options['alt'] === 'surge' && ($player->castTurn !== $this->turn || $player->cast === 0)) {
+            return 'Surge needs you to have cast another spell this turn.';
         }
         if ($options['alt'] === 'freerunning' && ($this->freerun[$seat] ?? 0) !== $this->turn) {
             return 'Freerunning needs an Assassin or your commander to have dealt combat damage to a player this turn.';
@@ -2023,7 +2030,7 @@ final class Game
         $card = $object->printed();
         // `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`: always, when one can be.
         $revealed = $options['faceDown'] || $card->targetKinds($options['modes'], true) !== $card->targetKinds($options['modes'], false) ? null : $this->revealed($seat, $id, $card);
-        if ($revealed !== null) {
+        if ($revealed !== null || $options['alt'] === 'surge') {
             $options['kicked'] = true;
         }
         $xCount = ManaCost::parse(self::castCost($card, $options))->xCount;
@@ -2142,7 +2149,7 @@ final class Game
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
             $options['exiled'] !== '' ? "from exile ({$options['exiled']})" : '',
-            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] ? 'kicked' : ''),
+            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && $options['alt'] !== 'surge' ? 'kicked' : ''),
             $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $this->objects[$splicer]->name(), $options['splice'])).' onto it',
@@ -2836,6 +2843,70 @@ final class Game
             'label' => "{$card->name}'s transmute",
         ], [], 'is activated', "transmute {$card->name}");
         $this->settle();
+    }
+
+    /**
+     * Bloodrush: pay its cost and discard it from your hand; the pump goes on
+     * the stack for your biggest attacking creature.
+     *
+     * @param int $seat
+     * @param int $id
+     *
+     * @return void
+     */
+    public function bloodrush(int $seat, int $id): void
+    {
+        $this->expect($seat, 'priority');
+        if (($reason = $this->whyNotBloodrush($seat, $id)) !== null) {
+            throw new GameException($reason);
+        }
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $attacker = $this->bloodrushTarget($seat);
+        $this->pay($seat, $this->payFor($seat, $card->altCosts['bloodrush']));
+        $this->discardCards($seat, [$id]);
+        $this->pushAbility([
+            'source' => $object->id,
+            'incarnation' => $object->incarnation,
+            'controller' => $seat,
+            'effects' => TextParser::effects($card->altCosts['bloodrushText']) ?? [],
+            'kinds' => ['attacking'],
+            'label' => "{$card->name}'s bloodrush",
+        ], ["o:{$attacker->id}"], 'is activated', "bloodrush {$card->name}");
+        $this->settle();
+    }
+
+    private function bloodrushTarget(int $seat): ?GameObject
+    {
+        $attackers = array_values(array_filter(
+            array_map(fn (int $id) => $this->objects[$id] ?? null, array_keys($this->attackers)),
+            fn (?GameObject $o) => $o !== null && $o->controller === $seat && ! $this->hasKeyword($o, 'hexproof') && ! $this->hasKeyword($o, 'shroud')
+        ));
+        usort($attackers, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
+
+        return $attackers[0] ?? null;
+    }
+
+    private function whyNotBloodrush(int $seat, int $id): ?string
+    {
+        $object = $this->objects[$id] ?? null;
+        if ($object === null || $object->zone !== GameObject::HAND || $object->owner !== $seat) {
+            return 'That card is not in your hand.';
+        }
+        if (! isset($object->printed()->altCosts['bloodrush'])) {
+            return "{$object->name()} has no bloodrush.";
+        }
+        if ($this->priority !== $seat) {
+            return 'You do not have priority.';
+        }
+        if ($this->bloodrushTarget($seat) === null) {
+            return 'Bloodrush needs an attacking creature of yours.';
+        }
+        if ($this->payFor($seat, $object->printed()->altCosts['bloodrush']) === null) {
+            return "You cannot pay {$object->printed()->altCosts['bloodrush']}.";
+        }
+
+        return null;
     }
 
     private function whyNotTransmute(int $seat, int $id): ?string
