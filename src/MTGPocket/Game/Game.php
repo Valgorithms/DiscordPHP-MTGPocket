@@ -198,6 +198,9 @@ final class Game
     private int $nextStackId = 1;
     private int $shuffles = 0;
 
+    /** The spell whose casting is triggering abilities, for `copy that spell`; see {@see castTriggers()}. */
+    private ?int $castSpell = null;
+
     /** The spell a payment is for, while {@see paymentFor()} works it out. */
     private ?GameObject $spending = null;
 
@@ -2723,14 +2726,16 @@ final class Game
         }
         $caster = $this->players[$seat];
         [$caster->cast, $caster->castTurn] = [$caster->castTurn === $this->turn ? $caster->cast + 1 : 1, $this->turn];
-        $events = [...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
+        $events = [...($caster->cast === 2 ? ['second_spell'] : []), ...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : []),
             ...array_map(fn (string $color) => "cast_color_{$color}", $card->colors), ...(count($card->colors) > 1 ? ['cast_multicolored'] : [])];
+        $this->castSpell = $spell->id;
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
             }
         }
+        $this->castSpell = null;
         // Chalice of the Void: a spell with mana value equal to its charge counters is countered.
         foreach ($item !== false && $item['object'] === $spell->id ? $this->permanents() : [] as $permanent) {
             if ($this->hasKeyword($permanent, 'chalice') && $permanent->counter('charge') === $card->cost->manaValue((int) ($item['x'] ?? 0))) {
@@ -4051,7 +4056,8 @@ final class Game
 
             case 'copy_spell':
                 foreach ($this->stack as $copied) {
-                    if ($copied['id'] === (int) substr((string) $target, 2)) {
+                    // `copy that spell`: the spell that triggered it, while it is still on the stack.
+                    if (isset($effect['spell']) ? ! self::isAbility($copied) && $copied['object'] === $effect['spell'] : $copied['id'] === (int) substr((string) $target, 2)) {
                         $this->copySpell($copied, $controller, $source->name());
                         break;
                     }
@@ -5343,6 +5349,7 @@ final class Game
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
+            'main_phase' => $this->active === $controller && in_array($this->step, [Step::PrecombatMain, Step::PostcombatMain], true),
             'attacking' => isset($this->attackers[$source->id]),
             'controls' => array_filter($this->permanents($controller), fn (GameObject $o) => (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
             'delirium' => count(array_filter(['Artifact', 'Battle', 'Creature', 'Enchantment', 'Instant', 'Kindred', 'Land', 'Planeswalker', 'Sorcery'], fn (string $type) => array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is($type)) !== [])) >= (int) $n,
@@ -5378,6 +5385,7 @@ final class Game
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
+                $effect['type'] === 'copy_spell' && ($effect['thatSpell'] ?? false) => ['spell' => $this->castSpell] + $effect,
                 $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
                 in_array($effect['target'] ?? null, ['creature_other', '?creature_other'], true) => ['target' => str_replace('creature_other', "creature_not_{$source->id}", $effect['target'])] + $effect,
