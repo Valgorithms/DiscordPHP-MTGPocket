@@ -415,6 +415,8 @@ final class TextParser
                 'You may choose not to untap CARDNAME during your untap step.' => 'may not untap',
                 // Read by Game::declareAttackers() and Game::declareBlockers().
                 "CARDNAME can't attack or block alone." => "can't attack or block alone",
+                "CARDNAME can't attack alone." => "can't attack alone",
+                "CARDNAME can't block alone." => "can't block alone",
                 // Read by Game::gainLife().
                 "Players can't gain life." => "players can't gain life",
                 "Your opponents can't gain life." => "opponents can't gain life",
@@ -488,6 +490,13 @@ final class TextParser
             $kinds = ['' => 'any', 'Instant and sorcery ' => 'instant_sorcery', 'Creature ' => 'creature', 'Noncreature ' => 'noncreature', 'Artifact ' => 'artifact', 'Enchantment ' => 'enchantment'];
             if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?spells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
                 $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]];
+
+                continue;
+            }
+            // The Medallions and `Dragon spells you cast cost {1} less to cast.`
+            if (! $spell && preg_match('/^(White|Blue|Black|Red|Green|[A-Z][a-z]+) spells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)
+                && ($kind = ['White' => 'color_W', 'Blue' => 'color_U', 'Black' => 'color_B', 'Red' => 'color_R', 'Green' => 'color_G'][$match[1]] ?? (($type = self::subtypeOf($match[1])) !== null ? "subtype_{$type}" : null)) !== null) {
+                $result['costReductions'][] = ['kind' => $kind, 'amount' => (int) $match[2]];
 
                 continue;
             }
@@ -878,6 +887,9 @@ final class TextParser
             } elseif (preg_match('/^teamwork (\d+)$/i', $part, $m) && $spell) {
                 // Teamwork: tap creatures with that much total power as you cast it; see Game::teamworkFodder().
                 $found['altCosts']['teamwork'] = $m[1];
+            } elseif (preg_match('/^Affinity for ([A-Z][a-z]+)$/', ucfirst($part), $m) && strtolower($m[1]) !== 'artifacts' && ($type = $m[1] === 'Equipment' ? 'Equipment' : self::subtypeOf($m[1])) !== null) {
+                // Affinity for Equipment, Slivers …: {1} less for each one you control; see Game::paymentFor().
+                $found['keywords'][] = "affinity for sub:{$type}";
             } elseif (preg_match('/^gift (a card|a food|a treasure|a clue|a tapped fish)$/i', $part, $m)) {
                 // Gift (rule 702.174): an opponent gets it as the spell resolves, if it was promised; see Game::giveGift().
                 $found['altCosts']['gift'] = substr(strtolower($m[1]), 2);
@@ -1403,6 +1415,13 @@ final class TextParser
 
             return true;
         }
+        // The Slivers: `All Sliver creatures get +1/+1.` and `All Slivers have haste.`, every player's; see Game::anthems().
+        if (preg_match('/^All ([A-Z][a-z]+)(?: creatures)? (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)
+            && ($type = self::subtypeOf($m[1])) !== null && ($keywords = self::keywordList(($m[5] ?? '') !== '' ? $m[5] : ($m[4] ?? ''))) !== null) {
+            $result['anthem'][] = ['power' => (int) ($m[2] ?? 0), 'toughness' => (int) ($m[3] ?? 0), 'keywords' => $keywords, 'other' => false, 'subtype' => $type, 'everyone' => true];
+
+            return true;
+        }
         // A lord: `Other Kithkin you control get +1/+1.`, `Elf creatures you control get +1/+1 and have trample.`
         if (preg_match('/^(Other )?([A-Z][a-z]+(?:-[a-z]+)?)(?: creatures)? you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)
             && ($type = self::subtypeOf($m[2])) !== null) {
@@ -1455,6 +1474,8 @@ final class TextParser
             (bool) preg_match('/^you have (\w+) or more life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life {$n}",
             $text === "it's your turn" => 'your_turn',
             $text === "it's attacking" => 'attacking',
+            // Kird Ape: `as long as you control a Forest`.
+            (bool) preg_match('/^you control an? ([A-Z][a-z]+)$/', $text, $m) => "controls {$m[1]}",
             (bool) preg_match('/^there are (\w+) or more card types among cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "delirium {$n}",
             default => null,
         };
@@ -1563,6 +1584,10 @@ final class TextParser
         if (preg_match('/^(.*?),? and (can\'t be blocked by creatures with power \d+ or (?:greater|less)|can block only creatures with flying)$/', $text, $match)) {
             $text = $match[1];
             $found = [...$found, ...(self::restrictions($match[2]) ?? [null])];
+        }
+        // The Mare cycle: `can't be blocked by black creatures`; read by Game::canBlock().
+        if (preg_match('/^can\'t be blocked by (white|blue|black|red|green|artifact) creatures$/', $text, $match)) {
+            return [...$found, "can't be blocked by {$match[1]} creatures"];
         }
         if (preg_match('/^can\'t be blocked by creatures with power (\d+) or (greater|less)$/', $text, $match)) {
             // Read by Game::canBlock().
@@ -1971,6 +1996,10 @@ final class TextParser
             $event = 'creature_dies_other';
             $extra = $match[1] === '' ? ['anyController' => true] : [];
             $text = $match[2];
+        } elseif (preg_match('/^Whenever a player casts an? (white|blue|black|red|green) spell, (?:you may gain (\w+) life\.?$|(.+)$)/', $line, $match)) {
+            // Kor Firewalker, the Crystal Rods; see Game::castSpell().
+            $event = 'any_cast_color_'.['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$match[1]];
+            $text = ($match[2] ?? '') !== '' ? "you gain {$match[2]} life." : $match[3];
         } elseif (preg_match('/^Whenever you draw a card, (.+)$/', $line, $match)) {
             $event = 'you_draw';
             $text = $match[1];
@@ -2388,6 +2417,11 @@ final class TextParser
 
             return array_map(fn (int $i) => ['type' => 'divided', 'total' => $n, 'slot' => $i, 'target' => $i === 0 ? 'any' : '?any'], range(0, $slots - 1));
         }
+        // Peppersmoke: `If you control a Faerie, draw a card.`; checked as it resolves (see Game::runSteps()).
+        if (preg_match('/^If you control an? ([A-Z][a-z]+), (.+)$/', $sentence, $m) && ($then = self::sentenceEffects($m[2])) !== null
+            && array_filter($then, fn (array $effect) => isset($effect['target'])) === []) {
+            return array_map(fn (array $effect) => $effect + ['ifCondition' => "controls {$m[1]}"], $then);
+        }
         // Support N (rule 701.41): a +1/+1 counter on each of up to N other target creatures.
         if (preg_match('/^support (\w+)$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1 && $n <= 5) {
             return array_fill(0, $n, ['type' => 'counters', 'amount' => 1, 'target' => '?creature_other']);
@@ -2580,6 +2614,13 @@ final class TextParser
 
             return true;
         }
+        // Ruthless Predation: `Target creature you control gets +1/+1 until end of turn. It fights target creature you don't control.`
+        if (in_array($effects[$last]['target'] ?? null, ['creature_you_control', 'creature'], true)
+            && preg_match("/^(?:Then )?(?:[Ii]t|[Tt]hat creature) fights (target creature you don't control|target creature an opponent controls|another target creature)$/", $sentence, $m)) {
+            $effects[] = ['type' => 'fight', 'target' => $m[1] === 'another target creature' ? 'creature' : 'creature_opponent', 'mutual' => true];
+
+            return true;
+        }
         // `Clash with an opponent. If you win, …`: those effects only when the clash is won.
         if (preg_match('/^If you win, (.+)$/', $sentence, $m) && in_array('clash', array_column($effects, 'type'), true)
             && (($won = self::effects($m[1])) !== null || ($won = self::thatCreature($m[1], $effects)) !== null)) {
@@ -2708,6 +2749,10 @@ final class TextParser
         $s = $sentence;
 
         // `you may draw a card`, `you may mill two cards`: the game always does.
+        // Leonin Snarecaster: `you may tap target creature`; tapping is always worth it.
+        if (preg_match('/^you may ((?:tap|untap) target .+)$/i', $s, $m) && ($effect = self::effect($m[1])) !== null && in_array($effect['type'], ['tap', 'untap'], true)) {
+            return $effect;
+        }
         if (preg_match('/^you may ((?:draw|mill) .+)$/i', $s, $m) && ($effect = self::effect($m[1])) !== null && in_array($effect['type'], ['draw', 'mill'], true)) {
             return $effect;
         }
@@ -2733,9 +2778,10 @@ final class TextParser
         if (preg_match('/^CARDNAME deals (\w+) damage to each opponent$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'opponent'];
         }
-        if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying| your opponents control)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+        if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying| with flying| your opponents control)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => match ($m[2] ?? '') {
                 ' without flying' => 'creature_without_flying',
+                ' with flying' => 'creature_with_flying',
                 ' your opponents control' => 'creature_opponents',
                 default => 'creature',
             }];
@@ -2976,7 +3022,7 @@ final class TextParser
         if (preg_match('/^(?:target player shuffles|shuffle) up to (\w+) target cards? from (?:their|your) graveyard into (?:their|your) library$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'gy_shuffle', 'amount' => $n];
         }
-        if (preg_match('/^shuffle your graveyard into your library$/i', $s)) {
+        if (preg_match('/^(?:shuffle your graveyard into your library|target player shuffles their graveyard into their library)$/i', $s)) {
             return ['type' => 'gy_shuffle', 'amount' => null];
         }
         if (preg_match('/^(target player|target opponent) mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
@@ -2990,6 +3036,14 @@ final class TextParser
         }
         if (preg_match('/^discover (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'discover', 'amount' => $n];
+        }
+        // Goblin Piledriver: `it gets +2/+0 until end of turn for each other attacking Goblin`.
+        if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each other attacking ([A-Z][a-z]+)$/', $s, $m) && ($type = self::subtypeOf($m[3])) !== null) {
+            return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perAttacking' => $type];
+        }
+        // Drifter il-Dal: `At the beginning of your upkeep, sacrifice CARDNAME unless you pay {U}.`
+        if (preg_match('/^sacrifice (?:CARDNAME|it) unless you pay ((?:\{[0-9WUBRGC]\})+)$/i', $s, $m)) {
+            return ['type' => 'sac_unless', 'cost' => $m[1], 'self' => true];
         }
         // `When CARDNAME enters, it endures 2.`
         if (preg_match('/^(?:CARDNAME|it) endures (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
@@ -3096,6 +3150,10 @@ final class TextParser
                 'onto the battlefield tapped' => 'tapped',
                 default => 'battlefield',
             }];
+        }
+        // The Harbingers: `… search your library for a Goblin card, reveal it, then shuffle and put that card on top.`
+        if (preg_match('/^(?:you may )?search your library for an? (.+?) card, reveal it, then shuffle and put that card on top$/i', $s, $m) && ($filter = self::cardFilter($m[1])) !== null) {
+            return ['type' => 'tutor', 'filter' => $filter, 'to' => 'top'];
         }
         // A tutor: `Search your library for a creature card, reveal it, put it into your hand, then shuffle.`
         if (preg_match('/^(?:you may )?search your library for an? (?:(.+?) )?card, (?:reveal it, )?put (?:it|that card) (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)
