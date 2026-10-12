@@ -626,6 +626,9 @@ final class TextParser
             foreach (self::sentences($line) as $sentence) {
                 if ($sentence === "CARDNAME can't be countered") {
                     $result['keywords'][] = "can't be countered";
+                } elseif (preg_match("/^You may pay ".self::COST." rather than pay CARDNAME's mana cost$/", $sentence, $mastery)) {
+                    // An alternative cost (rule 118.9), cast like surge; "If the {M} cost was paid" reads as kicked.
+                    $result['altCosts']['mastery'] = $mastery[1];
                 } elseif ($sentence === 'Exile CARDNAME') {
                     // The spell goes to exile instead of its owner's graveyard as it finishes resolving.
                     $result['effects'][] = ['type' => 'exile_spell'];
@@ -753,7 +756,8 @@ final class TextParser
                 $result['keywords'][] = 'reveal or control';
             }
             $match = [$reveal[0], $reveal[3]];
-        } elseif (preg_match("/^If CARDNAME's (surge|spectacle) cost was paid, (.+)$/", $sentence, $paid) && isset($result['altCosts'][$paid[1]])) {
+        } elseif (preg_match("/^If CARDNAME's (surge|spectacle) cost was paid, (.+)$/", $sentence, $paid) && isset($result['altCosts'][$paid[1]])
+            || isset($result['altCosts']['mastery']) && preg_match('/^If the (\\S+) cost was paid, (.+)$/', $sentence, $paid) && $paid[1] === $result['altCosts']['mastery']) {
             // Surge and spectacle read as kicked (see Game::cast()).
             $match = [$paid[0], $paid[2]];
         } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
@@ -1463,12 +1467,12 @@ final class TextParser
             return true;
         }
         // `Other green creatures you control get +1/+1.` (the Lieges) and `Attacking creatures you control get +1/+0.` (Goblin Oriflamme); see Game::anthems().
-        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
+        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking|[Aa]rtifact) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
             $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
             if ($keywords === null) {
                 return false;
             }
-            $which = strtolower($m[2]) === 'attacking' ? ['attacking' => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
+            $which = in_array(strtolower($m[2]), ['attacking', 'artifact'], true) ? [strtolower($m[2]) => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
             $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== ''] + $which;
 
             return true;
@@ -2199,9 +2203,9 @@ final class TextParser
                 $cost['sacrifice'] = true;
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
-            } elseif ($part === 'Sacrifice a creature' || $part === 'Sacrifice another creature') {
-                // Nantuko Husk: the weakest creature; see Game::fodder().
-                $cost['fodder'] = $part === 'Sacrifice another creature' ? 'other' : 'any';
+            } elseif (preg_match('/^Sacrifice (an?|another) (creature|artifact)$/', $part, $sac)) {
+                // Nantuko Husk: the weakest creature (or artifact); see Game::fodder().
+                $cost['fodder'] = ($sac[1] === 'another' ? 'other' : 'any').($sac[2] === 'artifact' ? ' artifact' : '');
             } elseif ($part === 'Discard a card') {
                 // Paid with the cheapest card in hand; see Game::discardCheapest().
                 $cost['discard'] = 1;
@@ -2914,6 +2918,10 @@ final class TextParser
         if (preg_match('/^target player draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n, 'target' => 'player'];
         }
+        // Baleful Mastery: `an opponent draws a card` (the next opponent; see Game::opponent()).
+        if (preg_match('/^an opponent draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'draw', 'amount' => $n, 'opponent' => true];
+        }
         if (preg_match('/^you gain (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'gain_life', 'amount' => $n];
         }
@@ -3147,6 +3155,10 @@ final class TextParser
         // Shrewd Hatchling: `Target creature can't block CARDNAME this turn.`
         if (preg_match("/^({$targets}) can't block CARDNAME this turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
             return ['type' => 'cant_block_source', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
+        // Vortex Elemental: `Target creature blocks CARDNAME this turn if able.`
+        if (preg_match("/^({$targets}) blocks CARDNAME this turn if able$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
+            return ['type' => 'must_block_source', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // "Target creature can't block this turn": a restriction until end of turn.
         if (preg_match("/^({$targets}|CARDNAME|{$group}) (can't block|can't be blocked) this turn$/i", $s, $m)) {
