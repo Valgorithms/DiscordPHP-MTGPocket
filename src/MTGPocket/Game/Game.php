@@ -3862,6 +3862,7 @@ final class Game
             // Swords to Plowshares: `… gains life equal to its power.`, read from the object wherever it went.
             'target_power', 'target_toughness' => ($known = $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null) : null) === null ? 0
                 : max(0, $effect['amount'] === 'target_power' ? $this->power($known) : $this->toughness($known)),
+            'self_power' => max(0, $source->zone === GameObject::BATTLEFIELD ? $this->power($source) : (int) $source->definition()->power),
             default => (int) ($effect['amount'] ?? 0),
         };
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
@@ -4748,6 +4749,11 @@ final class Game
                     $self->attachedTo = $hero->id;
                     $this->log("{$this->players[$controller]->name} creates a Hero token, and {$self->name()} is attached to it.");
                 }
+                break;
+
+            case 'extra_land':
+                // One more land drop this turn: as if one fewer land had been played (reset each turn).
+                $this->players[$controller]->landsPlayed--;
                 break;
 
             case 'haunt':
@@ -6618,6 +6624,9 @@ final class Game
             if (preg_match('/^protection from (\w+)$/', $keyword, $m) && isset($types[$m[1]]) && $source->definition()->is($types[$m[1]])) {
                 return true;
             }
+            if (str_starts_with($keyword, 'protection from sub:') && in_array(substr($keyword, 20), $source->definition()->subtypes, true)) {
+                return true;
+            }
         }
 
         return false;
@@ -6669,6 +6678,7 @@ final class Game
             $artifact && $this->hasKeyword($attacker, "can't be blocked by artifact creatures") => true,
             array_filter($colors, fn (string $color) => $this->hasKeyword($attacker, "can't be blocked by ".(['W' => 'white', 'U' => 'blue', 'B' => 'black', 'R' => 'red', 'G' => 'green'][$color] ?? 'colorless').' creatures')) !== [] => true,
             $this->evadesByPower($attacker, $this->power($blocker)) => true,
+            array_filter($blocker->definition()->subtypes, fn (string $type) => $this->hasKeyword($attacker, "can't be blocked by sub:{$type}")) !== [] => true,
             $this->hasKeyword($attacker, "can't be blocked by lesser power") && $this->power($blocker) < $this->power($attacker) => true,
             // Your Ring-bearer can't be blocked by creatures with greater power.
             $this->ringLevel($attacker) >= 1 && $this->power($blocker) > $this->power($attacker) => true,
