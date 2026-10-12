@@ -1447,20 +1447,20 @@ final class Game
         if (($split = $this->splitSecond()) !== null) {
             return "{$split} has split second: nothing can be cast while it is on the stack.";
         }
-        if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_creature' && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) === []) {
+        if (! $options['faceDown'] && $this->orPayKeyword($card) === null && $card->additionalCost === 'sacrifice_creature' && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) === []) {
             return "{$card->name} needs a creature to sacrifice.";
         }
-        if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_artifact' && array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')) === []) {
+        if (! $options['faceDown'] && $this->orPayKeyword($card) === null && $card->additionalCost === 'sacrifice_artifact' && array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')) === []) {
             return "{$card->name} needs an artifact to sacrifice.";
         }
-        if (! $options['faceDown'] && $card->additionalCost === 'sacrifice_artifact_or_creature'
+        if (! $options['faceDown'] && $this->orPayKeyword($card) === null && $card->additionalCost === 'sacrifice_artifact_or_creature'
             && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) || $o->definition()->is('Artifact')) === []) {
             return "{$card->name} needs an artifact or creature to sacrifice.";
         }
-        if (! $options['faceDown'] && $card->additionalCost === 'discard' && count($player->hand) < 2) {
+        if (! $options['faceDown'] && $this->orPayKeyword($card) === null && $card->additionalCost === 'discard' && count($player->hand) < 2) {
             return "{$card->name} needs another card in your hand to discard.";
         }
-        if (! $options['faceDown'] && in_array($card->additionalCost, ['exile_creature_card', 'exile_card'], true) && $this->graveyardFodder($seat, $card, $id) === []) {
+        if (! $options['faceDown'] && $this->orPayKeyword($card) === null && in_array($card->additionalCost, ['exile_creature_card', 'exile_card'], true) && $this->graveyardFodder($seat, $card, $id) === []) {
             return "{$card->name} needs ".($card->additionalCost === 'exile_card' ? 'another card' : 'a creature card').' in your graveyard to exile.';
         }
         // Face down it is a 2/2 creature spell with no abilities, flash included.
@@ -1754,7 +1754,7 @@ final class Game
                 }
             }
         }
-        $cost = self::castCost($card, $options).$this->spliceCost($options['splice']).$wardMana;
+        $cost = self::castCost($card, $options).$this->spliceCost($options['splice']).$wardMana.($options['faceDown'] ? '' : $this->orPay($seat, $id, $card));
         $convoke = ! $options['faceDown'] && in_array('convoke', $card->keywords, true);
         $improvise = ! $options['faceDown'] && in_array('improvise', $card->keywords, true);
         // Delve (rule 702.66): cards exiled from your graveyard pay for generic mana, as many as can help.
@@ -2106,12 +2106,13 @@ final class Game
             $tax = $this->commanderTax($id);
             $this->commanders[$id]++;
         }
+        $orPaid = ! $options['faceDown'] && $this->orPay($seat, $id, $card) !== '';
         $this->removeFromZone($object);
         $object->moveTo(GameObject::STACK);
         $object->controller = $seat;
         $object->faceDown = $options['faceDown'];
         $object->transformed = $options['grave'] === 'disturb';
-        if (! $options['faceDown'] && $card->additionalCost !== null) {
+        if (! $options['faceDown'] && $card->additionalCost !== null && ! $orPaid) {
             $this->payAdditionalCost($seat, $card);
         }
         $this->stack[] = [
@@ -2415,6 +2416,63 @@ final class Game
         }
 
         return $total >= $power ? $team : null;
+    }
+
+    /**
+     * `… sacrifice a creature or pay {3}.` / `reveal an Elf card from your hand or pay {3}.`: the mana, or null.
+     *
+     * @param CardDefinition $card
+     *
+     * @return ?string
+     */
+    private function orPayKeyword(CardDefinition $card): ?string
+    {
+        foreach ($card->keywords as $keyword) {
+            if (str_starts_with($keyword, 'or pay ')) {
+                return substr($keyword, 7);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The mana an `… or pay {M}` additional cost adds: none while the other
+     * choice can be made (it always is when it can).
+     *
+     * @param int            $seat
+     * @param int            $id
+     * @param CardDefinition $card
+     *
+     * @return string
+     */
+    private function orPay(int $seat, int $id, CardDefinition $card): string
+    {
+        if (($mana = $this->orPayKeyword($card)) === null) {
+            return '';
+        }
+        foreach ($card->keywords as $keyword) {
+            if (str_starts_with($keyword, 'reveal or pay ')) {
+                $type = substr($keyword, 14);
+                foreach ($this->players[$seat]->hand as $other) {
+                    if ($other !== $id && in_array($type, $this->objects[$other]->printed()->subtypes, true)) {
+                        return '';
+                    }
+                }
+
+                return $mana;
+            }
+        }
+        $can = match ($card->additionalCost) {
+            'sacrifice_creature' => array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) !== [],
+            'sacrifice_artifact' => array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')) !== [],
+            'sacrifice_artifact_or_creature' => array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) || $o->definition()->is('Artifact')) !== [],
+            'discard' => count(array_diff($this->players[$seat]->hand, [$id])) > 0,
+            'exile_creature_card', 'exile_card' => $this->graveyardFodder($seat, $card, $id) !== [],
+            default => true,
+        };
+
+        return $can ? '' : $mana;
     }
 
     private function payAdditionalCost(int $seat, CardDefinition $card): void
@@ -3607,6 +3665,9 @@ final class Game
             // `… equal to the number of Mountains you control.`
             'yours:lands', 'yours:creatures', 'yours:artifacts', 'yours:enchantments' => $this->countYours($controller, rtrim(substr($effect['amount'], 6), 's')),
             'yours:Forests', 'yours:Islands', 'yours:Mountains', 'yours:Plains', 'yours:Swamps' => count(array_filter($this->permanents($controller), fn (GameObject $o) => in_array($effect['amount'] === 'yours:Plains' ? 'Plains' : rtrim(substr($effect['amount'], 6), 's'), $o->definition()->subtypes, true))),
+            // Swords to Plowshares: `… gains life equal to its power.`, read from the object wherever it went.
+            'target_power', 'target_toughness' => ($known = $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null) : null) === null ? 0
+                : max(0, $effect['amount'] === 'target_power' ? $this->power($known) : $this->toughness($known)),
             default => (int) ($effect['amount'] ?? 0),
         };
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
@@ -3646,6 +3707,10 @@ final class Game
                 break;
 
             case 'gain_life':
+                if (isset($effect['toController'])) {
+                    $this->gainLife(str_starts_with((string) $target, 'o:') ? ($this->objects[(int) explode(':', (string) $target)[1]] ?? null)?->controller ?? $controller : $controller, $amount);
+                    break;
+                }
                 $this->gainLife(isset($effect['target']) && str_starts_with((string) $target, 'p:') ? (int) substr((string) $target, 2) : $controller, $amount);
                 break;
 
@@ -3858,6 +3923,9 @@ final class Game
                         && in_array($effect['perAttacking'], $this->objects[$id]->definition()->subtypes, true)));
                     $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
                 }
+                if (isset($effect['xPump'])) {
+                    $effect = ['power' => $effect['xPump'][0] * $x, 'toughness' => $effect['xPump'][1] * $x] + $effect;
+                }
                 $pumped = match ($effect['each'] ?? null) {
                     null => $affected === null ? [] : [$affected],
                     'yours' => $this->permanents($controller),
@@ -3869,7 +3937,7 @@ final class Game
                     if (isset($effect['each']) && ! $this->isCreature($object)) {
                         continue;
                     }
-                    $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])] + (isset($effect['base']) ? ['base' => $effect['base']] : []);
+                    $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])] + (isset($effect['base']) ? ['base' => $effect['base']] : []) + (($effect['animate'] ?? false) ? ['creature' => true] : []);
                 }
                 break;
 
@@ -3941,8 +4009,10 @@ final class Game
                 break;
 
             case 'token':
+                // Beast Within: the destroyed permanent's last controller.
+                $for = isset($effect['toController']) && $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null)?->controller ?? $controller : $controller;
                 for ($i = 0; $i < $amount; $i++) {
-                    $token = $this->createToken((array) $effect['token'], $controller);
+                    $token = $this->createToken((array) $effect['token'], $for);
                     if ($effect['haste'] ?? false) {
                         $token->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
                     }
@@ -3950,7 +4020,7 @@ final class Game
                         $token->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
                     }
                 }
-                $this->log("{$this->players[$controller]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
+                $this->log("{$this->players[$for]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
                 break;
 
             case 'attach':
