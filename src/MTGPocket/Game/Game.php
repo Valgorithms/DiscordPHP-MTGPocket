@@ -198,6 +198,9 @@ final class Game
     private int $nextStackId = 1;
     private int $shuffles = 0;
 
+    /** The spell a payment is for, while {@see paymentFor()} works it out. */
+    private ?GameObject $spending = null;
+
     /**
      * @param string $id
      * @param string $seed Shuffles and the coin flip come from it.
@@ -1429,7 +1432,7 @@ final class Game
         if ($options['gifted'] && ! isset($card->altCosts['gift'])) {
             return "{$card->name} has no gift.";
         }
-        if ($options['bargained'] && (! in_array('bargain', $card->keywords, true) || $this->bargainFodder($seat) === null)) {
+        if ($options['bargained'] && (! in_array('bargain', $card->keywords, true) || $this->bargainFodder($seat, $card) === null)) {
             return "{$card->name} cannot be bargained now.";
         }
         if ($options['casualty'] && (self::casualty($card) === 0 || $this->casualtyFodder($seat, self::casualty($card)) === null)) {
@@ -1468,7 +1471,14 @@ final class Game
         if ($card->split && count(array_unique($options['modes'])) > 1 && $object?->zone !== GameObject::HAND) {
             return "{$card->name}'s halves can be fused only from your hand.";
         }
-        if (! $options['faceDown'] && ! $options['entwined'] && ! in_array(array_values(array_unique(array_map('intval', $options['modes']))), $card->modeChoices(), true)) {
+        // `You may choose the same mode more than once.`: repeats count, in any order.
+        $chosen = array_map('intval', $options['modes']);
+        if ($card->choose['repeat'] ?? false) {
+            sort($chosen);
+        } else {
+            $chosen = array_values(array_unique($chosen));
+        }
+        if (! $options['faceDown'] && ! $options['entwined'] && ! in_array($chosen, $card->modeChoices(), true)) {
             return $card->choose === null ? "{$card->name} has no modes." : "Choose {$card->choose['min']}".($card->choose['max'] > $card->choose['min'] ? " to {$card->choose['max']}" : '')." of {$card->name}'s modes.";
         }
         // A card with no mana cost at all cannot be cast for mana (rule 202.1b).
@@ -1721,6 +1731,17 @@ final class Game
      */
     private function paymentFor(int $seat, int $id, int $x, array $options = [], string $wardMana = '', int $wardLife = 0, ?array $targets = null): ?array
     {
+        // `Spend this mana only to cast a creature spell.`: such sources pay only for a spell of that type; see payFor().
+        $this->spending = $this->objects[$id];
+        try {
+            return $this->spellPayment($seat, $id, $x, $options, $wardMana, $wardLife, $targets);
+        } finally {
+            $this->spending = null;
+        }
+    }
+
+    private function spellPayment(int $seat, int $id, int $x, array $options, string $wardMana, int $wardLife, ?array $targets): ?array
+    {
         $options = self::castOptions($options);
         $tax = $this->objects[$id]->zone === GameObject::COMMAND ? $this->commanderTax($id) : 0;
 
@@ -1829,7 +1850,10 @@ final class Game
     private function payFor(int $seat, string $mana, int $life = 0, array $without = [], int $x = 0, int $tax = 0, bool $convoke = false, bool $improvise = false): ?array
     {
         $player = $this->players[$seat];
-        $sources = array_diff_key($this->manaSources($seat), array_flip($without));
+        $sources = array_filter(
+            array_diff_key($this->manaSources($seat), array_flip($without)),
+            fn (array $source) => ! isset($source['only']) || ($this->spending !== null && $this->spending->definition()->is($source['only']))
+        );
         if ($convoke) {
             foreach ($this->permanents($seat) as $object) {
                 if ($this->isCreature($object) && ! $object->tapped && ! isset($sources[$object->id])) {
@@ -2118,7 +2142,7 @@ final class Game
             }
             $this->log("{$this->players[$seat]->name} collects evidence, exiling ".count($evidence).' card'.(count($evidence) === 1 ? '' : 's').' from their graveyard.');
         }
-        if ($options['bargained'] && ($fodder = $this->bargainFodder($seat)) !== null) {
+        if ($options['bargained'] && ($fodder = $this->bargainFodder($seat, $card)) !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
         }
@@ -2463,8 +2487,15 @@ final class Game
         return $total >= $n ? $picked : null;
     }
 
-    private function bargainFodder(int $seat): ?GameObject
+    private function bargainFodder(int $seat, ?CardDefinition $card = null): ?GameObject
     {
+        // `Kicker—Sacrifice an artifact or creature.`: only those types.
+        if (isset($card?->altCosts['bargain'])) {
+            $types = explode('|', $card->altCosts['bargain']);
+
+            return $this->weakest($seat, fn (GameObject $o) => array_filter($types, fn (string $type) => $o->definition()->is($type)) !== []);
+        }
+
         return $this->weakest($seat, fn (GameObject $o) => $o->definition()->isToken() || $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'));
     }
 

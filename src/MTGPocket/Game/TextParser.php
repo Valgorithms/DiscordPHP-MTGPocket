@@ -304,6 +304,22 @@ final class TextParser
 
                 continue;
             }
+            // Mystic Confluence: `Choose three. You may choose the same mode more than once.`; see CardDefinition::choices().
+            if ($spell && preg_match('/^Choose (two|three|four|five)\. You may choose the same mode more than once\.$/', $line, $match)) {
+                $bullets = [];
+                while (isset($lines[$i + 1]) && str_starts_with($lines[$i + 1], '•')) {
+                    $bullets[] = trim(mb_substr($lines[++$i], 1));
+                }
+                if (self::modes($spell, 'one', $bullets, $result)) {
+                    $n = self::amount($match[1]);
+                    $result['choose'] = ['min' => $n, 'max' => $n, 'repeat' => true];
+                } else {
+                    $unread = array_values(array_filter($bullets, fn (string $bullet) => self::effects($bullet) === null));
+                    $result['unsupported'] = [...$result['unsupported'], ...($unread === [] ? [$line] : array_map(fn ($bullet) => "• {$bullet}", $unread))];
+                }
+
+                continue;
+            }
             // A modal spell's `Choose one —` and its `•` modes, or a triggered ability's `When CARDNAME enters, choose one —`.
             if (preg_match('/^(?:(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks), )?[Cc]hoose (one|two|three|one or both|one or more) —$/u', $line, $match)) {
                 $bullets = [];
@@ -652,6 +668,13 @@ final class TextParser
                     continue;
                 }
             }
+            // `Kicker—Sacrifice an artifact or creature.`: paid like bargain, by sacrificing one; see Game::bargainFodder().
+            if (preg_match('/^Kicker—Sacrifice an? (artifact|creature|enchantment)(?: or (artifact|creature|enchantment))?\.$/u', $line, $sacrifice)) {
+                $result['keywords'][] = 'bargain';
+                $result['altCosts']['bargain'] = ucfirst($sacrifice[1]).(isset($sacrifice[2]) ? '|'.ucfirst($sacrifice[2]) : '');
+
+                continue;
+            }
             // Strive: `{2}{R}` more for each target beyond the first; see Game::paymentFor().
             if (preg_match('/^Strive — CARDNAME costs '.self::COST.' more to cast for each target beyond the first\.$/u', $line, $strive)) {
                 $result['altCosts']['strive'] = $strive[1];
@@ -798,7 +821,7 @@ final class TextParser
             || isset($result['altCosts']['mastery']) && preg_match('/^If the (\\S+) cost was paid, (.+)$/', $sentence, $paid) && $paid[1] === $result['altCosts']['mastery']) {
             // Surge and spectacle read as kicked (see Game::cast()).
             $match = [$paid[0], $paid[2]];
-        } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
+        } elseif (($result['kicker'] === null && ! isset($result['altCosts']['bargain']) || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
             && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))
             && (! isset($result['altCosts']['evidence']) || ! preg_match('/^If evidence was collected, (.+)$/', $sentence, $match))) {
             return false;
@@ -1231,6 +1254,20 @@ final class TextParser
      */
     private static function manaAbility(string $line, array &$result): bool
     {
+        // Beastcaller Savant: `{T}: Add one mana of any color. Spend this mana only to cast a creature spell.`; see Game::payFor().
+        if (preg_match('/^(.+\.) Spend this mana only to cast (?:an? )?(creature|artifact) spells?\.$/', $line, $match)) {
+            if ($result['mana'] !== null) {
+                return false;
+            }
+            if (! self::manaAbility($match[1], $result) || ($result['mana']['noTap'] ?? false) || ($result['mana']['filter'] ?? false)) {
+                $result['mana'] = null;
+
+                return false;
+            }
+            $result['mana']['only'] = ucfirst($match[2]);
+
+            return true;
+        }
         // `{2}: Add one mana of any color.` and `{1}: … Activate only once each turn.`: a filter that doesn't tap; see Game::payFor().
         if (preg_match('/^\{(\d)\}: Add one mana of any colou?r\.( Activate only once each turn\.)?$/', $line, $match)) {
             if ($result['mana'] !== null) {
@@ -3295,7 +3332,7 @@ final class TextParser
         if (preg_match('/^(?:target player shuffles|shuffle) up to (\w+) target cards? from (?:their|your) graveyard into (?:their|your) library$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'gy_shuffle', 'amount' => $n];
         }
-        if (preg_match('/^(?:shuffle your graveyard into your library|target player shuffles their graveyard into their library)$/i', $s)) {
+        if (preg_match('/^(?:(?:then )?shuffle your graveyard into your library|target player shuffles their graveyard into their library)$/i', $s)) {
             return ['type' => 'gy_shuffle', 'amount' => null];
         }
         if (preg_match('/^(target player|target opponent) mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
