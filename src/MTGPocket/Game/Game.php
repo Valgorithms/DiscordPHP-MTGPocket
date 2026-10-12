@@ -1011,7 +1011,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1036,7 +1036,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1104,7 +1104,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'miracle', 'sneak', 'emerge'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'miracle', 'sneak', 'emerge'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1161,7 +1161,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'miracle', 'sneak', 'emerge'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'miracle', 'sneak', 'emerge'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1617,7 +1617,7 @@ final class Game
         return match (true) {
             $options['faceDown'], $options['alt'] === 'overload' => [],
             $options['bestowed'] => [$card->bestow['enchant']],
-            default => [...$card->targetKinds($options['modes'], $options['kicked']), ...($game === null ? [] : self::targetKindsOf($game->splicedEffects($options['splice'])))],
+            default => [...$card->targetKinds($options['modes'], $options['kicked'] || in_array($options['alt'], ['surge', 'spectacle', 'cleave'], true)), ...($game === null ? [] : self::targetKindsOf($game->splicedEffects($options['splice'])))],
         };
     }
 
@@ -2037,7 +2037,7 @@ final class Game
         $card = $object->printed();
         // `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`: always, when one can be.
         $revealed = $options['faceDown'] || $card->targetKinds($options['modes'], true) !== $card->targetKinds($options['modes'], false) ? null : $this->revealed($seat, $id, $card);
-        if ($revealed !== null || in_array($options['alt'], ['surge', 'spectacle'], true)) {
+        if ($revealed !== null || in_array($options['alt'], ['surge', 'spectacle', 'cleave'], true)) {
             $options['kicked'] = true;
         }
         $xCount = ManaCost::parse(self::castCost($card, $options))->xCount;
@@ -2156,7 +2156,7 @@ final class Game
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
             $options['exiled'] !== '' ? "from exile ({$options['exiled']})" : '',
-            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && ! in_array($options['alt'], ['surge', 'spectacle'], true) ? 'kicked' : ''),
+            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && ! in_array($options['alt'], ['surge', 'spectacle', 'cleave'], true) ? 'kicked' : ''),
             $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $this->objects[$splicer]->name(), $options['splice'])).' onto it',
@@ -2602,7 +2602,8 @@ final class Game
         $caster = $this->players[$seat];
         [$caster->cast, $caster->castTurn] = [$caster->castTurn === $this->turn ? $caster->cast + 1 : 1, $this->turn];
         $events = [...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
-            ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : [])];
+            ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : []),
+            ...array_map(fn (string $color) => "cast_color_{$color}", $card->colors), ...(count($card->colors) > 1 ? ['cast_multicolored'] : [])];
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
@@ -7924,7 +7925,9 @@ final class Game
         }
         foreach ($object->definition()->keywords as $keyword) {
             if (preg_match('/^gets \+(\d+)\/\+(\d+) for each (.+)$/', $keyword, $m)) {
-                $n = $this->countYours($object->controller, $m[3], $object);
+                $n = str_starts_with($m[3], 'attached:')
+                    ? count(array_filter($this->attachments($object), fn (GameObject $o) => array_intersect(explode('|', substr($m[3], 9)), $o->definition()->subtypes) !== []))
+                    : $this->countYours($object->controller, $m[3], $object);
                 $bonus = [$bonus[0] + (int) $m[1] * $n, $bonus[1] + (int) $m[2] * $n];
             }
         }
@@ -7949,7 +7952,9 @@ final class Game
             'other creature' => $o->id !== $source?->id && $this->isCreature($o),
             'land' => $o->definition()->isLand(),
             'enchantment' => $o->definition()->is('Enchantment'),
-            default => false,
+            // `for each Mountain you control` / `for each other Elf you control`.
+            default => preg_match('/^(other )?sub:(\w+)$/', $kind, $m) && ($m[1] === '' || $o->id !== $source?->id)
+                && (in_array($m[2], $o->definition()->subtypes, true) || ($this->isCreature($o) && in_array('changeling', $o->definition()->keywords, true))),
         }));
     }
 

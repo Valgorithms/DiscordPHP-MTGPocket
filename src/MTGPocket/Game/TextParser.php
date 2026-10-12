@@ -462,6 +462,12 @@ final class TextParser
 
                 continue;
             }
+            // `CARDNAME gets +2/+0 for each Mountain you control.`, `… for each other Elf you control.`, `… for each Aura attached to it.`
+            if (! $spell && preg_match('/^CARDNAME gets \+(\d+)\/\+(\d+) for each (?:(other )?([A-Z][a-z]+) you control|(Aura|Equipment|Aura and Equipment) attached to it)\.$/', $line, $match)) {
+                $result['keywords'][] = "gets +{$match[1]}/+{$match[2]} for each ".(($match[5] ?? '') !== '' ? 'attached:'.str_replace(' and ', '|', $match[5]) : $match[3].'sub:'.$match[4]);
+
+                continue;
+            }
             // `CARDNAME costs {1} less to cast for each creature in your party.`: read by Game::paymentFor().
             if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast for each (creature in your party|artifact you control|creature you control|land you control|card in your hand|opponent you have|instant and sorcery card in your graveyard|creature card in your graveyard|card in your graveyard)\.$/', $line, $match)) {
                 $result['keywords'][] = "costs {$match[1]} less for each ".match ($match[2]) {
@@ -558,6 +564,19 @@ final class TextParser
                 continue;
             }
 
+            // Cleave (rule 702.148): the whole text, or without the words in square brackets when cast for its cleave cost (read as kicked; see Game::cast()).
+            if ($spell && isset($result['altCosts']['cleave']) && str_contains($line, '[')
+                && ($whole = self::effects(str_replace(['[', ']'], '', $line))) !== null
+                && ($cleaved = self::effects((string) preg_replace(['/\s*\[[^\]]*\]/', '/\s+([.,])/'], ['', '$1'], $line))) !== null) {
+                foreach ($whole as $effect) {
+                    $result['effects'][] = $effect + ['unkicked' => true];
+                }
+                foreach ($cleaved as $effect) {
+                    $result['effects'][] = $effect + ['kicked' => true];
+                }
+
+                continue;
+            }
             if (self::keywords($line, $result, $spell)
                 || self::manaAbility($line, $result)
                 || self::entersTapped($line, $result)
@@ -1006,7 +1025,7 @@ final class TextParser
             } elseif (preg_match('/^transmute '.self::COST.'$/i', $part, $m)) {
                 // Transmute (rule 702.53): discard it as a sorcery to search for a card with the same mana value; see Game::transmute().
                 $found['altCosts']['transmute'] = $m[1];
-            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle|cleave) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
                 $found['altCosts'][strtolower($m[1])] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
@@ -1813,6 +1832,12 @@ final class TextParser
 
             return true;
         }
+        // `Equip Wizard {1}`: only onto a Wizard you control.
+        if (preg_match('/^Equip ([A-Z][a-z]+) ((?:\{[0-9WUBRGC\/P]+\})+)$/', $line, $match) && $match[1] !== 'Legendary') {
+            $result['activated'][] = ['text' => $line, 'cost' => ['mana' => $match[2]], 'effects' => [['type' => 'attach', 'target' => "any:sub_{$match[1]}@you"]], 'sorcery' => true, 'once' => false];
+
+            return true;
+        }
         if (preg_match('/^Equip ((?:\{[0-9WUBRGC\/P]+\})+)$/', $line, $match)) {
             $result['activated'][] = [
                 'text' => $line,
@@ -1916,6 +1941,8 @@ final class TextParser
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
             'a creature spell' => 'cast_creature', 'an artifact spell' => 'cast_artifact', 'an enchantment spell' => 'cast_enchantment',
+            'a white spell' => 'cast_color_W', 'a blue spell' => 'cast_color_U', 'a black spell' => 'cast_color_B', 'a red spell' => 'cast_color_R', 'a green spell' => 'cast_color_G',
+            'a multicolored spell' => 'cast_multicolored',
         ];
         // `When CARDNAME enters or dies, surveil 1.`: the same ability on both events.
         if (preg_match('/^When(?:ever)? CARDNAME (enters|attacks|dies) or (attacks|dies)(?: the battlefield)?, (.+)\.$/', $line, $m) && $m[1] !== $m[2]
@@ -2043,7 +2070,7 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cast your third spell each turn, (.+)$/', $line, $match)) {
             $event = 'third_spell';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast (a noncreature spell|an instant or sorcery spell|a spell|a Spirit or Arcane spell|a creature spell|an artifact spell|an enchantment spell), (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
         } else {
@@ -2916,6 +2943,10 @@ final class TextParser
         }
         if (preg_match("/^(?:you may )?shuffle (?:CARDNAME|it) into its owner's library$/i", $s)) {
             return ['type' => 'shuffle_self', 'self' => true];
+        }
+        // Haru-Onna: `you may return CARDNAME to its owner's hand` (it always does).
+        if (preg_match("/^(?:you may )?return CARDNAME to its owner's hand$/i", $s)) {
+            return ['type' => 'bounce', 'self' => true];
         }
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'bounce', 'target' => self::TARGETS[strtolower($m[1])]];
