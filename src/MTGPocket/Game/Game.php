@@ -1011,7 +1011,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1036,7 +1036,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1104,7 +1104,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'miracle', 'sneak', 'emerge'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'miracle', 'sneak', 'emerge'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1161,7 +1161,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'miracle', 'sneak', 'emerge'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'miracle', 'sneak', 'emerge'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1414,6 +1414,10 @@ final class Game
         }
         if ($options['conspire'] && (! in_array('conspire', $card->keywords, true) || $this->conspirators($seat, $card, $id) === null)) {
             return "{$card->name} needs two untapped creatures that share a color with it to conspire.";
+        }
+        // Spectacle (rule 702.137): an opponent lost life this turn.
+        if ($options['alt'] === 'spectacle' && array_filter($this->players, fn (GamePlayer $other, int $otherSeat) => $otherSeat !== $seat && $other->lostLifeOnTurn === $this->turn, ARRAY_FILTER_USE_BOTH) === []) {
+            return 'Spectacle needs an opponent to have lost life this turn.';
         }
         // Surge (rule 702.117): you've cast another spell this turn.
         if ($options['alt'] === 'surge' && ($player->castTurn !== $this->turn || $player->cast === 0)) {
@@ -1904,6 +1908,9 @@ final class Game
             $player->manaPool->add($type, $amount);
         }
         $player->life -= $payment['life'];
+        if ($payment['life'] > 0) {
+            $player->lostLifeOnTurn = $this->turn;
+        }
         foreach ($payment['made'] ?? [] as $source => $type) {
             $object = $this->objects[$source];
             if (in_array($type, $object->definition()->manaAbility['pain'] ?? [], true)) {
@@ -2030,7 +2037,7 @@ final class Game
         $card = $object->printed();
         // `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`: always, when one can be.
         $revealed = $options['faceDown'] || $card->targetKinds($options['modes'], true) !== $card->targetKinds($options['modes'], false) ? null : $this->revealed($seat, $id, $card);
-        if ($revealed !== null || $options['alt'] === 'surge') {
+        if ($revealed !== null || in_array($options['alt'], ['surge', 'spectacle'], true)) {
             $options['kicked'] = true;
         }
         $xCount = ManaCost::parse(self::castCost($card, $options))->xCount;
@@ -2149,7 +2156,7 @@ final class Game
             $options['bestowed'] ? 'bestowed' : '',
             $options['alt'] !== '' ? "for its {$options['alt']} cost" : '',
             $options['exiled'] !== '' ? "from exile ({$options['exiled']})" : '',
-            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && $options['alt'] !== 'surge' ? 'kicked' : ''),
+            $options['kicked'] && $revealed !== null ? "revealing {$revealed->name()}" : ($options['kicked'] && ! in_array($options['alt'], ['surge', 'spectacle'], true) ? 'kicked' : ''),
             $options['buyback'] ? 'with buyback' : '',
             $options['faceDown'] ? 'face down' : '',
             $options['splice'] === [] ? '' : 'splicing '.implode(' and ', array_map(fn (int $splicer) => $this->objects[$splicer]->name(), $options['splice'])).' onto it',
@@ -3898,6 +3905,7 @@ final class Game
                     $this->pay($controller, $payment);
                     foreach ($opponents as $seat) {
                         $this->players[$seat]->life--;
+                        $this->players[$seat]->lostLifeOnTurn = $this->turn;
                     }
                     $this->gainLife($controller, count($opponents));
                     $this->log("{$this->players[$controller]->name} extorts.");
@@ -3915,6 +3923,7 @@ final class Game
                 };
                 foreach ($seats as $seat) {
                     $this->players[$seat]->life -= $amount;
+                    $this->players[$seat]->lostLifeOnTurn = $this->turn;
                 }
                 break;
 
@@ -6835,6 +6844,7 @@ final class Game
                 $this->players[(int) $parts[1]]->poison += $amount;
             } else {
                 $this->players[(int) $parts[1]]->life -= $amount;
+                $this->players[(int) $parts[1]]->lostLifeOnTurn = $this->turn;
             }
         } else {
             $object = $this->targetObject($target);
@@ -7221,6 +7231,7 @@ final class Game
                 return false;
             }
             $this->players[$controller]->life -= $unless['life'];
+            $this->players[$controller]->lostLifeOnTurn = $this->turn;
             $this->log("{$this->players[$controller]->name} pays {$unless['life']} life so {$object->name()} enters untapped.");
 
             return true;
@@ -7646,6 +7657,33 @@ final class Game
      *
      * @return bool
      */
+    /**
+     * A player's devotion to colors (rule 700.5): the mana symbols of those
+     * colors among the mana costs of permanents they control.
+     *
+     * @param int      $seat
+     * @param string[] $colors
+     *
+     * @return int
+     */
+    public function devotion(int $seat, array $colors): int
+    {
+        $count = 0;
+        foreach ($this->permanents($seat) as $permanent) {
+            if ($permanent->faceDown) {
+                continue;
+            }
+            preg_match_all('/\{([^}]+)\}/', (string) ($permanent->definition()->card['manaCost'] ?? ''), $symbols);
+            foreach ($symbols[1] as $symbol) {
+                if (array_intersect(str_split($symbol), $colors) !== []) {
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
     public function isCreature(GameObject $object): bool
     {
         // A bestowed Aura is not a creature while it is attached (rule 702.103b).
@@ -7660,6 +7698,12 @@ final class Game
         $bands = $object->definition()->stationBands;
         if ($bands !== [] && $object->definition()->power !== null && $object->zone === GameObject::BATTLEFIELD && $object->counter('charge') >= max(array_column($bands, 'min'))) {
             return true;
+        }
+        // A Theros god: not a creature below its devotion (rule 700.5).
+        foreach ($object->definition()->keywords as $keyword) {
+            if ($object->zone === GameObject::BATTLEFIELD && preg_match('/^devotion ([WUBRG]+) (\d+)$/', $keyword, $m) && $this->devotion($object->controller, str_split($m[1])) < (int) $m[2]) {
+                return false;
+            }
         }
         if ($object->definition()->isCreature() || $object->awakened) {
             return true;
