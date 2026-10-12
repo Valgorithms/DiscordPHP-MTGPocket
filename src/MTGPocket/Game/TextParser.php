@@ -596,7 +596,7 @@ final class TextParser
                 || ($card->isPlaneswalker() && self::loyalty($line, $result))
                 || (in_array('Saga', $card->subtypes, true) && self::chapter($line, $result))
                 || (! $spell && self::triggered($line, $result))
-                || ((! $spell || str_contains($line, 'Discard CARDNAME:')) && self::activated($line, $result))) {
+                || ((! $spell || str_contains($line, 'Discard CARDNAME:') || str_starts_with($line, 'Reinforce ')) && self::activated($line, $result))) {
                 continue;
             }
 
@@ -631,6 +631,26 @@ final class TextParser
             // A haunt spell's `When the creature CARDNAME haunts dies, …`, from exile.
             if (str_starts_with($line, 'When the creature CARDNAME haunts dies, ') && self::triggered($line, $result)) {
                 continue;
+            }
+            // Tail Swipe: `Choose target creature you control and target creature you don't control. [The creature you control gets …] Then those creatures fight each other.`
+            if (preg_match("/^Choose target creature you control and target creature you don't control\\.\\s*(.*?)\\s*(?:Then )?(?:[Tt]hose creatures|[Tt]hey) fight each other\\.$/", $line, $fight)) {
+                $middle = [];
+                foreach (self::sentences($fight[1]) as $sentence) {
+                    $found = self::sentenceEffects(preg_replace('/\\bthe creature you control\\b/i', 'target creature you control', $sentence));
+                    if ($found === null || array_filter($found, fn (array $effect) => ($effect['target'] ?? null) !== 'creature_you_control') !== []) {
+                        $middle = null;
+                        break;
+                    }
+                    foreach ($found as $effect) {
+                        unset($effect['target']);
+                        $middle[] = $effect + ['sameTarget' => true];
+                    }
+                }
+                if ($middle !== null) {
+                    array_push($result['effects'], ['type' => 'chosen', 'target' => 'creature_you_control'], ...$middle, ...[['type' => 'fight', 'target' => 'creature_opponent', 'mutual' => true]]);
+
+                    continue;
+                }
             }
             // Strive: `{2}{R}` more for each target beyond the first; see Game::paymentFor().
             if (preg_match('/^Strive — CARDNAME costs '.self::COST.' more to cast for each target beyond the first\.$/u', $line, $strive)) {
@@ -1060,6 +1080,9 @@ final class TextParser
             } elseif (preg_match('/^protection from (white|blue|black|red|green|artifacts|creatures|enchantments|instants|sorceries|planeswalkers)$/', $word) && ! $spell) {
                 // Protection from a color or a card type (rule 702.16): see Game::protectedFrom().
                 $found['keywords'][] = $word;
+            } elseif (preg_match('/^[Pp]rotection from ([A-Z][a-z]+s)$/', $part, $m) && ($type = self::subtypeOf($m[1])) !== null && ! $spell) {
+                // Haytham Kenway: `Protection from Assassins`; see Game::protectedFrom().
+                $found['keywords'][] = "protection from sub:{$type}";
             } elseif (preg_match('/^prototype '.self::COST.' — (\d+)\/(\d+)$/iu', $part, $m) && ! $spell) {
                 // Prototype (rule 702.160): cast smaller for less, see Game::prototype().
                 $found['altCosts']['prototype'] = $m[1];
@@ -1720,6 +1743,10 @@ final class TextParser
         if (preg_match('/^can\'t be blocked by (white|blue|black|red|green|artifact) creatures$/', $text, $match)) {
             return [...$found, "can't be blocked by {$match[1]} creatures"];
         }
+        // Juggernaut: `can't be blocked by Walls`.
+        if (preg_match('/^can\'t be blocked by ([A-Z][a-z]+s)$/', $text, $match) && ($type = self::subtypeOf($match[1])) !== null) {
+            return [...$found, "can't be blocked by sub:{$type}"];
+        }
         if (preg_match('/^can\'t be blocked by creatures with power (\d+) or (greater|less)$/', $text, $match)) {
             // Read by Game::canBlock().
             return [...$found, "can't be blocked by power {$match[1]} or {$match[2]}"];
@@ -2256,7 +2283,7 @@ final class TextParser
             $line = substr($line, strlen('Channel — '));
         }
         // Reinforce (rule 702.77): `Reinforce 2—{1}{W}`.
-        if (preg_match('/^Reinforce (\w+)—((?:\{[0-9WUBRGC\/]+\})+)$/u', $line, $reinforce) && is_int($n = self::amount($reinforce[1]))) {
+        if (preg_match('/^Reinforce (\w+)—((?:\{[0-9WUBRGC\/]+\})+)\.?$/u', $line, $reinforce) && is_int($n = self::amount($reinforce[1]))) {
             $line = "{$reinforce[2]}, Discard CARDNAME: Put {$reinforce[1]} +1/+1 counter".($n === 1 ? '' : 's').' on target creature.';
         }
         if (! preg_match('/^([^:"]+): (.+)$/', $line, $match)) {
@@ -2979,6 +3006,14 @@ final class TextParser
         }
         if (preg_match("/^CARDNAME deals (\\w+) damage to ({$targets})$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
+        }
+        // Explore (the sorcery): `You may play an additional land this turn.`
+        if (preg_match('/^you may play an additional land this turn$/i', $s)) {
+            return ['type' => 'extra_land'];
+        }
+        // Infernal Phantom: `When CARDNAME dies, it deals damage equal to its power to any target.` (its power as it last was).
+        if (preg_match("/^(?:CARDNAME|it) deals damage equal to its power to ({$targets})$/i", $s, $m)) {
+            return ['type' => 'damage', 'amount' => 'self_power', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // Rumbling Rockslide: `CARDNAME deals damage to target creature equal to the number of lands you control.`
         if (preg_match("/^CARDNAME deals damage to ({$targets}) equal to the number of (lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control$/i", $s, $m)) {
