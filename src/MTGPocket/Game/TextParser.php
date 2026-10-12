@@ -779,7 +779,8 @@ final class TextParser
             // Surge and spectacle read as kicked (see Game::cast()).
             $match = [$paid[0], $paid[2]];
         } elseif (($result['kicker'] === null || ! preg_match('/^If CARDNAME was kicked, (.+)$/', $sentence, $match))
-            && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))) {
+            && (! in_array('bargain', $result['keywords'], true) || ! preg_match('/^If CARDNAME was bargained, (.+)$/', $sentence, $match))
+            && (! isset($result['altCosts']['evidence']) || ! preg_match('/^If evidence was collected, (.+)$/', $sentence, $match))) {
             return false;
         }
         if (preg_match('/^(?:it|CARDNAME) deals (\w+) damage(?: to (?:that|this) [\w ]+)? instead$/', $match[1], $instead)) {
@@ -798,6 +799,15 @@ final class TextParser
                 return false;
             }
             $result['effects'][$last]['kickedPT'] = [(int) $instead[1], (int) $instead[2]];
+
+            return true;
+        }
+        // `Draw a card. If evidence was collected, draw two cards instead.`: the earlier effect only when not kicked.
+        if (! $unkicked && preg_match('/^(.+) instead$/', $match[1], $instead) && ($last = array_key_last($result['effects'])) !== null
+            && ($alt = self::effects(ucfirst($instead[1]).'.')) !== null && count($alt) === 1 && $alt[0]['type'] === $result['effects'][$last]['type']
+            && ! isset($result['effects'][$last]['kicked']) && ! isset($result['effects'][$last]['unkicked'])) {
+            $result['effects'][$last]['unkicked'] = true;
+            $result['effects'][] = $alt[0] + ['kicked' => true];
 
             return true;
         }
@@ -1415,9 +1425,15 @@ final class TextParser
             return true;
         }
         // Vivid lands: `This land enters tapped with two charge counters on it.`
-        if (preg_match('/^CARDNAME enters(?: the battlefield)?( tapped)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && is_int($n = self::amount($match[2]))) {
+        if (preg_match('/^CARDNAME enters(?: the battlefield)?( tapped)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && ($n = self::amount($match[2])) !== null) {
             $result['otherCounters'][$match[3]] = $n;
             $result['entersTapped'] = $result['entersTapped'] || $match[1] !== '';
+
+            return true;
+        }
+        // Chalice of the Void: `Whenever a player casts a spell with mana value equal to the number of charge counters on CARDNAME, counter that spell.`; see Game::castTriggers().
+        if ($line === 'Whenever a player casts a spell with mana value equal to the number of charge counters on CARDNAME, counter that spell.') {
+            $result['keywords'][] = 'chalice';
 
             return true;
         }
@@ -1614,6 +1630,12 @@ final class TextParser
      */
     private static function additionalCost(string $line, array &$result): bool
     {
+        // Collect evidence (rule 701.59): `As an additional cost to cast CARDNAME, you may collect evidence 6.`; reads as kicked (see Game::evidence()).
+        if (preg_match('/^As an additional cost to cast CARDNAME, you may collect evidence (\d+)\.$/', $line, $m)) {
+            $result['altCosts']['evidence'] = $m[1];
+
+            return true;
+        }
         // Dragons of Tarkir: `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`; revealed whenever one can be (see Game::cast()).
         if (preg_match('/^As an additional cost to cast CARDNAME, you may reveal an? ([A-Z][a-z]+) card from your hand\.$/', $line, $m)) {
             $result['keywords'][] = "reveal {$m[1]}";
@@ -2178,7 +2200,8 @@ final class TextParser
         }
         $kicked = false;
         if ($event === 'enters' && ($result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)
-            || isset($result['altCosts']['gift']) && preg_match('/^if the gift was promised, (.+)$/', $text, $match))) {
+            || isset($result['altCosts']['gift']) && preg_match('/^if the gift was promised, (.+)$/', $text, $match)
+            || isset($result['altCosts']['evidence']) && preg_match('/^if evidence was collected, (.+)$/', $text, $match))) {
             [$kicked, $text] = [true, $match[1]];
         }
         // The Thriving creatures: `you may pay {2}{G}. If you do, put a +1/+1 counter on it.`; paid when it can be (see Game::applyEffect()).

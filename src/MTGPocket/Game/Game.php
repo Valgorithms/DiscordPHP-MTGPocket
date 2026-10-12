@@ -1022,7 +1022,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['mh' => isset($card->altCosts['mayhem']), 'hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging|mutate/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|evidence|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging|mutate/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1096,6 +1096,9 @@ final class Game
             if (isset($card->altCosts['gift'])) {
                 $ways[] = implode(',', [...$base, 'gift']);
             }
+            if (isset($card->altCosts['evidence'])) {
+                $ways[] = implode(',', [...$base, 'evidence']);
+            }
             if (self::casualty($card) > 0) {
                 $ways[] = implode(',', [...$base, 'casualty']);
             }
@@ -1131,11 +1134,11 @@ final class Game
      *
      * @throws GameException When it is not a way to cast a spell.
      *
-     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int, gifted: bool, splice: int[]}
+     * @return array{modes: int[], kicked: bool, flashback: bool, faceDown: bool, rebound: bool, bestowed: bool, alt: string, exiled: string, entwined: bool, grave: string, bargained: bool, casualty: bool, buyback: bool, conspire: bool, kicks: int, gifted: bool, evidence: bool, splice: int[]}
      */
     public static function castOptions(string|array $how): array
     {
-        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0, 'gifted' => false, 'splice' => []];
+        $options = ['modes' => [], 'kicked' => false, 'flashback' => false, 'faceDown' => false, 'rebound' => false, 'bestowed' => false, 'alt' => '', 'exiled' => '', 'entwined' => false, 'grave' => '', 'bargained' => false, 'casualty' => false, 'buyback' => false, 'conspire' => false, 'kicks' => 0, 'gifted' => false, 'evidence' => false, 'splice' => []];
         if (is_array($how)) {
             return array_intersect_key($how, $options) + $options;
         }
@@ -1164,6 +1167,9 @@ final class Game
             } elseif ($part === 'gift') {
                 // Gift (rule 702.174): promised to an opponent; "if the gift was promised" reads as kicked.
                 $options['kicked'] = $options['gifted'] = true;
+            } elseif ($part === 'evidence') {
+                // Collect evidence (rule 701.59): exile cards with enough total mana value from your graveyard; reads as kicked.
+                $options['kicked'] = $options['evidence'] = true;
             } elseif ($part === 'bargain') {
                 // Bargain (rule 702.166): like kicker, paid by sacrificing an artifact, enchantment or token.
                 $options['kicked'] = $options['bargained'] = true;
@@ -1414,7 +1420,10 @@ final class Game
         if ($options['kicks'] > 1 && ! in_array('multikicker', $card->keywords, true)) {
             return "{$card->name} can be kicked only once.";
         }
-        if ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] && $card->kicker === null) {
+        if ($options['evidence'] && (! isset($card->altCosts['evidence']) || $this->evidence($seat, $id, (int) $card->altCosts['evidence']) === null)) {
+            return "{$card->name} cannot collect evidence now.";
+        }
+        if ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] && ! $options['evidence'] && $card->kicker === null) {
             return "{$card->name} has no kicker.";
         }
         if ($options['gifted'] && ! isset($card->altCosts['gift'])) {
@@ -1649,7 +1658,7 @@ final class Game
     {
         $options = self::castOptions($how);
         // Additional costs: kicker, entwine and each Spree mode's.
-        $more = ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] ? str_repeat((string) $card->kicker, max(1, $options['kicks'])) : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
+        $more = ($options['kicked'] && ! $options['bargained'] && ! $options['gifted'] && ! $options['evidence'] ? str_repeat((string) $card->kicker, max(1, $options['kicks'])) : '').($options['entwined'] ? (string) $card->entwine : '').($options['buyback'] ? (string) ($card->altCosts['buyback'] ?? '') : '')
             .implode('', array_map(fn ($mode) => $card->modes[(int) $mode]['cost'] ?? '', $options['modes']))
             .str_repeat((string) ($card->altCosts['escalate'] ?? ''), max(0, count($options['modes']) - 1));
         if ($options['rebound'] || in_array($options['exiled'], ['plot', 'suspended', 'cascade'], true)) {
@@ -2103,6 +2112,12 @@ final class Game
         }
 
         $this->payGraveyardCost($seat, $id, $options);
+        if ($options['evidence'] && ($evidence = $this->evidence($seat, $id, (int) $card->altCosts['evidence'])) !== null) {
+            foreach ($evidence as $exiled) {
+                $this->moveTo($this->objects[$exiled], GameObject::EXILE);
+            }
+            $this->log("{$this->players[$seat]->name} collects evidence, exiling ".count($evidence).' card'.(count($evidence) === 1 ? '' : 's').' from their graveyard.');
+        }
         if ($options['bargained'] && ($fodder = $this->bargainFodder($seat)) !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
@@ -2180,6 +2195,7 @@ final class Game
             $options['flashback'] ? 'with flashback' : '',
             $options['grave'] !== '' ? "from the graveyard ({$options['grave']})" : '',
             $options['bargained'] ? 'bargained' : '',
+            $options['evidence'] ? 'collecting evidence' : '',
             $options['gifted'] ? 'with the gift promised' : '',
             $options['rebound'] ? 'from exile with rebound' : '',
             $options['bestowed'] ? 'bestowed' : '',
@@ -2422,6 +2438,31 @@ final class Game
         ], $item['targets'], "is put on the stack ({$why})");
     }
 
+    /**
+     * The graveyard cards collecting evidence N exiles (rule 701.59): the highest mana values first, until they total N.
+     *
+     * @param int $seat
+     * @param int $id   The spell being cast.
+     * @param int $n
+     *
+     * @return int[]|null Null when the graveyard's total is short.
+     */
+    private function evidence(int $seat, int $id, int $n): ?array
+    {
+        $cards = array_values(array_diff($this->players[$seat]->graveyard, [$id]));
+        usort($cards, fn (int $a, int $b) => $this->objects[$b]->printed()->cost->manaValue() <=> $this->objects[$a]->printed()->cost->manaValue());
+        [$picked, $total] = [[], 0];
+        foreach ($cards as $card) {
+            if ($total >= $n) {
+                break;
+            }
+            $picked[] = $card;
+            $total += $this->objects[$card]->printed()->cost->manaValue();
+        }
+
+        return $total >= $n ? $picked : null;
+    }
+
     private function bargainFodder(int $seat): ?GameObject
     {
         return $this->weakest($seat, fn (GameObject $o) => $o->definition()->isToken() || $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'));
@@ -2638,6 +2679,13 @@ final class Game
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
+            }
+        }
+        // Chalice of the Void: a spell with mana value equal to its charge counters is countered.
+        foreach ($item !== false && $item['object'] === $spell->id ? $this->permanents() : [] as $permanent) {
+            if ($this->hasKeyword($permanent, 'chalice') && $permanent->counter('charge') === $card->cost->manaValue((int) ($item['x'] ?? 0))) {
+                $this->pushAbility(['source' => $permanent->id, 'incarnation' => $permanent->incarnation, 'controller' => $permanent->controller, 'effects' => [['type' => 'counter', 'target' => 'spell']],
+                    'kinds' => ['spell'], 'label' => "{$permanent->name()}'s ability"], ["s:{$item['id']}"], 'triggers');
             }
         }
         // `Whenever a player casts a red spell, …`
@@ -7317,7 +7365,7 @@ final class Game
         }
         // Bloodthirst (rule 702.54): if an opponent was dealt damage this turn.
         foreach ($card->entersWithOther as $kind => $n) {
-            $object->addCounters($kind, $n);
+            $object->addCounters($kind, $n === 'X' ? $x : (int) $n);
         }
         // Devour (rule 702.82): the game feeds it your creature tokens.
         if (($n = $this->keywordAmount($object, 'devour')) > 0) {
