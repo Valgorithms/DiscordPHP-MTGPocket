@@ -4142,6 +4142,10 @@ final class Game
                     if (isset($effect['endStep'])) {
                         $token->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
                     }
+                    // Dwarven Shortsword: `create a 2/2 red Dwarf creature token, then attach CARDNAME to it.`
+                    if (($effect['attachSelf'] ?? false) && $self !== null && $self->zone === GameObject::BATTLEFIELD) {
+                        $self->attachedTo = $token->id;
+                    }
                 }
                 $this->log("{$this->players[$for]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
                 break;

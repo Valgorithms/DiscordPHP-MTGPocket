@@ -252,6 +252,13 @@ final class TextParser
         $spell = ! $card->isPermanentCard();
         $lines = self::lines($card);
         $classLevel = 1;
+        // `Kicker {G} and/or {1}{U}`: read as one kicker paying both, so either kicker's `if it was kicked with its {G} kicker` happens.
+        foreach ($lines as $index => $line) {
+            if (preg_match('/^Kicker '.self::COST.' and\/or '.self::COST.'$/', $line, $both)) {
+                $lines[$index] = "Kicker {$both[1]}{$both[2]}";
+                $lines = array_map(fn (string $other) => (string) preg_replace('/ (was|were) kicked with (?:its|their) (?:\{[^ ]+\}|both) kickers?/', ' $1 kicked', $other), $lines);
+            }
+        }
 
         for ($i = 0; $i < count($lines); $i++) {
             $line = $lines[$i];
@@ -2466,12 +2473,13 @@ final class TextParser
         $filters = ['card' => 'any', 'nonland card' => 'nonland', 'creature card' => 'creature', 'noncreature card' => 'noncreature', 'noncreature, nonland card' => 'noncreature_nonland', 'instant or sorcery card' => 'instant_sorcery', 'nonland permanent card' => 'nonland_permanent', 'creature or planeswalker card' => 'creature|planeswalker', 'artifact or creature card' => 'artifact|creature'];
         // `… That player discards that card.`, or `… and exile that card.` / `… Exile that card.`
         // `You may choose …. If you do, that player discards that card.`: choosing is always worth it.
-        if (! preg_match("/^(Target opponent|Target player) reveals (?:their|his or her) hand\. You (?:may )?choose an? ([^.]+?) from it(\. (?:If you do, that|That) player discards that card| and exile that card|\. Exile that card)\.?\s*(.*)$/s", ucfirst(trim($text)), $m)
-            || ($filter = $filters[$m[2]] ?? self::revealFilter($m[2])) === null) {
+        // Inquisition of Kozilek: `You choose a nonland card from it with mana value 3 or less.`
+        if (! preg_match("/^(Target opponent|Target player) reveals (?:their|his or her) hand\. You (?:may )?choose an? ([^.]+?) from it( with mana value \d+ or (?:less|greater))?(\. (?:If you do, that|That) player discards that card| and exile that card|\. Exile that card)\.?\s*(.*)$/s", ucfirst(trim($text)), $m)
+            || ($filter = ($m[3] === '' ? $filters[$m[2]] ?? null : null) ?? self::revealFilter($m[2].$m[3])) === null) {
             return null;
         }
 
-        return [['type' => 'discard', 'amount' => 1, 'target' => self::TARGETS[strtolower($m[1])], 'chooser' => 'you', 'filter' => $filter] + (str_contains($m[3], 'xile') ? ['exile' => true] : []), trim($m[4])];
+        return [['type' => 'discard', 'amount' => 1, 'target' => self::TARGETS[strtolower($m[1])], 'chooser' => 'you', 'filter' => $filter] + (str_contains($m[4], 'xile') ? ['exile' => true] : []), trim($m[5])];
     }
 
     /**
@@ -2542,6 +2550,11 @@ final class TextParser
         // A bounce land's `When this land enters, return a land you control to its owner's hand.`
         if (preg_match("/^return an? (land|creature|nonland permanent) you control to its owner's hand$/i", $sentence, $m)) {
             return [['type' => 'return_own', 'filter' => str_replace(' ', '_', strtolower($m[1]))]];
+        }
+        // Dwarven Shortsword: `create a 2/2 red Dwarf creature token, then attach CARDNAME to it` (an Equipment carried in).
+        if (preg_match('/^(create an? .+ creature token), then attach CARDNAME to it$/i', $sentence, $m) && ($found = self::sentenceEffects($m[1])) !== null
+            && count($found) === 1 && $found[0]['type'] === 'token' && ($found[0]['amount'] ?? 1) === 1) {
+            return [$found[0] + ['attachSelf' => true]];
         }
         // Strive: `any number of target creatures`, read as up to three (a choice the game offers as optional targets).
         if (preg_match('/\bany number of target /i', $sentence)) {
