@@ -498,12 +498,21 @@ final class CardDefinition
      * Every set of modes that could be chosen, fewest first.
      *
      * @param int                         $count  How many modes there are.
-     * @param array{min: int, max: int}   $choose
+     * @param array{min: int, max: int, repeat?: bool} $choose
      *
      * @return int[][]
      */
     public static function choices(int $count, array $choose): array
     {
+        // `You may choose the same mode more than once.`: every multiset of that size, modes in order.
+        if ($choose['repeat'] ?? false) {
+            $choices = [[]];
+            for ($size = 0; $size < $choose['max']; $size++) {
+                $choices = array_merge(...array_map(fn (array $choice) => array_map(fn (int $mode) => [...$choice, $mode], range($choice === [] ? 0 : end($choice), $count - 1)), $choices));
+            }
+
+            return $choices;
+        }
         $choices = [[]];
         for ($mode = 0; $mode < $count; $mode++) {
             foreach ($choices as $choice) {
