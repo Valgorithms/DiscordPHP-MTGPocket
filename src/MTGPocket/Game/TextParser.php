@@ -1520,8 +1520,17 @@ final class TextParser
 
             return true;
         }
-        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)\.?$/', $line, $m)) {
+        // Lorwyn: `As an additional cost to cast CARDNAME, reveal an Elemental card from your hand or pay {3}.`; see Game::orPay().
+        if (preg_match('/^As an additional cost to cast CARDNAME, reveal an? ([A-Z][a-z]+) card from your hand or pay ((?:\{[^}]+\})+)\.$/', $line, $m)) {
+            array_push($result['keywords'], "reveal or pay {$m[1]}", "or pay {$m[2]}");
+
+            return true;
+        }
+        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)(?: or pay ((?:\{[^}]+\})+))?\.?$/', $line, $m)) {
             return false;
+        }
+        if (isset($m[2])) {
+            $result['keywords'][] = "or pay {$m[2]}";
         }
         $result['additionalCost'] = match ($m[1]) {
             'sacrifice a creature' => 'sacrifice_creature',
@@ -2531,6 +2540,10 @@ final class TextParser
         if ($last === null) {
             return false;
         }
+        // A manland: `… becomes a 3/3 … creature until end of turn. It's still a land.`
+        if (preg_match("/^It's still (?:a land|an artifact)$/", $sentence) && ($effects[$last]['animate'] ?? false)) {
+            return true;
+        }
         // Tenacity: `Creatures you control get +1/+1 … until end of turn. Untap those creatures.`
         if ($sentence === 'Untap those creatures' && $effects[$last]['type'] === 'pump' && ($effects[$last]['each'] ?? null) === 'yours') {
             $effects[] = ['type' => 'untap', 'each' => 'yours'];
@@ -2584,6 +2597,20 @@ final class TextParser
         if (isset($effects[$last]['target']) && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true) && ! str_contains($effects[$last]['target'], 'card')
             && preg_match('/^Its controller (loses (\w+) life|mills (\w+) cards?)$/', $sentence, $m) && is_int($n = self::amount($m[2] !== '' ? $m[2] : $m[3]))) {
             $effects[] = ['type' => $m[2] !== '' ? 'lose_life' : 'mill', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
+
+            return true;
+        }
+        // Swords to Plowshares: `Exile target creature. Its controller gains life equal to its power.`
+        if (isset($effects[$last]['target']) && in_array(ltrim($effects[$last]['target'], '?'), self::CREATURE_KINDS, true)
+            && preg_match('/^(Its controller gains|You gain) life equal to (?:its|that creature\'s) (power|toughness)$/', $sentence, $m)) {
+            $effects[] = ['type' => 'gain_life', 'amount' => 'target_'.$m[2], 'sameTarget' => true] + ($m[1] === 'You gain' ? [] : ['toController' => true]);
+
+            return true;
+        }
+        // Beast Within: `Destroy target permanent. Its controller creates a 3/3 green Beast creature token.`
+        if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true)
+            && preg_match('/^Its controller creates (.+)$/', $sentence, $m) && ($token = self::token('create '.$m[1])) !== null) {
+            $effects[] = $token + ['sameTarget' => true, 'toController' => true];
 
             return true;
         }
@@ -2871,6 +2898,16 @@ final class TextParser
         if (preg_match('/^counter (target spell|target creature spell|target noncreature spell)$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])]];
         }
+        // Manlands and animated artifacts: `Until end of turn, CARDNAME becomes a 4/4 white and blue Elemental creature with flying.`; see Game::isCreature().
+        if (preg_match('/^(until end of turn, )?CARDNAME becomes an? (\d+)\/(\d+) [A-Za-z ]+? creature(?: with ([a-z ,]+?))?( until end of turn)?$/i', $s, $m)
+            && ($m[1] !== '') !== (($m[5] ?? '') !== '') && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
+            return ['type' => 'base_pt', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'base' => [(int) $m[2], (int) $m[3]], 'self' => true, 'animate' => true];
+        }
+        // Signed X: `Target creature gets -X/-X until end of turn.`
+        if (preg_match("/^({$targets}) gets ([+-])X\/([+-])(X|0) until end of turn$/i", $s, $m)
+            && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
+            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => [], 'xPump' => [$m[2] === '-' ? -1 : 1, $m[4] === '0' ? 0 : ($m[3] === '-' ? -1 : 1)], 'target' => self::TARGETS[strtolower($m[1])]];
+        }
         // `Target creature has base power and toughness 0/1 until end of turn.` (rule 613.4b); see Game::power().
         if (preg_match("/^({$targets}) has base power and toughness (\\d+)\\/(\\d+) until end of turn$/i", $s, $m)
             && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
@@ -2962,6 +2999,9 @@ final class TextParser
         }
         if (preg_match('/^(scry|surveil) (\d+)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'amount' => (int) $m[2]];
+        }
+        if (preg_match('/^regenerate (?:enchanted|equipped) creature$/i', $s)) {
+            return ['type' => 'regenerate', 'enchanted' => true];
         }
         if (preg_match('/^regenerate CARDNAME$/i', $s)) {
             return ['type' => 'regenerate', 'self' => true];
