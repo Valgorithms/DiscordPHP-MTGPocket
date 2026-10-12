@@ -675,6 +675,17 @@ final class TextParser
 
                 continue;
             }
+            // Snuff Out: `If you control a Swamp, you may pay 4 life rather than pay CARDNAME's mana cost.`, and casting free if you control a Dragon.
+            if (preg_match("/^(?:If you control an? ([A-Z][a-z]+), you may (?:pay (\\w+) life rather than pay CARDNAME's mana cost|cast CARDNAME without paying its mana cost)|You may cast CARDNAME without paying its mana cost if you control an? ([A-Z][a-z]+))\\.$/", $line, $pitch)
+                && (($pitch[2] ?? '') === '' || is_int(self::amount($pitch[2])))) {
+                $result['altCosts']['conditional'] = '';
+                $result['keywords'][] = 'conditional control '.(($pitch[1] ?? '') !== '' ? $pitch[1] : $pitch[3]);
+                if (($pitch[2] ?? '') !== '') {
+                    $result['keywords'][] = 'conditional life '.self::amount($pitch[2]);
+                }
+
+                continue;
+            }
             // Strive: `{2}{R}` more for each target beyond the first; see Game::paymentFor().
             if (preg_match('/^Strive — CARDNAME costs '.self::COST.' more to cast for each target beyond the first\.$/u', $line, $strive)) {
                 $result['altCosts']['strive'] = $strive[1];
