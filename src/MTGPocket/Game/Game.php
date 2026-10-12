@@ -1127,7 +1127,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending', 'conditional'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1187,7 +1187,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize', 'mh' => 'mayhem'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending', 'conditional'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1450,6 +1450,14 @@ final class Game
         // Spectacle (rule 702.137): an opponent lost life this turn.
         if ($options['alt'] === 'spectacle' && array_filter($this->players, fn (GamePlayer $other, int $otherSeat) => $otherSeat !== $seat && $other->lostLifeOnTurn === $this->turn, ARRAY_FILTER_USE_BOTH) === []) {
             return 'Spectacle needs an opponent to have lost life this turn.';
+        }
+        // `If you control a Swamp, you may pay 4 life rather than pay CARDNAME's mana cost.`
+        if ($options['alt'] === 'conditional') {
+            foreach ($card->keywords as $keyword) {
+                if (preg_match('/^conditional control (\w+)$/', $keyword, $m) && array_filter($this->permanents($seat), fn (GameObject $o) => in_array($m[1], $o->definition()->subtypes, true)) === []) {
+                    return "{$card->name} needs you to control a {$m[1]}.";
+                }
+            }
         }
         // Surge (rule 702.117): you've cast another spell this turn.
         if ($options['alt'] === 'surge' && ($player->castTurn !== $this->turn || $player->cast === 0)) {
@@ -1757,6 +1765,11 @@ final class Game
         }
         if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
             $tax -= $fodder->definition()->cost->manaValue();
+        }
+        foreach ($options['alt'] === 'conditional' ? $card->keywords : [] as $keyword) {
+            if (preg_match('/^conditional life (\d+)$/', $keyword, $m)) {
+                $wardLife += (int) $m[1];
+            }
         }
         // Affinity for artifacts (rule 702.41): {1} less for each artifact you control.
         if (! $options['faceDown'] && in_array('affinity for artifacts', $card->keywords, true)) {
