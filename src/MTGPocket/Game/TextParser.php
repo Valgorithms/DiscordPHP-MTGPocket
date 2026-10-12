@@ -1106,6 +1106,10 @@ final class TextParser
             } elseif (preg_match('/^[Pp]rotection from ([A-Z][a-z]+s)$/', $part, $m) && ($type = self::subtypeOf($m[1])) !== null && ! $spell) {
                 // Haytham Kenway: `Protection from Assassins`; see Game::protectedFrom().
                 $found['keywords'][] = "protection from sub:{$type}";
+            } elseif (preg_match('/^impending (\d+) ?— ?'.self::COST.'$/iu', $part, $m) && ! $spell) {
+                // Impending (rule 702.176): cast for less, a non-creature until its time counters are gone; see Game::isCreature().
+                $found['altCosts']['impending'] = $m[2];
+                $found['keywords'][] = "impending {$m[1]}";
             } elseif (preg_match('/^prototype '.self::COST.' — (\d+)\/(\d+)$/iu', $part, $m) && ! $spell) {
                 // Prototype (rule 702.160): cast smaller for less, see Game::prototype().
                 $found['altCosts']['prototype'] = $m[1];
@@ -2164,6 +2168,10 @@ final class TextParser
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
+        } elseif (preg_match('/^Whenever a creature dealt damage by CARDNAME this turn dies, (.+)$/', $line, $match)) {
+            // Sengir Vampire; see Game::moveTo().
+            $event = 'damaged_dies';
+            $text = $match[1];
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
