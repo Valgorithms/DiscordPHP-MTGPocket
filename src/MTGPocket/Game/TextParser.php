@@ -769,6 +769,16 @@ final class TextParser
 
             return true;
         }
+        // Stomped by the Foot: `If this spell was kicked, that creature gets -5/-5 until end of turn instead.`
+        if (preg_match('/^(?:that creature|it) gets ([+-]\d+)\/([+-]\d+) until end of turn instead$/', $match[1], $instead)) {
+            $last = array_key_last($result['effects']);
+            if ($last === null || $result['effects'][$last]['type'] !== 'pump' || ! isset($result['effects'][$last]['target'])) {
+                return false;
+            }
+            $result['effects'][$last]['kickedPT'] = [(int) $instead[1], (int) $instead[2]];
+
+            return true;
+        }
         $effects = self::effects($match[1]) ?? self::thatCreature(preg_replace('/^that creature also /', 'that creature ', $match[1]), $result['effects']);
         if ($effects === null) {
             return false;
@@ -1338,6 +1348,12 @@ final class TextParser
         }
         if (preg_match('/^As CARDNAME enters(?: the battlefield)?, you may pay (\d+) life\. If you don\'t, it enters(?: the battlefield)? tapped\.?$/', $line, $match)) {
             $result['tappedUnless'] = ['life' => (int) $match[1]];
+
+            return true;
+        }
+        // Ancient Amphitheater: `As CARDNAME enters, you may reveal a Giant card from your hand. If you don't, CARDNAME enters tapped.`
+        if (preg_match('/^As CARDNAME enters(?: the battlefield)?, you may reveal an? ([A-Z][a-z]+) card from your hand\. If you don\'t, (?:CARDNAME|it) enters(?: the battlefield)? tapped\.?$/', $line, $match)) {
+            $result['tappedUnless'] = ['reveal' => $match[1]];
 
             return true;
         }
@@ -3116,7 +3132,7 @@ final class TextParser
         if (preg_match('/^counter (target spell|target creature spell|target noncreature spell) unless its controller pays \{(\d+|X)\}$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])], 'unless' => '{'.$m[2].'}'];
         }
-        $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying'];
+        $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying', 'attacking creatures' => 'attacking', 'attacking creatures you control' => 'attacking'];
         $group = implode('|', array_keys($each));
         if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
@@ -3127,6 +3143,10 @@ final class TextParser
         }
         if (preg_match("/^({$group}) gain (.+?) until end of turn$/i", $s, $m) && ($keywords = self::keywordList($m[2])) !== null) {
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]];
+        }
+        // Shrewd Hatchling: `Target creature can't block CARDNAME this turn.`
+        if (preg_match("/^({$targets}) can't block CARDNAME this turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
+            return ['type' => 'cant_block_source', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // "Target creature can't block this turn": a restriction until end of turn.
         if (preg_match("/^({$targets}|CARDNAME|{$group}) (can't block|can't be blocked) this turn$/i", $s, $m)) {
@@ -3339,7 +3359,7 @@ final class TextParser
         $colors = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G', 'colorless' => null];
         $color = implode('|', array_keys($colors));
         if (! preg_match("/^create (\\w+) (\\d+)\\/(\\d+) ((?:{$color})(?:(?:, | and )(?:{$color}))*) ([A-Z][A-Za-z' ]*?) (artifact )?creature tokens?(?: with (.+))?$/i", $sentence, $m)
-            || ($count = self::amount($m[1])) === null || $count === 'X') {
+            || ($count = self::amount($m[1])) === null) {
             return null;
         }
         $keywords = self::keywordList($m[7] ?? '');

@@ -470,7 +470,10 @@ final class CardDefinition
             if ($kicked && isset($effect['kickedAmount'])) {
                 $effect['amount'] = $effect['kickedAmount'];
             }
-            unset($effect['kicked'], $effect['unkicked'], $effect['kickedAmount']);
+            if ($kicked && isset($effect['kickedPT'])) {
+                [$effect['power'], $effect['toughness']] = $effect['kickedPT'];
+            }
+            unset($effect['kicked'], $effect['unkicked'], $effect['kickedAmount'], $effect['kickedPT']);
             $effects[] = $effect;
         }
         sort($modes);
