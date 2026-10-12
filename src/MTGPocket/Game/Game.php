@@ -5466,6 +5466,14 @@ final class Game
                 }
             }
         }
+        // Channel, reinforce and the like: abilities activated by discarding the card from your hand.
+        foreach ($this->players[$seat]->hand as $id) {
+            foreach ($this->objects[$id]->definition()->activated as $index => $ability) {
+                if (($ability['hand'] ?? false) && $this->canActivate($seat, $id, $index)) {
+                    $abilities[] = [$id, $index];
+                }
+            }
+        }
 
         return $abilities;
     }
@@ -5512,7 +5520,11 @@ final class Game
     private function whyNotActivate(int $seat, int $id, int $index): ?string
     {
         $object = $this->objects[$id] ?? null;
-        if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $seat) {
+        $fromHand = (bool) ($object?->definition()->activated[$index]['hand'] ?? false);
+        if ($fromHand && ($object->zone !== GameObject::HAND || $object->owner !== $seat)) {
+            return 'That card is not in your hand.';
+        }
+        if (! $fromHand && ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $seat)) {
             return 'You do not control that permanent.';
         }
         $card = $object->definition();
@@ -5715,6 +5727,9 @@ final class Game
             $object->addCounters('loyalty', $cost['loyalty']);
         }
         $player->energy -= $cost['energy'] ?? 0;
+        if ($cost['discardSelf'] ?? false) {
+            $this->discardCards($seat, [$object->id]);
+        }
         // `Discard a card` as a cost, with ward's: the cheapest cards.
         $this->discardCheapest($seat, $wardDiscard + ($cost['discard'] ?? 0));
         if (isset($cost['remove'])) {
