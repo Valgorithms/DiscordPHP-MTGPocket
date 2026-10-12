@@ -2250,14 +2250,18 @@ final class TextParser
         } elseif (preg_match('/^(?:Heroic — )?Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
             $event = 'heroic';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast your third spell each turn, (.+)$/', $line, $match)) {
-            $event = 'third_spell';
-            $text = $match[1];
+        } elseif (preg_match('/^Whenever you cast your (second|third) spell each turn, (.+)$/', $line, $match)) {
+            $event = "{$match[1]}_spell";
+            $text = $match[2];
         } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
         } else {
             return false;
+        }
+        // `Whenever you cast your second spell each turn, copy it.`: the spell just cast.
+        if (str_starts_with($event, 'cast_') || in_array($event, ['second_spell', 'third_spell'], true)) {
+            $text = (string) preg_replace('/^copy it\./i', 'copy that spell.', $text);
         }
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {
             $text = $match[1];
@@ -2673,9 +2677,17 @@ final class TextParser
             return array_map(fn (int $i) => ['type' => 'divided', 'total' => $n, 'slot' => $i, 'target' => $i === 0 ? 'any' : '?any'], range(0, $slots - 1));
         }
         // Peppersmoke: `If you control a Faerie, draw a card.`; checked as it resolves (see Game::runSteps()).
-        if (preg_match('/^If you control an? ([A-Z][a-z]+), (.+)$/', $sentence, $m) && ($then = self::sentenceEffects($m[2])) !== null
+        if (preg_match('/^If you control an? ([A-Z][a-z]+|artifact|enchantment|creature|planeswalker), (.+)$/', $sentence, $m) && ($then = self::sentenceEffects($m[2])) !== null
             && array_filter($then, fn (array $effect) => isset($effect['target'])) === []) {
-            return array_map(fn (array $effect) => $effect + ['ifCondition' => "controls {$m[1]}"], $then);
+            return array_map(fn (array $effect) => $effect + ['ifCondition' => 'controls '.ucfirst($m[1])], $then);
+        }
+        // Tarkir: `If you cast CARDNAME during your main phase, …`; checked as it resolves.
+        if (preg_match('/^If you cast CARDNAME during your main phase, (.+)$/', $sentence, $m) && ($then = self::sentenceEffects($m[1])) !== null) {
+            return array_map(fn (array $effect) => $effect + ['ifCondition' => 'main_phase'], $then);
+        }
+        // `Whenever you cast an instant or sorcery spell, copy that spell.`: the spell that triggered it; see Game::trigger().
+        if (preg_match('/^copy that spell$/i', $sentence)) {
+            return [['type' => 'copy_spell', 'thatSpell' => true]];
         }
         // Support N (rule 701.41): a +1/+1 counter on each of up to N other target creatures.
         if (preg_match('/^support (\w+)$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1 && $n <= 5) {
