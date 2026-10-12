@@ -620,6 +620,12 @@ final class TextParser
                     continue;
                 }
             }
+            // Strive: `{2}{R}` more for each target beyond the first; see Game::paymentFor().
+            if (preg_match('/^Strive — CARDNAME costs '.self::COST.' more to cast for each target beyond the first\.$/u', $line, $strive)) {
+                $result['altCosts']['strive'] = $strive[1];
+
+                continue;
+            }
             if (($reveal = self::revealDiscard($line)) !== null) {
                 [$result['effects'][], $line] = $reveal;
             }
@@ -1051,9 +1057,9 @@ final class TextParser
             } elseif (preg_match('/^transmute '.self::COST.'$/i', $part, $m)) {
                 // Transmute (rule 702.53): discard it as a sorcery to search for a card with the same mana value; see Game::transmute().
                 $found['altCosts']['transmute'] = $m[1];
-            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle|cleave) '.self::COST.'$/i', $part, $m)) {
+            } elseif (preg_match('/^(dash|evoke|warp|plot|blitz|freerunning|surge|spectacle|cleave|web-slinging) '.self::COST.'$/i', $part, $m)) {
                 // Other ways to cast it: see Game::castOptions().
-                $found['altCosts'][strtolower($m[1])] = $m[2];
+                $found['altCosts'][str_replace('-', '', strtolower($m[1]))] = $m[2];
             } elseif (preg_match('/^echo '.self::COST.'$/i', $part, $m) && ! $spell) {
                 // Echo (rule 702.30): see Game::applyEffect().
                 $found['altCosts']['echo'] = $m[1];
@@ -1132,6 +1138,11 @@ final class TextParser
             } elseif (preg_match('/^saddle (\d+)$/i', $part, $m) && ! $spell) {
                 // Saddle (rule 702.171): like crew, but only as a sorcery, and it stays a creature.
                 $found['activated'][] = ['text' => $part, 'cost' => ['crew' => (int) $m[1]], 'effects' => [['type' => 'saddled', 'self' => true]], 'sorcery' => true, 'once' => false];
+            } elseif (preg_match('/^craft with (artifact|creature|land|[A-Z][a-z]+) '.self::COST.'$/i', $part, $m) && ! $spell
+                && (in_array(strtolower($m[1]), ['artifact', 'creature', 'land'], true) || self::subtypeOf($m[1]) !== null)) {
+                // Craft (rule 702.167): exile it and another artifact (yours, or a card from your graveyard), then return it transformed; see Game::craftMaterial().
+                $kind = in_array(strtolower($m[1]), ['artifact', 'creature', 'land'], true) ? strtolower($m[1]) : self::subtypeOf($m[1]);
+                $found['activated'][] = ['text' => $part, 'cost' => ['mana' => $m[2], 'craft' => $kind], 'effects' => [['type' => 'exile_transformed', 'self' => true]], 'sorcery' => true, 'once' => false];
             } elseif (preg_match('/^level up '.self::COST.'$/i', $part, $m) && ! $spell) {
                 $found['activated'][] = ['text' => $part, 'cost' => ['mana' => $m[1]], 'effects' => [['type' => 'level', 'self' => true]], 'sorcery' => true, 'once' => false];
             } else {
@@ -2531,6 +2542,10 @@ final class TextParser
         // A bounce land's `When this land enters, return a land you control to its owner's hand.`
         if (preg_match("/^return an? (land|creature|nonland permanent) you control to its owner's hand$/i", $sentence, $m)) {
             return [['type' => 'return_own', 'filter' => str_replace(' ', '_', strtolower($m[1]))]];
+        }
+        // Strive: `any number of target creatures`, read as up to three (a choice the game offers as optional targets).
+        if (preg_match('/\bany number of target /i', $sentence)) {
+            return self::sentenceEffects(preg_replace_callback('/\b(a)ny number of target /i', fn (array $m) => ($m[1] === 'A' ? 'U' : 'u').'p to three target ', $sentence));
         }
         // "Tap up to two target creatures": optional targets, `?kind` (see Game::isLegalTarget()).
         if (preg_match('/^(tap|untap) up to (\w+) target (.+)$/i', $sentence, $m) && is_int($n = self::amount($m[2])) && $n >= 1 && $n <= 5

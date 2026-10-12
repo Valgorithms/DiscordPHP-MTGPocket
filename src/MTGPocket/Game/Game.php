@@ -1013,7 +1013,7 @@ final class Game
             $disturb = isset($card->altCosts['disturb']) && $card->back !== null && ! $card->back->isAura();
             foreach (['mh' => isset($card->altCosts['mayhem']), 'hz' => isset($card->altCosts['harmonize']), 'es' => isset($card->altCosts['escape']), 'js' => in_array('jump-start', $card->keywords, true), 'rt' => in_array('retrace', $card->keywords, true), 'db' => $disturb] as $code => $has) {
                 foreach ($has ? self::castWays($card, false) : [] as $how) {
-                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
+                    if (! preg_match('/kick|dash|evoke|warp|morph|bestow|bargain|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging/', $how) && $this->canCast($seat, $id, $how = implode(',', array_filter([$code, $how])))) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
                 }
@@ -1038,7 +1038,7 @@ final class Game
                 }
             } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
-                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery/', $how)) {
+                    if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging/', $how)) {
                         continue;
                     }
                     $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
@@ -1106,7 +1106,7 @@ final class Game
         if (! $flashback && $card->bestow !== null) {
             $ways[] = 'bestow';
         }
-        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge'] as $alt) {
+        foreach (['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging'] as $alt) {
             if (! $flashback && isset($card->altCosts[$alt])) {
                 $ways[] = $alt;
             }
@@ -1163,7 +1163,7 @@ final class Game
                 $options['grave'] = ['es' => 'escape', 'js' => 'jumpstart', 'rt' => 'retrace', 'db' => 'disturb', 'hz' => 'harmonize', 'mh' => 'mayhem'][$part];
             } elseif ($part === 'morph') {
                 $options['faceDown'] = true;
-            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge'], true)) {
+            } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging'], true)) {
                 $options['alt'] = $part;
             } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
                 // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
@@ -1388,6 +1388,9 @@ final class Game
         // Miracle: while its reveal trigger would be resolving, at any speed.
         if ($options['alt'] === 'miracle' && ($object->zone !== GameObject::HAND || $object->miracle !== $this->turn.':'.$this->step->name)) {
             return "{$card->name} can be cast for its miracle cost only right after it is drawn as your first card this turn.";
+        }
+        if ($options['alt'] === 'webslinging' && $this->webslinger($seat, $id) === null) {
+            return "Web-slinging {$card->name} needs a tapped creature you control to return to your hand.";
         }
         if ($options['alt'] === 'emerge' && $this->emergeFodder($seat, $id) === null) {
             return "{$card->name} needs a creature to sacrifice to emerge.";
@@ -1768,6 +1771,10 @@ final class Game
             }
         }
         $cost = self::castCost($card, $options).$this->spliceCost($options['splice']).$wardMana.($options['faceDown'] ? '' : $this->orPay($seat, $id, $card));
+        // Strive (an ability word): more for each target beyond the first.
+        if (isset($card->altCosts['strive']) && $targets !== null) {
+            $cost .= str_repeat($card->altCosts['strive'], max(0, count(array_filter($targets, fn ($target) => $target !== '-')) - 1));
+        }
         $convoke = ! $options['faceDown'] && in_array('convoke', $card->keywords, true);
         $improvise = ! $options['faceDown'] && in_array('improvise', $card->keywords, true);
         // Delve (rule 702.66): cards exiled from your graveyard pay for generic mana, as many as can help.
@@ -2096,6 +2103,10 @@ final class Game
         }
         if ($conspirators !== null) {
             $this->log("{$this->players[$seat]->name} taps ".implode(' and ', array_map(fn (GameObject $o) => $o->name(), $conspirators)).' (conspire).');
+        }
+        if ($options['alt'] === 'webslinging' && ($slinger = $this->webslinger($seat, $id)) !== null) {
+            $this->log("{$this->players[$seat]->name} returns {$slinger->name()} to their hand (web-slinging).");
+            $this->moveTo($slinger, GameObject::HAND);
         }
         if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to emerge.");
@@ -5633,10 +5644,47 @@ final class Game
             return 'You have no card to discard.';
         }
         if (isset($cost['fodder']) && $this->fodder($seat, $object, $cost['fodder']) === null) {
-            return 'You have no creature to sacrifice.';
+            return 'You have no '.(str_ends_with($cost['fodder'], ' artifact') ? 'artifact' : 'creature').' to sacrifice.';
+        }
+        if (isset($cost['craft']) && $this->craftMaterial($seat, $object, $cost['craft']) === null) {
+            return "You have no {$cost['craft']} to craft {$object->name()} with.";
         }
 
         return null;
+    }
+
+    /**
+     * The tapped creature web-slinging returns to its owner's hand: the weakest.
+     *
+     * @param int $seat
+     * @param int $id   The spell being cast.
+     *
+     * @return GameObject|null
+     */
+    private function webslinger(int $seat, int $id): ?GameObject
+    {
+        return $this->weakest($seat, fn (GameObject $o) => $o->id !== $id && $o->tapped && $this->isCreature($o));
+    }
+
+    /**
+     * What Craft (rule 702.167) exiles: a card of that kind from your graveyard, else the weakest other such permanent you control.
+     *
+     * @param int        $seat
+     * @param GameObject $source
+     * @param string     $kind   `artifact`, `creature`, `land`, or a subtype.
+     *
+     * @return GameObject|null
+     */
+    private function craftMaterial(int $seat, GameObject $source, string $kind): ?GameObject
+    {
+        $fits = fn (GameObject $o) => $o->id !== $source->id && (in_array($kind, ['artifact', 'creature', 'land'], true) ? $o->definition()->is(ucfirst($kind)) : in_array($kind, $o->definition()->subtypes, true));
+        foreach ($this->players[$seat]->graveyard as $id) {
+            if ($fits($this->objects[$id])) {
+                return $this->objects[$id];
+            }
+        }
+
+        return $this->weakest($seat, $fits);
     }
 
     /**
@@ -5748,6 +5796,10 @@ final class Game
         if (isset($cost['fodder']) && ($fodder = $this->fodder($seat, $object, $cost['fodder'])) !== null) {
             $this->log("{$player->name} sacrifices {$fodder->name()}.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
+        }
+        if (isset($cost['craft']) && ($material = $this->craftMaterial($seat, $object, $cost['craft'])) !== null) {
+            $this->log("{$player->name} exiles {$material->name()} to craft {$object->name()}.");
+            $this->moveTo($material, GameObject::EXILE);
         }
         $effects = $ability['effects'];
         if ($cost['station'] ?? false) {

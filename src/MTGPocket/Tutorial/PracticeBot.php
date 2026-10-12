@@ -157,14 +157,24 @@ final class PracticeBot
                 if (! $card->isPermanentCard() && in_array('pump', array_column($effects, 'type'), true) && array_intersect(array_column($effects, 'type'), self::HARMFUL) === []) {
                     continue;
                 }
-                $targets = self::targets($game, $seat, Game::castTargetKinds($card, ''), $effects);
+                $kinds = Game::castTargetKinds($card, '');
+                $targets = self::targets($game, $seat, $kinds, $effects);
                 if ($targets === null) {
                     continue;
                 }
                 try {
                     $game->cast($seat, $play['id'], 0, $targets);
                 } catch (GameException) {
-                    continue;
+                    // Strive: extra optional targets cost more; try with just the first.
+                    $fewer = array_map(fn ($target, $slot) => $slot > 0 && str_starts_with($kinds[$slot] ?? '', '?') ? '-' : $target, $targets, array_keys($targets));
+                    if ($fewer === $targets) {
+                        continue;
+                    }
+                    try {
+                        $game->cast($seat, $play['id'], 0, $fewer);
+                    } catch (GameException) {
+                        continue;
+                    }
                 }
 
                 return true;
