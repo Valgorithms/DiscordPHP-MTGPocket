@@ -4014,6 +4014,12 @@ final class Game
                 $this->moveTo($affected, GameObject::HAND);
                 break;
 
+            case 'cant_block_source':
+                if ($affected !== null) {
+                    $affected->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ["can't block o{$source->id}"]];
+                }
+                break;
+
             case 'pump':
             case 'base_pt':
                 // Goblin Piledriver: `… for each other attacking Goblin.`
@@ -4030,6 +4036,7 @@ final class Game
                     'yours' => $this->permanents($controller),
                     'opponents' => array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller),
                     'without_flying' => array_filter($this->permanents(), fn (GameObject $o) => ! $this->hasKeyword($o, 'flying')),
+                    'attacking' => array_filter($this->permanents(), fn (GameObject $o) => isset($this->attackers[$o->id])),
                     default => $this->permanents(),
                 };
                 foreach ($pumped as $object) {
@@ -6422,6 +6429,10 @@ final class Game
         if (! isset($this->attackers[$attacker->id]) || $attacker->zone !== GameObject::BATTLEFIELD) {
             return false;
         }
+        // `Target creature can't block CARDNAME this turn.`
+        if ($this->hasKeyword($blocker, "can't block o{$attacker->id}")) {
+            return false;
+        }
         if ($this->hasKeyword($attacker, 'flying') && ! $this->hasKeyword($blocker, 'flying') && ! $this->hasKeyword($blocker, 'reach')) {
             return false;
         }
@@ -7257,6 +7268,9 @@ final class Game
     private function entersUntapped(GameObject $object, int $controller): bool
     {
         $unless = $object->definition()->entersTappedUnless;
+        if (isset($unless['reveal'])) {
+            return array_filter($this->players[$controller]->hand, fn (int $id) => $id !== $object->id && in_array($unless['reveal'], $this->objects[$id]->printed()->subtypes, true)) !== [];
+        }
         if (isset($unless['player_life'])) {
             return min(array_map(fn (GamePlayer $player) => $player->life, $this->players)) <= $unless['player_life'];
         }
