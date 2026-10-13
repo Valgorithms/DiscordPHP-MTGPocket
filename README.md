@@ -6,7 +6,7 @@ Planned features:
 
 1. **Foundation** (done): the project, the card pool import, and JSON storage for players, inventories, decks and side decks.
 2. **Packs and collection** (done): one free pack a day. A pack is one set plus one color, and every pack holds at least one rare or mythic rare. Commands to view your collection and build decks.
-3. **Rules engine and matches** (done): full Magic rules, played through Discord buttons and menus: opening hands, turns, priority and the stack, mana, casting, combat, state-based actions, and triggered, activated and loyalty abilities with tokens and Equipment. More card text is read in later releases.
+3. **Rules engine and matches** (implemented with partial card and rules support): played through Discord buttons and menus: opening hands, turns, priority and the stack, mana, casting, combat, state-based actions, and triggered, activated and loyalty abilities with tokens and Equipment. Unrecognized abilities are reported to players; recognized text does not by itself establish complete gameplay support. See [the architecture review and continuation priorities](docs/rules-engine-continuation.md).
 4. **Matchmaking and game modes** (done): ranked queues and a ratings ladder for each mode, friendly challenges, deck rules and a card library for each mode (Commander included), rental decks, and points from ranked games and daily and weekly quests.
 
 Also in: **trading and the points shop**. Players trade cards and points with each other, sell cards they don't need for points, and spend points on single cards or on packs of one color of one set.
