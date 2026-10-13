@@ -23,7 +23,8 @@ use MTGPocket\Game\GameException;
  * kept on the match until the last one casts it. Abilities are activated
  * the same way (pick the ability, then each target), and so are targets
  * picked for a triggered ability. Attackers and blockers are picked first
- * and declared with a button.
+ * and declared with a button. Land-entry life payments use the saved choice ID
+ * so repeated or stale controls cannot pay twice.
  *
  * Kept apart from Discord so the flow can be tested without it.
  *
@@ -68,6 +69,7 @@ final class PanelActions
             'keepall' => $act(fn (Game $game, int $seat) => $game->arrange($seat, [])),
             'take' => $act(fn (Game $game, int $seat) => $game->take($seat, $ints)),
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
+            'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'mode' => $act(fn (Game $game, int $seat) => $game->chooseMode($seat, (int) ($values[0] ?? 0))),
             'pass' => $act(fn (Game $game, int $seat) => $game->pass($seat)),
             'auto' => [$this->matches->act($matchId, $playerId, fn (Game $game, int $seat) => $game->setAutoPass($seat, ! ($game->autoPass[$seat] ?? true))), false],

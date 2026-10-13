@@ -468,6 +468,43 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame([], $match->game->choiceAwaiting() ?? []);
     }
 
+    public function testEntryLifePanelPersistsItsChoiceAndRejectsWrongOrRepeatedAnswers(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[$match->game->opponent($seat)]->id;
+        $id = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$id): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $id = $game->addCard($seat, ['uuid' => 'pool-fixture', 'name' => 'Breeding Pool', 'type' => 'Land — Forest Island',
+                'text' => "As this land enters, you may pay 2 life. If you don't, it enters tapped.\n{T}: Add {G} or {U}."], GameObject::HAND)->id;
+        });
+        [$match, $changed] = $panel->run($match->id, $player, 'play', [], [(string) $id]);
+        $this->assertTrue($changed);
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('entry_life', $choice['type']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('Pay 2 life', $json);
+        $this->assertStringContainsString("Don't pay", $json);
+        $this->assertStringContainsString('entrylife:'.$choice['id'].':pay', $json);
+        $this->assertStringNotContainsString('entrylife:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        $this->assertException(fn () => $panel->run($match->id, $other, 'entrylife', [(string) $choice['id'], 'pay']), 'no longer available');
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        [$match, $changed] = $panel->run($match->id, $player, 'entrylife', [(string) $choice['id'], 'pay']);
+        $this->assertTrue($changed);
+        $this->assertSame(18, $match->game->players[$seat]->life);
+        $this->assertFalse($match->game->objects[$id]->tapped);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'entrylife', [(string) $choice['id'], 'pay']), 'no longer available');
+        $this->assertSame(18, $this->pocket->matches->find($match->id)->game->players[$seat]->life);
+    }
+
     private function modifyGame(MatchRecord $match, callable $change): MatchRecord
     {
         $repository = new \MTGPocket\Repository\MatchRepository($this->pocket->store);

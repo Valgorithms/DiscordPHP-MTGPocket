@@ -77,13 +77,21 @@ final class Game
     public array $pendingTriggers = [];
 
     /**
-     * A choice a player makes in the middle of a spell or ability resolving:
-     * the cards they look at to scry or surveil, top first, and what is left
-     * to do once they have chosen (`resume`).
+     * A rules decision, including an as-enters life payment. Resolution
+     * waits for the responsible player; `resume` stores the remaining steps.
      *
-     * @var array{type: string, seat: int, cards: int[], resume?: array}|null
+     * @var array{type: string, seat: int, cards?: int[], id?: int, options?: string[], resume?: array}|null
      */
     public ?array $pendingChoice = null;
+
+    /** Persisted rules-state format; unversioned records are version 1. */
+    public const int STATE_VERSION = 2;
+
+    /** @var array<int, array> Entries waiting for an as-enters life choice. */
+    private array $pendingEntries = [];
+
+    /** Monotonic identity prevents an old panel from answering a later choice. */
+    private int $nextChoiceId = 1;
 
     /** Target kinds for cards in a graveyard. */
     private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard'];
@@ -532,7 +540,7 @@ final class Game
     {
         for ($guard = 0; $guard < 1000 && $this->stage === self::PLAYING && $this->pendingChoice === null; $guard++) {
             $this->checkStateBasedActions();
-            if ($this->stage !== self::PLAYING || $this->priority === null) {
+            if ($this->stage !== self::PLAYING || $this->priority === null || $this->pendingChoice !== null) {
                 return;
             }
             if ($this->flushTriggers() || ! $this->shouldAutoPass($this->priority)) {
@@ -3539,6 +3547,11 @@ final class Game
      */
     private function runSteps(array $item, array $steps, ?array $self): void
     {
+        if ($this->pendingChoice !== null) {
+            $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
+
+            return;
+        }
         $source = $this->objects[$item['object']];
         $permanent = $self === null ? null : $this->objects[$self[0]];
         if ($permanent !== null && ($permanent->zone !== GameObject::BATTLEFIELD || $permanent->incarnation !== $self[1])) {
@@ -3569,7 +3582,9 @@ final class Game
                 continue;
             }
             if ($this->applyEffect($effect, $source, $permanent, $item['controller'], $item['x'], $target)) {
-                $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self];
+                $steps = array_merge($this->pendingChoice['nestedSteps'] ?? [], $steps);
+                unset($this->pendingChoice['nestedSteps']);
+                $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
 
                 return;
             }
@@ -3760,9 +3775,9 @@ final class Game
     }
 
     /**
-     * The cards a player is looking at to scry or surveil, top first.
+     * The current engine-owned decision and its legal options.
      *
-     * @return array{type: string, seat: int, cards: int[]}|null
+     * @return array|null
      */
     public function choiceAwaiting(): ?array
     {
@@ -3844,6 +3859,7 @@ final class Game
         }
         $player = $this->players[$seat];
         $to = $choice['to'] ?? 'hand';
+        $this->pendingChoice = null;
         foreach ($ids as $id) {
             if ($to === 'top') {
                 // The Harbingers: stays in the library, put on top after the shuffle.
@@ -3853,8 +3869,7 @@ final class Game
                 $this->moveTo($this->objects[$id], GameObject::HAND);
             } else {
                 // `You may put a land card from among them onto the battlefield tapped.`
-                $this->putOntoBattlefield($this->objects[$id], $seat);
-                $this->objects[$id]->tapped = $this->objects[$id]->tapped || $to === 'tapped';
+                $this->putOntoBattlefield($this->objects[$id], $seat, tapped: $to === 'tapped');
             }
         }
         $rest = array_values(array_diff($choice['cards'], $ids));
@@ -3869,7 +3884,6 @@ final class Game
                 array_unshift($player->library, $id);
             }
         }
-        $this->pendingChoice = null;
         if ($choice['rest'] === 'library') {
             // A tutor: the rest stay in the library, which is then shuffled.
             $this->log("{$player->name} searches their library".($ids === [] ? ' and takes nothing.' : ' for '.$this->objects[$ids[0]]->name().'.'), $seat);
@@ -4432,12 +4446,9 @@ final class Game
 
             case 'reanimate':
                 if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($affected, $controller);
+                    $this->putOntoBattlefield($affected, $controller, entryState: isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []);
                     $this->log("{$affected->name()} returns to the battlefield.");
                     $this->followed = [(string) $target => "o:{$affected->id}:{$affected->incarnation}"];
-                    if (isset($effect['endStep'])) {
-                        $affected->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
-                    }
                 }
                 break;
 
@@ -4579,8 +4590,7 @@ final class Game
 
             case 'regrow':
                 if ($source->zone === GameObject::GRAVEYARD && isset($source->printed()->altCosts['regrowTo'])) {
-                    $this->putOntoBattlefield($source, $source->owner);
-                    $source->tapped = $source->printed()->altCosts['regrowTo'] === 'battlefield_tapped';
+                    $this->putOntoBattlefield($source, $source->owner, tapped: $source->printed()->altCosts['regrowTo'] === 'battlefield_tapped');
                     $this->log("{$source->name()} returns to the battlefield.");
                 } elseif ($source->zone === GameObject::GRAVEYARD) {
                     $this->moveTo($source, GameObject::HAND);
@@ -4590,9 +4600,7 @@ final class Game
 
             case 'ninjutsu':
                 if ($source->zone === GameObject::HAND && in_array($this->step, [Step::DeclareBlockers, Step::CombatDamage, Step::FirstStrikeDamage], true)) {
-                    $this->putOntoBattlefield($source, $controller);
-                    $source->tapped = true;
-                    $this->attackers[$source->id] = true;
+                    $this->putOntoBattlefield($source, $controller, tapped: true, entryState: ['attacking' => true]);
                     $this->log("{$source->name()} enters tapped and attacking.");
                 }
                 break;
@@ -4656,9 +4664,7 @@ final class Game
 
             case 'unearth':
                 if ($source->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($source, $controller);
-                    $source->unearthed = true;
-                    $source->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
+                    $this->putOntoBattlefield($source, $controller, entryState: ['unearthed' => true]);
                     $this->log("{$source->name()} returns to the battlefield with haste.");
                 }
                 break;
@@ -4699,8 +4705,7 @@ final class Game
             case 'land_from_hand':
                 $land = array_values(array_filter($this->players[$controller]->hand, fn (int $id) => $this->objects[$id]->printed()->isLand()))[0] ?? null;
                 if ($land !== null) {
-                    $this->putOntoBattlefield($this->objects[$land], $controller);
-                    $this->objects[$land]->tapped = $this->objects[$land]->tapped || ($effect['tapped'] ?? false);
+                    $this->putOntoBattlefield($this->objects[$land], $controller, tapped: $effect['tapped'] ?? false);
                     $this->log("{$this->players[$controller]->name} puts {$this->objects[$land]->name()} onto the battlefield from their hand.");
                 }
                 break;
@@ -4720,13 +4725,11 @@ final class Game
             case 'copy_token':
                 // A copy of its printed card (rule 707.2), as a token.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
-                    $copy = $this->createToken($affected->printed()->card, $controller);
-                    if ($effect['haste'] ?? false) {
-                        $copy->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
-                    }
-                    if (isset($effect['endStep'])) {
-                        $copy->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
-                    }
+                    $copy = $this->createToken(
+                        $affected->printed()->card,
+                        $controller,
+                        ['haste' => $effect['haste'] ?? false] + (isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : [])
+                    );
                     $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()}.");
                 }
                 break;
@@ -5031,8 +5034,17 @@ final class Game
                         $this->pay($controller, $payment);
                     }
                     $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$source->name()}.");
-                    foreach ($effect['then'] as $then) {
-                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                    $remaining = $effect['then'];
+                    while ($remaining !== []) {
+                        $then = array_shift($remaining);
+                        if ($this->applyEffect($then, $source, $self, $controller, $x, $target)) {
+                            $this->pendingChoice['nestedSteps'] = array_merge(
+                                $this->pendingChoice['nestedSteps'] ?? [],
+                                array_map(fn (array $next) => [$next, $target], $remaining)
+                            );
+
+                            return true;
+                        }
                     }
                 }
                 break;
@@ -5127,7 +5139,7 @@ final class Game
                 break;
         }
 
-        return false;
+        return $this->pendingChoice !== null;
     }
 
     /**
@@ -5240,7 +5252,7 @@ final class Game
         $found = array_values(array_filter($player->library, function (int $id) use ($find) {
             $card = $this->objects[$id]->definition();
 
-            return $card->isLand() && ($find === 'basic land' ? in_array('Basic', $card->supertypes, true) : in_array($find, $card->subtypes, true));
+            return ! in_array($id, array_column($this->pendingEntries, 'object'), true) && $card->isLand() && ($find === 'basic land' ? in_array('Basic', $card->supertypes, true) : in_array($find, $card->subtypes, true));
         }));
         if ($found === []) {
             $this->log("{$player->name} searches their library and finds nothing.");
@@ -5274,8 +5286,7 @@ final class Game
         if ($to === 'hand') {
             $this->moveTo($land, GameObject::HAND);
         } else {
-            $this->putOntoBattlefield($land, $seat);
-            $land->tapped = $land->tapped || $to === 'tapped';
+            $this->putOntoBattlefield($land, $seat, tapped: $to === 'tapped');
         }
         $this->log("{$player->name} searches their library for {$land->name()} and puts it ".($to === 'hand' ? 'into their hand' : 'onto the battlefield'.($to === 'tapped' ? ' tapped' : '')).'.');
         $this->shuffle($seat);
@@ -5290,11 +5301,11 @@ final class Game
      *
      * @return GameObject
      */
-    private function createToken(array $token, int $controller): GameObject
+    private function createToken(array $token, int $controller, array $entryState = []): GameObject
     {
         $object = new GameObject($this->nextId++, $controller, ['token' => true] + $token, GameObject::GONE);
         $this->objects[$object->id] = $object;
-        $this->putOntoBattlefield($object, $controller);
+        $this->putOntoBattlefield($object, $controller, entryState: $entryState);
 
         return $object;
     }
@@ -7407,11 +7418,28 @@ final class Game
      * @param bool       $triggers   Whether its "enters" abilities trigger.
      * @param bool       $faceDown
      * @param bool       $kicked
+     * @param array{alt?: string, unearthed?: bool, haste?: bool, counters?: array<string, int>, attacking?: bool} $entryState State applied after entering, including after a saved decision.
      *
      * @return void
      */
-    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true, bool $faceDown = false, bool $kicked = false, int $x = 0, bool $transformed = false): void
+    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true, bool $faceDown = false, bool $kicked = false, int $x = 0, bool $transformed = false, bool $tapped = false, ?bool $payLife = null, array $entryState = []): void
     {
+        // A land's optional payment is chosen before it changes zones. Other
+        // entries in this batch wait too; no entry triggers fire prematurely.
+        $card = $object->printed();
+        if ($payLife === null && $this->stage === self::PLAYING &&
+            (($this->pendingChoice['type'] ?? null) === 'entry_life' || (! $faceDown && $card->isLand() && isset($card->entersTappedUnless['life'])))) {
+            $this->pendingEntries[] = [
+                'object' => $object->id, 'incarnation' => $object->incarnation, 'zone' => $object->zone,
+                'controller' => $controller, 'triggers' => $triggers, 'faceDown' => $faceDown,
+                'kicked' => $kicked, 'x' => $x, 'transformed' => $transformed, 'tapped' => $tapped, 'entryState' => $entryState,
+            ];
+            if ($this->pendingChoice === null) {
+                $this->advanceEntries();
+            }
+
+            return;
+        }
         $this->removeFromZone($object);
         $object->moveTo(GameObject::BATTLEFIELD);
         $object->faceDown = $faceDown;
@@ -7426,7 +7454,8 @@ final class Game
         $object->controller = $controller;
         $object->sick = true;
         $object->prepared = ! $faceDown && in_array('enters prepared', $card->keywords, true) && $card->prepare !== null;
-        $object->tapped = $card->entersTapped || ($card->entersTappedUnless !== null && ! $this->entersUntapped($object, $controller));
+        $untapped = $card->entersTappedUnless === null || $this->entersUntapped($object, $controller, $payLife ?? false);
+        $object->tapped = $tapped || $card->entersTapped || ! $untapped;
         if ($card->isPlaneswalker() && $card->loyalty !== null) {
             $object->addCounters('loyalty', $card->loyalty);
         }
@@ -7467,6 +7496,17 @@ final class Game
                     break;
                 }
             }
+        }
+        $object->alt = $entryState['alt'] ?? null;
+        $object->unearthed = $entryState['unearthed'] ?? false;
+        if ($object->unearthed || ($entryState['haste'] ?? false)) {
+            $object->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
+        }
+        foreach ($entryState['counters'] ?? [] as $kind => $count) {
+            $object->addCounters($kind, $count);
+        }
+        if ($entryState['attacking'] ?? false) {
+            $this->attackers[$object->id] = true;
         }
         $this->battlefield[] = $object->id;
         if ($triggers) {
@@ -7512,6 +7552,87 @@ final class Game
     }
 
     /**
+     * Answers an optional land-entry payment using the current choice id.
+     * Invalid, stale, repeated and other-player answers change nothing.
+     *
+     * @param int    $seat
+     * @param int    $choiceId
+     * @param string $option `pay` or `decline`, from choiceAwaiting()['options'].
+     *
+     * @return void
+     */
+    public function chooseEntryLife(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || $choice === null || $choice['type'] !== 'entry_life' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That entry choice is no longer available to you.');
+        }
+        $entry = $this->pendingEntries[0];
+        $object = $this->objects[$entry['object']];
+        if ($object->zone !== $entry['zone'] || $object->incarnation !== $entry['incarnation'] ||
+            ($option === 'pay' && $this->players[$seat]->life < $choice['life'])) {
+            throw new GameException('That entry choice is no longer legal.');
+        }
+        $this->followed = $choice['resume']['followed'] ?? [];
+        $this->pendingChoice = null;
+        array_shift($this->pendingEntries);
+        $this->finishEntry($entry, $option === 'pay');
+        $this->advanceEntries();
+        if (isset($choice['resume'])) {
+            $resume = $choice['resume'];
+            $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        }
+        $this->settle();
+    }
+
+    /** Starts the next entry decision, or completes entries without choices. */
+    private function advanceEntries(): void
+    {
+        while ($this->pendingEntries !== []) {
+            $entry = $this->pendingEntries[0];
+            $object = $this->objects[$entry['object']];
+            $life = $entry['faceDown'] ? null : ($object->printed()->entersTappedUnless['life'] ?? null);
+            if ($life !== null && $object->printed()->isLand()) {
+                $this->pendingChoice = [
+                    'type' => 'entry_life', 'id' => $this->nextChoiceId++, 'seat' => $entry['controller'],
+                    'object' => $object->id, 'label' => $object->name(), 'life' => $life,
+                    'options' => $this->players[$entry['controller']]->life >= $life ? ['pay', 'decline'] : ['decline'],
+                    'min' => 1, 'max' => 1, 'tapped' => $entry['tapped'] || $object->printed()->entersTapped,
+                ];
+
+                return;
+            }
+            array_shift($this->pendingEntries);
+            $this->finishEntry($entry, false);
+        }
+    }
+
+    /** Applies one saved entry exactly once, after its replacement decision. */
+    private function finishEntry(array $entry, bool $payLife): void
+    {
+        $before = "o:{$entry['object']}:{$entry['incarnation']}";
+        $this->putOntoBattlefield(
+            $this->objects[$entry['object']],
+            $entry['controller'],
+            $entry['triggers'],
+            $entry['faceDown'],
+            $entry['kicked'],
+            $entry['x'],
+            $entry['transformed'],
+            $entry['tapped'],
+            $payLife,
+            $entry['entryState'] ?? []
+        );
+        foreach ($this->followed as $target => $replacement) {
+            if ($replacement === $before) {
+                $object = $this->objects[$entry['object']];
+                $this->followed[$target] = "o:{$object->id}:{$object->incarnation}";
+            }
+        }
+    }
+
+    /**
      * What a player chooses as a permanent enters: the creature type most
      * common among their creature cards, or the color most common in their
      * cards' mana costs.
@@ -7549,15 +7670,15 @@ final class Game
 
     /**
      * Whether a land that enters tapped unless something is true enters
-     * untapped. The game pays the life for the player only on their own
-     * turn, when they have more than 10 life.
+     * untapped. Optional life payment is supplied by the validated entry
+     * decision, never selected by the rules engine.
      *
      * @param GameObject $object
      * @param int        $controller
      *
      * @return bool
      */
-    private function entersUntapped(GameObject $object, int $controller): bool
+    private function entersUntapped(GameObject $object, int $controller, bool $payLife = false): bool
     {
         $unless = $object->definition()->entersTappedUnless;
         if (isset($unless['reveal'])) {
@@ -7567,12 +7688,12 @@ final class Game
             return min(array_map(fn (GamePlayer $player) => $player->life, $this->players)) <= $unless['player_life'];
         }
         if (isset($unless['life'])) {
-            if ($this->active !== $controller || $this->players[$controller]->life <= 10) {
+            if (! $payLife) {
                 return false;
             }
             $this->players[$controller]->life -= $unless['life'];
             $this->players[$controller]->lostLifeOnTurn = $this->turn;
-            $this->log("{$this->players[$controller]->name} pays {$unless['life']} life so {$object->name()} enters untapped.");
+            $this->log("{$this->players[$controller]->name} pays {$unless['life']} life as {$object->name()} enters.");
 
             return true;
         }
@@ -7732,8 +7853,7 @@ final class Game
             }
         }
         if ($returns !== null && $object->zone === GameObject::GRAVEYARD) {
-            $this->putOntoBattlefield($object, $object->owner);
-            $object->addCounters($returns, 1);
+            $this->putOntoBattlefield($object, $object->owner, entryState: ['counters' => [$returns => 1]]);
             $this->log("{$object->name()} returns to the battlefield with a {$returns} counter.");
         }
     }
@@ -8746,6 +8866,7 @@ final class Game
     public function toArray(): array
     {
         return [
+            'schemaVersion' => self::STATE_VERSION,
             'id' => $this->id,
             'seed' => $this->seed,
             'stage' => $this->stage,
@@ -8761,6 +8882,8 @@ final class Game
             'stack' => $this->stack,
             'pendingTriggers' => $this->pendingTriggers,
             'pendingChoice' => $this->pendingChoice,
+            'pendingEntries' => $this->pendingEntries,
+            'nextChoiceId' => $this->nextChoiceId,
             'exile' => $this->exile,
             'command' => $this->command,
             'commanders' => array_map(fn ($id, $casts) => [$id, $casts], array_keys($this->commanders), $this->commanders),
@@ -8796,6 +8919,10 @@ final class Game
 
     public static function fromArray(array $data): self
     {
+        $version = $data['schemaVersion'] ?? 1;
+        if (! is_int($version) || $version < 1 || $version > self::STATE_VERSION) {
+            throw new GameException('Unsupported saved game schema version.');
+        }
         $game = new self((string) $data['id'], (string) $data['seed']);
         $game->stage = (string) $data['stage'];
         $game->turn = (int) $data['turn'];
@@ -8853,6 +8980,17 @@ final class Game
             'text' => (string) ($trigger['text'] ?? ''),
         ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : []), (array) ($data['pendingTriggers'] ?? [])));
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
+        $game->pendingEntries = array_values((array) ($data['pendingEntries'] ?? []));
+        $game->nextChoiceId = (int) ($data['nextChoiceId'] ?? 1);
+        if (($game->pendingChoice['type'] ?? null) === 'entry_life') {
+            $choice = $game->pendingChoice;
+            $entry = $game->pendingEntries[0] ?? null;
+            if ($version < 2 || $entry === null || ! isset($game->objects[$entry['object'] ?? -1]) ||
+                ($choice['object'] ?? null) !== $entry['object'] || ($choice['seat'] ?? null) !== ($entry['controller'] ?? null) ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id']) {
+                throw new GameException('Invalid saved entry choice.');
+            }
+        }
         $game->exile = array_map('intval', (array) $data['exile']);
         $game->command = array_map('intval', (array) ($data['command'] ?? []));
         foreach ((array) ($data['commanders'] ?? []) as [$id, $casts]) {

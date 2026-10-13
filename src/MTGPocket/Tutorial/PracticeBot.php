@@ -99,6 +99,12 @@ final class PracticeBot
                 $game->chooseTriggerTargets($seat, self::targets($game, $seat, $trigger['kinds'], $trigger['effects'], $trigger['source'], true) ?? []);
 
                 return true;
+            case 'entry_life':
+                $choice = $game->choiceAwaiting();
+                $pay = in_array('pay', $choice['options'], true) && ! $choice['tapped'] && $game->players[$seat]->life > 10;
+                $game->chooseEntryLife($seat, $choice['id'], $pay ? 'pay' : 'decline');
+
+                return true;
             case 'scry':
             case 'surveil':
                 $game->arrange($seat, []);

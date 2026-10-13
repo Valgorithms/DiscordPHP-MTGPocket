@@ -31,6 +31,16 @@ These are recommendations, not completed implementation:
 
 For each family, use actual card wording plus engine tests for successful resolution and negative controls: targeting, controller restrictions, payment, timing, target changes before resolution, and save/resume where relevant. Reuse repository CI and temporary/injected test fixtures; never use live services in tests. Preserve the CLI/ReactPHP runtime and unrelated Composer wiring.
 
+## Implemented first choice milestone
+
+Optional land-entry life payments now use an explicit engine decision before the land enters. The decision records the responsible player, legal options, selection bounds and a monotonic choice identity; the saved entry queue and remaining resolution steps resume after restart. Invalid, wrong-player, repeated and stale answers are rejected without a saved mutation. Forced-tapped entries remain tapped even if the player pays; payment is offered on either player's turn whenever the controller has enough life.
+
+Discord panels route these answers through the engine and persisted match transaction. The practice bot makes its own conservative selection using the same API, rather than embedding policy in the rules engine. Entry triggers wait for the answer, and later spell effects wait for the entry.
+
+Saved games now carry `schemaVersion: 2`. Unversioned/version-1 games load with defaults for the new entry queue and choice counter; newer or invalid versions are rejected. Older bot builds cannot safely resume version-2 pending entry choices: keep the upgraded code when resuming them.
+
+[EntryLifeChoiceTest](../tests/Game/EntryLifeChoiceTest.php) covers acceptance/decline, low/insufficient/equal life, other-turn resolution, save/resume, forced tapping, batched selected entries, stale/repeated/wrong-player actions, trigger ordering, nested paid continuations, reanimation/unearth entry instructions, practice-bot decisions and legacy/future state versions. [MatchesTest](../tests/MatchesTest.php) exercises serialized controls and persisted interaction routing using temporary storage. This milestone does not change recognition coverage, type/color/devour policies or deck eligibility; those remain separate follow-up families. No configuration contract changed, so `env.example` needs no new variables.
+
 ## Coverage evidence
 
 Measurements used the same existing imported pools and shared local MTGJSON SQLite at `D:/GitHub/DiscordPHP-MTG/var/mtgjson/AllPrintings.sqlite`; no download or reimport occurred. Baseline parser: `3c5840e`. Final parser: `604e12662560d14c9002477f1181b8fe08a8f7ea`, merged by PR #125. The baseline parser was loaded separately without reverting the checkout.

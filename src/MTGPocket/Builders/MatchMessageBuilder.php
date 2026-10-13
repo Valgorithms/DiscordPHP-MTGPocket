@@ -358,6 +358,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'trigger' => 'choose targets for '.$game->triggerAwaitingTargets()['label'],
                 'scry', 'surveil' => $game->decision($seat),
                 'look' => 'choose from the top of their library',
+                'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
@@ -653,6 +654,16 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 }
                 break;
 
+            case 'entry_life':
+                $entry = $game->choiceAwaiting();
+                $row = ActionRow::new();
+                foreach ($entry['options'] as $option) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('entrylife', (string) $entry['id'], $option))
+                        ->setLabel($option === 'pay' ? "Pay {$entry['life']} life" : "Don't pay"));
+                }
+                $message->addComponent($row);
+                break;
+
             case 'mode':
                 $select = StringSelect::new($id('mode'))->setPlaceholder('Choose a mode');
                 foreach (array_slice($game->choiceAwaiting()['texts'], 0, 25, true) as $option => $text) {
@@ -795,6 +806,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $player = $game->players[$seat];
 
         return match ($decision) {
+            'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'mulligan' => $player->mulligans === 0
                 ? 'Keep this hand, or shuffle it away and draw a new seven?'
                 : "Mulligan {$player->mulligans}: if you keep, you put {$player->mulligans} card".($player->mulligans === 1 ? '' : 's').' on the bottom.',

@@ -290,6 +290,9 @@ final class CommonCardTextTest extends GameTestCase
         $this->passUntil(Step::PrecombatMain, 5);
         $marsh = $this->put(0, 'Shipwreck Marsh', GameObject::HAND);
         $game->playLand(0, $marsh);
+        $this->assertSame('entry_life', $game->decision(0));
+        $this->assertSame(20, $this->life(0));
+        $game->chooseEntryLife(0, $game->choiceAwaiting()['id'], 'pay');
         $this->assertFalse($game->objects[$marsh]->tapped);
         $this->assertSame(18, $this->life(0));
 

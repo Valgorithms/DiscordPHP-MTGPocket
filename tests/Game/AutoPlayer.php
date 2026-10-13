@@ -49,6 +49,7 @@ final class AutoPlayer
             'trigger' => self::trigger($game, $seat),
             'scry', 'surveil' => self::arrange($game, $seat),
             'look' => self::look($game, $seat),
+            'entry_life' => self::entryLife($game, $seat),
             'mode' => self::mode($game, $seat),
             'attack' => self::attack($game, $seat),
             'block' => self::block($game, $seat),
@@ -84,6 +85,15 @@ final class AutoPlayer
         $choice = $game->choiceAwaiting();
         // The most expensive eligible cards.
         $game->take($seat, array_slice(array_reverse(self::worstFirst($game, $choice['eligible'])), 0, $choice['take']));
+
+        return true;
+    }
+
+    private static function entryLife(Game $game, int $seat): bool
+    {
+        $choice = $game->choiceAwaiting();
+        $pay = in_array('pay', $choice['options'], true) && ! $choice['tapped'] && $game->players[$seat]->life > 10;
+        $game->chooseEntryLife($seat, $choice['id'], $pay ? 'pay' : 'decline');
 
         return true;
     }
