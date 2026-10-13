@@ -253,7 +253,7 @@ final class EntryLifeChoiceTest extends GameTestCase
         $land = $game->addCard(0, ['type' => 'Land Creature — Forest Island Dryad', 'power' => '1', 'toughness' => '1'] + self::pool(), GameObject::GRAVEYARD);
         $this->lands(0, 'Forest', 1);
         $spell = $game->addCard(0, ['uuid' => 'reanimate-fixture', 'name' => 'Reanimate Fixture', 'type' => 'Sorcery', 'manaCost' => '{G}',
-            'text' => 'Return target creature card from your graveyard to the battlefield. It gains haste.'], GameObject::HAND);
+            'text' => 'Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step.'], GameObject::HAND);
         $this->assertSame([], $spell->definition()->unsupported);
         $game->cast(0, $spell->id, 0, ["o:{$land->id}"]);
         $game->pass(0);
@@ -263,7 +263,12 @@ final class EntryLifeChoiceTest extends GameTestCase
         $this->answer(false);
         $this->assertSame(GameObject::BATTLEFIELD, $game->objects[$land->id]->zone);
         $this->assertSame(['haste'], $game->objects[$land->id]->untilEndOfTurn[0]['keywords']);
+        $this->assertSame('end_exile', $game->objects[$land->id]->alt);
         $this->assertSame(GameObject::GRAVEYARD, $game->objects[$spell->id]->zone);
+        $this->passUntil(\MTGPocket\Game\Step::End);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame(GameObject::EXILE, $game->objects[$land->id]->zone);
     }
 
     public function testNestedPaidEffectsWaitForEntryAndResumeAfterRestart(): void
@@ -309,6 +314,55 @@ final class EntryLifeChoiceTest extends GameTestCase
         $this->assertSame([], $game->toArray()['pendingEntries']);
         $game->chooseMode(0, 0);
         $this->assertNull($game->choiceAwaiting());
+    }
+
+    public function testUnearthEntryRetainsHasteAndExileReplacementAfterRestart(): void
+    {
+        $game = $this->newGame();
+        $land = $game->addCard(0, ['uuid' => 'unearth-land', 'name' => 'Unearth Land', 'type' => 'Land Creature — Dryad', 'power' => '1', 'toughness' => '1',
+            'text' => "As this land enters, you may pay 2 life. If you don't, it enters tapped.\nUnearth {G}"], GameObject::GRAVEYARD);
+        $this->assertSame([], $land->definition()->unsupported);
+        $this->lands(0, 'Forest', 1);
+        $game->unearth(0, $land->id);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame('entry_life', $game->decision(0));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->answer(false);
+        $this->assertTrue($game->objects[$land->id]->unearthed);
+        $this->assertSame(['haste'], $game->objects[$land->id]->untilEndOfTurn[0]['keywords']);
+        $this->passUntil(\MTGPocket\Game\Step::End);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame(GameObject::EXILE, $game->objects[$land->id]->zone);
+    }
+
+    public function testLandTokenCopyRetainsItsEntryInstructionsAfterRestart(): void
+    {
+        $game = $this->newGame();
+        $id = $this->poolInHand();
+        $game->playLand(0, $id);
+        $this->answer(false);
+        $this->lands(0, 'Forest', 1);
+        $spell = $game->addCard(0, ['uuid' => 'copy-fixture', 'name' => 'Copy Fixture', 'type' => 'Sorcery', 'manaCost' => '{G}',
+            'text' => "Create a token that's a copy of target permanent, except it has haste. Exile it at the beginning of the next end step."], GameObject::HAND);
+        $this->assertSame([], $spell->definition()->unsupported);
+        $game->cast(0, $spell->id, 0, ["o:{$id}"]);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame('entry_life', $game->decision(0));
+        $copy = $game->choiceAwaiting()['object'];
+        $this->assertNotSame($id, $copy);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->answer(true);
+        $this->assertSame(GameObject::BATTLEFIELD, $game->objects[$copy]->zone);
+        $this->assertSame(['haste'], $game->objects[$copy]->untilEndOfTurn[0]['keywords']);
+        $this->assertSame('end_exile', $game->objects[$copy]->alt);
+        $this->assertSame(18, $game->players[0]->life);
+        $this->passUntil(\MTGPocket\Game\Step::End);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame(GameObject::GONE, $game->objects[$copy]->zone);
     }
 
     public function testMissingSavedEntryIsRejected(): void

@@ -4446,12 +4446,9 @@ final class Game
 
             case 'reanimate':
                 if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($affected, $controller);
+                    $this->putOntoBattlefield($affected, $controller, entryState: isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []);
                     $this->log("{$affected->name()} returns to the battlefield.");
                     $this->followed = [(string) $target => "o:{$affected->id}:{$affected->incarnation}"];
-                    if (isset($effect['endStep'])) {
-                        $affected->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
-                    }
                 }
                 break;
 
@@ -4593,8 +4590,7 @@ final class Game
 
             case 'regrow':
                 if ($source->zone === GameObject::GRAVEYARD && isset($source->printed()->altCosts['regrowTo'])) {
-                    $this->putOntoBattlefield($source, $source->owner);
-                    $source->tapped = $source->printed()->altCosts['regrowTo'] === 'battlefield_tapped';
+                    $this->putOntoBattlefield($source, $source->owner, tapped: $source->printed()->altCosts['regrowTo'] === 'battlefield_tapped');
                     $this->log("{$source->name()} returns to the battlefield.");
                 } elseif ($source->zone === GameObject::GRAVEYARD) {
                     $this->moveTo($source, GameObject::HAND);
@@ -4604,9 +4600,7 @@ final class Game
 
             case 'ninjutsu':
                 if ($source->zone === GameObject::HAND && in_array($this->step, [Step::DeclareBlockers, Step::CombatDamage, Step::FirstStrikeDamage], true)) {
-                    $this->putOntoBattlefield($source, $controller);
-                    $source->tapped = true;
-                    $this->attackers[$source->id] = true;
+                    $this->putOntoBattlefield($source, $controller, tapped: true, entryState: ['attacking' => true]);
                     $this->log("{$source->name()} enters tapped and attacking.");
                 }
                 break;
@@ -4670,9 +4664,7 @@ final class Game
 
             case 'unearth':
                 if ($source->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($source, $controller);
-                    $source->unearthed = true;
-                    $source->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
+                    $this->putOntoBattlefield($source, $controller, entryState: ['unearthed' => true]);
                     $this->log("{$source->name()} returns to the battlefield with haste.");
                 }
                 break;
@@ -4733,13 +4725,11 @@ final class Game
             case 'copy_token':
                 // A copy of its printed card (rule 707.2), as a token.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
-                    $copy = $this->createToken($affected->printed()->card, $controller);
-                    if ($effect['haste'] ?? false) {
-                        $copy->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
-                    }
-                    if (isset($effect['endStep'])) {
-                        $copy->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
-                    }
+                    $copy = $this->createToken(
+                        $affected->printed()->card,
+                        $controller,
+                        ['haste' => $effect['haste'] ?? false] + (isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : [])
+                    );
                     $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()}.");
                 }
                 break;
@@ -5311,11 +5301,11 @@ final class Game
      *
      * @return GameObject
      */
-    private function createToken(array $token, int $controller): GameObject
+    private function createToken(array $token, int $controller, array $entryState = []): GameObject
     {
         $object = new GameObject($this->nextId++, $controller, ['token' => true] + $token, GameObject::GONE);
         $this->objects[$object->id] = $object;
-        $this->putOntoBattlefield($object, $controller);
+        $this->putOntoBattlefield($object, $controller, entryState: $entryState);
 
         return $object;
     }
@@ -7428,10 +7418,11 @@ final class Game
      * @param bool       $triggers   Whether its "enters" abilities trigger.
      * @param bool       $faceDown
      * @param bool       $kicked
+     * @param array{alt?: string, unearthed?: bool, haste?: bool, counters?: array<string, int>, attacking?: bool} $entryState State applied after entering, including after a saved decision.
      *
      * @return void
      */
-    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true, bool $faceDown = false, bool $kicked = false, int $x = 0, bool $transformed = false, bool $tapped = false, ?bool $payLife = null): void
+    private function putOntoBattlefield(GameObject $object, int $controller, bool $triggers = true, bool $faceDown = false, bool $kicked = false, int $x = 0, bool $transformed = false, bool $tapped = false, ?bool $payLife = null, array $entryState = []): void
     {
         // A land's optional payment is chosen before it changes zones. Other
         // entries in this batch wait too; no entry triggers fire prematurely.
@@ -7441,7 +7432,7 @@ final class Game
             $this->pendingEntries[] = [
                 'object' => $object->id, 'incarnation' => $object->incarnation, 'zone' => $object->zone,
                 'controller' => $controller, 'triggers' => $triggers, 'faceDown' => $faceDown,
-                'kicked' => $kicked, 'x' => $x, 'transformed' => $transformed, 'tapped' => $tapped,
+                'kicked' => $kicked, 'x' => $x, 'transformed' => $transformed, 'tapped' => $tapped, 'entryState' => $entryState,
             ];
             if ($this->pendingChoice === null) {
                 $this->advanceEntries();
@@ -7505,6 +7496,17 @@ final class Game
                     break;
                 }
             }
+        }
+        $object->alt = $entryState['alt'] ?? null;
+        $object->unearthed = $entryState['unearthed'] ?? false;
+        if ($object->unearthed || ($entryState['haste'] ?? false)) {
+            $object->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
+        }
+        foreach ($entryState['counters'] ?? [] as $kind => $count) {
+            $object->addCounters($kind, $count);
+        }
+        if ($entryState['attacking'] ?? false) {
+            $this->attackers[$object->id] = true;
         }
         $this->battlefield[] = $object->id;
         if ($triggers) {
@@ -7619,7 +7621,8 @@ final class Game
             $entry['x'],
             $entry['transformed'],
             $entry['tapped'],
-            $payLife
+            $payLife,
+            $entry['entryState'] ?? []
         );
         foreach ($this->followed as $target => $replacement) {
             if ($replacement === $before) {
@@ -7850,8 +7853,7 @@ final class Game
             }
         }
         if ($returns !== null && $object->zone === GameObject::GRAVEYARD) {
-            $this->putOntoBattlefield($object, $object->owner);
-            $object->addCounters($returns, 1);
+            $this->putOntoBattlefield($object, $object->owner, entryState: ['counters' => [$returns => 1]]);
             $this->log("{$object->name()} returns to the battlefield with a {$returns} counter.");
         }
     }

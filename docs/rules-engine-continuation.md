@@ -39,7 +39,7 @@ Discord panels route these answers through the engine and persisted match transa
 
 Saved games now carry `schemaVersion: 2`. Unversioned/version-1 games load with defaults for the new entry queue and choice counter; newer or invalid versions are rejected. Older bot builds cannot safely resume version-2 pending entry choices: keep the upgraded code when resuming them.
 
-[EntryLifeChoiceTest](../tests/Game/EntryLifeChoiceTest.php) covers acceptance/decline, low/insufficient/equal life, other-turn resolution, save/resume, forced tapping, batched selected entries, stale/repeated/wrong-player actions, trigger ordering, practice-bot decisions and legacy/future state versions. [MatchesTest](../tests/MatchesTest.php) exercises serialized controls and persisted interaction routing using temporary storage. This milestone does not change recognition coverage, type/color/devour policies or deck eligibility; those remain separate follow-up families. No configuration contract changed, so `env.example` needs no new variables.
+[EntryLifeChoiceTest](../tests/Game/EntryLifeChoiceTest.php) covers acceptance/decline, low/insufficient/equal life, other-turn resolution, save/resume, forced tapping, batched selected entries, stale/repeated/wrong-player actions, trigger ordering, nested paid continuations, reanimation/unearth entry instructions, practice-bot decisions and legacy/future state versions. [MatchesTest](../tests/MatchesTest.php) exercises serialized controls and persisted interaction routing using temporary storage. This milestone does not change recognition coverage, type/color/devour policies or deck eligibility; those remain separate follow-up families. No configuration contract changed, so `env.example` needs no new variables.
 
 ## Coverage evidence
 
