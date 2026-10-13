@@ -649,7 +649,7 @@ final class TextParser
                 continue;
             }
             // Tail Swipe: `Choose target creature you control and target creature you don't control. [The creature you control gets …] Then those creatures fight each other.`
-            if (preg_match("/^Choose target creature you control and target creature you don't control\\.\\s*(.*?)\\s*(?:Then )?(?:[Tt]hose creatures|[Tt]hey) fight each other\\.$/", $line, $fight)) {
+            if (preg_match("/^Choose target creature you control and target creature you (?:don't|do not) control\\.\\s*(.*?)\\s*(?:Then )?(?:[Tt]hose creatures|[Tt]hey) fight each other\\.$/", $line, $fight)) {
                 $middle = [];
                 foreach (self::sentences($fight[1]) as $sentence) {
                     $found = self::sentenceEffects(preg_replace('/\\bthe creature you control\\b/i', 'target creature you control', $sentence));
