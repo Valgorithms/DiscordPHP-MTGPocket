@@ -540,7 +540,7 @@ final class Game
     {
         for ($guard = 0; $guard < 1000 && $this->stage === self::PLAYING && $this->pendingChoice === null; $guard++) {
             $this->checkStateBasedActions();
-            if ($this->stage !== self::PLAYING || $this->priority === null) {
+            if ($this->stage !== self::PLAYING || $this->priority === null || $this->pendingChoice !== null) {
                 return;
             }
             if ($this->flushTriggers() || ! $this->shouldAutoPass($this->priority)) {
@@ -3548,7 +3548,7 @@ final class Game
     private function runSteps(array $item, array $steps, ?array $self): void
     {
         if ($this->pendingChoice !== null) {
-            $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self];
+            $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
 
             return;
         }
@@ -3582,7 +3582,9 @@ final class Game
                 continue;
             }
             if ($this->applyEffect($effect, $source, $permanent, $item['controller'], $item['x'], $target)) {
-                $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self];
+                $steps = array_merge($this->pendingChoice['nestedSteps'] ?? [], $steps);
+                unset($this->pendingChoice['nestedSteps']);
+                $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
 
                 return;
             }
@@ -5042,8 +5044,17 @@ final class Game
                         $this->pay($controller, $payment);
                     }
                     $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$source->name()}.");
-                    foreach ($effect['then'] as $then) {
-                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                    $remaining = $effect['then'];
+                    while ($remaining !== []) {
+                        $then = array_shift($remaining);
+                        if ($this->applyEffect($then, $source, $self, $controller, $x, $target)) {
+                            $this->pendingChoice['nestedSteps'] = array_merge(
+                                $this->pendingChoice['nestedSteps'] ?? [],
+                                array_map(fn (array $next) => [$next, $target], $remaining)
+                            );
+
+                            return true;
+                        }
                     }
                 }
                 break;
@@ -7561,6 +7572,7 @@ final class Game
             ($option === 'pay' && $this->players[$seat]->life < $choice['life'])) {
             throw new GameException('That entry choice is no longer legal.');
         }
+        $this->followed = $choice['resume']['followed'] ?? [];
         $this->pendingChoice = null;
         array_shift($this->pendingEntries);
         $this->finishEntry($entry, $option === 'pay');
@@ -7597,6 +7609,7 @@ final class Game
     /** Applies one saved entry exactly once, after its replacement decision. */
     private function finishEntry(array $entry, bool $payLife): void
     {
+        $before = "o:{$entry['object']}:{$entry['incarnation']}";
         $this->putOntoBattlefield(
             $this->objects[$entry['object']],
             $entry['controller'],
@@ -7608,6 +7621,12 @@ final class Game
             $entry['tapped'],
             $payLife
         );
+        foreach ($this->followed as $target => $replacement) {
+            if ($replacement === $before) {
+                $object = $this->objects[$entry['object']];
+                $this->followed[$target] = "o:{$object->id}:{$object->incarnation}";
+            }
+        }
     }
 
     /**
@@ -8961,6 +8980,15 @@ final class Game
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
         $game->pendingEntries = array_values((array) ($data['pendingEntries'] ?? []));
         $game->nextChoiceId = (int) ($data['nextChoiceId'] ?? 1);
+        if (($game->pendingChoice['type'] ?? null) === 'entry_life') {
+            $choice = $game->pendingChoice;
+            $entry = $game->pendingEntries[0] ?? null;
+            if ($version < 2 || $entry === null || ! isset($game->objects[$entry['object'] ?? -1]) ||
+                ($choice['object'] ?? null) !== $entry['object'] || ($choice['seat'] ?? null) !== ($entry['controller'] ?? null) ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id']) {
+                throw new GameException('Invalid saved entry choice.');
+            }
+        }
         $game->exile = array_map('intval', (array) $data['exile']);
         $game->command = array_map('intval', (array) ($data['command'] ?? []));
         foreach ((array) ($data['commanders'] ?? []) as [$id, $casts]) {

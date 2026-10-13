@@ -247,6 +247,81 @@ final class EntryLifeChoiceTest extends GameTestCase
         $this->assertSame(Game::PLAYING, $game->stage);
     }
 
+    public function testReanimatedLandFollowUpTracksItsNewIncarnationAfterRestart(): void
+    {
+        $game = $this->newGame();
+        $land = $game->addCard(0, ['type' => 'Land Creature — Forest Island Dryad', 'power' => '1', 'toughness' => '1'] + self::pool(), GameObject::GRAVEYARD);
+        $this->lands(0, 'Forest', 1);
+        $spell = $game->addCard(0, ['uuid' => 'reanimate-fixture', 'name' => 'Reanimate Fixture', 'type' => 'Sorcery', 'manaCost' => '{G}',
+            'text' => 'Return target creature card from your graveyard to the battlefield. It gains haste.'], GameObject::HAND);
+        $this->assertSame([], $spell->definition()->unsupported);
+        $game->cast(0, $spell->id, 0, ["o:{$land->id}"]);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame('entry_life', $game->decision(0));
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->answer(false);
+        $this->assertSame(GameObject::BATTLEFIELD, $game->objects[$land->id]->zone);
+        $this->assertSame(['haste'], $game->objects[$land->id]->untilEndOfTurn[0]['keywords']);
+        $this->assertSame(GameObject::GRAVEYARD, $game->objects[$spell->id]->zone);
+    }
+
+    public function testNestedPaidEffectsWaitForEntryAndResumeAfterRestart(): void
+    {
+        $game = $this->newGame();
+        $id = $this->poolInHand();
+        $game->players[0]->energy = 1;
+        $source = $game->addCard(0, ['uuid' => 'payment-fixture', 'name' => 'Payment Fixture', 'type' => 'Enchantment',
+            'text' => 'Whenever a land you control enters, you may pay {E}. If you do, you may put a land card from your hand onto the battlefield. You gain 3 life.'], GameObject::BATTLEFIELD);
+        $this->assertSame([], $source->definition()->unsupported);
+        $forest = $game->addCard(0, self::card('Forest'), GameObject::HAND);
+        $game->playLand(0, $forest->id);
+        $game->pass(0);
+        $game->pass(1);
+        $this->assertSame('entry_life', $game->decision(0));
+        $this->assertSame(20, $game->players[0]->life);
+        $this->assertSame(0, $game->players[0]->energy);
+        $this->assertSame(GameObject::HAND, $game->objects[$id]->zone);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->answer(false);
+        $this->assertSame(23, $game->players[0]->life);
+        $this->assertSame(0, $game->players[0]->energy, 'The paid cost is not repeated on resume.');
+        $this->assertSame(GameObject::BATTLEFIELD, $game->objects[$id]->zone);
+        $this->assertSame([], $game->toArray()['pendingEntries']);
+    }
+
+    public function testStateBasedEntryChoicePrecedesModalDeathTrigger(): void
+    {
+        $game = $this->newGame();
+        $land = $game->addCard(0, self::pool(), GameObject::EXILE);
+        $source = $game->addCard(0, ['uuid' => 'holding-fixture', 'name' => 'Holding Fixture', 'type' => 'Creature', 'power' => '1', 'toughness' => '0',
+            'text' => "When this creature dies, choose one —\n• You gain 3 life.\n• Draw a card."], GameObject::BATTLEFIELD);
+        $this->assertSame([], $source->definition()->unsupported);
+        $source->holding = [$land->id];
+        $game->pass(0);
+        $this->assertSame('entry_life', $game->decision(0));
+        $this->assertSame(GameObject::EXILE, $land->zone);
+        $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
+        $this->answer(false);
+        $this->assertSame('mode', $game->decision(0));
+        $this->assertSame(GameObject::BATTLEFIELD, $game->objects[$land->id]->zone);
+        $this->assertTrue($game->objects[$land->id]->tapped);
+        $this->assertSame([], $game->toArray()['pendingEntries']);
+        $game->chooseMode(0, 0);
+        $this->assertNull($game->choiceAwaiting());
+    }
+
+    public function testMissingSavedEntryIsRejected(): void
+    {
+        $game = $this->newGame();
+        $game->playLand(0, $this->poolInHand());
+        $data = $game->toArray();
+        $data['pendingEntries'] = [];
+        $this->expectException(GameException::class);
+        $this->expectExceptionMessage('Invalid saved entry choice');
+        Game::fromArray($data);
+    }
+
     public function testUnversionedStatesStillLoadAndFutureVersionsAreRejected(): void
     {
         $data = $this->newGame()->toArray();

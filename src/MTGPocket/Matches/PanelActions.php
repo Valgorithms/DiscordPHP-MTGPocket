@@ -23,7 +23,8 @@ use MTGPocket\Game\GameException;
  * kept on the match until the last one casts it. Abilities are activated
  * the same way (pick the ability, then each target), and so are targets
  * picked for a triggered ability. Attackers and blockers are picked first
- * and declared with a button.
+ * and declared with a button. Land-entry life payments use the saved choice ID
+ * so repeated or stale controls cannot pay twice.
  *
  * Kept apart from Discord so the flow can be tested without it.
  *
