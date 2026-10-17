@@ -3737,19 +3737,21 @@ final class Game
      * @param int $seat
      * @param int $n
      *
-     * @return void
+     * @return GameObject|null The land awakened.
      */
-    private function awaken(int $seat, int $n): void
+    private function awaken(int $seat, int $n): ?GameObject
     {
         $lands = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->isLand()));
         usort($lands, fn (GameObject $a, GameObject $b) => [$b->awakened, $b->tapped] <=> [$a->awakened, $a->tapped]);
         if ($lands === [] || $n <= 0) {
-            return;
+            return null;
         }
         $land = $lands[0];
         $land->addCounters('+1/+1', $n);
         $land->awakened = true;
         $this->log("Awaken {$n}: {$land->name()} becomes a 0/0 Elemental creature with haste and gets {$n} +1/+1 counters.");
+
+        return $land;
     }
 
     /**
@@ -4848,6 +4850,13 @@ final class Game
                 $army ??= $this->createToken(['name' => "{$kind} Army Token", 'type' => "Token Creature — {$kind} Army", 'types' => ['Creature'], 'subtypes' => [$kind, 'Army'], 'colors' => ['B'], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null], $controller);
                 $army->addCounters('+1/+1', $amount);
                 $this->log("{$this->players[$controller]->name} amasses {$kind} {$amount}.");
+                break;
+
+            case 'earthbend':
+                // Earthbend (TLA): awaken, and `When it dies or is exiled, return it to the battlefield tapped.`
+                if (($land = $this->awaken($controller, $amount)) !== null) {
+                    $land->earthbent = true;
+                }
                 break;
 
             case 'extra_turn':
@@ -7825,6 +7834,7 @@ final class Game
             $this->hasKeyword($object, 'undying') && $object->counter('+1/+1') === 0 => '+1/+1',
             default => null,
         };
+        $earthbent = $object->earthbent && $object->zone === GameObject::BATTLEFIELD && in_array($zone, [GameObject::GRAVEYARD, GameObject::EXILE], true);
         $intended = $zone;
         if ($object->definition()->isToken()) {
             $zone = GameObject::GONE;
@@ -7918,6 +7928,10 @@ final class Game
         if ($returns !== null && $object->zone === GameObject::GRAVEYARD) {
             $this->putOntoBattlefield($object, $object->owner, entryState: ['counters' => [$returns => 1]]);
             $this->log("{$object->name()} returns to the battlefield with a {$returns} counter.");
+        }
+        if ($earthbent && in_array($object->zone, [GameObject::GRAVEYARD, GameObject::EXILE], true)) {
+            $this->putOntoBattlefield($object, $object->owner, tapped: true);
+            $this->log("{$object->name()} returns to the battlefield tapped (earthbend).");
         }
     }
 
