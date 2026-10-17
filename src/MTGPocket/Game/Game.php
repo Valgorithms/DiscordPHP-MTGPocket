@@ -4035,6 +4035,11 @@ final class Game
 
         switch ($effect['type']) {
             case 'damage':
+                // Harnessed Lightning: `then you may pay any amount of {E}. CARDNAME deals that much damage …`: all of it.
+                if ($effect['payEnergy'] ?? false) {
+                    [$amount, $this->players[$controller]->energy] = [$this->players[$controller]->energy, 0];
+                    $this->log("{$this->players[$controller]->name} pays {$amount} energy.");
+                }
                 $hits = match ($effect['each'] ?? null) {
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
@@ -5132,6 +5137,17 @@ final class Game
                 break;
 
             case 'pay':
+                // `you may pay any amount of {E}. …`: all of it, and X is what was paid.
+                if ($effect['cost'] === 'any {E}') {
+                    if (($paid = $this->players[$controller]->energy) > 0) {
+                        $this->players[$controller]->energy = 0;
+                        $this->log("{$this->players[$controller]->name} pays {$paid} energy for {$source->name()}.");
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $paid, $target);
+                        }
+                    }
+                    break;
+                }
                 // `you may pay {2}{G}. If you do, …`: paid when it can be; `{E}{E}` from its controller's energy.
                 $energy = str_contains($effect['cost'], '{E}') ? substr_count($effect['cost'], '{E}') : 0;
                 if ($energy > 0 ? $this->players[$controller]->energy >= $energy : ($payment = $this->payFor($controller, $effect['cost'])) !== null) {
