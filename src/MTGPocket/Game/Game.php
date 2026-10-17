@@ -212,6 +212,9 @@ final class Game
     /** The creature type a resolving spell's `Choose a creature type.` picked. */
     private ?string $chosenType = null;
 
+    /** The X {@see abilityPayment()} found for an ability with {X} in its cost. */
+    private int $abilityX = 0;
+
     /** The spell whose casting is triggering abilities, for `copy that spell`; see {@see castTriggers()}. */
     private ?int $castSpell = null;
 
@@ -5754,7 +5757,7 @@ final class Game
             'object' => $ability['source'],
             'incarnation' => $ability['incarnation'],
             'controller' => $ability['controller'],
-            'x' => 0,
+            'x' => $ability['x'] ?? 0,
             'targets' => $targets,
             'kind' => 'ability',
             'effects' => $ability['effects'],
@@ -6094,7 +6097,22 @@ final class Game
     private function abilityPayment(int $seat, GameObject $object, array $ability, string $wardMana = '', int $wardLife = 0): ?array
     {
         // A source tapped for the cost itself cannot also make mana for it.
-        return $this->payFor($seat, ($ability['cost']['mana'] ?? '').$wardMana, ($ability['cost']['life'] ?? 0) + $wardLife, ($ability['cost']['tap'] ?? false) ? [$object->id] : []);
+        $exclude = ($ability['cost']['tap'] ?? false) ? [$object->id] : [];
+        $mana = $ability['cost']['mana'] ?? '';
+        $this->abilityX = 0;
+        if (! str_contains($mana, '{X}')) {
+            return $this->payFor($seat, $mana.$wardMana, ($ability['cost']['life'] ?? 0) + $wardLife, $exclude);
+        }
+        // X is as much as can be paid, and at least 1.
+        for ($n = min(20, count($this->permanents($seat)) + $this->players[$seat]->manaPool->total()); $n >= 1; $n--) {
+            if (($payment = $this->payFor($seat, str_replace('{X}', "{{$n}}", $mana).$wardMana, ($ability['cost']['life'] ?? 0) + $wardLife, $exclude)) !== null) {
+                $this->abilityX = $n;
+
+                return $payment;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -6127,6 +6145,7 @@ final class Game
             throw new GameException('You need a card in your hand to discard for ward.');
         }
         $payment = $this->abilityPayment($seat, $object, $ability, $wardMana, $wardLife);
+        $x = $this->abilityX;
         if ($payment === null) {
             throw new GameException('You cannot pay '.(($ability['cost']['mana'] ?? '').$wardMana ?: 'that cost').'.');
         }
@@ -6189,6 +6208,7 @@ final class Game
             'effects' => $effects,
             'kinds' => $kinds,
             'label' => $label,
+            'x' => $x,
         ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
         $this->targetedTriggers($targets);
         if ($cost['sacrifice'] ?? false) {

@@ -2409,9 +2409,8 @@ final class TextParser
                 return false;
             }
         }
-        if (str_contains($cost['mana'] ?? '', 'X')) {
-            return false;
-        }
+        // `{X}{R}: CARDNAME gets +X/+0 until end of turn.`: see Game::abilityPayment() for X.
+        $xCost = str_contains($cost['mana'] ?? '', 'X');
 
         $text = $match[2];
         $sorcery = $once = false;
@@ -2428,7 +2427,7 @@ final class TextParser
             $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
         }
         $effects = self::effects($text);
-        if ($effects === null) {
+        if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
             return false;
         }
         $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []);
