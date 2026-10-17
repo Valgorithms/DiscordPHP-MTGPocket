@@ -2382,6 +2382,12 @@ final class TextParser
             $event = 'subtype_enters';
             $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever (an|another) (nontoken )?artifact you control is put into a graveyard from the battlefield, (.+)$/', $line, $match)
+            && ! preg_match('/\b(it|its|that artifact)\b/', $match[3])) {
+            // See Game::moveTo(): the artifact itself too, unless "another".
+            $event = 'artifact_to_graveyard';
+            $extra = ['objectKind' => 'artifact', 'other' => $match[1] === 'another'] + ($match[2] !== '' ? ['nontoken' => true] : []);
+            $text = $match[3];
         } elseif (preg_match('/^Whenever (you sacrifice|a player sacrifices|an opponent sacrifices) (a|an|another) (permanent|creature|artifact|enchantment|land|token|nontoken creature|[A-Z][a-z]+), (.+)$/', $line, $match)
             && ! preg_match('/\b(it|its|that (?:permanent|creature|artifact|enchantment|land|token|player))\b/', $match[4])) {
             // `Whenever you sacrifice a permanent, …`, Mayhem Devil's `Whenever a player sacrifices a permanent, …`: see Game::sacrifice().
@@ -2390,7 +2396,7 @@ final class TextParser
                 'a player sacrifices' => 'player_sacrifices',
                 default => 'opponent_sacrifices',
             };
-            $extra = ['sacrificed' => $match[3], 'other' => $match[2] === 'another'];
+            $extra = ['objectKind' => $match[3], 'other' => $match[2] === 'another'];
             $text = $match[4];
         } elseif (preg_match('/^Whenever a (nontoken )?creature you control dies, (.+)$/', $line, $match) && ($effects = self::effects($match[2])) !== null && ! str_contains($match[2], 'target')) {
             // Once for another creature dying, and once for itself when it is a creature. "Nontoken": see Game::trigger().
