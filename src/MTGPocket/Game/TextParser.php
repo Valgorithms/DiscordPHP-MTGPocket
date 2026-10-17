@@ -429,6 +429,9 @@ final class TextParser
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
+                // Read by Game::putOntoBattlefield().
+                'Creatures your opponents control enter tapped.' => 'opponent creatures enter tapped',
+                'Creatures your opponents control enter the battlefield tapped.' => 'opponent creatures enter tapped',
                 // Read by Game::whyNotCast().
                 "Your opponents can't cast spells during your turn." => 'opponents cast nothing on your turn',
                 // Chromatic Lantern; read by Game::manaSources().
@@ -544,6 +547,12 @@ final class TextParser
             $kinds = ['' => 'any', 'Instant and sorcery ' => 'instant_sorcery', 'Creature ' => 'creature', 'Noncreature ' => 'noncreature', 'Artifact ' => 'artifact', 'Enchantment ' => 'enchantment'];
             if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?spells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
                 $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]];
+
+                continue;
+            }
+            // Thalia: `Noncreature spells cost {1} more to cast.`, every player's, or only opponents'.
+            if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?[Ss]pells( your opponents cast)? cost \{(\d+)\} more to cast\.$/', $line, $match)) {
+                $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => -(int) $match[3], 'who' => $match[2] !== '' ? 'opponents' : 'all'];
 
                 continue;
             }

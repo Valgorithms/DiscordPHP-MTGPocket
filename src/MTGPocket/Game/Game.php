@@ -1883,9 +1883,16 @@ final class Game
                 }
             }
         }
-        // `Instant and sorcery spells you cast cost {1} less to cast.`
-        foreach ($this->permanents($seat) as $permanent) {
+        // `Instant and sorcery spells you cast cost {1} less to cast.`, and Thalia's `Noncreature spells cost {1} more to cast.`
+        foreach ($this->permanents() as $permanent) {
             foreach ($permanent->definition()->costReductions as $reduction) {
+                if (match ($reduction['who'] ?? 'yours') {
+                    'yours' => $permanent->controller !== $seat,
+                    'opponents' => $permanent->controller === $seat,
+                    default => false,
+                }) {
+                    continue;
+                }
                 if (match ($reduction['kind']) {
                     'instant_sorcery' => $card->is('Instant') || $card->is('Sorcery'),
                     'creature' => $card->isCreature(),
@@ -7696,7 +7703,9 @@ final class Game
         $object->sick = true;
         $object->prepared = ! $faceDown && in_array('enters prepared', $card->keywords, true) && $card->prepare !== null;
         $untapped = $card->entersTappedUnless === null || $this->entersUntapped($object, $controller, $payLife ?? false);
-        $object->tapped = $tapped || $card->entersTapped || ! $untapped;
+        $object->tapped = $tapped || $card->entersTapped || ! $untapped
+            // `Creatures your opponents control enter tapped.`
+            || (! $faceDown && $card->isCreature() && array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller && $this->hasKeyword($o, 'opponent creatures enter tapped')) !== []);
         if ($card->isPlaneswalker() && $card->loyalty !== null) {
             $object->addCounters('loyalty', $card->loyalty);
         }
