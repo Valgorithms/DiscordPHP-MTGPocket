@@ -97,6 +97,7 @@ final class TextParser
         'target artifact, enchantment, or creature with flying' => 'artifact_enchantment_flier',
         'target permanent' => 'permanent',
         'target creature you control' => 'creature_you_control',
+        'another target creature you control' => 'creature_you_control_other',
         'target creature an opponent controls' => 'creature_opponent',
         'target creature you don\'t control' => 'creature_opponent',
         'target creature or planeswalker an opponent controls' => 'creature_or_planeswalker_opponent',
@@ -216,7 +217,7 @@ final class TextParser
 
     /** Target kinds that are always a creature. */
     private const array CREATURE_KINDS = [
-        'creature', 'creature_other', 'creature_you_control', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
+        'creature', 'creature_other', 'creature_you_control', 'creature_you_control_other', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
         'creature_flying', 'creature_no_flying', 'tapped_creature', 'untapped_creature',
         'creature_power_ge_2', 'creature_power_ge_3', 'creature_power_ge_4', 'creature_power_ge_5', 'creature_power_ge_6', 'creature_power_le_1', 'creature_power_le_2', 'creature_power_le_3', 'creature_power_le_4',
         'creature_mv_le_1', 'creature_mv_le_2', 'creature_mv_le_3', 'creature_mv_le_4', 'creature_mv_le_5',
@@ -2536,6 +2537,10 @@ final class TextParser
             }
             // In an ability, "it" at the start means the card itself: "When CARDNAME enters, it deals 4 damage …".
             $found = self::sentenceEffects(preg_replace('/^it /', 'CARDNAME ', $sentence));
+            // `You may return target artifact card from your graveyard to your hand.`: choosing the target is choosing to.
+            if ($found === null && preg_match('/^you may ((?:return|exile|tap|untap|destroy) (?:up to one )?target .+)$/i', $sentence, $may)) {
+                $found = self::sentenceEffects(ucfirst($may[1]));
+            }
             if ($found === null) {
                 return null;
             }
@@ -3676,7 +3681,7 @@ final class TextParser
     {
         $colors = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G', 'colorless' => null];
         $color = implode('|', array_keys($colors));
-        if (! preg_match("/^create (\\w+) (\\d+)\\/(\\d+) ((?:{$color})(?:(?:, | and )(?:{$color}))*) ([A-Z][A-Za-z' ]*?) (artifact )?creature tokens?(?: with (.+))?$/i", $sentence, $m)
+        if (! preg_match("/^create (\\w+) (\\d+)\\/(\\d+) ((?:{$color})(?:(?:, | and )(?:{$color}))*) ([A-Z][A-Za-z' ]*?) (artifact )?creature tokens?(?: with (.+?))?( that's tapped and attacking| that are tapped and attacking| tapped and attacking)?$/i", $sentence, $m)
             || ($count = self::amount($m[1])) === null) {
             return null;
         }
@@ -3702,7 +3707,7 @@ final class TextParser
                 'text' => implode(', ', array_map('ucfirst', $keywords)),
                 'manaCost' => null,
             ],
-        ];
+        ] + (($m[8] ?? '') !== '' ? ['attacking' => true] : []);
     }
 
     /**

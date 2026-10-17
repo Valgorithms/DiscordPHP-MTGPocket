@@ -4430,6 +4430,13 @@ final class Game
                     if (isset($effect['endStep'])) {
                         $token->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
                     }
+                    // `… creature token that's tapped and attacking.`: attacking only once attackers are declared.
+                    if ($effect['attacking'] ?? false) {
+                        $token->tapped = true;
+                        if ($this->step === Step::DeclareAttackers || $this->step === Step::DeclareBlockers) {
+                            $this->attackers[$token->id] = true;
+                        }
+                    }
                     // Dwarven Shortsword: `create a 2/2 red Dwarf creature token, then attach CARDNAME to it.`
                     if (($effect['attachSelf'] ?? false) && $self !== null && $self->zone === GameObject::BATTLEFIELD) {
                         $self->attachedTo = $token->id;
@@ -5558,6 +5565,7 @@ final class Game
                 $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
                 in_array($effect['target'] ?? null, ['creature_other', '?creature_other'], true) => ['target' => str_replace('creature_other', "creature_not_{$source->id}", $effect['target'])] + $effect,
+                in_array($effect['target'] ?? null, ['creature_you_control_other', '?creature_you_control_other'], true) => ['target' => str_replace('creature_you_control_other', "creature_yours_not_{$source->id}", $effect['target'])] + $effect,
                 default => $effect,
             }, $ability['effects']);
             if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
@@ -6420,12 +6428,14 @@ final class Game
                 || array_filter($this->objects, fn (GameObject $other) => $other->zone === GameObject::BATTLEFIELD && $other->attachedTo === $object->id && $other->controller === $object->controller) !== []),
             'nonaura_enchantment' => $card->is('Enchantment') && ! in_array('Aura', $card->subtypes, true),
             'creature_other' => $creature,
+            'creature_you_control_other' => $creature && $object->controller === $controller,
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
             default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1])
                 // `another target creature`: not the source.
                 || ((bool) preg_match('/^creature_not_(\d+)$/', $kind, $m) && $creature && $object->id !== (int) $m[1])
+                || ((bool) preg_match('/^creature_yours_not_(\d+)$/', $kind, $m) && $creature && $object->controller === $controller && $object->id !== (int) $m[1])
                 // `target non-Zombie creature`.
                 || ((bool) preg_match('/^creature_nonsub_(\w+)$/', $kind, $m) && $creature && ! in_array($m[1], $card->subtypes, true) && ! in_array('changeling', $card->keywords, true))
                 // `Enchant Forest`: a permanent with that subtype.
