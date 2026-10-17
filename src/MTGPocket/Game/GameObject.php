@@ -81,6 +81,9 @@ final class GameObject
     /** A land awakened (rule 702.113): a 0/0 Elemental creature with haste that is still a land. */
     public bool $awakened = false;
 
+    /** An earthbent land, which returns to the battlefield tapped when it dies or is exiled. */
+    public bool $earthbent = false;
+
     /** Echo was paid, or it has been under its controller's control since an upkeep (rule 702.30). */
     public bool $echoPaid = false;
 
@@ -277,6 +280,7 @@ final class GameObject
         $this->borrowedFrom = null;
         $this->unearthed = false;
         $this->awakened = false;
+        $this->earthbent = false;
         $this->echoPaid = false;
         $this->frozen = false;
         $this->renowned = false;
@@ -346,6 +350,7 @@ final class GameObject
             'shields' => $this->shields,
             'unearthed' => $this->unearthed,
             'awakened' => $this->awakened,
+            'earthbent' => $this->earthbent,
             'echoPaid' => $this->echoPaid,
             'frozen' => $this->frozen,
             'renowned' => $this->renowned,
@@ -404,6 +409,7 @@ final class GameObject
         $object->shields = (int) ($data['shields'] ?? 0);
         $object->unearthed = (bool) ($data['unearthed'] ?? false);
         $object->awakened = (bool) ($data['awakened'] ?? false);
+        $object->earthbent = (bool) ($data['earthbent'] ?? false);
         $object->echoPaid = (bool) ($data['echoPaid'] ?? false);
         $object->frozen = (bool) ($data['frozen'] ?? false);
         $object->renowned = (bool) ($data['renowned'] ?? false);

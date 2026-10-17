@@ -3267,6 +3267,10 @@ final class TextParser
         if (preg_match('/^amass (?:([A-Z][a-z]+) )?(\w+)$/i', $s, $m) && is_int($n = self::amount($m[2])) && $n > 0) {
             return ['type' => 'amass', 'amount' => $n, 'subtype' => $m[1] !== '' ? ucfirst(preg_replace('/s$/', '', $m[1])) : 'Zombie'];
         }
+        // Earthbend (TLA): see Game's `earthbend` effect.
+        if (preg_match('/^earthbend (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
+            return ['type' => 'earthbend', 'amount' => $n];
+        }
         if (preg_match('/^incubate (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'incubate', 'amount' => $n];
         }
