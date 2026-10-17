@@ -2316,7 +2316,7 @@ final class TextParser
         } elseif (preg_match('/^(?:Heroic — )?Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
             $event = 'heroic';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast your (second|third) spell each turn, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
         } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
@@ -2326,7 +2326,7 @@ final class TextParser
             return false;
         }
         // `Whenever you cast your second spell each turn, copy it.`: the spell just cast.
-        if (str_starts_with($event, 'cast_') || in_array($event, ['second_spell', 'third_spell'], true)) {
+        if (str_starts_with($event, 'cast_') || in_array($event, ['first_spell', 'second_spell', 'third_spell'], true)) {
             $text = (string) preg_replace('/^copy it\./i', 'copy that spell.', $text);
         }
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {
@@ -2368,6 +2368,10 @@ final class TextParser
         // Energy too (Scrapper Champion): `you may pay {E}{E}. If you do, …`.
         if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
             [$pay, $text] = [$match[1], $match[2]];
+        }
+        // `you may sacrifice another creature. If you do, draw two cards.`: see Game's `pay` effect.
+        if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[3], 'target')) {
+            [$pay, $text] = ["sacrifice {$match[2]}".($match[1] === 'another' ? ' other' : ''), $match[3]];
         }
         // `you may pay any amount of {E}. Put that many +1/+1 counters on it.`: X is the energy paid.
         if (preg_match('/^you may pay any amount of \{E\}\. (?:If you do, )?(.+?)(?:, where X is the amount of \{E\} paid)?\.?$/u', $text, $match)) {

@@ -2825,7 +2825,7 @@ final class Game
         }
         $caster = $this->players[$seat];
         [$caster->cast, $caster->castTurn] = [$caster->castTurn === $this->turn ? $caster->cast + 1 : 1, $this->turn];
-        $events = [...($caster->cast === 2 ? ['second_spell'] : []), ...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
+        $events = [...($caster->cast === 1 ? ['first_spell'] : []), ...($caster->cast === 2 ? ['second_spell'] : []), ...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : []),
             ...array_map(fn (string $color) => "cast_color_{$color}", $card->colors), ...(count($card->colors) > 1 ? ['cast_multicolored'] : [])];
         $this->castSpell = $spell->id;
@@ -5162,6 +5162,19 @@ final class Game
                         $this->log("{$this->players[$controller]->name} pays {$paid} energy for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
                             $this->applyEffect($then, $source, $self, $controller, $paid, $target);
+                        }
+                    }
+                    break;
+                }
+                // `you may sacrifice another creature. If you do, …`: only something cheap to lose, a token or a small creature.
+                if (preg_match('/^sacrifice (\w+)( other)?$/', $effect['cost'], $m)) {
+                    $fodder = $this->weakest($controller, fn (GameObject $o) => ($m[2] === '' || $o->id !== $source->id)
+                        && ($m[1] === 'permanent' || ($m[1] === 'creature' ? $this->isCreature($o) : $o->definition()->is(ucfirst($m[1])))));
+                    if ($fodder !== null && ($fodder->definition()->isToken() || ($this->isCreature($fodder) && $this->power($fodder) + $this->toughness($fodder) <= 2))) {
+                        $this->log("{$this->players[$controller]->name} sacrifices {$fodder->name()} for {$source->name()}.");
+                        $this->moveTo($fodder, GameObject::GRAVEYARD);
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
                         }
                     }
                     break;
