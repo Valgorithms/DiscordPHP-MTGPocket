@@ -1712,6 +1712,10 @@ final class TextParser
             $text === "it's attacking" => 'attacking',
             // Kird Ape: `as long as you control a Forest`.
             (bool) preg_match('/^you control an? ([A-Z][a-z]+)$/', $text, $m) => "controls {$m[1]}",
+            // `as long as you control another Elf`: not counting itself.
+            (bool) preg_match('/^you control another ([A-Z][a-z]+|creature|artifact|enchantment)$/', $text, $m) && ($type = ucfirst($m[1])) !== '' => 'controls_other '.(self::subtypeOf($type) ?? $type),
+            $text === "it's not your turn" => 'not_your_turn',
+            (bool) preg_match('/^you have (\w+) or fewer cards in hand$/', $text, $m) && is_int($n = self::amount($m[1])) => "hand_le {$n}",
             (bool) preg_match('/^there are (\w+) or more card types among cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "delirium {$n}",
             default => null,
         };
