@@ -694,6 +694,21 @@ final class TextParser
 
                 continue;
             }
+            // Pitch spells: `You may exile a blue card from your hand rather than pay CARDNAME's mana cost.`, or sacrifice a nontoken creature of a color; see Game::pitchFodder().
+            if (preg_match("/^(If it's not your turn, )?you may (?:pay (\\w+) life and )?(exile an? (white|blue|black|red|green) card from your hand|sacrifice an? nontoken (white|blue|black|red|green) creature) rather than pay CARDNAME's mana cost\\.$/i", $line, $pitch)
+                && (($pitch[2] ?? '') === '' || is_int(self::amount($pitch[2])))) {
+                $color = ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][strtolower(($pitch[4] ?? '') !== '' ? $pitch[4] : $pitch[5])];
+                $result['altCosts']['conditional'] = '';
+                $result['keywords'][] = (($pitch[4] ?? '') !== '' ? 'conditional exile ' : 'conditional sacrifice ').$color;
+                if ($pitch[1] !== '') {
+                    $result['keywords'][] = 'conditional not your turn';
+                }
+                if (($pitch[2] ?? '') !== '') {
+                    $result['keywords'][] = 'conditional life '.self::amount($pitch[2]);
+                }
+
+                continue;
+            }
             // Strive: `{2}{R}` more for each target beyond the first; see Game::paymentFor().
             if (preg_match('/^Strive — CARDNAME costs '.self::COST.' more to cast for each target beyond the first\.$/u', $line, $strive)) {
                 $result['altCosts']['strive'] = $strive[1];
