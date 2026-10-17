@@ -196,6 +196,9 @@ final class TextParser
         'Clue' => ['name' => 'Clue', 'type' => 'Token Artifact — Clue', 'types' => ['Artifact'], 'subtypes' => ['Clue'], 'colors' => [], 'text' => '{2}, Sacrifice this token: Draw a card.', 'manaCost' => null],
         'Treasure' => ['name' => 'Treasure', 'type' => 'Token Artifact — Treasure', 'types' => ['Artifact'], 'subtypes' => ['Treasure'], 'colors' => [], 'text' => '{T}, Sacrifice this token: Add one mana of any color.', 'manaCost' => null],
         'Blood' => ['name' => 'Blood', 'type' => 'Token Artifact — Blood', 'types' => ['Artifact'], 'subtypes' => ['Blood'], 'colors' => [], 'text' => '{1}, {T}, Discard a card, Sacrifice this token: Draw a card.', 'manaCost' => null],
+        'Lander' => ['name' => 'Lander', 'type' => 'Token Artifact — Lander', 'types' => ['Artifact'], 'subtypes' => ['Lander'], 'colors' => [], 'text' => '{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.', 'manaCost' => null],
+        'Map' => ['name' => 'Map', 'type' => 'Token Artifact — Map', 'types' => ['Artifact'], 'subtypes' => ['Map'], 'colors' => [], 'text' => '{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.', 'manaCost' => null],
+        'Junk' => ['name' => 'Junk', 'type' => 'Token Artifact — Junk', 'types' => ['Artifact'], 'subtypes' => ['Junk'], 'colors' => [], 'text' => '{T}, Sacrifice this token: Exile the top card of your library. You may play that card this turn. Activate only as a sorcery.', 'manaCost' => null],
     ];
 
     /** Target kinds that are always a creature. */
@@ -3084,6 +3087,9 @@ final class TextParser
         if ($s === 'CARDNAME explores') {
             return ['type' => 'explore', 'self' => true];
         }
+        if (preg_match('/^target creature you control explores$/i', $s)) {
+            return ['type' => 'explore', 'target' => 'creature_you_control'];
+        }
         if (preg_match("/^CARDNAME deals (\\w+) damage to ({$targets})$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
         }
@@ -3428,7 +3434,7 @@ final class TextParser
         if (preg_match('/^investigate$/i', $s)) {
             return ['type' => 'token', 'amount' => 1, 'token' => self::ARTIFACT_TOKENS['Clue']];
         }
-        if (preg_match('/^create (\w+) (Food|Clue|Treasure|Blood) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+        if (preg_match('/^create (\w+) (Food|Clue|Treasure|Blood|Lander|Map|Junk) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'token', 'amount' => $n, 'token' => self::ARTIFACT_TOKENS[ucfirst(strtolower($m[2]))]];
         }
         if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
