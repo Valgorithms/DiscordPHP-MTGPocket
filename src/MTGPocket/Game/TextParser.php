@@ -2392,18 +2392,18 @@ final class TextParser
             };
             $extra = ['sacrificed' => $match[3], 'other' => $match[2] === 'another'];
             $text = $match[4];
-        } elseif (preg_match('/^Whenever a creature you control dies, (.+)$/', $line, $match) && ($effects = self::effects($match[1])) !== null && ! str_contains($match[1], 'target')) {
-            // Once for another creature dying, and once for itself when it is a creature.
+        } elseif (preg_match('/^Whenever a (nontoken )?creature you control dies, (.+)$/', $line, $match) && ($effects = self::effects($match[2])) !== null && ! str_contains($match[2], 'target')) {
+            // Once for another creature dying, and once for itself when it is a creature. "Nontoken": see Game::trigger().
             foreach (self::$creature ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
-                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($match[1] !== '' ? ['nontoken' => true] : []);
             }
 
             return true;
-        } elseif (preg_match('/^Whenever another creature (you control )?dies, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever another (nontoken )?creature (you control )?dies, (.+)$/', $line, $match)) {
             // `creature_dies_any` fires for other players' creatures; "another creature dies" listens to both.
             $event = 'creature_dies_other';
-            $extra = $match[1] === '' ? ['anyController' => true] : [];
-            $text = $match[2];
+            $extra = ($match[2] === '' ? ['anyController' => true] : []) + ($match[1] !== '' ? ['nontoken' => true] : []);
+            $text = $match[3];
         } elseif (preg_match('/^Whenever a player casts an? (white|blue|black|red|green) spell, (?:you may gain (\w+) life\.?$|(.+)$)/', $line, $match)) {
             // Kor Firewalker, the Crystal Rods; see Game::castSpell().
             $event = 'any_cast_color_'.['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$match[1]];

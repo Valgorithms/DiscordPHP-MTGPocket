@@ -5653,6 +5653,10 @@ final class Game
             if (isset($ability['sacrificed']) && (($ability['other'] ?? false) && $context === $source->id || ! $this->sacrificedFits($this->objects[$context], $ability['sacrificed']))) {
                 continue;
             }
+            // `Whenever a nontoken creature you control dies, …`: the creature that died, or this one.
+            if (($ability['nontoken'] ?? false) && ($this->objects[$context] ?? $source)->definition()->isToken()) {
+                continue;
+            }
             // `Whenever a creature you control with power 4 or greater enters, …`: the creature that entered, or this one.
             if (isset($ability['minPower']) && $this->power($this->objects[$context] ?? $source) < $ability['minPower']) {
                 continue;
