@@ -774,6 +774,13 @@ final class Game
                 }
                 break;
 
+            case Step::BeginCombat:
+                // "At the beginning of combat on your turn, …"
+                foreach ($this->permanents($this->active) as $object) {
+                    $this->trigger($object, 'begin_combat', $object->controller);
+                }
+                break;
+
             case Step::PostcombatMain:
                 // "At the beginning of your second main phase, …"
                 foreach ($this->permanents($this->active) as $object) {
@@ -2833,6 +2840,12 @@ final class Game
             if ($this->hasKeyword($permanent, 'chalice') && $permanent->counter('charge') === $card->cost->manaValue((int) ($item['x'] ?? 0))) {
                 $this->pushAbility(['source' => $permanent->id, 'incarnation' => $permanent->incarnation, 'controller' => $permanent->controller, 'effects' => [['type' => 'counter', 'target' => 'spell']],
                     'kinds' => ['spell'], 'label' => "{$permanent->name()}'s ability"], ["s:{$item['id']}"], 'triggers');
+            }
+        }
+        // `Whenever an opponent casts a spell, …`
+        foreach ($this->permanents() as $permanent) {
+            if ($permanent->controller !== $seat) {
+                $this->trigger($permanent, 'opponent_cast', $permanent->controller);
             }
         }
         // `Whenever a player casts a red spell, …`
@@ -6342,6 +6355,11 @@ final class Game
             'artifact' => $card->is('Artifact'),
             'enchantment' => $card->is('Enchantment'),
             'artifact_or_enchantment' => $card->is('Artifact') || $card->is('Enchantment'),
+            'artifact_opponent' => $card->is('Artifact') && $object->controller !== $controller,
+            'enchantment_opponent' => $card->is('Enchantment') && $object->controller !== $controller,
+            'land_opponent' => $card->isLand() && $object->controller !== $controller,
+            'permanent_opponent' => $object->controller !== $controller,
+            'artifact_or_enchantment_opponent' => ($card->is('Artifact') || $card->is('Enchantment')) && $object->controller !== $controller,
             'artifact_or_creature' => $card->is('Artifact') || $creature,
             'artifact_creature' => $card->is('Artifact') && $creature,
             'artifact_or_land' => $card->is('Artifact') || $card->isLand(),

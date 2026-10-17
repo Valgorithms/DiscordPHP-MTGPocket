@@ -83,6 +83,16 @@ final class TextParser
         'target nonland permanent an opponent controls' => 'nonland_permanent_opponent',
         'target nonland permanent you don\'t control' => 'nonland_permanent_opponent',
         'target artifact or creature an opponent controls' => 'artifact_or_creature_opponent',
+        'target artifact an opponent controls' => 'artifact_opponent',
+        'target artifact you don\'t control' => 'artifact_opponent',
+        'target enchantment an opponent controls' => 'enchantment_opponent',
+        'target enchantment you don\'t control' => 'enchantment_opponent',
+        'target land an opponent controls' => 'land_opponent',
+        'target land you don\'t control' => 'land_opponent',
+        'target permanent an opponent controls' => 'permanent_opponent',
+        'target permanent you don\'t control' => 'permanent_opponent',
+        'target artifact or enchantment an opponent controls' => 'artifact_or_enchantment_opponent',
+        'target artifact or enchantment you don\'t control' => 'artifact_or_enchantment_opponent',
         'target artifact, creature, or enchantment an opponent controls' => 'artifact_creature_enchantment_opponent',
         'target artifact, enchantment, or creature with flying' => 'artifact_enchantment_flier',
         'target permanent' => 'permanent',
@@ -2217,6 +2227,12 @@ final class TextParser
             // Sengir Vampire; see Game::moveTo().
             $event = 'damaged_dies';
             $text = $match[1];
+        } elseif (preg_match('/^At the beginning of combat on your turn, (.+)$/', $line, $match)) {
+            $event = 'begin_combat';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever an opponent casts a spell, (.+)$/', $line, $match)) {
+            $event = 'opponent_cast';
+            $text = $match[1];
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
@@ -2272,6 +2288,13 @@ final class TextParser
             $event = 'subtype_enters';
             $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever a creature you control dies, (.+)$/', $line, $match) && ($effects = self::effects($match[1])) !== null && ! str_contains($match[1], 'target')) {
+            // Once for another creature dying, and once for itself when it is a creature.
+            foreach (self::$creature ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+            }
+
+            return true;
         } elseif (preg_match('/^Whenever another creature (you control )?dies, (.+)$/', $line, $match)) {
             // `creature_dies_any` fires for other players' creatures; "another creature dies" listens to both.
             $event = 'creature_dies_other';
