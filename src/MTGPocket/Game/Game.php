@@ -4085,6 +4085,9 @@ final class Game
                 break;
 
             case 'gain_life':
+                if ($effect['perOpponent'] ?? false) {
+                    $amount *= count($opponents);
+                }
                 if (isset($effect['toController'])) {
                     $this->gainLife(str_starts_with((string) $target, 'o:') ? ($this->objects[(int) explode(':', (string) $target)[1]] ?? null)?->controller ?? $controller : $controller, $amount);
                     break;
@@ -4233,11 +4236,18 @@ final class Game
                 if (isset($effect['all'])) {
                     $doomed = array_filter($this->permanents(), fn (GameObject $o) => match ($effect['all']) {
                         'all creatures' => $this->isCreature($o),
+                        'all other creatures' => $this->isCreature($o) && $o->id !== $source->id,
+                        'all creatures with flying' => $this->isCreature($o) && $this->hasKeyword($o, 'flying'),
+                        'all creatures without flying' => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'),
+                        'all tapped creatures' => $this->isCreature($o) && $o->tapped,
                         "all creatures you don't control", 'all creatures your opponents control' => $this->isCreature($o) && $o->controller !== $controller,
                         'all artifacts' => $o->definition()->is('Artifact'),
                         'all enchantments' => $o->definition()->is('Enchantment'),
                         'all artifacts and enchantments' => $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'),
-                        default => ! $o->definition()->isLand(),
+                        // `Destroy all creatures with power 3 or less.`, or with mana value.
+                        default => preg_match('/^all creatures with (power|mana value) (\d+) or (less|greater)$/', $effect['all'], $m)
+                            ? $this->isCreature($o) && (($m[1] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[2]) !== ($m[3] === 'less' ? 1 : -1)
+                            : ! $o->definition()->isLand(),
                     });
                     foreach ($doomed as $object) {
                         if ($effect['type'] === 'exile') {
@@ -6413,6 +6423,7 @@ final class Game
             'land_you_control' => $card->isLand() && $object->controller === $controller,
             'land' => $card->isLand(),
             'nonland_permanent' => ! $card->isLand(),
+            'noncreature_permanent' => ! $creature,
             'nonland_permanent_opponent' => ! $card->isLand() && $object->controller !== $controller,
             'artifact_or_creature_opponent' => ($card->is('Artifact') || $creature) && $object->controller !== $controller,
             'artifact_enchantment_flier' => $card->is('Artifact') || $card->is('Enchantment') || ($creature && $this->hasKeyword($object, 'flying')),
