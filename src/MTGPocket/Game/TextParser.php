@@ -656,6 +656,12 @@ final class TextParser
             if (str_starts_with($line, 'When the creature CARDNAME haunts dies, ') && self::triggered($line, $result)) {
                 continue;
             }
+            // Harnessed Lightning: `Choose target creature. You get {E}{E}{E}, then you may pay any amount of {E}. CARDNAME deals that much damage to that creature.`
+            if (preg_match('/^Choose target creature\. You get ((?:\{E\})+), then you may pay any amount of \{E\}\. CARDNAME deals that much damage to that creature\.$/u', $line, $energy)) {
+                array_push($result['effects'], ['type' => 'energy', 'amount' => substr_count($energy[1], '{E}')], ['type' => 'damage', 'amount' => 0, 'target' => 'creature', 'payEnergy' => true]);
+
+                continue;
+            }
             // Tail Swipe: `Choose target creature you control and target creature you don't control. [The creature you control gets …] Then those creatures fight each other.`
             if (preg_match("/^Choose target creature you control and target creature you (?:don't|do not) control\\.\\s*(.*?)\\s*(?:Then )?(?:[Tt]hose creatures|[Tt]hey) fight each other\\.$/", $line, $fight)) {
                 $middle = [];
@@ -2320,6 +2326,10 @@ final class TextParser
         // Energy too (Scrapper Champion): `you may pay {E}{E}. If you do, …`.
         if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
             [$pay, $text] = [$match[1], $match[2]];
+        }
+        // `you may pay any amount of {E}. Put that many +1/+1 counters on it.`: X is the energy paid.
+        if (preg_match('/^you may pay any amount of \{E\}\. (?:If you do, )?(.+?)(?:, where X is the amount of \{E\} paid)?$/u', $text, $match)) {
+            [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         $effects = self::effects($text);
         // "Whenever CARDNAME attacks, put a +1/+1 counter on it.": with no target, "it" is CARDNAME.
