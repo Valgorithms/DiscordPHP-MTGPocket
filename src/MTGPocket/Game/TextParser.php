@@ -3718,6 +3718,17 @@ final class TextParser
 
             return ['type' => 'edict', 'amount' => $n, 'kind' => strtolower($m[3])] + (str_starts_with($who, 'target') ? ['target' => self::TARGETS[$who]] : ['each' => substr($who, 5)]);
         }
+        // Liliana of the Veil, Pale Wanderer: `Target player sacrifices a creature with the greatest power among creatures they control.`
+        if (preg_match("/^(target player|target opponent|each opponent|each player) sacrifices (?:a|the) creature with the (greatest|least) (power|mana value) among (?:creatures|the creatures) (?:they control|that player controls|they controls)$/i", $s, $m)) {
+            $who = strtolower($m[1]);
+
+            return ['type' => 'edict', 'amount' => 1, 'kind' => 'creature', 'pick' => strtolower($m[2]).' '.strtolower($m[3])]
+                + (str_starts_with($who, 'target') ? ['target' => self::TARGETS[$who]] : ['each' => substr($who, 5)]);
+        }
+        // Grisly Salvage-style: `Return a creature card from your graveyard to your hand.`; chosen as it resolves, so cards milled just before count.
+        if (preg_match("/^(?:then )?(?:you may )?return (?:a|an|up to one) (creature|artifact|land|enchantment|instant or sorcery|permanent|nonland|creature or land)? ?card from your graveyard to your hand$/i", $s, $m)) {
+            return ['type' => 'return_card', 'kind' => strtolower($m[1] ?? '') ?: 'card'];
+        }
         // Graveyard hate: `Exile target player's graveyard.`, `Exile each opponent's graveyard.`, `Exile all graveyards.`
         if (preg_match("/^exile (target player|target opponent)'s graveyard$/i", $s, $m)) {
             return ['type' => 'exile_graveyard', 'target' => self::TARGETS[strtolower($m[1])]];

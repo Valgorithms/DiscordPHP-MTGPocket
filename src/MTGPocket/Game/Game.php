@@ -4694,7 +4694,17 @@ final class Game
                     default => $o->definition()->is(ucfirst($effect['kind'])),
                 };
                 foreach ($seats as $seat) {
-                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, $fits)) !== null; $i++) {
+                    $fitting = $fits;
+                    // `… the creature with the greatest power among creatures they control.`: a tie goes to the weakest of them.
+                    if (isset($effect['pick'])) {
+                        $measure = fn (GameObject $o) => str_ends_with($effect['pick'], 'power') ? $this->power($o) : $o->definition()->cost->manaValue();
+                        $values = array_map($measure, array_filter($this->permanents($seat), $fits));
+                        if ($values !== []) {
+                            $best = str_starts_with($effect['pick'], 'greatest') ? max($values) : min($values);
+                            $fitting = fn (GameObject $o) => $fits($o) && $measure($o) === $best;
+                        }
+                    }
+                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, $fitting)) !== null; $i++) {
                         $this->log("{$this->players[$seat]->name} sacrifices {$victim->name()}.");
                         $this->moveTo($victim, GameObject::GRAVEYARD);
                     }
@@ -5155,6 +5165,24 @@ final class Game
                 $seat = ($effect['that'] ?? false) ? ($this->targetOwner($target) ?? $controller) : $controller;
                 $this->shuffle($seat);
                 $this->log("{$this->players[$seat]->name} shuffles their library.");
+                break;
+
+            case 'return_card':
+                // `Return a creature card from your graveyard to your hand.`: the one with the highest mana value.
+                $cards = array_values(array_filter($this->players[$controller]->graveyard, fn (int $id) => $id !== $source->id && match ($effect['kind']) {
+                    'card' => true,
+                    'instant or sorcery' => $this->objects[$id]->definition()->is('Instant') || $this->objects[$id]->definition()->is('Sorcery'),
+                    'permanent' => ! $this->objects[$id]->definition()->is('Instant') && ! $this->objects[$id]->definition()->is('Sorcery'),
+                    'nonland' => ! $this->objects[$id]->definition()->isLand(),
+                    'creature or land' => $this->objects[$id]->definition()->isCreature() || $this->objects[$id]->definition()->isLand(),
+                    'land' => $this->objects[$id]->definition()->isLand(),
+                    default => $this->objects[$id]->definition()->is(ucfirst($effect['kind'])),
+                }));
+                usort($cards, fn (int $a, int $b) => $this->objects[$b]->definition()->cost->manaValue() <=> $this->objects[$a]->definition()->cost->manaValue());
+                if (($back = $this->objects[$cards[0] ?? -1] ?? null) !== null) {
+                    $this->moveTo($back, GameObject::HAND);
+                    $this->log("{$this->players[$controller]->name} returns {$back->name()} to hand.");
+                }
                 break;
 
             case 'return_that':
