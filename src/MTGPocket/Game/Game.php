@@ -4360,7 +4360,7 @@ final class Game
                 // Goblin Piledriver: `… for each other attacking Goblin.`
                 if (isset($effect['perAttacking'])) {
                     $times = count(array_filter(array_keys($this->attackers), fn (int $id) => $id !== $source->id && isset($this->objects[$id])
-                        && in_array($effect['perAttacking'], $this->objects[$id]->definition()->subtypes, true)));
+                        && ($effect['perAttacking'] === 'creature' || in_array($effect['perAttacking'], $this->objects[$id]->definition()->subtypes, true))));
                     $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
                 }
                 if (isset($effect['xPump'])) {

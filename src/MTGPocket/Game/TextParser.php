@@ -49,6 +49,9 @@ namespace MTGPocket\Game;
  */
 final class TextParser
 {
+    /** The count after `where X is the number of `; see per(). */
+    private const string X_COUNT = '(?:(other creatures|creatures|artifacts|lands|enchantments|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(cards) in your (graveyard|hand)|(opponents) you have)';
+
     private const array NUMBERS = [
         'a' => 1, 'an' => 1, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5,
         'six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10,
@@ -1738,6 +1741,27 @@ final class TextParser
      *
      * @return string|null
      */
+    /**
+     * The count a `for each …` or `where X is the number of …` tail names, for Game::perCount().
+     *
+     * @param array $m Groups 2 (permanents you control), 3 and 4 (a card type and `card`), 5 (hand or graveyard) and 6 (opponents).
+     *
+     * @return string|null
+     */
+    private static function per(array $m): ?string
+    {
+        $kind = rtrim(strtolower($m[2] ?? ''), 's') === 'other creature' ? 'other creature' : rtrim($m[2] ?? '', 's');
+
+        return match (true) {
+            ($m[6] ?? '') !== '' => 'opponents',
+            ($m[5] ?? '') === 'hand' => ($m[3] ?? '') === '' ? 'hand' : null,
+            ($m[5] ?? '') === 'graveyard' => 'gy:'.(trim($m[3] ?? '') === '' ? 'card' : trim($m[3])),
+            in_array(strtolower($kind), ['other creature', 'creature', 'artifact', 'land', 'enchantment'], true) => 'yours:'.strtolower($kind),
+            $kind !== '' && ($type = self::subtypeOf($m[2])) !== null => 'yours:sub:'.$type,
+            default => null,
+        };
+    }
+
     private static function subtypeOf(string $word): ?string
     {
         if (in_array($word, ['Other', 'Creatures', 'Artifact', 'Artifacts', 'Enchantment', 'Legendary', 'Token', 'Tokens', 'Nontoken', 'Attacking', 'Blocking', 'Tapped', 'Untapped', 'White', 'Blue', 'Black', 'Red', 'Green', 'Colorless', 'Multicolored', 'Monocolored', 'Snow', 'Land', 'Lands', 'Permanents', 'Equipped', 'Enchanted'], true)) {
@@ -2814,22 +2838,16 @@ final class TextParser
         // `Draw a card for each creature you control.`, `Create a 1/1 … token for each creature card in your graveyard.`: counted as it resolves (see Game::perCount()).
         // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.
         if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent) you have)$/', $sentence, $m)
-                || (preg_match('/^(.+), where X is the number of (?:(other creatures|creatures|artifacts|lands|enchantments|[A-Z][a-z]+s) you control|(creature |artifact |land |instant |sorcery )?(cards) in your (graveyard|hand)|(opponents) you have)$/', $sentence, $m)
+                || (preg_match('/^(.+), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
                     && str_contains($m[1], ' X ') && ($m[1] = preg_replace('/\b(create|draw|gain|loses?|deals?) X\b/i', '$1 1', $m[1], 1, $swapped)) !== null && $swapped === 1))
             && ($found = self::effect($m[1])) !== null && in_array($found['type'], ['draw', 'gain_life', 'lose_life', 'token', 'damage', 'mill'], true)
-            && ! isset($found['per']) && is_int($found['amount'] ?? 1)) {
-            $kind = rtrim(strtolower($m[2] ?? ''), 's') === 'other creature' ? 'other creature' : rtrim($m[2] ?? '', 's');
-            $per = match (true) {
-                ($m[6] ?? '') !== '' => 'opponents',
-                ($m[5] ?? '') === 'hand' => ($m[3] ?? '') === '' ? 'hand' : null,
-                ($m[5] ?? '') === 'graveyard' => 'gy:'.(trim($m[3] ?? '') === '' ? 'card' : trim($m[3])),
-                in_array(strtolower($kind), ['other creature', 'creature', 'artifact', 'land', 'enchantment'], true) => 'yours:'.strtolower($kind),
-                $kind !== '' && ($type = self::subtypeOf($m[2])) !== null => 'yours:sub:'.$type,
-                default => null,
-            };
-            if ($per !== null) {
-                return [['per' => $per] + $found];
-            }
+            && ! isset($found['per']) && is_int($found['amount'] ?? 1) && ($per = self::per($m)) !== null) {
+            return [['per' => $per] + $found];
+        }
+        // `Target creature gets -X/-X until end of turn, where X is the number of Swamps you control.`: X counted as it resolves.
+        if (preg_match('/^(.+ gets [+-]X\/[+-](?:X|0) until end of turn), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
+            && ($found = self::effect($m[1])) !== null && isset($found['xPump']) && ! isset($found['amount']) && ($per = self::per($m)) !== null) {
+            return [['amount' => 1, 'per' => $per] + $found];
         }
         // Fire // Ice: `CARDNAME deals 2 damage divided as you choose among one or two targets.`; split evenly, the rest to the first (see Game::runSteps()).
         if (preg_match('/^CARDNAME deals (\w+) damage divided as you choose among (one or two|one, two, or three|any number of) targets$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1) {
@@ -3582,7 +3600,8 @@ final class TextParser
             return ['type' => 'discover', 'amount' => $n];
         }
         // Goblin Piledriver: `it gets +2/+0 until end of turn for each other attacking Goblin`.
-        if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each other attacking ([A-Z][a-z]+)$/', $s, $m) && ($type = self::subtypeOf($m[3])) !== null) {
+        // `it gets +1/+0 until end of turn for each other attacking creature`: any of them.
+        if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each other attacking ([A-Z][a-z]+|creature)$/', $s, $m) && ($type = $m[3] === 'creature' ? 'creature' : self::subtypeOf($m[3])) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perAttacking' => $type];
         }
         // Drifter il-Dal: `At the beginning of your upkeep, sacrifice CARDNAME unless you pay {U}.`
