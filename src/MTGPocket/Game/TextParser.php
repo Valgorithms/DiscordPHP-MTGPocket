@@ -2256,6 +2256,23 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cycle (?:a|another) card, (.+)$/', $line, $match)) {
             $event = 'you_cycle';
             $text = $match[1];
+        } elseif (preg_match("/^(?:At the beginning of each opponent's upkeep|Whenever an opponent draws a card|Whenever a land enters (?:the battlefield )?under an opponent's control), (.+)$/", $line, $match)) {
+            // "That player" is that opponent; see Game::trigger().
+            $event = match (true) {
+                str_contains($line, 'upkeep') => 'opponent_upkeep',
+                str_contains($line, 'draws') => 'opponent_draw',
+                default => 'opponent_landfall',
+            };
+            $text = $match[1];
+            if (str_contains($text, 'that player') && ! str_contains($text, 'target')) {
+                $effects = self::effects(str_replace('that player', 'target player', $text));
+                if ($effects === null) {
+                    return false;
+                }
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => array_map(fn (array $effect) => ($effect['target'] ?? null) === 'player' ? ['thatPlayer' => true] + array_diff_key($effect, ['target' => true]) : $effect, $effects)];
+
+                return true;
+            }
         } elseif (preg_match('/^Whenever you discard a card, (.+)$/', $line, $match)) {
             $event = 'you_discard';
             $text = $match[1];

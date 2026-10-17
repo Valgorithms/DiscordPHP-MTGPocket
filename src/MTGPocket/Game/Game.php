@@ -729,6 +729,12 @@ final class Game
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
                 }
+                // `At the beginning of each opponent's upkeep, …`
+                foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
+                    if ($object->controller !== $this->active) {
+                        $this->trigger($object, 'opponent_upkeep', $object->controller, null, $this->active);
+                    }
+                }
                 // "At the beginning of each upkeep, …": every turn's.
                 foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
                     $this->trigger($object, 'each_upkeep', $object->controller);
@@ -4040,6 +4046,10 @@ final class Game
      */
     private function applyEffect(array $effect, GameObject $source, ?GameObject $self, int $controller, int $x, ?string $target): bool
     {
+        // `At the beginning of each opponent's upkeep, that player loses 1 life.`: the player the trigger names; see trigger().
+        if (isset($effect['player'])) {
+            $target = "p:{$effect['player']}";
+        }
         if ($effect['toEnchanted'] ?? false) {
             $target = $self?->enchantedPlayer === null ? null : "p:{$self->enchantedPlayer}";
             if ($target === null) {
@@ -5590,6 +5600,7 @@ final class Game
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
                 // `Whenever another creature you control enters, put a +1/+1 counter on it.`: the creature that entered.
                 ($effect['entering'] ?? false) => ['thatObject' => $context] + $effect,
+                ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
@@ -7642,6 +7653,12 @@ final class Game
                 foreach ($this->permanents($seat) as $permanent) {
                     $this->trigger($permanent, 'you_draw', $seat);
                 }
+                // `Whenever an opponent draws a card, …`
+                foreach ($this->permanents() as $permanent) {
+                    if ($permanent->controller !== $seat) {
+                        $this->trigger($permanent, 'opponent_draw', $permanent->controller, null, $seat);
+                    }
+                }
                 // Miracle (rule 702.94): revealed as the first card drawn this turn.
                 if ($player->drawn === 0 && isset($this->objects[$id]->printed()->altCosts['miracle'])) {
                     $this->objects[$id]->miracle = $this->turn.':'.$this->step->name;
@@ -7796,6 +7813,12 @@ final class Game
             if ($card->isLand()) {
                 foreach ($this->permanents($controller) as $permanent) {
                     $this->trigger($permanent, 'landfall', $controller);
+                }
+                // `Whenever a land enters under an opponent's control, …`
+                foreach ($this->permanents() as $permanent) {
+                    if ($permanent->controller !== $controller) {
+                        $this->trigger($permanent, 'opponent_landfall', $permanent->controller, null, $controller);
+                    }
                 }
             }
         }
