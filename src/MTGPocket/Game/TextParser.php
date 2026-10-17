@@ -2334,18 +2334,24 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn), (.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)), (.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
+                $match[1] === 'you gained life this turn' => 'gained 1',
+                $match[1] === 'a creature died this turn' => 'died 1',
+                $match[1] === 'you attacked this turn' => 'attacked',
+                $match[1] === 'an opponent lost life this turn' => 'opponent_lost',
+                ($match[5] ?? '') !== '' => 'life '.self::amount($match[5]),
+                ($match[6] ?? '') !== '' => 'controls '.ucfirst($match[6]),
                 $match[2] !== '' => 'lands '.self::amount($match[2]),
                 $match[3] !== '' => 'died '.self::amount($match[3]),
                 $match[4] !== '' => 'gained '.self::amount($match[4]),
                 default => 'hand_behind',
             };
-            if (! preg_match('/^\w+( \d+)?$/', $if)) {
+            if (! preg_match('/^\w+( \w+)?$/', $if)) {
                 return false;
             }
-            $text = $match[5];
+            $text = $match[7];
         }
         // `Whenever CARDNAME deals combat damage to a player, that player discards a card.`: the opponent, untargeted.
         if ($event === 'combat_damage' && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
