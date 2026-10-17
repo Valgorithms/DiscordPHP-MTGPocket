@@ -3115,6 +3115,12 @@ final class TextParser
 
             return true;
         }
+        // `You may draw a card. If you do, discard a card.`: the game always draws (see TextParser::effect()), so it loots.
+        if (preg_match('/^If you do, discard (\w+) cards?$/', $sentence, $m) && is_int($n = self::amount($m[1])) && $effects[$last]['type'] === 'draw' && ! isset($effects[$last]['per'])) {
+            $effects[] = ['type' => 'discard', 'amount' => $n];
+
+            return true;
+        }
         // Ruthless Predation: `Target creature you control gets +1/+1 until end of turn. It fights target creature you don't control.`
         if (in_array($effects[$last]['target'] ?? null, ['creature_you_control', 'creature'], true)
             && preg_match("/^(?:Then )?(?:[Ii]t|[Tt]hat creature) fights (target creature you don't control|target creature an opponent controls|another target creature)$/", $sentence, $m)) {
