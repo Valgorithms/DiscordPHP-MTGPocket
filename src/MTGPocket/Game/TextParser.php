@@ -1858,6 +1858,7 @@ final class TextParser
             "can't be blocked by more than one creature" => ["can't be blocked by more than one creature"],
             // Read by Game::minBlockers().
             "can't be blocked except by two or more creatures" => ['menace'],
+            "can't be the target of spells or abilities your opponents control" => ['hexproof'],
             "can't be blocked except by three or more creatures" => ["can't be blocked except by 3 or more creatures"],
             "can't be blocked except by four or more creatures" => ["can't be blocked except by 4 or more creatures"],
             "attacks each combat if able" => ["attacks each combat if able"],
@@ -2153,6 +2154,7 @@ final class TextParser
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
             'is put into a graveyard from the battlefield' => 'to_graveyard', 'is put into a graveyard from anywhere' => 'to_graveyard_anywhere', 'becomes blocked' => 'blocked',
+            'blocks' => 'blocks', 'leaves the battlefield' => 'leaves',
         ];
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
@@ -2221,10 +2223,29 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability|becomes blocked|becomes tapped)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability|becomes blocked|becomes tapped|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
+        } elseif (preg_match('/^Whenever CARDNAME blocks or becomes blocked, (.+)$/', $line, $match)
+            && ($effects = self::effects($match[1]) ?? (str_contains($match[1], 'target') ? null : self::effects(preg_replace('/\bit\b/', 'CARDNAME', $match[1])))) !== null) {
+            foreach (['blocks', 'blocked'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+            }
+
+            return true;
+        } elseif (preg_match('/^Whenever a creature an opponent controls dies, (.+)$/', $line, $match)) {
+            $event = 'creature_dies_any';
+            $text = $match[1];
+        } elseif (preg_match('/^When you cycle CARDNAME, (.+)$/', $line, $match)) {
+            $event = 'cycled';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever you cycle (?:a|another) card, (.+)$/', $line, $match)) {
+            $event = 'you_cycle';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever you discard a card, (.+)$/', $line, $match)) {
+            $event = 'you_discard';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever a creature dealt damage by CARDNAME this turn dies, (.+)$/', $line, $match)) {
             // Sengir Vampire; see Game::moveTo().
             $event = 'damaged_dies';
