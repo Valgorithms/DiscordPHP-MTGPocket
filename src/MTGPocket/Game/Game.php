@@ -6427,11 +6427,13 @@ final class Game
      * @param int      $seat
      * @param string   $kind
      * @param int|null $self
+     * @param int|null $source The object it comes from; what has protection from it is left out.
      *
      * @return string[]
      */
-    public function targetOptions(int $seat, string $kind, ?int $self = null): array
+    public function targetOptions(int $seat, string $kind, ?int $self = null, ?int $source = null): array
     {
+        $from = $source === null ? null : ($this->objects[$source] ?? null);
         $options = [];
         foreach (array_keys($this->players) as $player) {
             $options[] = "p:{$player}";
@@ -6453,7 +6455,8 @@ final class Game
             $options[] = '-';
         }
 
-        return array_values(array_filter($options, fn (string $target) => $this->isLegalTarget($kind, $target, $seat, $self)));
+        return array_values(array_filter($options, fn (string $target) => $this->isLegalTarget($kind, $target, $seat, $self)
+            && ($from === null || ! $this->protectedFrom($this->targetObject($target), $from))));
     }
 
     /**
@@ -6720,12 +6723,23 @@ final class Game
                 $this->objects[$id]->tapped = true;
             }
             $this->trigger($this->objects[$id], 'attacks', $seat);
+            // `Whenever a creature you control attacks, it gets …`
+            foreach ($this->permanents($seat) as $permanent) {
+                $this->trigger($permanent, 'creature_attacks', $seat, null, $id);
+                if ($permanent->id !== $id) {
+                    $this->trigger($permanent, 'creature_attacks_other', $seat, null, $id);
+                }
+            }
             // The Ring, second level: `Whenever your Ring-bearer attacks, draw a card, then discard a card.`
             if ($this->ringLevel($this->objects[$id]) >= 2) {
                 $this->ringTrigger($this->objects[$id], 'Draw a card, then discard a card.');
             }
         }
 
+        // `Whenever you attack, …`
+        foreach ($ids === [] ? [] : $this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'you_attack', $seat);
+        }
         // Battle cry (rule 702.91): each other attacking creature gets +1/+0.
         foreach ($ids as $id) {
             if ($this->hasKeyword($this->objects[$id], 'battle cry') && count($ids) > 1) {
@@ -7269,6 +7283,12 @@ final class Game
         }
         foreach ($hitPlayer as $source) {
             $this->trigger($source, 'combat_damage', $source->controller);
+            foreach ($this->permanents($source->controller) as $permanent) {
+                $this->trigger($permanent, 'creature_combat_damage', $source->controller, null, $source->id);
+                if ($permanent->id !== $source->id) {
+                    $this->trigger($permanent, 'creature_combat_damage_other', $source->controller, null, $source->id);
+                }
+            }
             // The Ring, fourth level.
             if ($this->ringLevel($source) >= 4) {
                 $this->ringTrigger($source, 'Each opponent loses 3 life.');

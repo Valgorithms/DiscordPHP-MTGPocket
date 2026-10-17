@@ -230,7 +230,7 @@ final class PracticeBot
         foreach ($kinds as $kind) {
             $best = null;
             $bestScore = PHP_INT_MIN;
-            foreach ($game->targetOptions($seat, $kind) as $option) {
+            foreach ($game->targetOptions($seat, $kind, null, $self) as $option) {
                 [$type, $id] = explode(':', $option) + [1 => ''];
                 $score = null;
                 if ($type === 'p' && $harmful !== ((int) $id === $seat)) {
@@ -253,7 +253,7 @@ final class PracticeBot
                 $best = '-';
             }
             if ($best === null && $forced) {
-                $best = $game->targetOptions($seat, $kind)[0] ?? null;
+                $best = $game->targetOptions($seat, $kind, null, $self)[0] ?? null;
             }
             if ($best === null) {
                 return null;
