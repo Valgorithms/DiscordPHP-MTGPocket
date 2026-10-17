@@ -5501,6 +5501,8 @@ final class Game
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
+            'attacked' => $this->players[$controller]->attackedTurn === $this->turn,
+            'opponent_lost' => array_filter($this->players, fn (GamePlayer $other, int $seat) => $seat !== $controller && $other->lostLifeOnTurn === $this->turn, ARRAY_FILTER_USE_BOTH) !== [],
             'main_phase' => $this->active === $controller && in_array($this->step, [Step::PrecombatMain, Step::PostcombatMain], true),
             'attacking' => isset($this->attackers[$source->id]),
             'controls' => array_filter($this->permanents($controller), fn (GameObject $o) => (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
