@@ -2865,6 +2865,7 @@ final class Game
         foreach ($this->permanents() as $permanent) {
             if ($permanent->controller !== $seat) {
                 $this->trigger($permanent, 'opponent_cast', $permanent->controller);
+                $this->trigger($permanent, 'opponent_cast_kind', $permanent->controller, null, $spell->id);
             }
         }
         // `Whenever a player casts a red spell, …`
@@ -6168,10 +6169,10 @@ final class Game
 
     /**
      * Whether the permanent a trigger is about (sacrificed, or put into a
-     * graveyard) is the kind it names: `Whenever you sacrifice a Food, …`.
+     * graveyard, or a spell cast) is the kind it names: `Whenever you sacrifice a Food, …`.
      *
      * @param GameObject $object
-     * @param string     $kind   `permanent`, `creature`, `token`, `nontoken creature`, a card type or a subtype.
+     * @param string     $kind   `permanent`, `creature`, `noncreature`, `token`, `nontoken creature`, `instant or sorcery`, `multicolored`, a card type or a subtype.
      *
      * @return bool
      */
@@ -6184,6 +6185,9 @@ final class Game
             'token' => $card->isToken(),
             'nontoken creature' => ! $card->isToken() && $card->is('Creature'),
             'creature', 'artifact', 'enchantment', 'land' => $card->is(ucfirst($kind)),
+            'noncreature' => ! $card->is('Creature'),
+            'instant or sorcery' => $card->is('Instant') || $card->is('Sorcery'),
+            'multicolored' => count($card->colors) > 1,
             default => in_array($kind, $card->subtypes, true),
         };
     }
