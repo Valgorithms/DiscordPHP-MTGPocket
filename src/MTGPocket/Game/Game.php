@@ -6185,7 +6185,8 @@ final class Game
 
     /**
      * Sacrifices a permanent (rule 701.21), then triggers `Whenever you
-     * sacrifice a permanent, …` on its controller's permanents, itself included.
+     * sacrifice a permanent, …` on its controller's permanents, itself
+     * included, and `Whenever a player (an opponent) sacrifices …` on everyone's.
      *
      * @param GameObject $object
      *
@@ -6194,10 +6195,11 @@ final class Game
     private function sacrifice(GameObject $object): void
     {
         $seat = $object->controller;
-        $watchers = $this->permanents($seat);
+        $watchers = $this->permanents();
         $this->moveTo($object, GameObject::GRAVEYARD);
         foreach ($watchers as $watcher) {
-            $this->trigger($watcher, 'you_sacrifice', $seat, null, $object->id);
+            $this->trigger($watcher, $watcher->controller === $seat ? 'you_sacrifice' : 'opponent_sacrifices', $watcher->controller, null, $object->id);
+            $this->trigger($watcher, 'player_sacrifices', $watcher->controller, null, $object->id);
         }
     }
 
