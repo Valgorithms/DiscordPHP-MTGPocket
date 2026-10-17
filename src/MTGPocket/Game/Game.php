@@ -5650,7 +5650,7 @@ final class Game
                 continue;
             }
             // `Whenever you sacrifice another creature, …`: the permanent sacrificed (see Game::sacrifice()).
-            if (isset($ability['sacrificed']) && (($ability['other'] ?? false) && $context === $source->id || ! $this->sacrificedFits($this->objects[$context], $ability['sacrificed']))) {
+            if (isset($ability['objectKind']) && (($ability['other'] ?? false) && $context === $source->id || ! $this->objectFits($this->objects[$context], $ability['objectKind']))) {
                 continue;
             }
             // `Whenever a nontoken creature you control dies, …`: the creature that died, or this one (whose context is its +1/+1 counters).
@@ -6167,14 +6167,15 @@ final class Game
     }
 
     /**
-     * Whether a sacrificed permanent is the kind a `Whenever you sacrifice …` trigger names.
+     * Whether the permanent a trigger is about (sacrificed, or put into a
+     * graveyard) is the kind it names: `Whenever you sacrifice a Food, …`.
      *
      * @param GameObject $object
      * @param string     $kind   `permanent`, `creature`, `token`, `nontoken creature`, a card type or a subtype.
      *
      * @return bool
      */
-    private function sacrificedFits(GameObject $object, string $kind): bool
+    private function objectFits(GameObject $object, string $kind): bool
     {
         $card = $object->definition();
 
@@ -8201,6 +8202,12 @@ final class Game
         }
         if ($toGraveyard) {
             $this->trigger($object, 'to_graveyard', $controller, $incarnation);
+            // `Whenever an artifact you control is put into a graveyard from the battlefield, …`: itself included.
+            if ($object->definition()->is('Artifact')) {
+                foreach ([$object, ...$this->permanents($controller)] as $permanent) {
+                    $this->trigger($permanent, 'artifact_to_graveyard', $controller, null, $object->id);
+                }
+            }
         }
         // `When CARDNAME leaves the battlefield, …`
         if ($leaves) {
