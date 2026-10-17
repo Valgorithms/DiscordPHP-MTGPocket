@@ -2328,7 +2328,7 @@ final class TextParser
             [$pay, $text] = [$match[1], $match[2]];
         }
         // `you may pay any amount of {E}. Put that many +1/+1 counters on it.`: X is the energy paid.
-        if (preg_match('/^you may pay any amount of \{E\}\. (?:If you do, )?(.+?)(?:, where X is the amount of \{E\} paid)?$/u', $text, $match)) {
+        if (preg_match('/^you may pay any amount of \{E\}\. (?:If you do, )?(.+?)(?:, where X is the amount of \{E\} paid)?\.?$/u', $text, $match)) {
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         $effects = self::effects($text);
@@ -3240,9 +3240,12 @@ final class TextParser
             return ['type' => 'base_pt', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'base' => [(int) $m[2], (int) $m[3]], 'self' => true, 'animate' => true];
         }
         // Signed X: `Target creature gets -X/-X until end of turn.`
-        if (preg_match("/^({$targets}) gets ([+-])X\/([+-])(X|0) until end of turn$/i", $s, $m)
-            && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
-            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => [], 'xPump' => [$m[2] === '-' ? -1 : 1, $m[4] === '0' ? 0 : ($m[3] === '-' ? -1 : 1)], 'target' => self::TARGETS[strtolower($m[1])]];
+        // `…, where X is the number of creatures you control.`: X counted as it resolves.
+        if (preg_match("/^({$targets}|CARDNAME) gets ([+-])X\/([+-])(X|0) until end of turn(?:, where X is the number of (creatures|lands|artifacts|enchantments) you control)?$/i", $s, $m)
+            && ($m[1] === 'CARDNAME' || in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true))) {
+            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => [], 'xPump' => [$m[2] === '-' ? -1 : 1, $m[4] === '0' ? 0 : ($m[3] === '-' ? -1 : 1)]]
+                + (($m[5] ?? '') !== '' ? ['amount' => 'yours:'.strtolower($m[5])] : [])
+                + ($m[1] === 'CARDNAME' ? ['self' => true] : ['target' => self::TARGETS[strtolower($m[1])]]);
         }
         // `Target creature has base power and toughness 0/1 until end of turn.` (rule 613.4b); see Game::power().
         if (preg_match("/^({$targets}) has base power and toughness (\\d+)\\/(\\d+) until end of turn$/i", $s, $m)

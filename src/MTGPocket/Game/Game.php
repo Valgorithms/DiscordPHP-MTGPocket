@@ -4303,7 +4303,8 @@ final class Game
                     $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
                 }
                 if (isset($effect['xPump'])) {
-                    $effect = ['power' => $effect['xPump'][0] * $x, 'toughness' => $effect['xPump'][1] * $x] + $effect;
+                    $n = isset($effect['amount']) ? $amount : $x;
+                    $effect = ['power' => $effect['xPump'][0] * $n, 'toughness' => $effect['xPump'][1] * $n] + $effect;
                 }
                 $pumped = match ($effect['each'] ?? null) {
                     null => $affected === null ? [] : [$affected],
