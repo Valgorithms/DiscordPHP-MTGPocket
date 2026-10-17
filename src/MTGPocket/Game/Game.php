@@ -985,6 +985,10 @@ final class Game
                 $this->trigger($permanent, 'you_discard', $seat);
             }
         }
+        // `Whenever you discard one or more cards, …`: once for them all.
+        foreach ($this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'you_discard_batch', $seat);
+        }
         foreach ($ids as $id) {
             $object = $this->objects[$id];
             if (isset($object->printed()->altCosts['madness'])) {
@@ -2937,6 +2941,7 @@ final class Game
             // Cycling discards the card (rule 702.29a).
             $this->trigger($permanent, 'you_cycle', $seat);
             $this->trigger($permanent, 'you_discard', $seat);
+            $this->trigger($permanent, 'you_discard_batch', $seat);
         }
         $this->pushAbility([
             'source' => $object->id,

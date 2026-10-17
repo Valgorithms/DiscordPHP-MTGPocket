@@ -2297,9 +2297,10 @@ final class TextParser
 
                 return true;
             }
-        } elseif (preg_match('/^Whenever you discard a card, (.+)$/', $line, $match)) {
-            $event = 'you_discard';
-            $text = $match[1];
+        } elseif (preg_match('/^Whenever you discard (a card|one or more cards), (.+)$/', $line, $match)) {
+            // See Game::discardCards(): "one or more" triggers once for them all.
+            $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
+            $text = $match[2];
         } elseif (preg_match('/^Whenever a creature dealt damage by CARDNAME this turn dies, (.+)$/', $line, $match)) {
             // Sengir Vampire; see Game::moveTo().
             $event = 'damaged_dies';
