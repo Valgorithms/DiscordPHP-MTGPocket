@@ -206,6 +206,9 @@ final class Game
     private int $nextStackId = 1;
     private int $shuffles = 0;
 
+    /** Set by `End the turn.`; acted on once the spell finishes resolving, see {@see endTheTurn()}. */
+    private bool $endingTurn = false;
+
     /** The creature type a resolving spell's `Choose a creature type.` picked. */
     private ?string $chosenType = null;
 
@@ -501,6 +504,25 @@ final class Game
         $this->settle();
     }
 
+    /**
+     * `End the turn.` (rule 724): spells and abilities on the stack are
+     * exiled, combat ends, and the turn goes straight to its cleanup step.
+     *
+     * @return void
+     */
+    private function endTheTurn(): void
+    {
+        $this->endingTurn = false;
+        foreach (array_reverse($this->stack) as $item) {
+            if (! self::isAbility($item) && ($this->objects[$item['object']] ?? null)?->zone === GameObject::STACK) {
+                $this->moveTo($this->objects[$item['object']], GameObject::EXILE);
+            }
+        }
+        [$this->stack, $this->pendingTriggers, $this->attackers, $this->blockers] = [[], [], [], []];
+        $this->log('The turn ends.');
+        $this->enterStep(Step::Cleanup);
+    }
+
     private function passPriority(): void
     {
         $this->passes++;
@@ -513,6 +535,11 @@ final class Game
         $this->passes = 0;
         if ($this->stack !== []) {
             $this->resolveTop();
+            if ($this->endingTurn) {
+                $this->endTheTurn();
+
+                return;
+            }
             $this->priority = $this->active;
         } else {
             $this->advance();
@@ -1302,7 +1329,9 @@ final class Game
         }
         $land = $object->printed()->isLand();
 
-        return array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'play from top') || ($land && $this->hasKeyword($o, 'lands from top'))) !== [];
+        $creature = ! $land && $object->printed()->isCreature();
+
+        return array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'play from top') || ($land && $this->hasKeyword($o, 'lands from top')) || ($creature && $this->hasKeyword($o, 'creatures from top'))) !== [];
     }
 
     public function canPlayLand(int $seat, int $id): bool
@@ -2047,8 +2076,13 @@ final class Game
     public function manaSources(int $seat): array
     {
         $sources = [];
+        // Chromatic Lantern: `Lands you control have "{T}: Add one mana of any color."`
+        $lantern = array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'lands tap for any color')) !== [];
         foreach ($this->permanents($seat) as $object) {
             $ability = $object->definition()->manaAbility;
+            if ($lantern && $object->definition()->isLand() && ($ability === null || (($ability['count'] ?? 0) === 1 && ! isset($ability['fixed']) && ! ($ability['filter'] ?? false) && ! ($ability['noTap'] ?? false) && ! ($ability['sacrifice'] ?? false)))) {
+                $ability = ['count' => 1, 'colors' => array_values(array_unique([...($ability['colors'] ?? []), 'W', 'U', 'B', 'R', 'G']))] + ($ability ?? []);
+            }
             // A filter that doesn't tap: `{2}: Add one mana of any color.`, or once each turn.
             $noTap = $ability['noTap'] ?? false;
             if ($noTap && ($ability['once'] ?? false) && ($object->used[-1] ?? 0) === $this->turn) {
@@ -4244,6 +4278,10 @@ final class Game
                     }
                     $object->untilEndOfTurn[] = ['power' => $effect['power'], 'toughness' => $effect['toughness'], 'keywords' => array_map(fn (string $keyword) => $keyword === 'protection from the color of your choice' ? 'protection from '.$this->colorToFear($controller) : $keyword, $effect['keywords'])] + (isset($effect['base']) ? ['base' => $effect['base']] : []) + (($effect['animate'] ?? false) ? ['creature' => true] : []);
                 }
+                break;
+
+            case 'end_turn':
+                $this->endingTurn = true;
                 break;
 
             case 'choose_type':

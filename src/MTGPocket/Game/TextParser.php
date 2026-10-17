@@ -412,12 +412,15 @@ final class TextParser
                 'You have hexproof.' => 'you have hexproof',
                 // Read by Game::whyNotCast().
                 "Your opponents can't cast spells during your turn." => 'opponents cast nothing on your turn',
+                // Chromatic Lantern; read by Game::manaSources().
+                'Lands you control have "{T}: Add one mana of any color."' => 'lands tap for any color',
                 'You may look at the top card of your library any time.' => 'look at top any time',
                 // Shown on the board; see MatchMessageBuilder::side().
                 'Play with the top card of your library revealed.' => 'top revealed',
                 // Read by Game::playableFromTop().
                 'You may play lands from the top of your library.' => 'lands from top',
                 'You may play lands and cast spells from the top of your library.' => 'play from top',
+                'You may cast creature spells from the top of your library.' => 'creatures from top',
                 // Daybound sets it to day as it enters when it is neither (rule 702.145); see Game::dayNight().
                 "If it's neither day nor night, it becomes day as CARDNAME enters." => 'daybound',
                 'If CARDNAME would be put into a graveyard from anywhere, exile it instead.' => 'exile instead of graveyard',
@@ -3339,6 +3342,10 @@ final class TextParser
         $group = implode('|', array_keys($each));
         if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
+        }
+        // Time Stop, Ultima: `End the turn.`; see Game::endTheTurn().
+        if (preg_match('/^end the turn$/i', $s)) {
+            return ['type' => 'end_turn'];
         }
         // `Choose a creature type.` for a spell: the game picks the type most of your creatures share; see Game::choiceFor().
         if (preg_match('/^choose a creature type$/i', $s)) {
