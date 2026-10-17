@@ -2355,6 +2355,23 @@ final class TextParser
         } elseif (preg_match('/^Whenever (?:you attack|one or more creatures you control attack), (.+)$/', $line, $match)) {
             $event = 'you_attack';
             $text = (string) preg_replace('/^they (get|gain)/', 'attacking creatures you control $1', $match[1]);
+        } elseif (preg_match('/^Whenever (another|a) creature (?:you control )?with power (\w+) or greater enters(?: the battlefield)?(?: under your control)?, (.+)$/', $line, $match)
+            && (str_contains($match[0], 'you control with') || str_contains($match[0], 'under your control')) && is_int($power = self::amount($match[2]))) {
+            // Ferocious-style: `Whenever a creature you control with power 4 or greater enters, draw a card.`; see Game::trigger().
+            $extra = ['minPower' => $power];
+            $text = $match[3];
+            $event = 'creature_enters_other';
+            if ($match[1] === 'a' && self::$creature) {
+                // Itself too, when it enters with that much power.
+                if (($effects = self::effects($text)) === null || preg_match('/\b(it|its)\b/', $text)) {
+                    return false;
+                }
+                foreach (['enters', 'creature_enters_other'] as $event) {
+                    $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + $extra;
+                }
+
+                return true;
+            }
         } elseif (preg_match('/^Whenever (?:another|(a)) creature you control enters(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] === '' || ! self::$creature)) {
             // "a creature" on a noncreature (an Equipment) is any other creature.
             $match = [$m2[0], $m2[2]];

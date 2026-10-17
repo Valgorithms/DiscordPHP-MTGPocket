@@ -5649,6 +5649,10 @@ final class Game
                 || ! in_array($ability['subtype'], ($this->objects[$context] ?? null)?->definition()->subtypes ?? [], true))) {
                 continue;
             }
+            // `Whenever a creature you control with power 4 or greater enters, …`: the creature that entered, or this one.
+            if (isset($ability['minPower']) && $this->power($this->objects[$context] ?? $source) < $ability['minPower']) {
+                continue;
+            }
             // "When this creature enters, if it was kicked, …"
             if (($ability['kicked'] ?? false) && ! $source->kicked) {
                 continue;
