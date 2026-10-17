@@ -1506,6 +1506,12 @@ final class Game
                 if (preg_match('/^conditional control (\w+)$/', $keyword, $m) && array_filter($this->permanents($seat), fn (GameObject $o) => in_array($m[1], $o->definition()->subtypes, true)) === []) {
                     return "{$card->name} needs you to control a {$m[1]}.";
                 }
+                if ($keyword === 'conditional not your turn' && $this->active === $seat) {
+                    return "{$card->name} can be cast this way only when it isn't your turn.";
+                }
+            }
+            if (preg_grep('/^conditional (exile|sacrifice) /', $card->keywords) !== [] && $this->pitchFodder($seat, $id, $card) === null) {
+                return "{$card->name} needs a card of its color to exile or sacrifice.";
             }
         }
         // Surge (rule 702.117): you've cast another spell this turn.
@@ -2236,6 +2242,11 @@ final class Game
             $this->log("{$this->players[$seat]->name} returns {$slinger->name()} to their hand (web-slinging).");
             $this->moveTo($slinger, GameObject::HAND);
         }
+        if ($options['alt'] === 'conditional' && ($fodder = $this->pitchFodder($seat, $id, $card)) !== null) {
+            $exiled = $fodder->zone === GameObject::HAND;
+            $this->log("{$this->players[$seat]->name} ".($exiled ? 'exiles' : 'sacrifices')." {$fodder->name()} to cast {$card->name}.");
+            $this->moveTo($fodder, $exiled ? GameObject::EXILE : GameObject::GRAVEYARD);
+        }
         if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to emerge.");
             $this->moveTo($fodder, GameObject::GRAVEYARD);
@@ -2424,6 +2435,33 @@ final class Game
         usort($creatures, fn (GameObject $a, GameObject $b) => $this->power($b) <=> $this->power($a));
 
         return $creatures[0] ?? null;
+    }
+
+    /**
+     * A pitch spell's cost: the cheapest card of its color in hand to exile,
+     * or the weakest nontoken creature of its color to sacrifice.
+     *
+     * @param int            $seat
+     * @param int            $id   The spell.
+     * @param CardDefinition $card
+     *
+     * @return GameObject|null
+     */
+    private function pitchFodder(int $seat, int $id, CardDefinition $card): ?GameObject
+    {
+        foreach ($card->keywords as $keyword) {
+            if (preg_match('/^conditional exile ([WUBRG])$/', $keyword, $m)) {
+                $cards = array_values(array_filter(array_map(fn (int $other) => $this->objects[$other], $this->players[$seat]->hand), fn (GameObject $o) => $o->id !== $id && in_array($m[1], $o->definition()->colors, true)));
+                usort($cards, fn (GameObject $a, GameObject $b) => $a->definition()->cost->manaValue() <=> $b->definition()->cost->manaValue());
+
+                return $cards[0] ?? null;
+            }
+            if (preg_match('/^conditional sacrifice ([WUBRG])$/', $keyword, $m)) {
+                return $this->weakest($seat, fn (GameObject $o) => $this->isCreature($o) && ! $o->definition()->isToken() && in_array($m[1], $o->definition()->colors, true));
+            }
+        }
+
+        return null;
     }
 
     /**
