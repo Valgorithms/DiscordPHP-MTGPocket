@@ -973,6 +973,12 @@ final class Game
         }
         $discarded = implode(', ', array_map(fn ($id) => $this->objects[$id]->name(), $ids));
         $this->log("{$this->players[$seat]->name} discards {$discarded}.", $seat, "discard {$discarded}");
+        // `Whenever you discard a card, …`
+        foreach ($ids as $id) {
+            foreach ($this->permanents($seat) as $permanent) {
+                $this->trigger($permanent, 'you_discard', $seat);
+            }
+        }
         foreach ($ids as $id) {
             $object = $this->objects[$id];
             if (isset($object->printed()->altCosts['madness'])) {
@@ -2911,6 +2917,13 @@ final class Game
         $payment = $this->payFor($seat, (string) $card->cycling) ?? throw new GameException("You cannot pay {$card->cycling}.");
         $this->pay($seat, $payment);
         $this->moveTo($object, GameObject::GRAVEYARD);
+        // `When you cycle CARDNAME, …` and `Whenever you cycle a card, …`, above the cycling draw.
+        $this->trigger($object, 'cycled', $seat);
+        foreach ($this->permanents($seat) as $permanent) {
+            // Cycling discards the card (rule 702.29a).
+            $this->trigger($permanent, 'you_cycle', $seat);
+            $this->trigger($permanent, 'you_discard', $seat);
+        }
         $this->pushAbility([
             'source' => $object->id,
             'incarnation' => $object->incarnation,
@@ -7124,6 +7137,10 @@ final class Game
                 $this->log("Flanking: {$this->objects[$blocker]->name()} gets -1/-1 until end of turn.");
             }
         }
+        // `Whenever CARDNAME blocks, …`
+        foreach (array_unique(array_keys($this->blockers)) as $id) {
+            $this->trigger($this->objects[$id], 'blocks', $this->objects[$id]->controller);
+        }
         // `Whenever this creature becomes blocked`, afflict.
         foreach (array_keys($this->blocked) as $id) {
             $this->trigger($this->objects[$id], 'blocked', $this->objects[$id]->controller);
@@ -7975,6 +7992,7 @@ final class Game
         if ($zone === GameObject::GRAVEYARD && in_array('exile instead of graveyard', $object->definition()->keywords, true)) {
             $zone = GameObject::EXILE;
         }
+        $leaves = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD;
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
         $plusCounters = $object->counter('+1/+1');
@@ -8062,6 +8080,10 @@ final class Game
         }
         if ($toGraveyard) {
             $this->trigger($object, 'to_graveyard', $controller, $incarnation);
+        }
+        // `When CARDNAME leaves the battlefield, …`
+        if ($leaves) {
+            $this->trigger($object, 'leaves', $controller, $incarnation);
         }
         // `When CARDNAME is put into a graveyard from anywhere, shuffle it into its owner's library.`: the card in the graveyard.
         if ($zone === GameObject::GRAVEYARD) {
