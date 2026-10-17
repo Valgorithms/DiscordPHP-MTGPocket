@@ -4031,6 +4031,7 @@ final class Game
         };
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {
+            isset($effect['thatObject']) => ($that = $this->objects[$effect['thatObject']] ?? null)?->zone === GameObject::BATTLEFIELD ? $that : null,
             (bool) ($effect['self'] ?? false) => $self,
             (bool) ($effect['enchanted'] ?? false) => $self?->attachedTo === null ? null : ($this->objects[$self->attachedTo] ?? null),
             default => $target === null ? null : $this->targetObject($target),
@@ -5519,6 +5520,8 @@ final class Game
         foreach ($source->definition()->triggersOn($event) as $ability) {
             // Modular: the +1/+1 counters it had as it died. Graft: the creature that entered. Mentor: lesser power than it has now.
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
+                // `Whenever another creature you control enters, put a +1/+1 counter on it.`: the creature that entered.
+                ($effect['entering'] ?? false) => ['thatObject' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
@@ -7669,7 +7672,7 @@ final class Game
             if ($this->isCreature($object)) {
                 foreach ($this->permanents($controller) as $permanent) {
                     if ($permanent->id !== $object->id) {
-                        $this->trigger($permanent, 'creature_enters_other', $controller);
+                        $this->trigger($permanent, 'creature_enters_other', $controller, null, $object->id);
                         if (in_array('Ally', $object->definition()->subtypes, true)) {
                             $this->trigger($permanent, 'ally_enters_other', $controller);
                         }

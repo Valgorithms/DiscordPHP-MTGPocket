@@ -190,6 +190,9 @@ final class TextParser
         'artifact or creature an opponent controls' => 'artifact_or_creature_opponent',
     ];
 
+    /** Whether the card being parsed is a creature. */
+    private static bool $creature = false;
+
     /** Predefined artifact tokens (rule 111.10). */
     private const array ARTIFACT_TOKENS = [
         'Food' => ['name' => 'Food', 'type' => 'Token Artifact — Food', 'types' => ['Artifact'], 'subtypes' => ['Food'], 'colors' => [], 'text' => '{2}, {T}, Sacrifice this token: You gain 3 life.', 'manaCost' => null],
@@ -253,6 +256,7 @@ final class TextParser
             'unsupported' => [],
         ];
         $spell = ! $card->isPermanentCard();
+        self::$creature = $card->is('Creature');
         $lines = self::lines($card);
         $classLevel = 1;
         // `Kicker {G} and/or {1}{U}`: read as one kicker paying both, so either kicker's `if it was kicked with its {G} kicker` happens.
@@ -2251,7 +2255,9 @@ final class TextParser
             }
 
             return true;
-        } elseif (preg_match('/^Whenever another creature you control enters(?: the battlefield)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever (?:another|(a)) creature you control enters(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] === '' || ! self::$creature)) {
+            // "a creature" on a noncreature (an Equipment) is any other creature.
+            $match = [$m2[0], $m2[2]];
             $event = 'creature_enters_other';
             $text = $match[1];
         } elseif (preg_match('/^(?:When|Whenever) (a|another) ([A-Z][a-z]+) you control enters(?: the battlefield)?, (.+)$/', $line, $match) && $match[2] !== 'Creature') {
@@ -2331,9 +2337,18 @@ final class TextParser
         if (preg_match('/^you may pay any amount of \{E\}\. (?:If you do, )?(.+?)(?:, where X is the amount of \{E\} paid)?\.?$/u', $text, $match)) {
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
-        $effects = self::effects($text);
-        // "Whenever CARDNAME attacks, put a +1/+1 counter on it.": with no target, "it" is CARDNAME.
-        if ($effects === null && ! str_contains($text, 'target')) {
+        // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
+        $entering = in_array($event, ['creature_enters_other', 'subtype_enters'], true);
+        if ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
+            $effects = [['type' => 'attach', 'entering' => true]];
+        } elseif ($entering && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
+            $effects = self::effects(preg_replace('/\b(?:it|that creature)\b/', 'CARDNAME', $text));
+            $effects = $effects === null ? null : array_map(fn (array $effect) => ($effect['self'] ?? false) ? ['entering' => true] + array_diff_key($effect, ['self' => true]) : $effect, $effects);
+        } else {
+            $effects = self::effects($text);
+        }
+        if ($effects === null && ! $entering && ! str_contains($text, 'target')) {
+            // "Whenever CARDNAME attacks, put a +1/+1 counter on it.": with no target, "it" is CARDNAME.
             $effects = self::effects(preg_replace('/\bit\b/', 'CARDNAME', $text));
         }
         if ($effects !== null && $pay !== null) {
