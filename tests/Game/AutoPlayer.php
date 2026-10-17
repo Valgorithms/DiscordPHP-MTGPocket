@@ -350,7 +350,7 @@ final class AutoPlayer
             $harmful = str_ends_with($kind, '_you_control') ? false : (str_ends_with($kind, '_opponent') ? true : $spellHarmful);
             $best = null;
             $bestScore = PHP_INT_MIN;
-            foreach ($game->targetOptions($seat, $kind) as $option) {
+            foreach ($game->targetOptions($seat, $kind, null, $self) as $option) {
                 [$type, $id] = explode(':', $option) + [1 => ''];
                 $score = null;
                 if ($type === 'p') {
@@ -378,7 +378,7 @@ final class AutoPlayer
                 $best = '-';
             }
             if ($best === null && $forced) {
-                $best = $game->targetOptions($seat, $kind)[0] ?? null;
+                $best = $game->targetOptions($seat, $kind, null, $self)[0] ?? null;
             }
             if ($best === null) {
                 return null;
