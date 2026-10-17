@@ -2811,6 +2811,26 @@ final class TextParser
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
+        // `Draw a card for each creature you control.`, `Create a 1/1 … token for each creature card in your graveyard.`: counted as it resolves (see Game::perCount()).
+        // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.
+        if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent) you have)$/', $sentence, $m)
+                || (preg_match('/^(.+), where X is the number of (?:(other creatures|creatures|artifacts|lands|enchantments|[A-Z][a-z]+s) you control|(creature |artifact |land |instant |sorcery )?(cards) in your (graveyard|hand)|(opponents) you have)$/', $sentence, $m)
+                    && str_contains($m[1], ' X ') && ($m[1] = preg_replace('/\b(create|draw|gain|loses?|deals?) X\b/i', '$1 1', $m[1], 1, $swapped)) !== null && $swapped === 1))
+            && ($found = self::effect($m[1])) !== null && in_array($found['type'], ['draw', 'gain_life', 'lose_life', 'token', 'damage', 'mill'], true)
+            && ! isset($found['per']) && is_int($found['amount'] ?? 1)) {
+            $kind = rtrim(strtolower($m[2] ?? ''), 's') === 'other creature' ? 'other creature' : rtrim($m[2] ?? '', 's');
+            $per = match (true) {
+                ($m[6] ?? '') !== '' => 'opponents',
+                ($m[5] ?? '') === 'hand' => ($m[3] ?? '') === '' ? 'hand' : null,
+                ($m[5] ?? '') === 'graveyard' => 'gy:'.(trim($m[3] ?? '') === '' ? 'card' : trim($m[3])),
+                in_array(strtolower($kind), ['other creature', 'creature', 'artifact', 'land', 'enchantment'], true) => 'yours:'.strtolower($kind),
+                $kind !== '' && ($type = self::subtypeOf($m[2])) !== null => 'yours:sub:'.$type,
+                default => null,
+            };
+            if ($per !== null) {
+                return [['per' => $per] + $found];
+            }
+        }
         // Fire // Ice: `CARDNAME deals 2 damage divided as you choose among one or two targets.`; split evenly, the rest to the first (see Game::runSteps()).
         if (preg_match('/^CARDNAME deals (\w+) damage divided as you choose among (one or two|one, two, or three|any number of) targets$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1) {
             $slots = min($n, match (strtolower($m[2])) {
