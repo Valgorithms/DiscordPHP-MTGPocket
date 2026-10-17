@@ -622,7 +622,7 @@ final class Game
             foreach ($this->blockers as $blocker => $attacker) {
                 if ($this->ringLevel($this->objects[$attacker]) >= 3 && $this->objects[$blocker]->zone === GameObject::BATTLEFIELD) {
                     $this->log("The Ring: {$this->objects[$blocker]->name()} is sacrificed.");
-                    $this->moveTo($this->objects[$blocker], GameObject::GRAVEYARD);
+                    $this->sacrifice($this->objects[$blocker]);
                 }
             }
             $this->attackers = $this->blockers = $this->extraBlocks = $this->blocked = $this->struckFirst = [];
@@ -704,9 +704,9 @@ final class Game
                         $alt = $object->alt;
                         match ($alt) {
                             'dash' => $this->moveTo($object, GameObject::HAND),
-                            'blitz' => $this->moveTo($object, GameObject::GRAVEYARD),
+                            'blitz' => $this->sacrifice($object),
                             'warp' => $this->moveTo($object, GameObject::EXILE),
-                            'temporary' => $this->moveTo($object, GameObject::GRAVEYARD),
+                            'temporary' => $this->sacrifice($object),
                             'end_exile' => $this->moveTo($object, GameObject::EXILE),
                             default => null,
                         };
@@ -2036,7 +2036,7 @@ final class Game
         // A Treasure is sacrificed for its mana.
         foreach ($payment['tap'] as $source) {
             if ($this->objects[$source]->definition()->manaAbility['sacrifice'] ?? false) {
-                $this->moveTo($this->objects[$source], GameObject::GRAVEYARD);
+                $this->sacrifice($this->objects[$source]);
             }
             // `{T}, Remove a charge counter from this artifact: Add …`.
             if (($kind = $this->objects[$source]->definition()->manaAbility['counter'] ?? null) !== null) {
@@ -2252,7 +2252,7 @@ final class Game
         }
         if ($options['bargained'] && ($fodder = $this->bargainFodder($seat, $card)) !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to bargain.");
-            $this->moveTo($fodder, GameObject::GRAVEYARD);
+            $this->sacrifice($fodder);
         }
         if ($options['entwined'] && isset($card->altCosts['teamwork']) && ($team = $this->teamworkFodder($seat, (int) $card->altCosts['teamwork'])) !== null) {
             foreach ($team as $member) {
@@ -2274,16 +2274,16 @@ final class Game
         if ($options['alt'] === 'conditional' && ($fodder = $this->pitchFodder($seat, $id, $card)) !== null) {
             $exiled = $fodder->zone === GameObject::HAND;
             $this->log("{$this->players[$seat]->name} ".($exiled ? 'exiles' : 'sacrifices')." {$fodder->name()} to cast {$card->name}.");
-            $this->moveTo($fodder, $exiled ? GameObject::EXILE : GameObject::GRAVEYARD);
+            $exiled ? $this->moveTo($fodder, GameObject::EXILE) : $this->sacrifice($fodder);
         }
         if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$fodder->name()} to emerge.");
-            $this->moveTo($fodder, GameObject::GRAVEYARD);
+            $this->sacrifice($fodder);
         }
         $casualty = $options['casualty'] ? $this->casualtyFodder($seat, self::casualty($card)) : null;
         if ($casualty !== null) {
             $this->log("{$this->players[$seat]->name} sacrifices {$casualty->name()} (casualty).");
-            $this->moveTo($casualty, GameObject::GRAVEYARD);
+            $this->sacrifice($casualty);
         }
         if ($options['alt'] === 'sneak') {
             $unblocked = $this->unblockedAttackers($seat);
@@ -2739,7 +2739,7 @@ final class Game
             $artifacts = $card->additionalCost !== 'sacrifice_creature';
             $weakest = $this->weakest($seat, fn (GameObject $o) => ($creatures && $this->isCreature($o)) || ($artifacts && $o->definition()->is('Artifact')));
             $this->log("{$this->players[$seat]->name} sacrifices {$weakest->name()} to cast {$card->name}.");
-            $this->moveTo($weakest, GameObject::GRAVEYARD);
+            $this->sacrifice($weakest);
         } elseif ($card->additionalCost === 'exile_creature_card' || $card->additionalCost === 'exile_card') {
             $exiled = $this->objects[$this->graveyardFodder($seat, $card)[0]];
             $this->log("{$this->players[$seat]->name} exiles {$exiled->name()} from their graveyard to cast {$card->name}.");
@@ -4132,7 +4132,7 @@ final class Game
             case 'sacrifice':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $this->log("{$this->players[$affected->controller]->name} sacrifices {$affected->name()}.");
-                    $this->moveTo($affected, GameObject::GRAVEYARD);
+                    $this->sacrifice($affected);
                 }
                 break;
 
@@ -4425,7 +4425,7 @@ final class Game
                         $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$affected->name()}.");
                     } else {
                         $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()}.");
-                        $this->moveTo($affected, GameObject::GRAVEYARD);
+                        $this->sacrifice($affected);
                     }
                 }
                 break;
@@ -4440,7 +4440,7 @@ final class Game
                         $this->log("{$this->players[$controller]->name} pays {$cost} for {$affected->name()}'s cumulative upkeep.");
                     } else {
                         $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()} (cumulative upkeep).");
-                        $this->moveTo($affected, GameObject::GRAVEYARD);
+                        $this->sacrifice($affected);
                     }
                 }
                 break;
@@ -4672,7 +4672,7 @@ final class Game
                         $this->log("{$this->players[$controller]->name} pays echo for {$affected->name()}.");
                     } else {
                         $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()} (echo).");
-                        $this->moveTo($affected, GameObject::GRAVEYARD);
+                        $this->sacrifice($affected);
                     }
                 }
                 break;
@@ -4706,7 +4706,7 @@ final class Game
                     }
                     for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, $fitting)) !== null; $i++) {
                         $this->log("{$this->players[$seat]->name} sacrifices {$victim->name()}.");
-                        $this->moveTo($victim, GameObject::GRAVEYARD);
+                        $this->sacrifice($victim);
                     }
                 }
                 break;
@@ -5198,7 +5198,7 @@ final class Game
                 // Court Hussar: `When CARDNAME enters, sacrifice it unless {W} was spent to cast it.`
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! str_contains($self->spent, $effect['color'])) {
                     $this->log("No {{$effect['color']}} was spent to cast {$self->name()}, so {$this->players[$self->controller]->name} sacrifices it.");
-                    $this->moveTo($self, GameObject::GRAVEYARD);
+                    $this->sacrifice($self);
                 }
                 break;
 
@@ -5251,7 +5251,7 @@ final class Game
                         && ($m[1] === 'permanent' || ($m[1] === 'creature' ? $this->isCreature($o) : $o->definition()->is(ucfirst($m[1])))));
                     if ($fodder !== null && ($fodder->definition()->isToken() || ($this->isCreature($fodder) && $this->power($fodder) + $this->toughness($fodder) <= 2))) {
                         $this->log("{$this->players[$controller]->name} sacrifices {$fodder->name()} for {$source->name()}.");
-                        $this->moveTo($fodder, GameObject::GRAVEYARD);
+                        $this->sacrifice($fodder);
                         foreach ($effect['then'] as $then) {
                             $this->applyEffect($then, $source, $self, $controller, $x, $target);
                         }
@@ -5647,6 +5647,10 @@ final class Game
             }, $ability['effects']);
             if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
                 || ! in_array($ability['subtype'], ($this->objects[$context] ?? null)?->definition()->subtypes ?? [], true))) {
+                continue;
+            }
+            // `Whenever you sacrifice another creature, …`: the permanent sacrificed (see Game::sacrifice()).
+            if (isset($ability['sacrificed']) && (($ability['other'] ?? false) && $context === $source->id || ! $this->sacrificedFits($this->objects[$context], $ability['sacrificed']))) {
                 continue;
             }
             // `Whenever a creature you control with power 4 or greater enters, …`: the creature that entered, or this one.
@@ -6159,6 +6163,45 @@ final class Game
     }
 
     /**
+     * Whether a sacrificed permanent is the kind a `Whenever you sacrifice …` trigger names.
+     *
+     * @param GameObject $object
+     * @param string     $kind   `permanent`, `creature`, `token`, `nontoken creature`, a card type or a subtype.
+     *
+     * @return bool
+     */
+    private function sacrificedFits(GameObject $object, string $kind): bool
+    {
+        $card = $object->definition();
+
+        return match ($kind) {
+            'permanent' => true,
+            'token' => $card->isToken(),
+            'nontoken creature' => ! $card->isToken() && $card->is('Creature'),
+            'creature', 'artifact', 'enchantment', 'land' => $card->is(ucfirst($kind)),
+            default => in_array($kind, $card->subtypes, true),
+        };
+    }
+
+    /**
+     * Sacrifices a permanent (rule 701.21), then triggers `Whenever you
+     * sacrifice a permanent, …` on its controller's permanents, itself included.
+     *
+     * @param GameObject $object
+     *
+     * @return void
+     */
+    private function sacrifice(GameObject $object): void
+    {
+        $seat = $object->controller;
+        $watchers = $this->permanents($seat);
+        $this->moveTo($object, GameObject::GRAVEYARD);
+        foreach ($watchers as $watcher) {
+            $this->trigger($watcher, 'you_sacrifice', $seat, null, $object->id);
+        }
+    }
+
+    /**
      * What `Sacrifice a creature` sacrifices: the weakest other creature, or the source itself when that is all there is.
      *
      * @param int        $seat
@@ -6282,7 +6325,7 @@ final class Game
         }
         if (isset($cost['fodder']) && ($fodder = $this->fodder($seat, $object, $cost['fodder'])) !== null) {
             $this->log("{$player->name} sacrifices {$fodder->name()}.");
-            $this->moveTo($fodder, GameObject::GRAVEYARD);
+            $this->sacrifice($fodder);
         }
         if (isset($cost['craft']) && ($material = $this->craftMaterial($seat, $object, $cost['craft'])) !== null) {
             $this->log("{$player->name} exiles {$material->name()} to craft {$object->name()}.");
@@ -6332,7 +6375,7 @@ final class Game
         ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
         $this->targetedTriggers($targets);
         if ($cost['sacrifice'] ?? false) {
-            $this->moveTo($object, GameObject::GRAVEYARD);
+            $this->sacrifice($object);
             $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
         }
         $this->settle();

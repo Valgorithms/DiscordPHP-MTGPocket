@@ -2382,6 +2382,12 @@ final class TextParser
             $event = 'subtype_enters';
             $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever you sacrifice (a|an|another) (permanent|creature|artifact|enchantment|land|token|nontoken creature|[A-Z][a-z]+), (.+)$/', $line, $match)
+            && ! preg_match('/\b(it|its|that (?:permanent|creature|artifact|enchantment|land|token))\b/', $match[3])) {
+            // `Whenever you sacrifice a permanent, …`: see Game::sacrifice().
+            $event = 'you_sacrifice';
+            $extra = ['sacrificed' => $match[2], 'other' => $match[1] === 'another'];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever a creature you control dies, (.+)$/', $line, $match) && ($effects = self::effects($match[1])) !== null && ! str_contains($match[1], 'target')) {
             // Once for another creature dying, and once for itself when it is a creature.
             foreach (self::$creature ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
