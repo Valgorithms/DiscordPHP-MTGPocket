@@ -2310,6 +2310,11 @@ final class TextParser
         } elseif (preg_match('/^Whenever an opponent casts a spell, (.+)$/', $line, $match)) {
             $event = 'opponent_cast';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever an opponent casts an? (creature|noncreature|artifact|enchantment|instant or sorcery|multicolored) spell, (.+)$/', $line, $match)) {
+            // See Game::castSpell(): the spell cast is the trigger's context.
+            $event = 'opponent_cast_kind';
+            $extra = ['objectKind' => $match[1]];
+            $text = $match[2];
         } elseif (preg_match('/^At the beginning of your (upkeep|end step), (.+)$/', $line, $match)) {
             $event = $match[1] === 'upkeep' ? 'upkeep' : 'end_step';
             $text = $match[2];
@@ -2472,8 +2477,16 @@ final class TextParser
             $text = $match['rest'];
         }
         // `Whenever CARDNAME deals combat damage to a player, that player discards a card.`: the opponent, untargeted.
-        if ($event === 'combat_damage' && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
+        if (in_array($event, ['combat_damage', 'opponent_cast', 'opponent_cast_kind'], true) && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
             $text = 'each opponent '.substr($text, strlen('that player '));
+        }
+        // `Whenever an opponent casts a noncreature spell, CARDNAME deals 1 damage to that player.`: two players, so the opponent.
+        if (in_array($event, ['opponent_cast', 'opponent_cast_kind'], true) && preg_match('/^CARDNAME deals (\w+) damage to that player\.?$/', $text, $match)) {
+            $text = "CARDNAME deals {$match[1]} damage to each opponent";
+        }
+        // `Whenever CARDNAME attacks, defending player loses 1 life.`: with two players, the opponent.
+        if (in_array($event, ['attacks', 'creature_attacks', 'creature_attacks_other'], true) && self::effects($text) === null && preg_match('/^defending player (discards|loses|mills|sacrifices) /', $text)) {
+            $text = 'each opponent '.substr($text, strlen('defending player '));
         }
         $kicked = false;
         if ($event === 'enters' && ($result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)
