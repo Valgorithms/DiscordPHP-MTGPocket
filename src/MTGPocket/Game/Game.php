@@ -1383,6 +1383,12 @@ final class Game
     {
         $object = $this->objects[$id] ?? null;
         $player = $this->players[$seat];
+        // `Your opponents can't cast spells during your turn.`
+        foreach ($this->active !== $seat ? $this->permanents($this->active) : [] as $permanent) {
+            if ($this->hasKeyword($permanent, 'opponents cast nothing on your turn')) {
+                return "{$permanent->name()} stops you casting spells during {$this->players[$this->active]->name}'s turn.";
+            }
+        }
         if ($options['flashback'] || $options['grave'] !== '') {
             if ($object === null || ! in_array($id, $player->graveyard, true)) {
                 return 'That card is not in your graveyard.';
@@ -4157,6 +4163,9 @@ final class Game
                     }
                     $this->moveTo($affected, GameObject::EXILE);
                     $self->holding[] = $affected->id;
+                    if ($effect['until'] === 'hand') {
+                        $affected->exiledBy = 'held:hand';
+                    }
                     break;
                 }
                 $this->moveTo($affected, GameObject::EXILE);
@@ -7860,7 +7869,10 @@ final class Game
         }
         // What it exiled "until this leaves the battlefield" returns.
         foreach ($held as $id) {
-            if (isset($this->objects[$id]) && $this->objects[$id]->zone === GameObject::EXILE) {
+            if (isset($this->objects[$id]) && $this->objects[$id]->zone === GameObject::EXILE && $this->objects[$id]->exiledBy === 'held:hand') {
+                $this->moveTo($this->objects[$id], GameObject::HAND);
+                $this->log("{$this->objects[$id]->name()} returns to its owner's hand.");
+            } elseif (isset($this->objects[$id]) && $this->objects[$id]->zone === GameObject::EXILE) {
                 $this->putOntoBattlefield($this->objects[$id], $this->objects[$id]->owner);
                 $this->log("{$this->objects[$id]->name()} returns to the battlefield.");
             }

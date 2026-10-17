@@ -410,6 +410,8 @@ final class TextParser
                 'If CARDNAME is in your opening hand, you may begin the game with it on the battlefield.' => 'leyline',
                 'A deck can have any number of cards named CARDNAME.' => 'any number',
                 'You have hexproof.' => 'you have hexproof',
+                // Read by Game::whyNotCast().
+                "Your opponents can't cast spells during your turn." => 'opponents cast nothing on your turn',
                 'You may look at the top card of your library any time.' => 'look at top any time',
                 // Shown on the board; see MatchMessageBuilder::side().
                 'Play with the top card of your library revealed.' => 'top revealed',
@@ -2159,11 +2161,12 @@ final class TextParser
         }
         // Fiend Hunter: `When CARDNAME leaves the battlefield, return the exiled card to the battlefield under its owner's control.`
         // makes its enters exile last until it leaves, as `exile … until CARDNAME leaves the battlefield` does.
-        if (preg_match("/^When CARDNAME leaves the battlefield, return the exiled (?:card|creature) to the battlefield under its owner's control\\.$/", $line)) {
+        // Or, with `return the exiled card to its owner's hand.`, back to its owner's hand.
+        if (preg_match("/^When CARDNAME leaves the battlefield, return the exiled (?:card|creature|permanent) to (the battlefield under its owner's control|its owner's hand)\\.$/", $line, $back)) {
             foreach ($result['triggered'] as $i => $ability) {
                 $last = count($ability['effects']) - 1;
                 if ($ability['event'] === 'enters' && $last >= 0 && $ability['effects'][$last]['type'] === 'exile' && isset($ability['effects'][$last]['target']) && ! isset($ability['effects'][$last]['until'])) {
-                    $result['triggered'][$i]['effects'][$last]['until'] = true;
+                    $result['triggered'][$i]['effects'][$last]['until'] = $back[1] === "its owner's hand" ? 'hand' : true;
 
                     return true;
                 }
@@ -2896,6 +2899,12 @@ final class TextParser
         // `Return target creature card from your graveyard to the battlefield. It gains haste.`
         if ($effects[$last]['type'] === 'reanimate' && preg_match('/^(?:It|That creature) gains haste$/', $sentence)) {
             $effects[] = ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => ['haste'], 'sameTarget' => true];
+
+            return true;
+        }
+        // Kiki-Jiki: `Create a token that's a copy of target creature you control. It gains haste.`
+        if ($effects[$last]['type'] === 'copy_token' && preg_match('/^(?:It|That token) gains haste(?: until end of turn)?$/', $sentence)) {
+            $effects[$last]['haste'] = true;
 
             return true;
         }
