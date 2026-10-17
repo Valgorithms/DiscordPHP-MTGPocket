@@ -589,6 +589,7 @@ final class ModernCardTextTest extends GameTestCase
         'Gloat Lite' => ['manaCost' => '{1}{B}', 'type' => 'Enchantment', 'text' => 'Whenever an opponent sacrifices a creature, you gain 1 life.', 'colors' => ['B']],
         'Mayhem Imp Lite' => ['manaCost' => '{1}{R}', 'type' => 'Creature — Imp', 'power' => 2, 'toughness' => 2, 'text' => 'Whenever a player sacrifices a permanent, Mayhem Imp Lite deals 1 damage to each opponent.', 'colors' => ['R']],
         'Grave Tally Lite' => ['manaCost' => '{2}{B}', 'type' => 'Enchantment', 'text' => 'Whenever a nontoken creature you control dies, draw a card.', 'colors' => ['B']],
+        'Tally Hound Lite' => ['manaCost' => '{1}{B}', 'type' => 'Creature — Dog', 'power' => 2, 'toughness' => 2, 'text' => 'Whenever a nontoken creature you control dies, draw a card.', 'colors' => ['B']],
         'Escalate Lite' => ['manaCost' => '{R}', 'type' => 'Sorcery', 'text' => "Escalate {1} (Pay this cost for each mode chosen beyond the first.)\nChoose one or more —\n• Escalate Lite deals 2 damage to target player.\n• You gain 2 life.", 'colors' => ['R']],
         'Small Aura Lite' => ['manaCost' => '{W}', 'type' => 'Enchantment — Aura', 'text' => "Enchant creature with power 3 or less\nEnchanted creature has flying.", 'colors' => ['W']],
         'Cultivate' => ['manaCost' => '{2}{G}', 'type' => 'Sorcery', 'text' => 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.', 'colors' => ['G']],
@@ -6384,6 +6385,17 @@ final class ModernCardTextTest extends GameTestCase
             $this->resolve();
         }
         $this->assertSame($hand + 1, count($game->players[0]->hand), 'A nontoken creature died.');
+
+        // Its own death, with as many +1/+1 counters as some token's id: still nontoken.
+        $token = $game->addCard(1, ['token' => true] + self::card('Grizzly Bears'), GameObject::BATTLEFIELD)->id;
+        $hound = $this->put(0, 'Tally Hound Lite', GameObject::BATTLEFIELD);
+        $game->objects[$hound]->addCounters('+1/+1', $token);
+        $game->activate(0, $husk, 0);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($hound));
+        for ($i = 0; $i < 4 && $game->stack !== []; $i++) {
+            $this->resolve();
+        }
+        $this->assertSame($hand + 3, count($game->players[0]->hand), 'Grave Tally and the Hound itself.');
     }
 
     public function testPumpByTheNumberOfCreaturesYouControl(): void
