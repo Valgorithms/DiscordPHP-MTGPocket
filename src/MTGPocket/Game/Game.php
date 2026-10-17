@@ -4072,6 +4072,10 @@ final class Game
             'self_power' => max(0, $source->zone === GameObject::BATTLEFIELD ? $this->power($source) : (int) $source->definition()->power),
             default => (int) ($effect['amount'] ?? 0),
         };
+        // `Draw a card for each creature you control.`: counted as it resolves.
+        if (isset($effect['per'])) {
+            $amount *= $this->perCount($controller, (string) $effect['per'], $source);
+        }
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {
             isset($effect['thatObject']) => ($that = $this->objects[$effect['thatObject']] ?? null)?->zone === GameObject::BATTLEFIELD ? $that : null,
@@ -8730,6 +8734,20 @@ final class Game
      *
      * @return int
      */
+    /**
+     * The count behind a `for each …` multiplier (see TextParser::sentenceEffects()).
+     */
+    private function perCount(int $seat, string $per, ?GameObject $source): int
+    {
+        return match (true) {
+            $per === 'hand' => count($this->players[$seat]->hand),
+            $per === 'opponents' => count($this->players) - 1,
+            $per === 'gy:card' => count($this->players[$seat]->graveyard),
+            str_starts_with($per, 'gy:') => count(array_filter($this->players[$seat]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is(ucfirst(substr($per, 3))))),
+            default => $this->countYours($seat, substr($per, 6), $source),
+        };
+    }
+
     private function countYours(int $seat, string $kind, ?GameObject $source = null): int
     {
         return count(array_filter($this->permanents($seat), fn (GameObject $o) => match ($kind) {
