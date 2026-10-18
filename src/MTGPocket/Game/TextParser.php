@@ -188,6 +188,7 @@ final class TextParser
         'target non-wall creature' => 'creature_nonsub_Wall',
         'target creature that isn\'t enchanted' => 'creature_unenchanted',
         'target creature card from your graveyard' => 'creature_card_yours',
+        'another target creature card from your graveyard' => 'creature_card_yours_other',
         'target legendary creature card from your graveyard' => 'legendary_creature_card_yours',
         'target creature card with mana value 1 or less from your graveyard' => 'creature_card_yours_mv_le_1',
         'target creature card with mana value 2 or less from your graveyard' => 'creature_card_yours_mv_le_2',
@@ -197,6 +198,9 @@ final class TextParser
         'target creature card with mana value 6 or less from your graveyard' => 'creature_card_yours_mv_le_6',
         'target creature card from a graveyard' => 'creature_card_graveyard',
         'target card from a graveyard' => 'card_graveyard',
+        'target card from an opponent\'s graveyard' => 'card_graveyard_opponent',
+        'target card from defending player\'s graveyard' => 'card_graveyard_opponent',
+        'target creature card from an opponent\'s graveyard' => 'creature_card_graveyard_opponent',
         'target card from your graveyard' => 'card_yours',
         'target instant or sorcery card from your graveyard' => 'instant_sorcery_card_yours',
         'target artifact card from your graveyard' => 'artifact_card_yours',
@@ -3142,7 +3146,7 @@ final class TextParser
             // In an ability, "it" at the start means the card itself: "When CARDNAME enters, it deals 4 damage …".
             $found = self::sentenceEffects(preg_replace('/^it /', 'CARDNAME ', $sentence));
             // `You may return target artifact card from your graveyard to your hand.`: choosing the target is choosing to.
-            if ($found === null && preg_match('/^you may ((?:return|exile|tap|untap|destroy) (?:up to one )?target .+)$/i', $sentence, $may)) {
+            if ($found === null && preg_match('/^you may ((?:return|exile|tap|untap|destroy) (?:up to one )?(?:another )?target .+)$/i', $sentence, $may)) {
                 $found = self::sentenceEffects(ucfirst($may[1]));
             }
             if ($found === null) {
@@ -3680,7 +3684,7 @@ final class TextParser
         }
         // `Exile target card from a graveyard. If it was a creature card, you gain 2 life.`: checked against the card exiled.
         if (preg_match('/^If it was an? (creature|land|artifact|enchantment|instant|sorcery|noncreature|nonland) card, (.+)$/', $sentence, $m)
-            && ($effects[$last]['type'] ?? null) === 'exile' && in_array(ltrim($effects[$last]['target'] ?? '', '?'), ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic'], true)
+            && ($effects[$last]['type'] ?? null) === 'exile' && in_array(ltrim($effects[$last]['target'] ?? '', '?'), ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true)
             && ($then = self::effects($m[2])) !== null && array_filter($then, fn (array $effect) => isset($effect['target'])) === []) {
             foreach ($then as $effect) {
                 $effects[] = $effect + ['ifItWas' => $m[1]];
@@ -3909,7 +3913,7 @@ final class TextParser
         if (preg_match("/^destroy ({$targets})$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'destroy', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && (self::isPermanentTarget($m[1]) || (in_array(self::TARGETS[strtolower($m[1])], ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic'], true) && ($m[2] ?? '') === ''))) {
+        if (preg_match("/^exile ({$targets})( until CARDNAME leaves the battlefield)?$/i", $s, $m) && (self::isPermanentTarget($m[1]) || (in_array(self::TARGETS[strtolower($m[1])], ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true) && ($m[2] ?? '') === ''))) {
             return ['type' => 'exile', 'target' => self::TARGETS[strtolower($m[1])]] + (($m[2] ?? '') !== '' ? ['until' => true] : []);
         }
         // Hideaway's payoff: `You may play the exiled card without paying its mana cost if each player has no cards in hand.`
@@ -4250,7 +4254,7 @@ final class TextParser
         }
         // `Return target land card from your graveyard to the battlefield tapped.`: any permanent card returns to the battlefield.
         if (preg_match("/^return ({$targets}) to (your hand|the battlefield)( tapped)?$/i", $s, $m)
-            && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true)
+            && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'creature_card_yours_other', 'legendary_creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true)
             && ($m[2] === 'your hand' ? ! isset($m[3]) : ! in_array($kind, ['card_yours', 'instant_sorcery_card_yours'], true))) {
             return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind] + (isset($m[3]) ? ['tapped' => true] : []);
         }
@@ -4451,7 +4455,7 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard'], true)
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard', 'creature_card_yours_other', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true)
             && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_') && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'spell_mv_le_');
     }
 }
