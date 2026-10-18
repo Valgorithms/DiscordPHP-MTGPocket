@@ -3003,9 +3003,11 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
+                // Ferocious: `if you control a creature with power 4 or greater`.
+                ($match['power'] ?? '') !== '' => 'power_ge '.self::amount($match['power']),
                 // Coven: `if you control three or more creatures with different powers`.
                 $match[1] === 'you control three or more creatures with different powers' => 'coven',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
@@ -3675,6 +3677,10 @@ final class TextParser
         // `Whenever you cast an instant or sorcery spell, copy that spell.`: the spell that triggered it; see Game::trigger().
         if (preg_match('/^copy that spell$/i', $sentence)) {
             return [['type' => 'copy_spell', 'thatSpell' => true]];
+        }
+        // `For each creature you control, put a +1/+1 counter on it.`: as `Put a +1/+1 counter on each creature you control.`
+        if (preg_match('/^for each (other )?creature you control, put (\w+) \+1\/\+1 counters? on (?:it|that creature)$/i', $sentence, $m)) {
+            return self::sentenceEffects("Put {$m[2]} +1/+1 counter".($m[2] === 'a' ? '' : 's')." on each {$m[1]}creature you control");
         }
         // Support N (rule 701.41): a +1/+1 counter on each of up to N other target creatures.
         if (preg_match('/^support (\w+)$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1 && $n <= 5) {
