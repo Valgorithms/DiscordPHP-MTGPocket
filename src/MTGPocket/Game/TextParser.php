@@ -142,6 +142,23 @@ final class TextParser
         'target creature with mana value 3 or less' => 'creature_mv_le_3',
         'target creature with mana value 4 or less' => 'creature_mv_le_4',
         'target creature with mana value 5 or less' => 'creature_mv_le_5',
+        'target creature with mana value 1 or less an opponent controls' => 'creature_opp_mv_le_1',
+        'target creature with mana value 2 or less an opponent controls' => 'creature_opp_mv_le_2',
+        'target creature with mana value 3 or less an opponent controls' => 'creature_opp_mv_le_3',
+        'target creature with mana value 4 or less an opponent controls' => 'creature_opp_mv_le_4',
+        'target creature with mana value 5 or less an opponent controls' => 'creature_opp_mv_le_5',
+        'target creature with power 1 or less an opponent controls' => 'creature_opp_power_le_1',
+        'target creature an opponent controls with power 1 or less' => 'creature_opp_power_le_1',
+        'target creature you don\'t control with power 1 or less' => 'creature_opp_power_le_1',
+        'target creature with power 2 or less an opponent controls' => 'creature_opp_power_le_2',
+        'target creature an opponent controls with power 2 or less' => 'creature_opp_power_le_2',
+        'target creature you don\'t control with power 2 or less' => 'creature_opp_power_le_2',
+        'target creature with power 3 or less an opponent controls' => 'creature_opp_power_le_3',
+        'target creature an opponent controls with power 3 or less' => 'creature_opp_power_le_3',
+        'target creature you don\'t control with power 3 or less' => 'creature_opp_power_le_3',
+        'target creature with power 4 or less an opponent controls' => 'creature_opp_power_le_4',
+        'target creature an opponent controls with power 4 or less' => 'creature_opp_power_le_4',
+        'target creature you don\'t control with power 4 or less' => 'creature_opp_power_le_4',
         'target creature an opponent controls with mana value 1 or less' => 'creature_opp_mv_le_1',
         'target creature you don\'t control with mana value 1 or less' => 'creature_opp_mv_le_1',
         'target creature an opponent controls with mana value 2 or less' => 'creature_opp_mv_le_2',
@@ -191,6 +208,10 @@ final class TextParser
         'target spell' => 'spell',
         'target creature spell' => 'creature_spell',
         'target noncreature spell' => 'noncreature_spell',
+        'target spell with mana value 1 or less' => 'spell_mv_le_1',
+        'target spell with mana value 2 or less' => 'spell_mv_le_2',
+        'target spell with mana value 3 or less' => 'spell_mv_le_3',
+        'target spell with mana value 4 or less' => 'spell_mv_le_4',
         'target instant or sorcery spell' => 'instant_sorcery_spell',
         'target instant or sorcery spell you control' => 'instant_sorcery_spell_yours',
     ];
@@ -3929,7 +3950,7 @@ final class TextParser
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'bounce', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell)$/i', $s, $m)) {
+        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell|target spell with mana value [1-4] or less)$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // Manlands and animated artifacts: `Until end of turn, CARDNAME becomes a 4/4 white and blue Elemental creature with flying.`; see Game::isCreature().
@@ -4399,6 +4420,6 @@ final class TextParser
     private static function isPermanentTarget(string $phrase): bool
     {
         return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard'], true)
-            && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_');
+            && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_') && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'spell_mv_le_');
     }
 }

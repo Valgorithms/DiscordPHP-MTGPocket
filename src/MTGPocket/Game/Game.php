@@ -6902,7 +6902,8 @@ final class Game
                             'noncreature_spell' => ! $card->isCreature(),
                             'instant_sorcery_spell' => ! $card->isPermanentCard(),
                             'instant_sorcery_spell_yours' => ! $card->isPermanentCard() && $item['controller'] === $controller,
-                            default => false,
+                            // `target spell with mana value 2 or less`.
+                            default => (bool) preg_match('/^spell_mv_le_(\d+)$/', $kind, $m) && $card->cost->manaValue() <= (int) $m[1],
                         };
                     }
                 }
@@ -7000,6 +7001,7 @@ final class Game
                 || ((bool) preg_match('/^creature_power_(ge|le)_(\d+)$/', $kind, $m) && $creature && ($m[1] === 'ge' ? $this->power($object) >= (int) $m[2] : $this->power($object) <= (int) $m[2]))
                 || ((bool) preg_match('/^creature_(non)?color_([WUBRG])$/', $kind, $m) && $creature && in_array($m[2], $card->colors, true) === ($m[1] === ''))
                 || ((bool) preg_match('/^creature_mv_le_(\d+)$/', $kind, $m) && $creature && $card->cost->manaValue() <= (int) $m[1])
+                || ((bool) preg_match('/^creature_opp_power_le_(\d+)$/', $kind, $m) && $creature && $object->controller !== $controller && $this->power($object) <= (int) $m[1])
                 || ((bool) preg_match('/^creature_opp_mv_le_(\d+)$/', $kind, $m) && $creature && $object->controller !== $controller && $card->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^creature_card_yours_mv_le_(\d+)$/', $kind, $m) && $object->printed()->isCreature() && $object->owner === $controller && $object->printed()->cost->manaValue() <= (int) $m[1])
                 // `Enchant artifact or creature you control`: any of the kinds, with an optional controller.
