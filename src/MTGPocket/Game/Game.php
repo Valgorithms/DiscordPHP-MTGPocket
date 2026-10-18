@@ -9223,6 +9223,24 @@ final class Game
     }
 
     /**
+     * `Equipped creature gets +1/+1 for each creature you control.`: counted for the Equipment's or Aura's controller.
+     *
+     * @param GameObject $attached
+     *
+     * @return array{0: int, 1: int}
+     */
+    private function attachedPer(GameObject $attached): array
+    {
+        $bonus = $this->bonusOf($attached);
+        if (! isset($bonus['per'])) {
+            return [0, 0];
+        }
+        $n = $this->perCount($attached->controller, $bonus['per'], $attached);
+
+        return [$bonus['perPower'] * $n, $bonus['perToughness'] * $n];
+    }
+
+    /**
      * `Whenever equipped (enchanted) creature attacks, …`: each Equipment and Aura on it sees the event, with the creature as context.
      *
      * @param int    $creature
@@ -9412,7 +9430,7 @@ final class Game
         $power += $this->maxSpeedBonus($object)['power'] ?? 0;
         $power += $this->scaling($object)[0];
         foreach ($this->attachments($object) as $attached) {
-            $power += $this->bonusOf($attached)['power'];
+            $power += $this->bonusOf($attached)['power'] + $this->attachedPer($attached)[0];
         }
         foreach ($object->untilEndOfTurn as $effect) {
             $power += $effect['power'];
@@ -9435,7 +9453,7 @@ final class Game
         $toughness += $this->maxSpeedBonus($object)['toughness'] ?? 0;
         $toughness += $this->scaling($object)[1];
         foreach ($this->attachments($object) as $attached) {
-            $toughness += $this->bonusOf($attached)['toughness'];
+            $toughness += $this->bonusOf($attached)['toughness'] + $this->attachedPer($attached)[1];
         }
         foreach ($object->untilEndOfTurn as $effect) {
             $toughness += $effect['toughness'];

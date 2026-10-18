@@ -1814,6 +1814,24 @@ final class TextParser
         };
     }
 
+    /**
+     * `Equipped (Enchanted) creature gets +1/+1 for each artifact you control.`: the bonus for each, and what to count.
+     *
+     * @param string $line
+     * @param string $word `Enchanted` or `Equipped`.
+     *
+     * @return array{perPower: int, perToughness: int, per: string}|null
+     */
+    private static function attachedPer(string $line, string $word): ?array
+    {
+        if (! preg_match('/^'.$word.' creature gets \+(\d+)\/\+(\d+) for each (other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control\.?$/', $line, $m)) {
+            return null;
+        }
+        $per = self::per([null, null, $m[3]]);
+
+        return $per === null ? null : ['perPower' => (int) $m[1], 'perToughness' => (int) $m[2], 'per' => $per];
+    }
+
     private static function subtypeOf(string $word): ?string
     {
         if (in_array($word, ['Other', 'Creatures', 'Artifact', 'Artifacts', 'Enchantment', 'Legendary', 'Token', 'Tokens', 'Nontoken', 'Attacking', 'Blocking', 'Tapped', 'Untapped', 'White', 'Blue', 'Black', 'Red', 'Green', 'Colorless', 'Multicolored', 'Monocolored', 'Snow', 'Land', 'Lands', 'Permanents', 'Equipped', 'Enchanted'], true)) {
@@ -2095,6 +2113,12 @@ final class TextParser
 
             return true;
         }
+        // `Enchanted creature gets +1/+1 for each creature you control.`; see Game::attachmentPower().
+        if (($per = self::attachedPer($line, 'Enchanted')) !== null) {
+            $result['aura'] = $per + ($result['aura'] ?? ['enchant' => 'creature', 'power' => 0, 'toughness' => 0, 'keywords' => []]);
+
+            return true;
+        }
         $keywords = null;
         if (preg_match('/^Enchanted creature gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))?\.?$/', $line, $match)
             || preg_match('/^Enchanted (?:creature|permanent|land|artifact|[A-Z][a-z]+) (has) (.+?)\.?$/', $line, $match)) {
@@ -2152,6 +2176,11 @@ final class TextParser
                 'sorcery' => true,
                 'once' => false,
             ];
+
+            return true;
+        }
+        if (($per = self::attachedPer($line, 'Equipped')) !== null) {
+            $result['equipment'] = $per + ($result['equipment'] ?? ['power' => 0, 'toughness' => 0, 'keywords' => []]);
 
             return true;
         }
