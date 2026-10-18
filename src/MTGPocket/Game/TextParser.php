@@ -2766,7 +2766,7 @@ final class TextParser
             // The Swords: `Whenever equipped creature deals combat damage to a player, …`; see Game::attachedTrigger(). "It" is that creature.
             $event = 'attached_'.['attacks' => 'attacks', 'blocks' => 'blocks', 'deals combat damage to a player' => 'combat_damage', 'dies' => 'dies'][$match[1]];
             $text = $match[2];
-        } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|becomes blocked|deals combat damage to a player), (.+)$/', $line, $match)
+        } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|becomes blocked|deals combat damage to a player), (.+)$/', (string) preg_replace('/^(Whenever (?:a|another) creature you control) with power (\w+) or greater (attacks|blocks)/', '$1 $3', $line), $match)
             && ($match[1] === 'an') === (bool) preg_match('/^[AEIOU]/', $match[2])) {
             // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
             // `Whenever a Human you control attacks, …`, `… a creature you control with flying …`: see Game::trigger().
@@ -2774,6 +2774,10 @@ final class TextParser
                 .($match[1] === 'another' && ! in_array($match[4], ['attacks alone', 'blocks', 'becomes blocked'], true) ? '_other' : '');
             $extra = ($match[1] === 'another' && in_array($match[4], ['blocks', 'becomes blocked'], true) || $match[3] !== '' ? ['objectKind' => $match[3] !== '' ? "creature with {$match[3]}" : 'creature', 'other' => $match[1] === 'another'] : [])
                 + ($match[2] !== 'creature' ? ['subtype' => $match[2], 'other' => $match[1] === 'another'] : []);
+            // `Whenever a creature you control with power 4 or greater attacks, …`: that creature's power; see Game::trigger().
+            if (preg_match('/^Whenever (?:a|another) creature you control with power (\w+) or greater (?:attacks|blocks),/', $line, $strong) && is_int($power = self::amount($strong[1]))) {
+                $extra['minPower'] = $power;
+            }
             $text = $match[5];
         } elseif (preg_match('/^Whenever a creature (?:attacks you|an opponent controls attacks), (.+)$/', $line, $match)) {
             // See Game::declareAttackers(): "it" is the attacking creature.
@@ -2926,6 +2930,14 @@ final class TextParser
             // Any player's creature, and itself when it is a creature; see "another creature dies" below.
             foreach (self::$creature ? ['creature_dies_other', 'creature_dies_any', 'dies'] : ['creature_dies_other', 'creature_dies_any'] as $event) {
                 $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($match[1] !== '' ? ['nontoken' => true] : []);
+            }
+
+            return true;
+        } elseif (preg_match('/^Whenever (a|another) creature you control with a \+1\/\+1 counter on it dies, (.+)$/', $line, $match)
+            && ($effects = self::effects($match[2])) !== null && ! preg_match('/\b(target|it|its|that creature)\b/', $match[2])) {
+            // Its counters as it last existed on the battlefield; see Game::$diedWithCounter.
+            foreach (self::$creature && $match[1] === 'a' ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects, 'diedWithCounter' => true];
             }
 
             return true;

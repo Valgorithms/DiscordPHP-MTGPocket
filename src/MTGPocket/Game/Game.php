@@ -173,6 +173,9 @@ final class Game
     /** The power the creature dying right now last had on the battlefield, for `if it had power 3 or greater`; only read while its dies triggers are queued. */
     private int $diedPower = 0;
 
+    /** Whether the creature dying right now last had a +1/+1 counter on the battlefield; read like {@see $diedPower}. */
+    private bool $diedWithCounter = false;
+
     /** Spells cast in turn `$spellsTurn`, by anyone, for storm (rule 702.40). */
     public int $spellsCast = 0;
 
@@ -6175,6 +6178,9 @@ final class Game
             if (isset($ability['diedMinPower']) && $this->diedPower < $ability['diedMinPower']) {
                 continue;
             }
+            if (($ability['diedWithCounter'] ?? false) && ! $this->diedWithCounter) {
+                continue;
+            }
             // `Whenever a creature you control with power 4 or greater enters, …`: the creature that entered, or this one.
             if (isset($ability['minPower']) && $this->power($this->objects[$context] ?? $source) < $ability['minPower']) {
                 continue;
@@ -9114,6 +9120,7 @@ final class Game
         if ($dies) {
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->diedPower = $diedPower;
+            $this->diedWithCounter = $plusCounters > 0;
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
             // `Whenever another creature (you control) dies, …`
             if ($object->definition()->is('Creature')) {
