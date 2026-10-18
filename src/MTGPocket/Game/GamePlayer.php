@@ -59,6 +59,11 @@ final class GamePlayer
 
     public int $castTurn = 0;
 
+    /** Mana spent this turn, for expend, and the turn that was. */
+    public int $expended = 0;
+
+    public int $expendedTurn = 0;
+
     /** Cards drawn this turn, and the turn that was. */
     public int $drawn = 0;
 
@@ -139,6 +144,8 @@ final class GamePlayer
             'cast' => $this->cast,
             'castTurn' => $this->castTurn,
             'drawnTurn' => $this->drawnTurn,
+            'expended' => $this->expended,
+            'expendedTurn' => $this->expendedTurn,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
@@ -171,6 +178,8 @@ final class GamePlayer
         $player->lifeMark = (int) ($data['lifeMark'] ?? $player->life);
         $player->drawn = (int) ($data['drawn'] ?? 0);
         $player->drawnTurn = (int) ($data['drawnTurn'] ?? 0);
+        $player->expended = (int) ($data['expended'] ?? 0);
+        $player->expendedTurn = (int) ($data['expendedTurn'] ?? 0);
         $player->gained = (int) ($data['gained'] ?? 0);
         $player->gainedTurn = (int) ($data['gainedTurn'] ?? 0);
         $player->cast = (int) ($data['cast'] ?? 0);
