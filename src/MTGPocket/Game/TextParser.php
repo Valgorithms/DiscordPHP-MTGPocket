@@ -2652,6 +2652,10 @@ final class TextParser
             $event = 'creature_becomes_tapped';
             $extra = $match[1] === 'another' || $match[2] !== 'creature' ? ['objectKind' => $match[2], 'other' => $match[1] === 'another'] : [];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever a creature an opponent controls becomes tapped, (.+)$/', $line, $match)) {
+            // See Game::checkStateBasedActions(): "it" is that creature.
+            $event = 'opponent_creature_becomes_tapped';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you commit a crime, (.+)$/', $line, $match)) {
             // See Game::targetedTriggers().
             $event = 'you_commit_crime';
@@ -3023,6 +3027,11 @@ final class TextParser
             }
             $text = $match['rest'];
         }
+        // `Whenever CARDNAME deals combat damage to a player, that player mills that many cards.`: the damage it dealt; see Game::combatDamage().
+        $dealt = $event === 'combat_damage' && preg_match_all('/\bthat (?:many|much)\b/', $text) === 1;
+        if ($dealt) {
+            $text = (string) preg_replace('/\bthat (?:many|much)\b/', '1', $text);
+        }
         // `Whenever CARDNAME deals combat damage to a player, destroy target artifact that player controls.`: with two players, the opponent's.
         if (in_array($event, ['combat_damage', 'attached_combat_damage'], true) && self::effects($text) === null && preg_match('/\btarget [a-z ,]+ that player controls\b/', $text)) {
             $text = (string) preg_replace('/\b(target [a-z ,]+) that player controls\b/', '$1 an opponent controls', $text);
@@ -3108,7 +3117,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['attached_attacks', 'attached_blocks', 'attached_combat_damage', 'permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_blocked', 'creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['attached_attacks', 'attached_blocks', 'attached_combat_damage', 'permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_blocked', 'creature_becomes_tapped', 'opponent_creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         // `Whenever CARDNAME blocks (becomes blocked by) a creature, that creature gets -1/-0 …`: the other creature; "it" stays CARDNAME.
         if (in_array($event, ['blocks_creature', 'blocked_by_creature'], true) && str_contains($text, 'that creature') && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
             $effects = self::effects(str_replace('that creature', 'CARDNAME', $text));
@@ -3138,6 +3147,12 @@ final class TextParser
         }
         if ($effects === null) {
             return false;
+        }
+        if ($dealt) {
+            if (count($effects) !== 1 || ($effects[0]['amount'] ?? null) !== 1 || isset($effects[0]['per'])) {
+                return false;
+            }
+            $effects[0]['amount'] = 'combat_dealt';
         }
         // Returning itself to the battlefield only makes sense from the graveyard (see Game::trigger()).
         if (! in_array($event, ['dies', 'to_graveyard'], true) && in_array('return_self', array_column($effects, 'type'), true)) {

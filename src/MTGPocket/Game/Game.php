@@ -136,6 +136,9 @@ final class Game
     /** The turn in which damage can't be prevented (`Damage can't be prevented this turn.`). */
     public int $unpreventableTurn = 0;
 
+    /** @var array<int, int> Combat damage each source dealt to players in this damage step, for `that many`; not saved, read as triggers are put on the stack. */
+    private array $combatDealt = [];
+
     /** How many creatures attacked in the last attack declared (Windbrisk Heights). */
     public int $attackedWith = 0;
 
@@ -6064,6 +6067,7 @@ final class Game
                 ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
+                ($effect['amount'] ?? null) === 'combat_dealt' => ['amount' => $this->combatDealt[$source->id] ?? 0] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
@@ -8184,6 +8188,7 @@ final class Game
 
         // All combat damage is dealt at once (rule 510.2).
         $lines = $hitPlayer = $toPlayers = [];
+        $this->combatDealt = [];
         foreach ($assignments as [$source, $target, $amount]) {
             $hurt = $target[0] === 'o' ? $this->objects[(int) substr($target, 2)] : null;
             $this->dealDamage($source, $target, $amount);
@@ -8202,6 +8207,7 @@ final class Game
                     $this->players[(int) substr($target, 2)]->poison += $toxic;
                 }
                 $hitPlayer[$source->id] = $source;
+                $this->combatDealt[$source->id] = ($this->combatDealt[$source->id] ?? 0) + $amount;
                 // `Whenever a creature deals combat damage to you, …`
                 foreach ($this->permanents((int) substr($target, 2)) as $permanent) {
                     $this->trigger($permanent, 'creature_combat_damages_you', $permanent->controller, null, $source->id);
@@ -9227,6 +9233,12 @@ final class Game
                     $this->trigger($object, 'becomes_tapped', $object->controller);
                     foreach ($this->isCreature($object) ? $this->permanents($object->controller) : [] as $permanent) {
                         $this->trigger($permanent, 'creature_becomes_tapped', $permanent->controller, null, $object->id);
+                    }
+                    // `Whenever a creature an opponent controls becomes tapped, …`
+                    foreach ($this->isCreature($object) ? $this->permanents() : [] as $permanent) {
+                        if ($permanent->controller !== $object->controller) {
+                            $this->trigger($permanent, 'opponent_creature_becomes_tapped', $permanent->controller, null, $object->id);
+                        }
                     }
                 }
             }
