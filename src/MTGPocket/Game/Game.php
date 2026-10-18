@@ -5769,6 +5769,7 @@ final class Game
                 ($effect['entering'] ?? false) => ['thatObject' => $context] + $effect,
                 ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
+                ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
@@ -7977,6 +7978,8 @@ final class Game
                     $object->deathtouched = true;
                 }
             }
+            // Boros Reckoner: `Whenever CARDNAME is dealt damage, it deals that much damage to any target.`: the amount is the context.
+            $this->trigger($object, 'dealt_damage', $object->controller, null, $amount);
         }
         if ($this->hasKeyword($source, 'lifelink')) {
             $this->gainLife($source->controller, $amount);
