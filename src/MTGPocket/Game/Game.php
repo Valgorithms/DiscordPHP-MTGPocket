@@ -7564,7 +7564,8 @@ final class Game
 
     /**
      * Records that a player lost life this turn, then triggers `Whenever an
-     * opponent loses life, …` on the other players' permanents.
+     * opponent loses life, …` on the other players' permanents and `Whenever
+     * you lose life, …` on that player's own.
      *
      * @param int $seat
      *
@@ -7576,6 +7577,12 @@ final class Game
         foreach ($this->permanents() as $permanent) {
             if ($permanent->controller !== $seat) {
                 $this->trigger($permanent, 'opponent_loses_life', $permanent->controller, null, $seat);
+            } else {
+                // `Whenever you lose life (during your turn), …`
+                $this->trigger($permanent, 'you_lose_life', $seat);
+                if ($this->active === $seat) {
+                    $this->trigger($permanent, 'you_lose_life_your_turn', $seat);
+                }
             }
         }
     }
@@ -7697,6 +7704,12 @@ final class Game
             $this->trigger($permanent, 'gain_life', $seat);
             if ($first) {
                 $this->trigger($permanent, 'first_gain_life', $seat);
+            }
+        }
+        // `Whenever an opponent gains life, …`
+        foreach ($this->permanents() as $permanent) {
+            if ($permanent->controller !== $seat) {
+                $this->trigger($permanent, 'opponent_gains_life', $permanent->controller);
             }
         }
     }

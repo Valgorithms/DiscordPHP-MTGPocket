@@ -2484,6 +2484,13 @@ final class TextParser
         } elseif (preg_match('/^Whenever you draw your second card each turn, (.+)$/', $line, $match)) {
             $event = 'second_draw';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you lose life(?: during your turn)?, (.+)$/', $line, $match)) {
+            // See Game::lostLife(); "during your turn" is checked there.
+            $event = str_contains($line, 'during your turn') ? 'you_lose_life_your_turn' : 'you_lose_life';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever an opponent gains life, (.+)$/', $line, $match) && ! str_contains($match[1], 'that player')) {
+            $event = 'opponent_gains_life';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you gain life( for the first time each turn)?, (.+)$/', $line, $match)) {
             $event = $match[1] !== '' ? 'first_gain_life' : 'gain_life';
             $text = $match[2];
