@@ -2397,6 +2397,19 @@ final class Game
      */
     private function targetedTriggers(array $targets, int $seat): void
     {
+        // Committing a crime (rule 700.13): targeting an opponent, or their spell, permanent or card in a graveyard.
+        $crime = false;
+        foreach (array_unique($targets) as $target) {
+            $object = str_starts_with($target, 'o:') ? $this->targetObject($target) : null;
+            $crime = $crime || str_starts_with($target, 'p:') && (int) substr($target, 2) !== $seat
+                || $object !== null && ($object->zone === GameObject::GRAVEYARD ? $object->owner : $object->controller) !== $seat;
+            foreach (str_starts_with($target, 's:') ? $this->stack : [] as $item) {
+                $crime = $crime || "s:{$item['id']}" === $target && $item['controller'] !== $seat;
+            }
+        }
+        foreach ($crime ? $this->permanents($seat) : [] as $permanent) {
+            $this->trigger($permanent, 'you_commit_crime', $seat);
+        }
         foreach (array_unique($targets) as $target) {
             $object = str_starts_with($target, 'o:') ? $this->targetObject($target) : null;
             if ($object !== null && $object->zone === GameObject::BATTLEFIELD) {

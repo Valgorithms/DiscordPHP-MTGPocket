@@ -2323,6 +2323,10 @@ final class TextParser
             // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too.
             $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
             $text = $match[2];
+        } elseif (preg_match('/^Whenever you commit a crime, (.+)$/', $line, $match)) {
+            // See Game::targetedTriggers().
+            $event = 'you_commit_crime';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you play a land, (.+)$/', $line, $match)) {
             $event = 'you_play_land';
             $text = $match[1];
