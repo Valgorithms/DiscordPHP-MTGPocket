@@ -221,6 +221,9 @@ final class Game
     /** Inside a `create N tokens` effect: `Whenever you create one or more tokens, …` waits for the whole batch. */
     private bool $creatingTokens = false;
 
+    /** The cards the last mill put into a graveyard, for `You may put a land card from among them into your hand.` */
+    private array $lastMilled = [];
+
     /** The spell a payment is for, while {@see paymentFor()} works it out. */
     private ?GameObject $spending = null;
 
@@ -5268,15 +5271,17 @@ final class Game
 
             case 'return_card':
                 // `Return a creature card from your graveyard to your hand.`: the one with the highest mana value.
-                $cards = array_values(array_filter($this->players[$controller]->graveyard, fn (int $id) => $id !== $source->id && match ($effect['kind']) {
-                    'card' => true,
-                    'instant or sorcery' => $this->objects[$id]->definition()->is('Instant') || $this->objects[$id]->definition()->is('Sorcery'),
-                    'permanent' => ! $this->objects[$id]->definition()->is('Instant') && ! $this->objects[$id]->definition()->is('Sorcery'),
-                    'nonland' => ! $this->objects[$id]->definition()->isLand(),
-                    'creature or land' => $this->objects[$id]->definition()->isCreature() || $this->objects[$id]->definition()->isLand(),
-                    'land' => $this->objects[$id]->definition()->isLand(),
-                    default => $this->objects[$id]->definition()->is(ucfirst($effect['kind'])),
-                }));
+                // `… from among them`: only the cards just milled.
+                $cards = array_values(array_filter($this->players[$controller]->graveyard, fn (int $id) => $id !== $source->id
+                    && (! ($effect['fromMilled'] ?? false) || in_array($id, $this->lastMilled, true)) && match ($effect['kind']) {
+                        'card' => true,
+                        'instant or sorcery' => $this->objects[$id]->definition()->is('Instant') || $this->objects[$id]->definition()->is('Sorcery'),
+                        'permanent' => ! $this->objects[$id]->definition()->is('Instant') && ! $this->objects[$id]->definition()->is('Sorcery'),
+                        'nonland' => ! $this->objects[$id]->definition()->isLand(),
+                        'creature or land' => $this->objects[$id]->definition()->isCreature() || $this->objects[$id]->definition()->isLand(),
+                        'land' => $this->objects[$id]->definition()->isLand(),
+                        default => $this->objects[$id]->definition()->is(ucfirst($effect['kind'])),
+                    }));
                 usort($cards, fn (int $a, int $b) => $this->objects[$b]->definition()->cost->manaValue() <=> $this->objects[$a]->definition()->cost->manaValue());
                 if (($back = $this->objects[$cards[0] ?? -1] ?? null) !== null) {
                     $this->moveTo($back, GameObject::HAND);
@@ -5522,11 +5527,12 @@ final class Game
      */
     private function mill(int $seat, int $count): void
     {
-        $milled = [];
+        [$milled, $this->lastMilled] = [[], []];
         for ($i = 0; $i < $count && $this->players[$seat]->library !== []; $i++) {
             $object = $this->objects[end($this->players[$seat]->library)];
             $this->moveTo($object, GameObject::GRAVEYARD);
             $milled[] = $object->name();
+            $this->lastMilled[] = $object->id;
         }
         $this->log("{$this->players[$seat]->name} mills ".($milled === [] ? 'nothing' : implode(', ', $milled)).'.');
     }
