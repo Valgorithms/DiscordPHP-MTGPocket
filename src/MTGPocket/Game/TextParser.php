@@ -3399,7 +3399,8 @@ final class TextParser
         }
         // "If that creature would die this turn, exile it instead." after damage.
         if (preg_match('/^If (?:that creature(?: or planeswalker)?|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
-            $damages = array_keys(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage'));
+            // Or after a targeted -N/-N: `Target creature gets -3/-3 until end of turn. If that creature would die this turn, exile it instead.`
+            $damages = array_keys(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage' || ($effect['type'] === 'pump' && isset($effect['target']) && ($effect['toughness'] ?? 0) < 0)));
             foreach ($damages as $i) {
                 $effects[$i]['exileIfDies'] = true;
             }

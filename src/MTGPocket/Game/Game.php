@@ -4494,6 +4494,10 @@ final class Game
                     if (isset($effect['each']) && ! $this->isCreature($object)) {
                         continue;
                     }
+                    // `If that creature would die this turn, exile it instead.`
+                    if ($effect['exileIfDies'] ?? false) {
+                        $object->exileIfDies = $this->turn;
+                    }
                     if ($subtype !== null && ! in_array($subtype, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {
                         continue;
                     }
