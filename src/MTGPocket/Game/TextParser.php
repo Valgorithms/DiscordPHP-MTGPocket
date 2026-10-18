@@ -4111,6 +4111,14 @@ final class TextParser
 
             return true;
         }
+        // `Target creature gets -1/-1 until end of turn. If you control a Zombie, that creature gets -3/-3 until end of turn instead.`: the larger pump.
+        if (preg_match('/^If (.+?), (?:it|that creature) (gets [+-]\d+\/[+-]\d+ until end of turn) instead$/', $sentence, $m) && ($effects[$last]['type'] ?? null) === 'pump'
+            && isset($effects[$last]['target']) && ! isset($effects[$last]['insteadIf']) && ($if = self::staticCondition($m[1])) !== null && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)
+            && ($then = self::sentenceEffects('Target creature '.$m[2])) !== null && count($then) === 1 && ($then[0]['type'] ?? null) === 'pump' && ($then[0]['keywords'] ?? []) === []) {
+            $effects[$last] += ['insteadIf' => $if, 'instead' => ['power' => $then[0]['power'], 'toughness' => $then[0]['toughness']]];
+
+            return true;
+        }
         // `If it's your turn, it also gains first strike …`, `If you control a Knight, it also gets …`: a condition about the game, checked as it resolves.
         if (preg_match("/^If (.+?), (it|that creature) also ((?:gets|gains) .+ until end of turn)$/", $sentence, $m) && ($if = self::staticCondition($m[1])) !== null
             && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)
