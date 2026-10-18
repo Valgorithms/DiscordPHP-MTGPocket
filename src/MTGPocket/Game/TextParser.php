@@ -535,6 +535,12 @@ final class TextParser
 
                 continue;
             }
+            // `CARDNAME gets +1/+0 for each card in your hand.`, `… for each creature card in your graveyard.`; counted by Game::perCount().
+            if (! $spell && preg_match('/^CARDNAME gets \+(\d+)\/\+(\d+) for each (?:card in your hand|(creature |artifact |land |instant |sorcery )?card in your graveyard)\.$/', $line, $match)) {
+                $result['keywords'][] = "gets +{$match[1]}/+{$match[2]} for each ".(str_ends_with($line, 'hand.') ? 'hand' : 'gy:'.(trim($match[3] ?? '') === '' ? 'card' : trim($match[3])));
+
+                continue;
+            }
             // `CARDNAME gets +2/+0 for each Mountain you control.`, `… for each other Elf you control.`, `… for each Aura attached to it.`
             if (! $spell && preg_match('/^CARDNAME gets \+(\d+)\/\+(\d+) for each (?:(other )?([A-Z][a-z]+) you control|(Aura|Equipment|Aura and Equipment) attached to it)\.$/', $line, $match)) {
                 $result['keywords'][] = "gets +{$match[1]}/+{$match[2]} for each ".(($match[5] ?? '') !== '' ? 'attached:'.str_replace(' and ', '|', $match[5]) : $match[3].'sub:'.$match[4]);

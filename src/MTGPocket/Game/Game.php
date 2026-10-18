@@ -9268,9 +9268,12 @@ final class Game
         }
         foreach ($object->definition()->keywords as $keyword) {
             if (preg_match('/^gets \+(\d+)\/\+(\d+) for each (.+)$/', $keyword, $m)) {
-                $n = str_starts_with($m[3], 'attached:')
-                    ? count(array_filter($this->attachments($object), fn (GameObject $o) => array_intersect(explode('|', substr($m[3], 9)), $o->definition()->subtypes) !== []))
-                    : $this->countYours($object->controller, $m[3], $object);
+                $n = match (true) {
+                    str_starts_with($m[3], 'attached:') => count(array_filter($this->attachments($object), fn (GameObject $o) => array_intersect(explode('|', substr($m[3], 9)), $o->definition()->subtypes) !== [])),
+                    // `… for each card in your hand.` / `… for each creature card in your graveyard.`
+                    $m[3] === 'hand' || str_starts_with($m[3], 'gy:') => $this->perCount($object->controller, $m[3], $object),
+                    default => $this->countYours($object->controller, $m[3], $object),
+                };
                 $bonus = [$bonus[0] + (int) $m[1] * $n, $bonus[1] + (int) $m[2] * $n];
             }
         }
