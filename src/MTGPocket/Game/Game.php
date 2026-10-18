@@ -5071,6 +5071,10 @@ final class Game
             case 'scry':
             case 'surveil':
                 $cards = array_reverse(array_slice($this->players[$controller]->library, -$amount));
+                // `Whenever you scry, …`, `Whenever you surveil, …` (rule 701.22b: not for scry 0).
+                foreach ($amount > 0 ? $this->permanents($controller) : [] as $permanent) {
+                    $this->trigger($permanent, "you_{$effect['type']}", $controller);
+                }
                 if ($amount > 0 && $cards !== []) {
                     $this->pendingChoice = ['type' => $effect['type'], 'seat' => $controller, 'cards' => $cards];
 
@@ -7842,8 +7846,9 @@ final class Game
                 foreach ($this->permanents($seat) as $permanent) {
                     $this->trigger($permanent, 'you_draw', $seat);
                 }
-                // `Whenever an opponent draws a card, …`
+                // `Whenever an opponent draws a card, …`; `Whenever a player draws a card, …`
                 foreach ($this->permanents() as $permanent) {
+                    $this->trigger($permanent, 'any_draw', $permanent->controller, null, $seat);
                     if ($permanent->controller !== $seat) {
                         $this->trigger($permanent, 'opponent_draw', $permanent->controller, null, $seat);
                     }
