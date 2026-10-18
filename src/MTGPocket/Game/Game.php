@@ -94,7 +94,7 @@ final class Game
     private int $nextChoiceId = 1;
 
     /** Target kinds for cards in a graveyard. */
-    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard'];
+    private const array GRAVEYARD_KINDS = ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'];
 
     /** @var int[] */
     public array $exile = [];
@@ -5889,6 +5889,8 @@ final class Game
                 $event === 'to_graveyard_anywhere' => ['event' => $event] + $effect,
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
                 in_array($effect['target'] ?? null, ['creature_other', '?creature_other'], true) => ['target' => str_replace('creature_other', "creature_not_{$source->id}", $effect['target'])] + $effect,
+                // `another target creature card from your graveyard`: not the source, even once it is there.
+                in_array($effect['target'] ?? null, ['creature_card_yours_other', '?creature_card_yours_other'], true) => ['target' => str_replace('creature_card_yours_other', "creature_card_yours_not_{$source->id}", $effect['target'])] + $effect,
                 in_array($effect['target'] ?? null, ['creature_you_control_other', '?creature_you_control_other'], true) => ['target' => str_replace('creature_you_control_other', "creature_yours_not_{$source->id}", $effect['target'])] + $effect,
                 // `another target permanent you control`: not the source.
                 (bool) preg_match('/^\??(nonland_)?permanent_you_control_other$/', $effect['target'] ?? '') => ['target' => str_replace('_you_control_other', "_yours_not_{$source->id}", $effect['target'])] + $effect,
@@ -6999,6 +7001,9 @@ final class Game
             'permanent_card_yours' => $object->printed()->isPermanentCard() && $object->owner === $controller,
             'creature_card_graveyard' => $object->printed()->isCreature(),
             'card_graveyard' => true,
+            // `target card from defending player's graveyard`: with one opponent, theirs.
+            'card_graveyard_opponent' => $object->owner !== $controller,
+            'creature_card_graveyard_opponent' => $object->printed()->isCreature() && $object->owner !== $controller,
             'card_graveyard_nonbasic' => ! ($object->printed()->isLand() && in_array('Basic', $object->printed()->supertypes, true)),
             'nonbasic_land' => $card->isLand() && ! in_array('Basic', $card->supertypes, true),
             'creature_or_planeswalker_opponent' => ($creature || $card->isPlaneswalker()) && $object->controller !== $controller,
@@ -7042,6 +7047,7 @@ final class Game
                 || ((bool) preg_match('/^creature_mv_le_(\d+)$/', $kind, $m) && $creature && $card->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^creature_opp_power_le_(\d+)$/', $kind, $m) && $creature && $object->controller !== $controller && $this->power($object) <= (int) $m[1])
                 || ((bool) preg_match('/^creature_opp_mv_le_(\d+)$/', $kind, $m) && $creature && $object->controller !== $controller && $card->cost->manaValue() <= (int) $m[1])
+                || ((bool) preg_match('/^creature_card_yours_not_(\d+)$/', $kind, $m) && $object->printed()->isCreature() && $object->owner === $controller && $object->id !== (int) $m[1])
                 || ((bool) preg_match('/^creature_card_yours_mv_le_(\d+)$/', $kind, $m) && $object->printed()->isCreature() && $object->owner === $controller && $object->printed()->cost->manaValue() <= (int) $m[1])
                 // `Enchant artifact or creature you control`: any of the kinds, with an optional controller.
                 || ((bool) preg_match('/^any:([^@]+)(?:@(you|opp))?$/', $kind, $m)
@@ -7059,7 +7065,7 @@ final class Game
      */
     private static function isGraveyardKind(string $kind): bool
     {
-        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_') || str_starts_with($kind, 'creature_card_yours_mv_le_');
+        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_') || str_starts_with($kind, 'creature_card_yours_mv_le_') || str_starts_with($kind, 'creature_card_yours_not_');
     }
 
     /**
