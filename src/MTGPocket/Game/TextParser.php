@@ -2379,10 +2379,20 @@ final class TextParser
             }
 
             return true;
-        } elseif (preg_match('/^Whenever (a|another) creature you control (attacks alone|attacks|deals combat damage to a player), (.+)$/', $line, $match)) {
-            // See Game::declareAttackers() and Game::combatDamage(): "it" is that creature.
-            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'deals combat damage to a player' => 'creature_combat_damage'][$match[2]].($match[1] === 'another' && $match[2] !== 'attacks alone' ? '_other' : '');
+        } elseif (preg_match('/^Whenever (a|another) creature you control (attacks alone|attacks|blocks|deals combat damage to a player), (.+)$/', $line, $match)) {
+            // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
+            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'blocks' => 'creature_blocks', 'deals combat damage to a player' => 'creature_combat_damage'][$match[2]]
+                .($match[1] === 'another' && ! in_array($match[2], ['attacks alone', 'blocks'], true) ? '_other' : '');
+            $extra = $match[1] === 'another' && $match[2] === 'blocks' ? ['objectKind' => 'creature', 'other' => true] : [];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever a creature (?:attacks you|an opponent controls attacks), (.+)$/', $line, $match)) {
+            // See Game::declareAttackers(): "it" is the attacking creature.
+            $event = 'opponent_creature_attacks';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever one or more creatures you control deal combat damage to a player, (.+)$/', $line, $match) && ! preg_match('/\b(?:they|those creatures|that player)\b/', $match[1])) {
+            // Once, however many; see Game::combatDamage().
+            $event = 'you_combat_damage_batch';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever (?:you attack|one or more creatures you control attack), (.+)$/', $line, $match)) {
             $event = 'you_attack';
             $text = (string) preg_replace('/^they (get|gain)/', 'attacking creatures you control $1', $match[1]);
@@ -2595,7 +2605,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         if ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
             $effects = [['type' => 'attach', 'entering' => true]];
         } elseif ($entering && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {

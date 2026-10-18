@@ -6992,6 +6992,12 @@ final class Game
                 $this->objects[$id]->tapped = true;
             }
             $this->trigger($this->objects[$id], 'attacks', $seat);
+            // `Whenever a creature attacks you, …` (two players: each attacker attacks its controller's opponent).
+            foreach ($this->permanents() as $permanent) {
+                if ($permanent->controller !== $seat) {
+                    $this->trigger($permanent, 'opponent_creature_attacks', $permanent->controller, null, $id);
+                }
+            }
             // `Whenever a creature you control attacks, it gets …`
             foreach ($this->permanents($seat) as $permanent) {
                 $this->trigger($permanent, 'creature_attacks', $seat, null, $id);
@@ -7347,6 +7353,10 @@ final class Game
         // `Whenever CARDNAME blocks, …`
         foreach (array_unique(array_keys($this->blockers)) as $id) {
             $this->trigger($this->objects[$id], 'blocks', $this->objects[$id]->controller);
+            // `Whenever a creature you control blocks, …`: "it" is that creature.
+            foreach ($this->permanents($this->objects[$id]->controller) as $permanent) {
+                $this->trigger($permanent, 'creature_blocks', $permanent->controller, null, $id);
+            }
         }
         // `Whenever this creature becomes blocked`, afflict.
         foreach (array_keys($this->blocked) as $id) {
@@ -7557,6 +7567,12 @@ final class Game
                     $hit = $this->players[(int) substr($target, 2)];
                     $hit->commanderDamage[$source->id] = ($hit->commanderDamage[$source->id] ?? 0) + $amount;
                 }
+            }
+        }
+        // `Whenever one or more creatures you control deal combat damage to a player, …`: once.
+        foreach (array_unique(array_map(fn (GameObject $source) => $source->controller, $hitPlayer)) as $seat) {
+            foreach ($this->permanents($seat) as $permanent) {
+                $this->trigger($permanent, 'you_combat_damage_batch', $seat);
             }
         }
         foreach ($hitPlayer as $source) {
