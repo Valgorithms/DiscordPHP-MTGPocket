@@ -2187,6 +2187,7 @@ final class TextParser
     {
         $events = [
             'becomes the target of a spell or ability' => 'targeted',
+            'becomes the target of a spell or ability an opponent controls' => 'targeted_by_opponent',
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
@@ -2260,7 +2261,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability|becomes blocked|becomes tapped|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability|becomes blocked|becomes tapped|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -2387,6 +2388,12 @@ final class TextParser
             // Tribal enters triggers: `Whenever another Elf you control enters, …`.
             $event = 'subtype_enters';
             $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
+            $text = $match[3];
+        } elseif (preg_match('/^Whenever (a|another) (creature|permanent|artifact|enchantment|land|[A-Z][a-z]+) you control becomes the target of a spell or ability an opponent controls, (.+)$/', $line, $match)
+            && ! preg_match('/\b(it|its|that (?:spell|ability|creature|permanent))\b/', $match[3])) {
+            // See Game::targetedTriggers(): the permanent targeted is the context.
+            $event = 'yours_targeted_by_opponent';
+            $extra = ['objectKind' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
         } elseif (preg_match('/^Whenever (an|another) (nontoken )?artifact you control is put into a graveyard from the battlefield, (.+)$/', $line, $match)
             && ! preg_match('/\b(it|its|that artifact)\b/', $match[3])) {
