@@ -4054,6 +4054,10 @@ final class TextParser
         if (preg_match('/^(target opponent|target player) reveals (?:their|his or her) hand$/i', $s, $m)) {
             return ['type' => 'reveal_hand', 'target' => self::TARGETS[strtolower($m[1])]];
         }
+        // `Look at target opponent's hand.`: in a two-player game only that player and you play, so it is shown like a reveal.
+        if (preg_match("/^look at (target opponent|target player)'s hand$/i", $s, $m)) {
+            return ['type' => 'reveal_hand', 'target' => self::TARGETS[strtolower($m[1])]];
+        }
         if (preg_match('/^(tap|untap) CARDNAME$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'self' => true];
         }
