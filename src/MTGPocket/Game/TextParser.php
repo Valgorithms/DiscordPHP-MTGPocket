@@ -2447,6 +2447,13 @@ final class TextParser
             }
 
             return true;
+        } elseif (preg_match('/^Whenever a (nontoken )?creature dies, (.+)$/', $line, $match) && ($effects = self::effects($match[2])) !== null && ! preg_match('/\b(target|it|its|that creature)\b/', $match[2])) {
+            // Any player's creature, and itself when it is a creature; see "another creature dies" below.
+            foreach (self::$creature ? ['creature_dies_other', 'creature_dies_any', 'dies'] : ['creature_dies_other', 'creature_dies_any'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($match[1] !== '' ? ['nontoken' => true] : []);
+            }
+
+            return true;
         } elseif (preg_match('/^Whenever another (nontoken )?creature (you control )?dies, (.+)$/', $line, $match)) {
             // `creature_dies_any` fires for other players' creatures; "another creature dies" listens to both.
             $event = 'creature_dies_other';
