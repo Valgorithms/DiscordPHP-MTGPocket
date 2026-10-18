@@ -2301,6 +2301,19 @@ final class TextParser
 
                 return true;
             }
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME deals damage to (a player|an opponent), (.+)$/', $line, $match)) {
+            // Any damage, not only combat; "that player" is the player dealt damage. See Game::dealDamage().
+            $event = $match[1] === 'a player' ? 'damages_player' : 'damages_opponent';
+            $text = $match[2];
+            if (str_contains($text, 'that player') && ! str_contains($text, 'target')) {
+                $effects = self::effects(str_replace('that player', 'target player', $text));
+                if ($effects === null) {
+                    return false;
+                }
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => array_map(fn (array $effect) => ($effect['target'] ?? null) === 'player' ? ['thatPlayer' => true] + array_diff_key($effect, ['target' => true]) : $effect, $effects)];
+
+                return true;
+            }
         } elseif (preg_match('/^Whenever you discard (a card|one or more cards), (.+)$/', $line, $match)) {
             // See Game::discardCards(): "one or more" triggers once for them all.
             $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';

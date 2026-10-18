@@ -7600,6 +7600,11 @@ final class Game
                 $this->players[(int) $parts[1]]->life -= $amount;
                 $this->players[(int) $parts[1]]->lostLifeOnTurn = $this->turn;
             }
+            // `Whenever CARDNAME deals damage to a player (an opponent), …`: that player is the context.
+            $this->trigger($source, 'damages_player', $source->controller, null, (int) $parts[1]);
+            if ((int) $parts[1] !== $source->controller) {
+                $this->trigger($source, 'damages_opponent', $source->controller, null, (int) $parts[1]);
+            }
         } else {
             $object = $this->targetObject($target);
             if ($object === null || $object->zone !== GameObject::BATTLEFIELD) {
