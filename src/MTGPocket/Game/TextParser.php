@@ -2407,6 +2407,18 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Valiant: `Whenever CARDNAME becomes the target of a spell or ability you control for the first time each turn, …`: see Game::trigger().
+        if (preg_match('/^(Whenever .+?) for the first time each turn, (.+)$/', $line, $once)) {
+            $before = count($result['triggered'] ?? []);
+            if (! self::triggered("{$once[1]}, {$once[2]}", $result)) {
+                return false;
+            }
+            for ($i = $before; $i < count($result['triggered']); $i++) {
+                $result['triggered'][$i] = ['text' => $line, 'oncePerTurn' => true] + $result['triggered'][$i];
+            }
+
+            return true;
+        }
         // Creatures only attack players here (see Game::declareAttackers()), so "or planeswalker" adds nothing.
         $line = (string) preg_replace('/deals combat damage to a player(?:, planeswalker,)? or (?:planeswalker|battle)\b/', 'deals combat damage to a player', $line);
         // Exert (rule 701.43): `You may exert CARDNAME as it attacks. When you do, …` is an attack trigger.
@@ -4412,6 +4424,10 @@ final class TextParser
         // Ahn-Crop Champion: `untap all other creatures you control`; all but the source.
         if (preg_match('/^(tap|untap) all (other )?creatures (you control|your opponents control)$/i', $s, $m) && ($m[2] === '' || strtolower($m[3]) === 'you control')) {
             return ['type' => strtolower($m[1]), 'each' => strtolower($m[3]) === 'you control' ? 'yours' : 'theirs'] + ($m[2] !== '' ? ['other' => true] : []);
+        }
+        // `Whenever CARDNAME attacks, mobilize 1.` as an effect: see the Mobilize keyword (rule 702.181).
+        if (preg_match('/^mobilize (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
+            return ['type' => 'mobilize', 'amount' => $n];
         }
         // Bolster (rule 701.39): counters on your creature with the least toughness.
         if (preg_match('/^bolster (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {

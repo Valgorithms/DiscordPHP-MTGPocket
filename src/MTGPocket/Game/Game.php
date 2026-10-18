@@ -5992,6 +5992,14 @@ final class Game
             if ($source->echoPaid && ($ability['effects'][0]['type'] ?? '') === 'echo') {
                 continue;
             }
+            // Valiant: `… for the first time each turn, …`; recorded with the activated-ability uses, under a negative key.
+            if ($ability['oncePerTurn'] ?? false) {
+                $key = -2 - (crc32($ability['text']) % 1000000000);
+                if (($source->used[$key] ?? 0) === $this->turn) {
+                    continue;
+                }
+                $source->used[$key] = $this->turn;
+            }
             $this->pendingTriggers[] = [
                 'source' => $source->id,
                 'incarnation' => $incarnation ?? $source->incarnation,
