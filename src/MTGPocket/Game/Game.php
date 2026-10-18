@@ -4236,6 +4236,10 @@ final class Game
                     $affected->addCounters('+1/+1', 1);
                     $this->log("{$affected->name()} explores and gets a +1/+1 counter.");
                 }
+                // `Whenever a creature you control explores, …`
+                foreach ($affected !== null ? $this->permanents($affected->controller) : [] as $permanent) {
+                    $this->trigger($permanent, 'creature_explores', $permanent->controller, null, $affected->id);
+                }
                 break;
 
             case 'vanishing':
@@ -6534,6 +6538,10 @@ final class Game
         $this->passes = 0;
         $this->log("{$this->players[$object->controller]->name} turns a face-down creature face up: it is {$object->name()}.", $object->controller, "unmorph {$object->name()}");
         $this->trigger($object, 'turned_face_up', $object->controller);
+        // `Whenever a permanent (creature) you control is turned face up, …`
+        foreach ($this->permanents($object->controller) as $permanent) {
+            $this->trigger($permanent, 'permanent_turned_face_up', $permanent->controller, null, $object->id);
+        }
     }
 
     // ----------------------------------------------------------------------
