@@ -4009,7 +4009,8 @@ final class TextParser
         }
         // "Those creatures don't untap during their controller's next untap step." / "Put a stun counter on each of them." after tapping.
         $tapped = [];
-        for ($i = $last; isset($effects[$i]) && $effects[$i]['type'] === 'tap' && isset($effects[$i]['target']); $i--) {
+        // `When this Aura enters, tap enchanted creature. It doesn't untap …` reads the same way.
+        for ($i = $last; isset($effects[$i]) && $effects[$i]['type'] === 'tap' && (isset($effects[$i]['target']) || ($effects[$i]['enchanted'] ?? false)); $i--) {
             $tapped[] = $i;
         }
         $freeze = preg_match("/^(?:It|They|That creature|Those creatures|That permanent|Those permanents) (?:doesn't|don't) untap during (?:its|their) (?:controller's next untap step|controllers' next untap steps)$/i", $sentence);
@@ -4431,6 +4432,10 @@ final class TextParser
         if (preg_match('/^enchanted creature (?:gets ([+-]\d+)\/([+-]\d+)(?: and gains (.+?))?|gains (.+?)) until end of turn$/i', $s, $m)
             && ($keywords = self::keywordList(($m[4] ?? '') !== '' ? $m[4] : ($m[3] ?? ''))) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => $keywords, 'enchanted' => true];
+        }
+        // `When this Aura enters, put a +1/+1 counter on enchanted creature.`
+        if (preg_match('/^put (\w+) \+1\/\+1 counters? on enchanted creature$/i', $s, $m) && is_int($n = self::amount(strtolower($m[1])))) {
+            return ['type' => 'counters', 'amount' => $n, 'enchanted' => true];
         }
         if (preg_match('/^(tap|untap) enchanted (?:creature|permanent|artifact|land)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'enchanted' => true];
