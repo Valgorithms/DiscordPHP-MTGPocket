@@ -1682,6 +1682,16 @@ final class TextParser
 
             return true;
         }
+        // `Creature tokens you control get +1/+1.` and `Nontoken creatures you control have vigilance.`; see Game::anthems().
+        if (preg_match('/^(Other )?([Cc]reature tokens|[Nn]ontoken creatures) you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
+            $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
+            if ($keywords === null) {
+                return false;
+            }
+            $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== '', 'token' => strtolower($m[2]) === 'creature tokens'];
+
+            return true;
+        }
         // The Slivers: `All Sliver creatures get +1/+1.` and `All Slivers have haste.`, every player's; see Game::anthems().
         if (preg_match('/^All ([A-Z][a-z]+)(?: creatures)? (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)
             && ($type = self::subtypeOf($m[1])) !== null && ($keywords = self::keywordList(($m[5] ?? '') !== '' ? $m[5] : ($m[4] ?? ''))) !== null) {
