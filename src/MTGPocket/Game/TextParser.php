@@ -159,6 +159,12 @@ final class TextParser
         'target creature an opponent controls' => 'creature_opponent',
         'target creature defending player controls' => 'creature_opponent',
         'target creature you don\'t control' => 'creature_opponent',
+        // Only plural targets say `… your opponents control` (`up to two target creatures your opponents control`), read one at a time.
+        'target creature your opponents control' => 'creature_opponent',
+        'target nonland permanent your opponents control' => 'nonland_permanent_opponent',
+        'target artifact your opponents control' => 'artifact_opponent',
+        'target permanent your opponents control' => 'permanent_opponent',
+        'target creature or planeswalker your opponents control' => 'creature_or_planeswalker_opponent',
         'target creature or planeswalker an opponent controls' => 'creature_or_planeswalker_opponent',
         'target creature or planeswalker defending player controls' => 'creature_or_planeswalker_opponent',
         'target creature or planeswalker you don\'t control' => 'creature_or_planeswalker_opponent',
@@ -571,6 +577,7 @@ final class TextParser
                 'CARDNAME escapes with four +1/+1 counters on it.' => 'escapes with 4',
                 // Read by Game::canBlock().
                 "Creatures with power less than CARDNAME's power can't block it." => "can't be blocked by lesser power",
+                "CARDNAME can't block creatures with flying." => "can't block flying",
                 // Read ahead (rule 714.3a): the controller may start a Saga on a later chapter; Game always starts it on chapter I, which is one of the legal choices.
                 'Read ahead' => 'read ahead',
                 // Rule 502.3: untapping it anyway is always one of the legal choices, and Game always does.
@@ -3708,8 +3715,8 @@ final class TextParser
             && isset(self::TARGETS[$phrase = 'target '.preg_replace('/s\b/', '', strtolower($m[3]))]) && self::isPermanentTarget($phrase)) {
             return array_fill(0, $n, ['type' => strtolower($m[1]), 'target' => '?'.self::TARGETS[$phrase]]);
         }
-        // `Up to two target creatures each get +2/+2 until end of turn.`: as `… target creatures gets …`.
-        if (preg_match('/^(up to \w+ target creatures) each get (.+)$/i', $sentence, $m)) {
+        // `Up to two target creatures (each) get +2/+2 until end of turn.`: as `… target creatures gets …`.
+        if (preg_match('/^(up to \w+ target creatures(?: [^.]*?)??) (?:each )?get (.+)$/i', $sentence, $m)) {
             return self::sentenceEffects($m[1].' gets '.preg_replace('/^(\S+ and) gain /', '$1 gains ', $m[2]));
         }
         // "Return up to two target creature cards from your graveyard to your hand": that many optional targets.

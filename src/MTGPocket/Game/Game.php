@@ -7868,7 +7868,7 @@ final class Game
         if ($this->hasKeyword($blocker, "can't block o{$attacker->id}")) {
             return false;
         }
-        if ($this->hasKeyword($attacker, 'flying') && ! $this->hasKeyword($blocker, 'flying') && ! $this->hasKeyword($blocker, 'reach')) {
+        if ($this->hasKeyword($attacker, 'flying') && ((! $this->hasKeyword($blocker, 'flying') && ! $this->hasKeyword($blocker, 'reach')) || $this->hasKeyword($blocker, "can't block flying"))) {
             return false;
         }
         if ($this->protectedFrom($attacker, $blocker)) {
