@@ -2976,11 +2976,15 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
+        } elseif (preg_match('/^When you cast CARDNAME, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|copy|CARDNAME)\b/i', $match[1])) {
+            // `When you cast this spell, draw a card.` (rule 603.2): it triggers from the stack, above the spell, and resolves even if the spell is countered.
+            $event = 'cast_self';
+            $text = $match[1];
         } else {
             return false;
         }
         // `Whenever you cast your second spell each turn, copy it.`: the spell just cast.
-        if (str_starts_with($event, 'cast_') || in_array($event, ['first_spell', 'second_spell', 'third_spell', 'you_cast_kind'], true)) {
+        if ((str_starts_with($event, 'cast_') && $event !== 'cast_self') || in_array($event, ['first_spell', 'second_spell', 'third_spell', 'you_cast_kind'], true)) {
             $text = (string) preg_replace('/^copy it\./i', 'copy that spell.', $text);
         }
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {

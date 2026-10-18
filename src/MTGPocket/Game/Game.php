@@ -3016,6 +3016,7 @@ final class Game
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : []),
             ...array_map(fn (string $color) => "cast_color_{$color}", $card->colors), ...(count($card->colors) > 1 ? ['cast_multicolored'] : [])];
         $this->castSpell = $spell->id;
+        $this->trigger($spell, 'cast_self', $seat);
         foreach ($this->permanents($seat) as $permanent) {
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
