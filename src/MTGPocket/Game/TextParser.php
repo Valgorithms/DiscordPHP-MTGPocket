@@ -2808,7 +2808,7 @@ final class TextParser
             $extra = ['objectKind' => $match[3], 'other' => $match[2] === 'another'];
             $text = $match[4];
         } elseif (preg_match('/^Whenever (a|an|another) (nontoken )?([A-Z][a-z]+) you control dies, (.+)$/', $line, $match) && ! in_array($match[3], ['Creature', 'Artifact'], true)
-            && ($effects = self::effects($match[4])) !== null && ! preg_match('/\b(target|it|its|that creature)\b/', $match[4])) {
+            && ($effects = self::effects($match[4])) !== null && ! preg_match('/\b(it|its|that creature)\b/', $match[4])) {
             // `Whenever a Goblin you control dies, …`: another one, and itself when it is one (a nontoken card).
             $events = $match[1] !== 'another' && self::$creature && in_array($match[3], self::$subtypes, true) ? ['creature_dies_other', 'dies'] : ['creature_dies_other'];
             foreach ($events as $event) {
@@ -2818,7 +2818,7 @@ final class TextParser
 
             return true;
         } elseif (preg_match('/^Whenever a (nontoken )?creature (token )?you control dies, (.+)$/', $line, $match) && ($match[1] === '' || $match[2] === '')
-            && ($effects = self::effects($match[3])) !== null && ! str_contains($match[3], 'target')) {
+            && ($effects = self::effects($match[3])) !== null) {
             // Once for another creature dying, and once for itself when it is a creature (a card, so never a token). "Nontoken", "token": see Game::trigger().
             foreach (self::$creature && $match[2] === '' ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
                 $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($match[1] !== '' ? ['nontoken' => true] : []) + ($match[2] !== '' ? ['tokenOnly' => true] : []);
@@ -3161,6 +3161,14 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
+        // `Target Elf you control gets +2/+2 until end of turn.`: read as a creature you control, then narrowed to that type.
+        if (preg_match('/\b[Tt]arget ([A-Z][a-z]+) you control\b/', $text, $typed) && substr_count($text, 'arget ') === 1 && ($subtype = self::subtypeOf($typed[1])) === $typed[1]
+            && ! in_array($subtype, ['Creature', 'Permanent', 'Nonland', 'Noncreature', 'Aura', 'Equipment', 'Vehicle', 'Treasure', 'Food', 'Clue', 'Blood', 'Map', 'Forest', 'Island', 'Swamp', 'Mountain', 'Plains', 'Saga', 'Gate', 'Desert', 'Cave', 'Town', 'Sphere', 'Lesson', 'Class', 'Room', 'Shrine', 'Curse', 'Role', 'Background', 'Case', 'Spacecraft', 'Planet', 'Incubator', 'Powerstone', 'Gold', 'Junk', 'Lander', 'Planeswalker', 'Battle'], true)) {
+            $effects = self::effects((string) preg_replace('/\b([Tt])arget [A-Z][a-z]+ you control\b/', '$1arget creature you control', $text));
+
+            return $effects === null || ! in_array(true, array_map(fn (array $effect) => in_array($effect['target'] ?? null, ['creature_you_control', '?creature_you_control'], true), $effects), true) ? null
+                : array_map(fn (array $effect) => in_array($effect['target'] ?? null, ['creature_you_control', '?creature_you_control'], true) ? ['target' => str_replace('creature_you_control', "subtype_you_control_{$subtype}", $effect['target'])] + $effect : $effect, $effects);
+        }
         // `Look at the top card of your library. You may put that card into your graveyard.`: surveil 1 in all but name, so no `Whenever you surveil` triggers.
         if (preg_match('/^[Ll]ook at the top card of your library\. You may put (?:that card|it) into your graveyard\.?$/', trim($text))) {
             return [['type' => 'surveil', 'amount' => 1, 'quiet' => true]];

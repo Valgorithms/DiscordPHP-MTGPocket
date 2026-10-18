@@ -7075,7 +7075,9 @@ final class Game
             'permanent_you_control', 'permanent_you_control_other' => $object->controller === $controller,
             'nonland_permanent_you_control', 'nonland_permanent_you_control_other' => ! $card->isLand() && $object->controller === $controller,
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
-            default => ((bool) preg_match('/^subtype_card_yours_([A-Z][a-z]+)$/', $kind, $m) && $object->owner === $controller
+            default => ((bool) preg_match('/^subtype_you_control_([A-Z][a-z]+)$/', $kind, $m) && $creature && $object->controller === $controller
+                && (in_array($m[1], $card->subtypes, true) || in_array('changeling', $card->keywords, true)))
+                || ((bool) preg_match('/^subtype_card_yours_([A-Z][a-z]+)$/', $kind, $m) && $object->owner === $controller
                 && (in_array($m[1], $object->printed()->subtypes, true) || in_array('changeling', $object->printed()->keywords, true)))
                 || ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
