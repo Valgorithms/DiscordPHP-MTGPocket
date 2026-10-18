@@ -2324,6 +2324,15 @@ final class TextParser
 
                 return true;
             }
+        } elseif (preg_match('/^Whenever you (?:cycle or )?discard an? (creature|land|artifact|enchantment|instant or sorcery) card, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|that card)\b/', $match[2])) {
+            // See Game::discardedBy(): the card discarded is the context.
+            $event = 'you_discard_kind';
+            $extra = ['objectKind' => $match[1]];
+            $text = $match[2];
+        } elseif (preg_match('/^Whenever an opponent (?:cycles or )?discards a card, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|that card|that player)\b/', $match[1])) {
+            // See Game::discardedBy(): once for each card.
+            $event = 'opponent_discards';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you (?:cycle or )?discard (a card|one or more cards), (.+)$/', $line, $match)) {
             // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too.
             $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
