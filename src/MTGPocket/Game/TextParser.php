@@ -50,7 +50,7 @@ namespace MTGPocket\Game;
 final class TextParser
 {
     /** The count after `where X is the number of `; see per(). */
-    private const string X_COUNT = '(?:(other creatures|creatures|artifacts|lands|enchantments|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(cards) in your (graveyard|hand)|(opponents) you have)';
+    private const string X_COUNT = '(?:(other creatures|creatures|artifacts|lands|enchantments|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(cards) in your (graveyard|hand)|(opponents) you have|(attacking creatures)(?: you control)?)';
 
     private const array NUMBERS = [
         'a' => 1, 'an' => 1, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5,
@@ -3028,7 +3028,7 @@ final class TextParser
             $text = $match['rest'];
         }
         // `Whenever CARDNAME deals combat damage to a player, that player mills that many cards.`: the damage it dealt; see Game::combatDamage().
-        $dealt = $event === 'combat_damage' && preg_match_all('/\bthat (?:many|much)\b/', $text) === 1;
+        $dealt = in_array($event, ['combat_damage', 'attached_combat_damage', 'creature_combat_damage', 'creature_combat_damage_other'], true) && preg_match_all('/\bthat (?:many|much)\b/', $text) === 1;
         if ($dealt) {
             $text = (string) preg_replace('/\bthat (?:many|much)\b/', '1', $text);
         }
@@ -3578,8 +3578,8 @@ final class TextParser
         }
         // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
         if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
-            || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (to .+)$/', $sentence, $m)) {
-            return self::sentenceEffects("{$m[1]} X {$m[2]}".(isset($m[9]) ? " {$m[9]}" : '').", where X is the number of {$m[3]}");
+            || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (?<to>to .+)$/', $sentence, $m)) {
+            return self::sentenceEffects("{$m[1]} X {$m[2]}".(isset($m['to']) ? " {$m['to']}" : '').", where X is the number of {$m[3]}");
         }
         // `Draw a card for each creature you control.`, `Create a 1/1 … token for each creature card in your graveyard.`: counted as it resolves (see Game::perCount()).
         // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.

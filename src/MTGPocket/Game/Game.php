@@ -6067,7 +6067,7 @@ final class Game
                 ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
-                ($effect['amount'] ?? null) === 'combat_dealt' => ['amount' => $this->combatDealt[$source->id] ?? 0] + $effect,
+                ($effect['amount'] ?? null) === 'combat_dealt' => ['amount' => $this->combatDealt[$event === 'combat_damage' ? $source->id : $context] ?? 0] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
                 $effect['type'] === 'cascade' => ['hit' => $context] + $effect,
