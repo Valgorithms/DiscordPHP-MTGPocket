@@ -5417,6 +5417,19 @@ final class Game
                     }
                     break;
                 }
+                // `you may collect evidence 4. If you do, …`: when the graveyard has enough, highest mana values first; see evidence().
+                if (preg_match('/^evidence (\d+)$/', $effect['cost'], $m)) {
+                    if (($evidence = $this->evidence($controller, $source->id, (int) $m[1])) !== null) {
+                        foreach ($evidence as $exiled) {
+                            $this->moveTo($this->objects[$exiled], GameObject::EXILE);
+                        }
+                        $this->log("{$this->players[$controller]->name} collects evidence {$m[1]} for {$source->name()}.");
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        }
+                    }
+                    break;
+                }
                 // `you may sacrifice another creature. If you do, …`: only something cheap to lose, a token or a small creature.
                 if (preg_match('/^sacrifice (\w+)( other)?$/', $effect['cost'], $m)) {
                     $fodder = $this->weakest($controller, fn (GameObject $o) => ($m[2] === '' || $o->id !== $source->id)
