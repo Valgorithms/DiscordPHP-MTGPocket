@@ -4738,7 +4738,7 @@ final class Game
 
             case 'reanimate':
                 if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($affected, $controller, entryState: isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []);
+                    $this->putOntoBattlefield($affected, $controller, tapped: $effect['tapped'] ?? false, entryState: isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []);
                     $this->log("{$affected->name()} returns to the battlefield.");
                     $this->followed = [(string) $target => "o:{$affected->id}:{$affected->incarnation}"];
                 }
