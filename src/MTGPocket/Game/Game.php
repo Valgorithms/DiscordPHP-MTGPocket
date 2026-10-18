@@ -4675,8 +4675,10 @@ final class Game
                 break;
 
             case 'endure':
-                // Endure N: counters while it's here, else an N/N Spirit.
-                if ($source->zone === GameObject::BATTLEFIELD) {
+                // Endure N: counters while it's here, else an N/N Spirit; a target that became illegal does nothing.
+                if (isset($effect['target']) || ($effect['sameTarget'] ?? false)) {
+                    $affected?->addCounters('+1/+1', $amount);
+                } elseif ($source->zone === GameObject::BATTLEFIELD) {
                     $source->addCounters('+1/+1', $amount);
                 } else {
                     $this->createToken(['name' => 'Spirit Token', 'type' => 'Token Creature — Spirit', 'types' => ['Creature'], 'subtypes' => ['Spirit'], 'colors' => ['W'], 'power' => (string) $amount, 'toughness' => (string) $amount, 'text' => '', 'manaCost' => null], $controller);

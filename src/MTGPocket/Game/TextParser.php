@@ -4010,6 +4010,13 @@ final class TextParser
 
             return true;
         }
+        // `Target creature you control gets +1/+1 until end of turn. It endures 1.`: that creature, not the spell.
+        if ((in_array($effects[$last]['target'] ?? null, self::CREATURE_KINDS, true) || ($effects[$last]['sameTarget'] ?? false))
+            && preg_match('/^(?:It|That creature) endures (\w+)$/', $sentence, $m) && is_int($n = self::amount(strtolower($m[1])))) {
+            $effects[] = ['type' => 'endure', 'amount' => $n, 'sameTarget' => true];
+
+            return true;
+        }
         // "It gains haste until end of turn." after an effect with a target: the same creature. `It must be blocked this turn if able.` reads the same way.
         $sentence = (string) preg_replace('/^(It|That creature) must be blocked this turn if able$/', '$1 gains must be blocked if able until end of turn', $sentence);
         if ((isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false))
@@ -4527,6 +4534,10 @@ final class TextParser
         // `When CARDNAME enters, it endures 2.`
         if (preg_match('/^(?:CARDNAME|it) endures (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'endure', 'amount' => $n, 'self' => true];
+        }
+        // `Target creature you control endures 1.`
+        if (preg_match('/^target creature you control endures (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'endure', 'amount' => $n, 'target' => self::TARGETS['target creature you control']];
         }
         if (preg_match('/^you get ((?:\{E\})+)$/i', $s, $m)) {
             return ['type' => 'energy', 'amount' => substr_count($m[1], '{E}')];
