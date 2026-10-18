@@ -4622,6 +4622,9 @@ final class Game
                     if (isset($effect['endStep'])) {
                         $token->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
                     }
+                    if ($effect['tapped'] ?? false) {
+                        $token->tapped = true;
+                    }
                     // `… creature token that's tapped and attacking.`: attacking only once attackers are declared.
                     if ($effect['attacking'] ?? false) {
                         $token->tapped = true;

@@ -4044,6 +4044,10 @@ final class TextParser
         if (preg_match('/^turn CARDNAME face up$/i', $s)) {
             return ['type' => 'face_up', 'self' => true];
         }
+        // `create a tapped Treasure token`, `create two tapped 1/1 white Soldier creature tokens`.
+        if (preg_match('/^create (\w+) tapped (.+)$/i', $s, $m) && ($token = self::effect("create {$m[1]} {$m[2]}")) !== null && $token['type'] === 'token' && ! isset($token['attacking'])) {
+            return $token + ['tapped' => true];
+        }
         if (($token = self::token($s)) !== null) {
             return $token;
         }
