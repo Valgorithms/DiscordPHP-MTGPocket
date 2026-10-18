@@ -5717,6 +5717,7 @@ final class Game
             'died' => $this->diedTurn === $this->turn && $this->died >= (int) $n,
             'gained' => $this->players[$controller]->gainedTurn === $this->turn && $this->players[$controller]->gained >= (int) $n,
             'creatures' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object))) >= (int) $n,
+            'no_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object)) === [],
             'artifacts', 'enchantments' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $object->definition()->is(ucfirst(rtrim($kind, 's'))))) >= (int) $n,
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
