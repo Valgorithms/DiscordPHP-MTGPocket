@@ -2623,6 +2623,13 @@ final class TextParser
             // Once, however many; see Game::combatDamage().
             $event = 'you_combat_damage_batch';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever one or more creatures (?:you control with power (\w+) or greater|with power (\w+) or greater you control) attack, (.+)$/', $line, $match)
+            && is_int($power = self::amount($match[1] !== '' ? $match[1] : $match[2])) && ! preg_match('/\b(?:it|its|they|them|their|those creatures)\b/', $match[3])) {
+            // Once, however many; see Game::declareAttackers().
+            $event = 'you_attack_strongest';
+            $extra = ['minPower' => $power];
+            $text = $match[3];
+            $match = [$match[0], $text];
         } elseif (preg_match('/^Whenever (?:you attack|one or more creatures you control attack), (.+)$/', $line, $match)) {
             $event = 'you_attack';
             $text = (string) preg_replace('/^they (get|gain)/', 'attacking creatures you control $1', $match[1]);
