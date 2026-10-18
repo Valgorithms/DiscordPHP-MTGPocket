@@ -2917,6 +2917,8 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
+        // `Look at the top card of your library. You may put that card into your graveyard.` is surveil 1 in all but name.
+        $text = (string) preg_replace_callback('/\b([Ll])ook at the top card of your library\. You may put (?:that card|it) into your graveyard(?=\.|$)/', fn (array $m) => ($m[1] === 'L' ? 'S' : 's').'urveil 1', $text);
         if (($impulse = self::impulse($text)) !== null) {
             return [$impulse];
         }
