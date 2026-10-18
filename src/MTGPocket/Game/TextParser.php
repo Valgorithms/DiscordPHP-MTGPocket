@@ -1804,6 +1804,16 @@ final class TextParser
         if (preg_match('/^(?:([A-Z][a-z]+(?: [a-z]+)? — ))?(?:During your turn|As long as (.+?)), (CARDNAME (?:gets|has) .+?)\.$/u', $line, $m)) {
             $line = $m[1].$m[3].' as long as '.($m[2] !== '' ? $m[2] : "it's your turn").'.';
         }
+        // `Creatures you control get +1/+0 as long as it's your turn.` and `During your turn, other creatures you control have first strike.`:
+        // a condition about the game or the controller, not the creature.
+        $line = (string) preg_replace('/^During your turn, ((?:other )?creatures you control (?:get|have) .+?)\.$/', "\$1 as long as it's your turn.", $line);
+        if (preg_match('/^(?:[A-Z][a-z]+(?: [a-z]+)? — )?((?:[Oo]ther )?)[Cc]reatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?)) as long as (.+?)\.$/u', ucfirst($line), $m)
+            && ($keywords = self::keywordList(($m[5] ?? '') !== '' ? $m[5] : ($m[4] ?? ''))) !== null && ($if = self::staticCondition($m[6])) !== null
+            && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)) {
+            $result['anthem'][] = ['power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'other' => $m[1] !== '', 'if' => $if];
+
+            return true;
+        }
         // Metalcraft, Threshold: `CARDNAME gets +2/+2 as long as you control three or more artifacts.`; see Game::conditionMet().
         if (preg_match('/^(?:[A-Z][a-z]+(?: [a-z]+)? — )?CARDNAME gets ([+-]\d+)\/([+-]\d+)(?: and has (.+?))? as long as (.+?)\.$/u', $line, $m)
             && ($keywords = self::keywordList($m[3] ?? '')) !== null && ($if = self::staticCondition($m[4])) !== null) {
