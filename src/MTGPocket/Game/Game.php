@@ -8386,6 +8386,10 @@ final class Game
         foreach ($this->permanents() as $permanent) {
             if ($permanent->controller !== $seat) {
                 $this->trigger($permanent, 'opponent_loses_life', $permanent->controller, null, $seat);
+                if ($this->active === $permanent->controller) {
+                    // `Whenever an opponent loses life during your turn, …`
+                    $this->trigger($permanent, 'opponent_loses_life_your_turn', $permanent->controller, null, $seat);
+                }
             } else {
                 // `Whenever you lose life (during your turn), …`
                 $this->trigger($permanent, 'you_lose_life', $seat);
