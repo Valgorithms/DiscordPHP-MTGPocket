@@ -2284,12 +2284,13 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cycle (?:a|another) card, (.+)$/', $line, $match)) {
             $event = 'you_cycle';
             $text = $match[1];
-        } elseif (preg_match("/^(?:At the beginning of each (?:opponent's |player's )?upkeep|Whenever an opponent draws a card|Whenever an opponent loses life|Whenever a land enters (?:the battlefield )?under an opponent's control), (.+)$/", $line, $match)
+        } elseif (preg_match("/^(?:At the beginning of each (?:opponent's |player's )?upkeep|Whenever an opponent draws a card|Whenever a player draws a card|Whenever an opponent loses life|Whenever a land enters (?:the battlefield )?under an opponent's control), (.+)$/", $line, $match)
             && ! preg_match('/^if (?:no spells were|a player) cast /', $match[1])) {
             // "That player" is that opponent (or, each player's upkeep, the active player); see Game::trigger().
             $event = match (true) {
                 str_contains($line, "opponent's upkeep") => 'opponent_upkeep',
                 str_contains($line, 'upkeep') => 'each_upkeep',
+                str_contains($line, 'a player draws') => 'any_draw',
                 str_contains($line, 'draws') => 'opponent_draw',
                 str_contains($line, 'loses life') => 'opponent_loses_life',
                 default => 'opponent_landfall',
@@ -2484,6 +2485,9 @@ final class TextParser
         } elseif (preg_match('/^Whenever you draw your second card each turn, (.+)$/', $line, $match)) {
             $event = 'second_draw';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you (scry|surveil), (.+)$/', $line, $match)) {
+            $event = "you_{$match[1]}";
+            $text = $match[2];
         } elseif (preg_match('/^Whenever you lose life(?: during your turn)?, (.+)$/', $line, $match)) {
             // See Game::lostLife(); "during your turn" is checked there.
             $event = str_contains($line, 'during your turn') ? 'you_lose_life_your_turn' : 'you_lose_life';
