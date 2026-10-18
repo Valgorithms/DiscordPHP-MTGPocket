@@ -7752,6 +7752,10 @@ final class Game
                     $this->players[(int) substr($target, 2)]->poison += $toxic;
                 }
                 $hitPlayer[$source->id] = $source;
+                // `Whenever a creature deals combat damage to you, …`
+                foreach ($this->permanents((int) substr($target, 2)) as $permanent) {
+                    $this->trigger($permanent, 'creature_combat_damages_you', $permanent->controller, null, $source->id);
+                }
                 $toPlayers[(int) substr($target, 2)] = ($toPlayers[(int) substr($target, 2)] ?? 0) + $amount;
                 if ($this->isCommander($source) || in_array('Assassin', $source->definition()->subtypes, true)) {
                     $this->freerun[$source->controller] = $this->turn;
