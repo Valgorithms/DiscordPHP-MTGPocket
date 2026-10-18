@@ -1744,6 +1744,13 @@ final class TextParser
 
             return true;
         }
+        // `CARDNAME enters with two +1/+1 counters on it if you control another Elf.`: checked as it enters; see Game::resolve().
+        if (preg_match('/^CARDNAME enters(?: the battlefield)? with (an?|\w+)(?: additional)? \+1\/\+1 counters? on it if (.+?)\.?$/u', $line, $match) && is_int($n = self::amount($match[1]))
+            && ($if = self::staticCondition($match[2])) !== null && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)) {
+            $result['keywords'][] = "enters counters {$n} if {$if}";
+
+            return true;
+        }
         if (preg_match('/^CARDNAME enters(?: the battlefield)? with (\w+) \+1\/\+1 counters? on it\.?$/', $line, $match) && ($n = self::amount($match[1])) !== null) {
             $result['counters'] = $n;
 
@@ -1811,8 +1818,10 @@ final class TextParser
             return true;
         }
         // `During your turn, CARDNAME gets +2/+0.` and `As long as …, CARDNAME has flying.`: the same, condition last.
-        if (preg_match('/^(?:([A-Z][a-z]+(?: [a-z]+)? — ))?(?:During your turn|As long as (.+?)), (CARDNAME (?:gets|has) .+?)\.$/u', $line, $m)) {
-            $line = $m[1].$m[3].' as long as '.($m[2] !== '' ? $m[2] : "it's your turn").'.';
+        // `As long as CARDNAME has a +1/+1 counter on it, it has flying.`: the condition about itself as `it …`.
+        if (preg_match('/^(?:([A-Z][a-z]+(?: [a-z]+)? — ))?(?:During your turn|As long as (.+?)), ((?:CARDNAME|it) (?:gets|has) .+?)\.$/u', $line, $m)) {
+            $condition = (string) preg_replace(['/^CARDNAME is /', '/^CARDNAME has /'], ["it's ", 'it has '], $m[2]);
+            $line = $m[1].preg_replace('/^it /', 'CARDNAME ', $m[3]).' as long as '.($m[2] !== '' ? $condition : "it's your turn").'.';
         }
         // `Creatures you control get +1/+0 as long as it's your turn.` and `During your turn, other creatures you control have first strike.`:
         // a condition about the game or the controller, not the creature.

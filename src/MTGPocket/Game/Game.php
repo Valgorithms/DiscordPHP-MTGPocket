@@ -3773,6 +3773,9 @@ final class Game
                 if (preg_match('/^raid counters (\d+)$/', $keyword, $m) && $this->players[$item['controller']]->attackedTurn === $this->turn) {
                     $object->addCounters('+1/+1', (int) $m[1]);
                 }
+                if (preg_match('/^enters counters (\d+) if (.+)$/', $keyword, $m) && $this->conditionMet($m[2], $object, $item['controller'])) {
+                    $object->addCounters('+1/+1', (int) $m[1]);
+                }
             }
             $object->spent = (string) ($item['spent'] ?? '');
             if (($item['sunburst'] ?? 0) > 0) {
