@@ -3155,6 +3155,11 @@ final class TextParser
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
+        // `When CARDNAME dies, you gain life equal to its toughness.`: its own power or toughness as it last was (a target's is read in modifies()).
+        if (preg_match("/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to (?:its|CARDNAME's) (power|toughness)$/", $sentence, $m)
+            && ($found = self::effect("{$m[1]} 1 ".($m[2] === 'cards' ? 'card' : 'life'))) !== null && in_array($found['type'], ['gain_life', 'lose_life', 'draw'], true) && ($found['amount'] ?? null) === 1) {
+            return [['amount' => 'self_'.$m[3]] + $found];
+        }
         // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
         if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
             || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (to .+)$/', $sentence, $m)) {

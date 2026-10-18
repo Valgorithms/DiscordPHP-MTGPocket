@@ -4150,6 +4150,7 @@ final class Game
             'target_power', 'target_toughness' => ($known = $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null) : null) === null ? 0
                 : max(0, $effect['amount'] === 'target_power' ? $this->power($known) : $this->toughness($known)),
             'self_power' => max(0, $source->zone === GameObject::BATTLEFIELD ? $this->power($source) : (int) $source->definition()->power),
+            'self_toughness' => max(0, $source->zone === GameObject::BATTLEFIELD ? $this->toughness($source) : (int) $source->definition()->toughness),
             default => (int) ($effect['amount'] ?? 0),
         };
         // `Draw a card for each creature you control.`: counted as it resolves.
