@@ -5306,6 +5306,10 @@ final class Game
                 break;
 
             case 'connive':
+                // `Up to one target creature you control connives.` with no target chosen: nothing.
+                if (isset($effect['target']) && $affected === null) {
+                    break;
+                }
                 $this->draw($controller, 1);
                 $hand = $this->players[$controller]->hand;
                 $this->log("{$this->players[$controller]->name} connives.");
@@ -6064,6 +6068,8 @@ final class Game
             'gained' => $this->players[$controller]->gainedTurn === $this->turn && $this->players[$controller]->gained >= (int) $n,
             'creatures' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object))) >= (int) $n,
             'no_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object)) === [],
+            // Coven: three or more creatures with different powers.
+            'coven' => count(array_unique(array_map(fn (GameObject $object) => $this->power($object), array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object))))) >= 3,
             'artifacts', 'enchantments' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $object->definition()->is(ucfirst(rtrim($kind, 's'))))) >= (int) $n,
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
             'gy_permanent' => count(array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->printed()->isPermanentCard())) >= (int) $n,
