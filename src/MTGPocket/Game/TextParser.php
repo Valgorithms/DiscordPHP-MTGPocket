@@ -4089,6 +4089,14 @@ final class TextParser
 
             return true;
         }
+        // `If it's your turn, it also gains first strike …`, `If you control a Knight, it also gets …`: a condition about the game, checked as it resolves.
+        if (preg_match("/^If (.+?), (it|that creature) also ((?:gets|gains) .+ until end of turn)$/", $sentence, $m) && ($if = self::staticCondition($m[1])) !== null
+            && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)
+            && (isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false)) && self::modifies(ucfirst($m[2]).' '.$m[3], $effects)) {
+            $effects[array_key_last($effects)]['ifCondition'] = $if;
+
+            return true;
+        }
         // "It gains haste until end of turn." after an effect with a target: the same creature. `It must be blocked this turn if able.` reads the same way.
         $sentence = (string) preg_replace('/^(It|That creature) must be blocked this turn if able$/', '$1 gains must be blocked if able until end of turn', $sentence);
         if ((isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false))
