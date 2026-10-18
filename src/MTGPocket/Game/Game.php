@@ -7325,8 +7325,16 @@ final class Game
         }
 
         // `Whenever you attack, …`
+        // `Whenever one or more creatures you control with power 4 or greater attack, …`: once, with the strongest attacker; see trigger()'s minPower.
+        $strongest = null;
+        foreach ($ids as $id) {
+            if ($strongest === null || $this->power($this->objects[$id]) > $this->power($this->objects[$strongest])) {
+                $strongest = $id;
+            }
+        }
         foreach ($ids === [] ? [] : $this->permanents($seat) as $permanent) {
             $this->trigger($permanent, 'you_attack', $seat);
+            $this->trigger($permanent, 'you_attack_strongest', $seat, null, $strongest);
         }
         // Battle cry (rule 702.91): each other attacking creature gets +1/+0.
         foreach ($ids as $id) {
