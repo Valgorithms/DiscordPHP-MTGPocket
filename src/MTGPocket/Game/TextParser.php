@@ -139,6 +139,7 @@ final class TextParser
         'target land an opponent controls' => 'land_opponent',
         'target land defending player controls' => 'land_opponent',
         'target land you don\'t control' => 'land_opponent',
+        'target land you control' => 'any:land@you',
         'target permanent an opponent controls' => 'permanent_opponent',
         'target permanent defending player controls' => 'permanent_opponent',
         'target permanent you don\'t control' => 'permanent_opponent',
@@ -4361,6 +4362,10 @@ final class TextParser
         if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?(creature|[A-Z][a-z]+) you control( with (flying|reach|vigilance|trample|lifelink|deathtouch|haste|menace|an? \+1\/\+1 counter on it))?$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))
             && ($m[3] === 'creature' || ($subtype = self::subtypeOf($m[3])) !== null)) {
             return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []) + ($m[3] !== 'creature' ? ['subtype' => $subtype] : []) + (($m[5] ?? '') === '' ? [] : (str_contains($m[5], 'counter') ? ['withCounter' => true] : ['withKeyword' => $m[5]]));
+        }
+        // `Put a +1/+1 counter on each other attacking creature.`: whoever controls them.
+        if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?attacking creature$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))) {
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'attacking'] + ($m[2] !== '' ? ['other' => true] : []);
         }
         // A ritual: `Add {R}{R}{R}.`
         if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {
