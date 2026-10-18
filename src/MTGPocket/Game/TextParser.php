@@ -3044,6 +3044,15 @@ final class TextParser
         if (preg_match('/^you may behold an? ([A-Z][a-z]+)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text] = ["behold {$match[1]}", $match[2]];
         }
+        // `you may put a +1/+1 counter on target creature. If you do, that creature gains trample …`: done whenever it can be.
+        if (preg_match('/^you may ([^.]*\btarget\b[^.]*)\. If you do, (.+)$/u', $text, $match) && self::effects($text) === null
+            && self::effects(ucfirst($match[1]).'. '.ucfirst($match[2])) !== null) {
+            $text = ucfirst($match[1]).'. '.ucfirst($match[2]);
+        }
+        // `you may exile a card from your graveyard. If you do, …`, `you may return a land you control to its owner's hand. …`: see Game's `pay` effect.
+        if (preg_match("/^you may (?:exile (a|two|three) cards? from your graveyard|return a land you control to its owner's hand)\\. (?:If|When) you do, (.+)$/u", $text, $match)) {
+            [$pay, $text] = [$match[1] !== '' ? 'exile grave '.self::amount($match[1] === 'a' ? 'one' : $match[1]) : 'bounce land', $match[2]];
+        }
         // `you may discard a card. When you do, …`; `If you do, draw a card.` is read as a discard effect instead.
         if (preg_match('/^you may discard a card\. (?:If|When) you do, (.+)$/u', $text, $match) && self::effects($text) === null) {
             [$pay, $text] = ['discard', $match[1]];

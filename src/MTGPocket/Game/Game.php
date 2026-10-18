@@ -5569,6 +5569,30 @@ final class Game
                     }
                     break;
                 }
+                // `you may exile a card from your graveyard. If you do, …`: lands first, then the lowest mana value; see graveFodder().
+                // `you may return a land you control to its owner's hand. …`: only a land already tapped for mana.
+                if (preg_match('/^(?:exile grave (\d+)|bounce land)$/', $effect['cost'], $m)) {
+                    if (($m[1] ?? '') !== '') {
+                        if (($exiled = $this->graveFodder($controller, (int) $m[1])) === null) {
+                            break;
+                        }
+                        foreach ($exiled as $card) {
+                            $this->moveTo($card, GameObject::EXILE);
+                        }
+                        $this->log("{$this->players[$controller]->name} exiles ".implode(', ', array_map(fn (GameObject $c) => $c->name(), $exiled))." from their graveyard for {$source->name()}.");
+                    } else {
+                        $lands = array_values(array_filter($this->permanents($controller), fn (GameObject $o) => $o->tapped && $o->definition()->isLand()));
+                        if ($lands === []) {
+                            break;
+                        }
+                        $this->log("{$this->players[$controller]->name} returns {$lands[0]->name()} to their hand for {$source->name()}.");
+                        $this->moveTo($lands[0], GameObject::HAND);
+                    }
+                    foreach ($effect['then'] as $then) {
+                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                    }
+                    break;
+                }
                 // `you may forage. If you do, …`: three cards from your graveyard, else a Food, whenever it can.
                 if ($effect['cost'] === 'forage') {
                     $exiled = $this->graveFodder($controller, 3);
