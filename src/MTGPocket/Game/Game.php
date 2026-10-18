@@ -6344,7 +6344,7 @@ final class Game
         }
         // `a creature you control with flying`: as it is now.
         if (preg_match('/^creature with ([a-z ]+)$/', $kind, $match) && ! str_contains($kind, 'or greater')) {
-            return $this->isCreature($object) && $this->hasKeyword($object, $match[1]);
+            return $card->is('Creature') && $this->hasKeyword($object, $match[1]);
         }
         // `a creature spell with power 4 or greater`: as printed, or as it is on the battlefield.
         if (preg_match('/^creature with (power|toughness) (\d+) or greater$/', $kind, $match)) {
@@ -6362,6 +6362,7 @@ final class Game
             'creature', 'artifact', 'enchantment', 'land' => $card->is(ucfirst($kind)),
             'noncreature', 'noncreature permanent' => ! $card->is('Creature'),
             'instant or sorcery' => $card->is('Instant') || $card->is('Sorcery'),
+            'historic' => $card->is('Artifact') || in_array('Legendary', $card->supertypes, true) || in_array('Saga', $card->subtypes, true),
             'multicolored' => count($card->colors) > 1,
             default => in_array($kind, $card->subtypes, true),
         };
