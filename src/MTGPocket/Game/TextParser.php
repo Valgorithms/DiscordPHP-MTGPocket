@@ -3155,6 +3155,11 @@ final class TextParser
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
+        // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
+        if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
+            || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (to .+)$/', $sentence, $m)) {
+            return self::sentenceEffects("{$m[1]} X {$m[2]}".(isset($m[9]) ? " {$m[9]}" : '').", where X is the number of {$m[3]}");
+        }
         // `Draw a card for each creature you control.`, `Create a 1/1 … token for each creature card in your graveyard.`: counted as it resolves (see Game::perCount()).
         // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.
         if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent) you have|(attacking creature)(?: you control)?)$/', $sentence, $m)
