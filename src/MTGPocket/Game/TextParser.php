@@ -2784,7 +2784,7 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|you control no creatures), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
@@ -2794,6 +2794,10 @@ final class TextParser
                 $match[1] === 'CARDNAME attacked this turn' => 'self_attacked',
                 $match[1] === 'an opponent lost life this turn' => 'opponent_lost',
                 $match[1] === "it's not your turn" => 'not_your_turn',
+                // Knight of the White Orchid: `if an opponent controls more lands than you`.
+                $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
+                $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
+                $match[1] === 'an opponent has more life than you' => 'life_behind',
                 ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
                 ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
                 ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
