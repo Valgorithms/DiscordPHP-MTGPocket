@@ -2715,9 +2715,14 @@ final class TextParser
                 $cost['sacrifice'] = true;
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
-            } elseif (preg_match('/^Sacrifice (an?|another) (creature|artifact)$/', $part, $sac)) {
-                // Nantuko Husk: the weakest creature (or artifact); see Game::fodder().
-                $cost['fodder'] = ($sac[1] === 'another' ? 'other' : 'any').($sac[2] === 'artifact' ? ' artifact' : '');
+            } elseif (preg_match('/^Sacrifice (an?|another) (creature|artifact|enchantment|land|permanent|token|nontoken creature|[A-Z][a-z]+)$/', $part, $sac)) {
+                // Nantuko Husk: the weakest creature (or artifact, Food, …); see Game::fodder().
+                $cost['fodder'] = ($sac[1] === 'another' ? 'other' : 'any').' '.$sac[2];
+            } elseif (preg_match('/^Exile (\w+) cards? from your graveyard$/', $part, $grave) && is_int($n = self::amount($grave[1]))) {
+                $cost['exileGrave'] = $n;
+            } elseif ($part === 'Forage') {
+                // Forage (Bloomburrow): exile three cards from your graveyard or sacrifice a Food.
+                $cost['forage'] = true;
             } elseif ($part === 'Discard a card') {
                 // Paid with the cheapest card in hand; see Game::discardCheapest().
                 $cost['discard'] = 1;
