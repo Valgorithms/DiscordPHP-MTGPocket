@@ -746,6 +746,12 @@ final class Game
                 foreach ($step === Step::End ? $this->permanents() : [] as $object) {
                     $this->trigger($object, 'each_end_step', $object->controller);
                 }
+                // `At the beginning of each opponent's end step, …`
+                foreach ($step === Step::End ? $this->permanents() : [] as $object) {
+                    if ($object->controller !== $this->active) {
+                        $this->trigger($object, 'opponent_end_step', $object->controller, null, $this->active);
+                    }
+                }
                 // Curses: "At the beginning of enchanted player's upkeep, …"
                 foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
                     if ($object->enchantedPlayer === $this->active) {
@@ -759,6 +765,10 @@ final class Game
                 // Necrodominance: `Skip your draw step.`
                 if (! ($this->turn === 1 && $this->active === $this->startingPlayer) && array_filter($this->permanents($this->active), fn (GameObject $o) => $this->hasKeyword($o, 'skip your draw step')) === []) {
                     $this->draw($this->active, 1);
+                }
+                // "At the beginning of your draw step, …": after the draw (rule 504.1).
+                foreach ($this->permanents($this->active) as $object) {
+                    $this->trigger($object, 'draw_step', $object->controller);
                 }
                 break;
 
@@ -787,6 +797,10 @@ final class Game
                 // "At the beginning of combat on your turn, …"
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, 'begin_combat', $object->controller);
+                }
+                // "At the beginning of each combat, …": every turn's.
+                foreach ($this->permanents() as $object) {
+                    $this->trigger($object, 'each_combat', $object->controller);
                 }
                 break;
 
