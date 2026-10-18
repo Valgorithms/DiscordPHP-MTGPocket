@@ -523,6 +523,12 @@ final class TextParser
 
                 continue;
             }
+            // Frost Titan: `Whenever CARDNAME becomes the target of a spell or ability an opponent controls, counter that spell or ability unless its controller pays {2}.` is ward (rule 702.21a).
+            if (! $spell && $result['ward'] === null && preg_match('/^Whenever CARDNAME becomes the target of a spell or ability an opponent controls, counter that spell or ability unless its controller pays (?:('.self::COST.')|(\d+) life)\.$/', $line, $match)) {
+                $result['ward'] = ($match[1] ?? '') !== '' ? ['mana' => $match[1]] : ['life' => (int) $match[3]];
+
+                continue;
+            }
             // `Spells your opponents cast that target CARDNAME cost {2} more to cast.`: ward's cost without the counter; see Game::wardCost().
             if (! $spell && $result['ward'] === null && preg_match('/^Spells your opponents cast that target CARDNAME cost ((?:\{\d+\})+) more to cast\.$/', $line, $match)) {
                 $result['ward'] = ['mana' => $match[1], 'tax' => true];
