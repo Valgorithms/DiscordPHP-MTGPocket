@@ -691,6 +691,12 @@ final class Game
                 foreach ($this->players as $player) {
                     $player->lifeMark = $player->life;
                 }
+                // Goad lasts until the goading player's next turn.
+                foreach ($this->battlefield as $id) {
+                    if ($this->objects[$id]->goadedBy === $this->active) {
+                        $this->objects[$id]->goadedBy = null;
+                    }
+                }
                 foreach ($this->permanents($this->active) as $object) {
                     $object->sick = false;
                     if ($object->frozen) {
@@ -4616,6 +4622,14 @@ final class Game
             case 'freeze':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $affected->frozen = true;
+                }
+                break;
+
+            case 'goad':
+                // With one opponent, a goaded creature simply attacks each combat if able (rule 701.15b).
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $affected->goadedBy = $controller;
+                    $this->log("{$affected->name()} is goaded.");
                 }
                 break;
 
@@ -9609,6 +9623,9 @@ final class Game
             }
             foreach ($object->untilEndOfTurn as $effect) {
                 array_push($keywords, ...$effect['keywords']);
+            }
+            if ($object->goadedBy !== null) {
+                $keywords[] = 'attacks each combat if able';
             }
             foreach ($this->anthems($object) as $anthem) {
                 array_push($keywords, ...$anthem['keywords']);
