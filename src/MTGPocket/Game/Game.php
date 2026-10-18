@@ -4655,6 +4655,14 @@ final class Game
                     }
                     break;
                 }
+                if (($effect['each'] ?? null) === 'attacking') {
+                    foreach ($this->permanents() as $object) {
+                        if (isset($this->attackers[$object->id]) && (! ($effect['other'] ?? false) || $object->id !== $source->id)) {
+                            $object->addCounters('+1/+1', $amount);
+                        }
+                    }
+                    break;
+                }
                 $affected?->addCounters($effect['kind'] ?? '+1/+1', $amount);
                 break;
 
