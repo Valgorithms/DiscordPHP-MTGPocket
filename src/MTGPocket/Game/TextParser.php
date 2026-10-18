@@ -4102,6 +4102,15 @@ final class TextParser
 
             return true;
         }
+        // `Draw a card. If you control three or more artifacts, draw two cards instead.`, `… put two +1/+1 counters on it instead.`: the same effect with the larger amount.
+        if (preg_match('/^If (.+?), (.+) instead$/', $sentence, $m) && is_int($effects[$last]['amount'] ?? null) && ! isset($effects[$last]['insteadIf'])
+            && ($if = self::staticCondition($m[1])) !== null && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)
+            && ($then = self::sentenceEffects(isset($effects[$last]['target']) ? (string) preg_replace('/ on (?:it|that creature)$/', ' on '.array_search($effects[$last]['target'], self::TARGETS, true), $m[2]) : $m[2])) !== null
+            && count($then) === 1 && is_int($then[0]['amount'] ?? null) && array_diff_key($then[0], ['amount' => true]) == array_diff_key($effects[$last], ['amount' => true])) {
+            $effects[$last] += ['insteadIf' => $if, 'insteadAmount' => $then[0]['amount']];
+
+            return true;
+        }
         // `If it's your turn, it also gains first strike …`, `If you control a Knight, it also gets …`: a condition about the game, checked as it resolves.
         if (preg_match("/^If (.+?), (it|that creature) also ((?:gets|gains) .+ until end of turn)$/", $sentence, $m) && ($if = self::staticCondition($m[1])) !== null
             && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)
