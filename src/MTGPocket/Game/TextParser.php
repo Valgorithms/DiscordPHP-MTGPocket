@@ -2185,6 +2185,8 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Creatures only attack players here (see Game::declareAttackers()), so "or planeswalker" adds nothing.
+        $line = (string) preg_replace('/deals combat damage to a player(?:, planeswalker,)? or (?:planeswalker|battle)\b/', 'deals combat damage to a player', $line);
         $events = [
             'becomes the target of a spell or ability' => 'targeted',
             'becomes the target of a spell or ability an opponent controls' => 'targeted_by_opponent',
@@ -2265,9 +2267,10 @@ final class TextParser
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
-        } elseif (preg_match('/^Whenever CARDNAME blocks or becomes blocked, (.+)$/', $line, $match)
-            && ($effects = self::effects($match[1]) ?? (str_contains($match[1], 'target') ? null : self::effects(preg_replace('/\bit\b/', 'CARDNAME', $match[1])))) !== null) {
-            foreach (['blocks', 'blocked'] as $event) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (blocks or becomes blocked|attacks or blocks), (.+)$/', $line, $match)
+            && ($effects = self::effects($match[2]) ?? (str_contains($match[2], 'target') ? null : self::effects(preg_replace('/\bit\b/', 'CARDNAME', $match[2])))) !== null) {
+            // Once for each of the two events.
+            foreach (['blocks or becomes blocked' => ['blocks', 'blocked'], 'attacks or blocks' => ['attacks', 'blocks']][$match[1]] as $event) {
                 $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
             }
 
