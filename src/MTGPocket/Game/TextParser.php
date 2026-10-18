@@ -2284,11 +2284,12 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cycle (?:a|another) card, (.+)$/', $line, $match)) {
             $event = 'you_cycle';
             $text = $match[1];
-        } elseif (preg_match("/^(?:At the beginning of each (?:opponent's |player's )?upkeep|Whenever an opponent draws a card|Whenever a player draws a card|Whenever an opponent loses life|Whenever a land enters (?:the battlefield )?under an opponent's control), (.+)$/", $line, $match)
+        } elseif (preg_match("/^(?:At the beginning of each (?:opponent's |player's )?upkeep|At the beginning of each opponent's end step|Whenever an opponent draws a card|Whenever a player draws a card|Whenever an opponent loses life|Whenever a land enters (?:the battlefield )?under an opponent's control), (.+)$/", $line, $match)
             && ! preg_match('/^if (?:no spells were|a player) cast /', $match[1])) {
             // "That player" is that opponent (or, each player's upkeep, the active player); see Game::trigger().
             $event = match (true) {
                 str_contains($line, "opponent's upkeep") => 'opponent_upkeep',
+                str_contains($line, "opponent's end step") => 'opponent_end_step',
                 str_contains($line, 'upkeep') => 'each_upkeep',
                 str_contains($line, 'a player draws') => 'any_draw',
                 str_contains($line, 'draws') => 'opponent_draw',
@@ -2329,6 +2330,9 @@ final class TextParser
         } elseif (preg_match('/^At the beginning of combat on your turn, (.+)$/', $line, $match)) {
             $event = 'begin_combat';
             $text = $match[1];
+        } elseif (preg_match('/^At the beginning of (each combat|your draw step), (.+)$/', $line, $match)) {
+            $event = $match[1] === 'each combat' ? 'each_combat' : 'draw_step';
+            $text = $match[2];
         } elseif (preg_match('/^Whenever an opponent casts a spell, (.+)$/', $line, $match)) {
             $event = 'opponent_cast';
             $text = $match[1];
