@@ -737,7 +737,7 @@ final class Game
                 }
                 // "At the beginning of each upkeep, …": every turn's.
                 foreach ($step === Step::Upkeep ? $this->permanents() : [] as $object) {
-                    $this->trigger($object, 'each_upkeep', $object->controller);
+                    $this->trigger($object, 'each_upkeep', $object->controller, null, $this->active);
                 }
                 // "At the beginning of the end step, …": every turn's.
                 foreach ($step === Step::End ? $this->permanents() : [] as $object) {
