@@ -80,7 +80,7 @@ final class CardDefinition
 
     public readonly bool $entersTapped;
 
-    /** How many +1/+1 counters it enters with, or `X` for the X it was cast with. */
+    /** How many +1/+1 counters it enters with, `X` for the X it was cast with, or `per:` and a Game::perCount() count. */
     public readonly int|string $entersWithCounters;
 
     /** @var array[] What an instant or sorcery does, in order; see {@see TextParser}. Effects marked `kicked` are done only when it was kicked. */
