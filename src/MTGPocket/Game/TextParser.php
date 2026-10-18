@@ -2576,6 +2576,12 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
+        } elseif (preg_match('/^Whenever (you|an opponent) casts? a creature spell with (power|toughness) (\w+) or greater, (.+)$/', $line, $match)
+            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ') && is_int($n = self::amount($match[3]))) {
+            // `Whenever you cast a creature spell with power 4 or greater, …`: its printed power; see Game::objectFits().
+            $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
+            $extra = ['objectKind' => "creature with {$match[2]} {$n} or greater"];
+            $text = $match[4];
         } elseif (preg_match('/^Whenever (you|an opponent) casts? (?:a spell with (mana value \d+ or (?:greater|less))|an? ([A-Z][a-z]+) spell), (.+)$/', $line, $match)
             && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ') && ! in_array($match[3] ?? '', ['Spirit', 'Arcane'], true)) {
             // `Whenever you cast a spell with mana value 5 or greater, …`, `Whenever you cast a Dragon spell, …`; see Game::castSpell() and Game::objectFits().
