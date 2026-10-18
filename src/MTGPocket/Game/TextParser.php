@@ -2387,6 +2387,17 @@ final class TextParser
             $match = [$m2[0], $m2[2]];
             $event = 'creature_enters_other';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever (another|a) (nontoken )?creature (enters(?: the battlefield)?|an opponent controls enters|enters(?: the battlefield)? under an opponent\'s control), (.+)$/', $line, $match)
+            && ! preg_match('/\b(it|its|that creature(?:\'s)?|that player)\b/', $match[4]) && ($effects = self::effects($match[4])) !== null) {
+            // Any player's creature (Soul Warden), or only an opponent's; see Game::putOntoBattlefield().
+            $event = str_contains($match[3], 'opponent') ? 'opponent_creature_enters' : 'any_creature_enters';
+            $extra = $match[2] === '' ? [] : ['nontoken' => true];
+            $events = $event === 'any_creature_enters' && $match[1] === 'a' && self::$creature ? ['enters', $event] : [$event];
+            foreach ($events as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($event === 'enters' ? [] : $extra);
+            }
+
+            return true;
         } elseif (preg_match('/^(?:When|Whenever) (a|another) ([A-Z][a-z]+) you control enters(?: the battlefield)?, (.+)$/', $line, $match) && $match[2] !== 'Creature') {
             // Tribal enters triggers: `Whenever another Elf you control enters, …`.
             $event = 'subtype_enters';

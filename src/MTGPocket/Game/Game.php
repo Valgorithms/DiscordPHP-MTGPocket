@@ -7930,6 +7930,15 @@ final class Game
                         }
                     }
                 }
+                // `Whenever another creature enters, …`: any player's; `… an opponent controls enters, …`: only another player's.
+                foreach ($this->permanents() as $permanent) {
+                    if ($permanent->id !== $object->id) {
+                        $this->trigger($permanent, 'any_creature_enters', $permanent->controller, null, $object->id);
+                        if ($permanent->controller !== $controller) {
+                            $this->trigger($permanent, 'opponent_creature_enters', $permanent->controller, null, $object->id);
+                        }
+                    }
+                }
                 foreach ($this->permanents($controller) as $permanent) {
                     if ($permanent->id !== $object->id && $this->hasKeyword($permanent, 'graft') && $permanent->counter('+1/+1') > 0) {
                         $this->trigger($permanent, 'graft', $controller, null, $object->id);
