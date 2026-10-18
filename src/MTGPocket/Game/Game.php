@@ -3069,6 +3069,12 @@ final class Game
                 $this->trigger($object, 'heroic', $seat);
             }
         }
+        // `Whenever you cast a spell that targets a creature you control, …`
+        if (array_filter(array_keys($targeted), fn (int $id) => $this->isCreature($this->objects[$id])) !== []) {
+            foreach ($this->permanents($seat) as $permanent) {
+                $this->trigger($permanent, 'heroic_any', $seat);
+            }
+        }
     }
 
     /**
