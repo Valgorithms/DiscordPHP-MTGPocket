@@ -3203,8 +3203,11 @@ final class TextParser
         foreach (array_map('trim', explode(',', $match[1])) as $part) {
             if ($part === '{T}') {
                 $cost['tap'] = true;
-            } elseif (preg_match('/^(\{[0-9WUBRGCX\/P]+\})+$/', $part)) {
+            } elseif (preg_match('/^(\{[0-9WUBRGCX\/P]+\})+$/', $part) && ! isset($cost['waterbend'])) {
                 $cost['mana'] = ($cost['mana'] ?? '').$part;
+            } elseif (preg_match('/^[Ww]aterbend (\{\d+\})$/', $part, $water) && ! isset($cost['mana'])) {
+                // Waterbend (TLA): untapped artifacts and creatures can be tapped for {1} each; see Game::abilityPayment().
+                [$cost['mana'], $cost['waterbend']] = [$water[1], true];
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
             } elseif ($part === 'Discard CARDNAME') {

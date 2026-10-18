@@ -2030,14 +2030,14 @@ final class Game
         );
         if ($convoke) {
             foreach ($this->permanents($seat) as $object) {
-                if ($this->isCreature($object) && ! $object->tapped && ! isset($sources[$object->id])) {
+                if ($this->isCreature($object) && ! $object->tapped && ! isset($sources[$object->id]) && ! in_array($object->id, $without, true)) {
                     $sources[$object->id] = ['count' => 1, 'colors' => [...$object->definition()->colors, 'C'], 'convoke' => true];
                 }
             }
         }
         if ($improvise) {
             foreach ($this->permanents($seat) as $object) {
-                if ($object->definition()->is('Artifact') && ! $object->tapped && ! isset($sources[$object->id])) {
+                if ($object->definition()->is('Artifact') && ! $object->tapped && ! isset($sources[$object->id]) && ! in_array($object->id, $without, true)) {
                     $sources[$object->id] = ['count' => 1, 'colors' => ['C'], 'convoke' => true];
                 }
             }
@@ -6935,6 +6935,10 @@ final class Game
         $exclude = ($ability['cost']['tap'] ?? false) ? [$object->id] : [];
         $mana = $ability['cost']['mana'] ?? '';
         $this->abilityX = 0;
+        // Waterbend (TLA): its generic cost can be paid by tapping untapped artifacts and creatures, {1} each; not ward's.
+        if (($ability['cost']['waterbend'] ?? false) && $wardMana === '') {
+            return $this->payFor($seat, $mana, ($ability['cost']['life'] ?? 0) + $wardLife, $exclude, 0, 0, true, true);
+        }
         if (! str_contains($mana, '{X}')) {
             return $this->payFor($seat, $mana.$wardMana, ($ability['cost']['life'] ?? 0) + $wardLife, $exclude);
         }
