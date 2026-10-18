@@ -4648,7 +4648,8 @@ final class Game
                 if (($effect['each'] ?? null) === 'yours') {
                     foreach ($this->permanents($controller) as $object) {
                         if ($this->isCreature($object) && (! ($effect['other'] ?? false) || $object->id !== $source->id) && (! isset($effect['subtype']) || in_array($effect['subtype'], $object->definition()->subtypes, true) || in_array('changeling', $object->definition()->keywords, true))
-                            && (! isset($effect['withKeyword']) || $this->hasKeyword($object, $effect['withKeyword']))) {
+                            && (! isset($effect['withKeyword']) || $this->hasKeyword($object, $effect['withKeyword']))
+                            && (! isset($effect['withCounter']) || $object->counter('+1/+1') > 0)) {
                             $object->addCounters('+1/+1', $amount);
                         }
                     }
@@ -9855,6 +9856,7 @@ final class Game
             'artifact' => $o->definition()->is('Artifact'),
             'creature' => $this->isCreature($o),
             'other creature' => $o->id !== $source?->id && $this->isCreature($o),
+            'countered creature' => $this->isCreature($o) && $o->counter('+1/+1') > 0,
             'land' => $o->definition()->isLand(),
             'enchantment' => $o->definition()->is('Enchantment'),
             // `for each Mountain you control` / `for each other Elf you control`.
