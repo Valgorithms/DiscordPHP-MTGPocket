@@ -630,6 +630,12 @@ final class TextParser
 
                 continue;
             }
+            // `CARDNAME gets +1/+1 for each creature you control with a +1/+1 counter on it.`; see Game::countYours().
+            if (! $spell && preg_match('/^CARDNAME gets \+(\d+)\/\+(\d+) for each creature you control with an? \+1\/\+1 counter on it\.$/', $line, $match)) {
+                $result['keywords'][] = "gets +{$match[1]}/+{$match[2]} for each countered creature";
+
+                continue;
+            }
             // `CARDNAME gets +1/+0 for each card in your hand.`, `… for each creature card in your graveyard.`; counted by Game::perCount().
             if (! $spell && preg_match('/^CARDNAME gets \+(\d+)\/\+(\d+) for each (?:card in your hand|(creature |artifact |land |instant |sorcery )?card in your graveyard)\.$/', $line, $match)) {
                 $result['keywords'][] = "gets +{$match[1]}/+{$match[2]} for each ".(str_ends_with($line, 'hand.') ? 'hand' : 'gy:'.(trim($match[3] ?? '') === '' ? 'card' : trim($match[3])));
@@ -3552,6 +3558,11 @@ final class TextParser
      */
     private static function sentenceEffects(string $sentence): ?array
     {
+        // `… for each creature you control with a +1/+1 counter on it.`: read as `for each creature you control`, then narrowed; see Game::countYours().
+        if (preg_match('/^(.+ for each creature you control) with an? \+1\/\+1 counter on it$/', $sentence, $m) && ($found = self::sentenceEffects($m[1])) !== null
+            && count($found) === 1 && ($found[0]['per'] ?? null) === 'yours:creature') {
+            return [['per' => 'yours:countered creature'] + $found[0]];
+        }
         // Airbend (TLA): exile the permanent; its owner may cast it for {2} while it stays exiled. See Game's `airbend` effect.
         if (preg_match('/^([Aa])irbend (.+)$/', $sentence, $m) && ($found = self::sentenceEffects(($m[1] === 'A' ? 'E' : 'e')."xile {$m[2]}")) !== null
             && count($found) === 1 && $found[0]['type'] === 'exile' && array_keys($found[0]) === ['type', 'target'] && ! preg_match('/card|spell|player|opponent|^\??any$/', $found[0]['target'])) {
@@ -4347,9 +4358,9 @@ final class TextParser
         }
         // `Put a +1/+1 counter on each creature you control.` / `… each other creature you control.`
         // `… each creature you control with flying.`: only those with the keyword.
-        if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?(creature|[A-Z][a-z]+) you control( with (flying|reach|vigilance|trample|lifelink|deathtouch|haste|menace))?$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))
+        if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?(creature|[A-Z][a-z]+) you control( with (flying|reach|vigilance|trample|lifelink|deathtouch|haste|menace|an? \+1\/\+1 counter on it))?$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))
             && ($m[3] === 'creature' || ($subtype = self::subtypeOf($m[3])) !== null)) {
-            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []) + ($m[3] !== 'creature' ? ['subtype' => $subtype] : []) + (($m[5] ?? '') !== '' ? ['withKeyword' => $m[5]] : []);
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []) + ($m[3] !== 'creature' ? ['subtype' => $subtype] : []) + (($m[5] ?? '') === '' ? [] : (str_contains($m[5], 'counter') ? ['withCounter' => true] : ['withKeyword' => $m[5]]));
         }
         // A ritual: `Add {R}{R}{R}.`
         if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {
