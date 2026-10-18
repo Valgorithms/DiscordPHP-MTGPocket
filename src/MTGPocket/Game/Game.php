@@ -6988,6 +6988,11 @@ final class Game
 
         // Exalted (rule 702.83): each instance gives a creature attacking alone +1/+1.
         if (count($ids) === 1) {
+            // `Whenever CARDNAME attacks alone, …`, `Whenever a creature you control attacks alone, …`
+            $this->trigger($this->objects[$ids[0]], 'attacks_alone', $seat);
+            foreach ($this->permanents($seat) as $permanent) {
+                $this->trigger($permanent, 'creature_attacks_alone', $seat, null, $ids[0]);
+            }
             $exalted = count(array_filter($this->permanents($seat), fn (GameObject $o) => $this->hasKeyword($o, 'exalted')));
             if ($exalted > 0) {
                 $this->objects[$ids[0]]->untilEndOfTurn[] = ['power' => $exalted, 'toughness' => $exalted, 'keywords' => []];

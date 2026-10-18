@@ -2190,7 +2190,7 @@ final class TextParser
         $events = [
             'becomes the target of a spell or ability' => 'targeted',
             'becomes the target of a spell or ability an opponent controls' => 'targeted_by_opponent',
-            'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks',
+            'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks', 'attacks alone' => 'attacks_alone',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
             'is put into a graveyard from the battlefield' => 'to_graveyard', 'is put into a graveyard from anywhere' => 'to_graveyard_anywhere', 'becomes blocked' => 'blocked',
@@ -2263,7 +2263,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability|becomes blocked|becomes tapped|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability|becomes blocked|becomes tapped|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -2358,9 +2358,9 @@ final class TextParser
             }
 
             return true;
-        } elseif (preg_match('/^Whenever (a|another) creature you control (attacks|deals combat damage to a player), (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever (a|another) creature you control (attacks alone|attacks|deals combat damage to a player), (.+)$/', $line, $match)) {
             // See Game::declareAttackers() and Game::combatDamage(): "it" is that creature.
-            $event = ($match[2] === 'attacks' ? 'creature_attacks' : 'creature_combat_damage').($match[1] === 'another' ? '_other' : '');
+            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'deals combat damage to a player' => 'creature_combat_damage'][$match[2]].($match[1] === 'another' && $match[2] !== 'attacks alone' ? '_other' : '');
             $text = $match[3];
         } elseif (preg_match('/^Whenever (?:you attack|one or more creatures you control attack), (.+)$/', $line, $match)) {
             $event = 'you_attack';
@@ -2392,8 +2392,8 @@ final class TextParser
             // Any player's creature (Soul Warden), or only an opponent's; see Game::putOntoBattlefield().
             $event = str_contains($match[3], 'opponent') ? 'opponent_creature_enters' : 'any_creature_enters';
             $extra = $match[2] === '' ? [] : ['nontoken' => true];
-            $events = $event === 'any_creature_enters' && $match[1] === 'a' && self::$creature ? ['enters', $event] : [$event];
-            foreach ($events as $event) {
+            $fired = $event === 'any_creature_enters' && $match[1] === 'a' && self::$creature ? ['enters', $event] : [$event];
+            foreach ($fired as $event) {
                 $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($event === 'enters' ? [] : $extra);
             }
 
@@ -2531,7 +2531,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         if ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
             $effects = [['type' => 'attach', 'entering' => true]];
         } elseif ($entering && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
