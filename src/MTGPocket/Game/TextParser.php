@@ -2499,10 +2499,11 @@ final class TextParser
             };
             $extra = ['objectKind' => $match[3], 'other' => $match[2] === 'another'];
             $text = $match[4];
-        } elseif (preg_match('/^Whenever a (nontoken )?creature you control dies, (.+)$/', $line, $match) && ($effects = self::effects($match[2])) !== null && ! str_contains($match[2], 'target')) {
-            // Once for another creature dying, and once for itself when it is a creature. "Nontoken": see Game::trigger().
-            foreach (self::$creature ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
-                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($match[1] !== '' ? ['nontoken' => true] : []);
+        } elseif (preg_match('/^Whenever a (nontoken )?creature (token )?you control dies, (.+)$/', $line, $match) && ($match[1] === '' || $match[2] === '')
+            && ($effects = self::effects($match[3])) !== null && ! str_contains($match[3], 'target')) {
+            // Once for another creature dying, and once for itself when it is a creature (a card, so never a token). "Nontoken", "token": see Game::trigger().
+            foreach (self::$creature && $match[2] === '' ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($match[1] !== '' ? ['nontoken' => true] : []) + ($match[2] !== '' ? ['tokenOnly' => true] : []);
             }
 
             return true;

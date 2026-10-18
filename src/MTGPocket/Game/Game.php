@@ -5772,6 +5772,10 @@ final class Game
             if (($ability['nontoken'] ?? false) && ($event === 'dies' ? $source : $this->objects[$context])->definition()->isToken()) {
                 continue;
             }
+            // `Whenever a creature token you control dies, …`: the creature that died.
+            if (($ability['tokenOnly'] ?? false) && ! ($this->objects[$context] ?? null)?->definition()->isToken()) {
+                continue;
+            }
             // `Whenever a creature you control with power 4 or greater enters, …`: the creature that entered, or this one.
             if (isset($ability['minPower']) && $this->power($this->objects[$context] ?? $source) < $ability['minPower']) {
                 continue;
