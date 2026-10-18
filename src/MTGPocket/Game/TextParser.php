@@ -2429,13 +2429,13 @@ final class TextParser
             }
 
             return true;
-        } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|deals combat damage to a player), (.+)$/', $line, $match)
+        } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|becomes blocked|deals combat damage to a player), (.+)$/', $line, $match)
             && ($match[1] === 'an') === (bool) preg_match('/^[AEIOU]/', $match[2])) {
             // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
             // `Whenever a Human you control attacks, …`, `… a creature you control with flying …`: see Game::trigger().
-            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'blocks' => 'creature_blocks', 'deals combat damage to a player' => 'creature_combat_damage'][$match[4]]
-                .($match[1] === 'another' && ! in_array($match[4], ['attacks alone', 'blocks'], true) ? '_other' : '');
-            $extra = ($match[1] === 'another' && $match[4] === 'blocks' || $match[3] !== '' ? ['objectKind' => $match[3] !== '' ? "creature with {$match[3]}" : 'creature', 'other' => $match[1] === 'another'] : [])
+            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'blocks' => 'creature_blocks', 'becomes blocked' => 'creature_becomes_blocked', 'deals combat damage to a player' => 'creature_combat_damage'][$match[4]]
+                .($match[1] === 'another' && ! in_array($match[4], ['attacks alone', 'blocks', 'becomes blocked'], true) ? '_other' : '');
+            $extra = ($match[1] === 'another' && in_array($match[4], ['blocks', 'becomes blocked'], true) || $match[3] !== '' ? ['objectKind' => $match[3] !== '' ? "creature with {$match[3]}" : 'creature', 'other' => $match[1] === 'another'] : [])
                 + ($match[2] !== 'creature' ? ['subtype' => $match[2], 'other' => $match[1] === 'another'] : []);
             $text = $match[5];
         } elseif (preg_match('/^Whenever a creature (?:attacks you|an opponent controls attacks), (.+)$/', $line, $match)) {
@@ -2701,7 +2701,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_blocked', 'creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         // `Whenever CARDNAME blocks (becomes blocked by) a creature, that creature gets -1/-0 …`: the other creature; "it" stays CARDNAME.
         if (in_array($event, ['blocks_creature', 'blocked_by_creature'], true) && str_contains($text, 'that creature') && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
             $effects = self::effects(str_replace('that creature', 'CARDNAME', $text));

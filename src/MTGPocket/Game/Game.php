@@ -7601,6 +7601,10 @@ final class Game
         // `Whenever this creature becomes blocked`, afflict.
         foreach (array_keys($this->blocked) as $id) {
             $this->trigger($this->objects[$id], 'blocked', $this->objects[$id]->controller);
+            // `Whenever a creature you control becomes blocked, …`: "it" is that creature.
+            foreach ($this->permanents($this->objects[$id]->controller) as $permanent) {
+                $this->trigger($permanent, 'creature_becomes_blocked', $permanent->controller, null, $id);
+            }
         }
         // `Whenever CARDNAME blocks or becomes blocked by a creature, …`: once for each creature, knowing which.
         $pairs = [];
