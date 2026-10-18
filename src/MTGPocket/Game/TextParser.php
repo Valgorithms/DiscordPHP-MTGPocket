@@ -2869,7 +2869,12 @@ final class TextParser
             $event = 'subtype_enters';
             $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
-        } elseif (preg_match("/^Whenever (an?|another) (nontoken creature|nontoken permanent|noncreature permanent|permanent|artifact|enchantment|land|token|[A-Z][a-z]+) (you control enters|an opponent controls enters|enters)(?: the battlefield)?( under your control| under an opponent's control)?, (.+)$/", $line, $match)
+        } elseif (preg_match(
+            "/^Whenever (an?|another) (nontoken creature|nontoken permanent|nontoken artifact|noncreature permanent|creature token|artifact creature|creature with (?:flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender)|permanent|artifact|enchantment|land|token|[A-Z][a-z]+) (you control enters|an opponent controls enters|enters)(?: the battlefield)?( under your control| under an opponent's control)?, (.+)$/",
+            // `Whenever another creature you control with flying enters, …`: as `… creature with flying you control enters …`.
+            (string) preg_replace('/^(Whenever (?:a|another) creature) you control (with [a-z ]+?) enters/', '$1 $2 you control enters', $line),
+            $match
+        )
             && ! preg_match('/\b(?:controller|that player)\b/', $match[5])) {
             // See Game::putOntoBattlefield(): the permanent that entered is the context, itself included unless "another".
             $whose = str_contains($match[3].$match[4], 'opponent') ? 'opponent' : (str_contains($match[3].$match[4], 'your') || str_contains($match[3], 'you control') ? 'yours' : 'any');
