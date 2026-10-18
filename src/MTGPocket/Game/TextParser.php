@@ -1967,6 +1967,13 @@ final class TextParser
             $text = $match[1];
             $found = [...$found, ...(self::restrictions($match[2]) ?? [null])];
         }
+        // `can't be blocked as long as defending player controls an artifact`; a basic land type is landwalk (rule 702.14). Read by Game::canBlock().
+        if (preg_match('/^can\'t be blocked as long as defending player controls (?:an? )?(artifact|enchantment|Plains|Island|Swamp|Mountain|Forest|(white|blue|black|red|green) permanent)$/', $text, $match)) {
+            return [...$found, match (true) {
+                in_array($match[1], ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'], true) => strtolower($match[1]).'walk',
+                default => "unblockable if defender controls {$match[1]}",
+            }];
+        }
         // The Mare cycle: `can't be blocked by black creatures`; read by Game::canBlock().
         if (preg_match('/^can\'t be blocked by (white|blue|black|red|green|artifact) creatures$/', $text, $match)) {
             return [...$found, "can't be blocked by {$match[1]} creatures"];
