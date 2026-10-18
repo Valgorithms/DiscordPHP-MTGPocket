@@ -196,6 +196,9 @@ final class Game
     /** @var array<int, int> Creatures to destroy at end of combat, by id, with the incarnation that was marked. */
     public array $destroyAtEndOfCombat = [];
 
+    /** @var array<int, int> Decayed creatures that attacked, to sacrifice at end of combat, by id, with the incarnation that was marked. */
+    public array $sacrificeAtEndOfCombat = [];
+
     /** @var array<string, true> Turn-based choices already made this step: `attack`, `block`. */
     public array $declared = [];
 
@@ -655,6 +658,14 @@ final class Game
                 }
             }
             $this->destroyAtEndOfCombat = [];
+            // Decayed (rule 702.147a): `When this creature attacks, sacrifice it at end of combat.`
+            foreach ($this->sacrificeAtEndOfCombat as $id => $incarnation) {
+                if (($object = $this->objects[$id] ?? null) !== null && $object->incarnation === $incarnation && $object->zone === GameObject::BATTLEFIELD) {
+                    $this->log("{$object->name()} decays.");
+                    $this->sacrifice($object);
+                }
+            }
+            $this->sacrificeAtEndOfCombat = [];
             $this->attackers = $this->blockers = $this->extraBlocks = $this->blocked = $this->struckFirst = [];
         }
         $this->enterStep($this->step->next());
@@ -7663,6 +7674,9 @@ final class Game
         foreach ($ids as $id) {
             $this->objects[$id]->attackedTurn = $this->turn;
             $this->attackers[$id] = true;
+            if ($this->hasKeyword($this->objects[$id], 'decayed')) {
+                $this->sacrificeAtEndOfCombat[$id] = $this->objects[$id]->incarnation;
+            }
             if (! $this->hasKeyword($this->objects[$id], 'vigilance')) {
                 $this->objects[$id]->tapped = true;
             }
@@ -7836,7 +7850,7 @@ final class Game
 
     public function canBlock(GameObject $blocker, GameObject $attacker): bool
     {
-        if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block") || ! $this->controlsNeeded($blocker, 'block')
+        if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block") || $this->hasKeyword($blocker, 'decayed') || ! $this->controlsNeeded($blocker, 'block')
             || ($this->hasKeyword($blocker, 'unleash') && $blocker->counter('+1/+1') > 0)) {
             return false;
         }
@@ -10320,6 +10334,7 @@ final class Game
             'blocked' => array_keys($this->blocked),
             'struckFirst' => array_keys($this->struckFirst),
             'destroyAtEndOfCombat' => array_map(fn ($id, $incarnation) => [$id, $incarnation], array_keys($this->destroyAtEndOfCombat), $this->destroyAtEndOfCombat),
+            'sacrificeAtEndOfCombat' => array_map(fn ($id, $incarnation) => [$id, $incarnation], array_keys($this->sacrificeAtEndOfCombat), $this->sacrificeAtEndOfCombat),
             'declared' => array_keys($this->declared),
             'autoPass' => $this->autoPass,
             'winner' => $this->winner,
@@ -10440,6 +10455,9 @@ final class Game
         $game->struckFirst = array_fill_keys(array_map('intval', (array) ($data['struckFirst'] ?? [])), true);
         foreach ((array) ($data['destroyAtEndOfCombat'] ?? []) as [$id, $incarnation]) {
             $game->destroyAtEndOfCombat[(int) $id] = (int) $incarnation;
+        }
+        foreach ((array) ($data['sacrificeAtEndOfCombat'] ?? []) as [$id, $incarnation]) {
+            $game->sacrificeAtEndOfCombat[(int) $id] = (int) $incarnation;
         }
         $game->declared = array_fill_keys(array_map('strval', (array) ($data['declared'] ?? [])), true);
         foreach ((array) ($data['autoPass'] ?? []) as $seat => $on) {
