@@ -208,6 +208,9 @@ final class TextParser
     /** Whether the card being parsed is a creature. */
     private static bool $creature = false;
 
+    /** @var string[] The subtypes of the card being parsed: `Whenever a Goblin you control dies, …` on a Goblin includes itself. */
+    private static array $subtypes = [];
+
     /** Predefined artifact tokens (rule 111.10). */
     private const array ARTIFACT_TOKENS = [
         'Food' => ['name' => 'Food', 'type' => 'Token Artifact — Food', 'types' => ['Artifact'], 'subtypes' => ['Food'], 'colors' => [], 'text' => '{2}, {T}, Sacrifice this token: You gain 3 life.', 'manaCost' => null],
@@ -272,6 +275,7 @@ final class TextParser
         ];
         $spell = ! $card->isPermanentCard();
         self::$creature = $card->is('Creature');
+        self::$subtypes = $card->subtypes;
         $lines = self::lines($card);
         $classLevel = 1;
         // `Kicker {G} and/or {1}{U}`: read as one kicker paying both, so either kicker's `if it was kicked with its {G} kicker` happens.
@@ -2416,12 +2420,15 @@ final class TextParser
             }
 
             return true;
-        } elseif (preg_match('/^Whenever (a|another) creature you control (attacks alone|attacks|blocks|deals combat damage to a player), (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|deals combat damage to a player), (.+)$/', $line, $match)
+            && ($match[1] === 'an') === (bool) preg_match('/^[AEIOU]/', $match[2])) {
             // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
-            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'blocks' => 'creature_blocks', 'deals combat damage to a player' => 'creature_combat_damage'][$match[2]]
-                .($match[1] === 'another' && ! in_array($match[2], ['attacks alone', 'blocks'], true) ? '_other' : '');
-            $extra = $match[1] === 'another' && $match[2] === 'blocks' ? ['objectKind' => 'creature', 'other' => true] : [];
-            $text = $match[3];
+            // `Whenever a Human you control attacks, …`, `… a creature you control with flying …`: see Game::trigger().
+            $event = ['attacks' => 'creature_attacks', 'attacks alone' => 'creature_attacks_alone', 'blocks' => 'creature_blocks', 'deals combat damage to a player' => 'creature_combat_damage'][$match[4]]
+                .($match[1] === 'another' && ! in_array($match[4], ['attacks alone', 'blocks'], true) ? '_other' : '');
+            $extra = ($match[1] === 'another' && $match[4] === 'blocks' || $match[3] !== '' ? ['objectKind' => $match[3] !== '' ? "creature with {$match[3]}" : 'creature', 'other' => $match[1] === 'another'] : [])
+                + ($match[2] !== 'creature' ? ['subtype' => $match[2], 'other' => $match[1] === 'another'] : []);
+            $text = $match[5];
         } elseif (preg_match('/^Whenever a creature (?:attacks you|an opponent controls attacks), (.+)$/', $line, $match)) {
             // See Game::declareAttackers(): "it" is the attacking creature.
             $event = 'opponent_creature_attacks';
@@ -2520,6 +2527,16 @@ final class TextParser
             };
             $extra = ['objectKind' => $match[3], 'other' => $match[2] === 'another'];
             $text = $match[4];
+        } elseif (preg_match('/^Whenever (a|an|another) (nontoken )?([A-Z][a-z]+) you control dies, (.+)$/', $line, $match) && ! in_array($match[3], ['Creature', 'Artifact'], true)
+            && ($effects = self::effects($match[4])) !== null && ! preg_match('/\b(target|it|its|that creature)\b/', $match[4])) {
+            // `Whenever a Goblin you control dies, …`: another one, and itself when it is one (a nontoken card).
+            $events = $match[1] !== 'another' && self::$creature && in_array($match[3], self::$subtypes, true) ? ['creature_dies_other', 'dies'] : ['creature_dies_other'];
+            foreach ($events as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects]
+                    + ($event === 'creature_dies_other' ? ['subtype' => $match[3], 'other' => $match[1] === 'another'] : []) + ($match[2] !== '' ? ['nontoken' => true] : []);
+            }
+
+            return true;
         } elseif (preg_match('/^Whenever a (nontoken )?creature (token )?you control dies, (.+)$/', $line, $match) && ($match[1] === '' || $match[2] === '')
             && ($effects = self::effects($match[3])) !== null && ! str_contains($match[3], 'target')) {
             // Once for another creature dying, and once for itself when it is a creature (a card, so never a token). "Nontoken", "token": see Game::trigger().
