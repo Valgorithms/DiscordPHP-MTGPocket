@@ -3979,10 +3979,11 @@ final class TextParser
         if (preg_match('/^untap (that creature|that permanent|it)$/i', $s)) {
             return ['type' => 'untap', 'sameTarget' => true];
         }
-        if (preg_match("/^return ({$targets}) to (your hand|the battlefield)$/i", $s, $m)
+        // `Return target land card from your graveyard to the battlefield tapped.`: any permanent card returns to the battlefield.
+        if (preg_match("/^return ({$targets}) to (your hand|the battlefield)( tapped)?$/i", $s, $m)
             && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true)
-            && ($m[2] === 'your hand' || str_ends_with($kind, 'creature_card_yours'))) {
-            return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind];
+            && ($m[2] === 'your hand' ? ! isset($m[3]) : ! in_array($kind, ['card_yours', 'instant_sorcery_card_yours'], true))) {
+            return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind] + (isset($m[3]) ? ['tapped' => true] : []);
         }
         // `Return target creature card with mana value 3 or less from your graveyard to the battlefield.`
         if (preg_match("/^return ({$targets}) to (your hand|the battlefield)$/i", $s, $m) && str_starts_with($kind = self::TARGETS[strtolower($m[1])], 'creature_card_yours_mv_le_')) {
