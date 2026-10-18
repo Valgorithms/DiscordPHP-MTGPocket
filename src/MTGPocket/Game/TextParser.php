@@ -1941,6 +1941,8 @@ final class TextParser
             ($m[5] ?? '') === 'hand' => ($m[3] ?? '') === '' ? 'hand' : null,
             ($m[5] ?? '') === 'graveyard' => 'gy:'.(trim($m[3] ?? '') === '' ? 'card' : trim($m[3])),
             in_array(strtolower($kind), ['other creature', 'creature', 'artifact', 'land', 'enchantment'], true) => 'yours:'.strtolower($kind),
+            // `for each other Elf you control`: see Game::countYours().
+            (bool) preg_match('/^other ([A-Z][a-z]+)$/', $m[2] ?? '', $other) && ($type = self::subtypeOf($other[1])) !== null => 'yours:other sub:'.$type,
             $kind !== '' && ($type = self::subtypeOf($m[2])) !== null => 'yours:sub:'.$type,
             default => null,
         };
@@ -3161,14 +3163,6 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
-        // `Target Elf you control gets +2/+2 until end of turn.`: read as a creature you control, then narrowed to that type.
-        if (preg_match('/\b[Tt]arget ([A-Z][a-z]+) you control\b/', $text, $typed) && substr_count($text, 'arget ') === 1 && ($subtype = self::subtypeOf($typed[1])) === $typed[1]
-            && ! in_array($subtype, ['Creature', 'Permanent', 'Nonland', 'Noncreature', 'Aura', 'Equipment', 'Vehicle', 'Treasure', 'Food', 'Clue', 'Blood', 'Map', 'Forest', 'Island', 'Swamp', 'Mountain', 'Plains', 'Saga', 'Gate', 'Desert', 'Cave', 'Town', 'Sphere', 'Lesson', 'Class', 'Room', 'Shrine', 'Curse', 'Role', 'Background', 'Case', 'Spacecraft', 'Planet', 'Incubator', 'Powerstone', 'Gold', 'Junk', 'Lander', 'Planeswalker', 'Battle'], true)) {
-            $effects = self::effects((string) preg_replace('/\b([Tt])arget [A-Z][a-z]+ you control\b/', '$1arget creature you control', $text));
-
-            return $effects === null || ! in_array(true, array_map(fn (array $effect) => in_array($effect['target'] ?? null, ['creature_you_control', '?creature_you_control'], true), $effects), true) ? null
-                : array_map(fn (array $effect) => in_array($effect['target'] ?? null, ['creature_you_control', '?creature_you_control'], true) ? ['target' => str_replace('creature_you_control', "subtype_you_control_{$subtype}", $effect['target'])] + $effect : $effect, $effects);
-        }
         // `Look at the top card of your library. You may put that card into your graveyard.`: surveil 1 in all but name, so no `Whenever you surveil` triggers.
         if (preg_match('/^[Ll]ook at the top card of your library\. You may put (?:that card|it) into your graveyard\.?$/', trim($text))) {
             return [['type' => 'surveil', 'amount' => 1, 'quiet' => true]];
@@ -3428,6 +3422,16 @@ final class TextParser
      */
     private static function sentenceEffects(string $sentence): ?array
     {
+        // `Target Elf you control gets +2/+2 until end of turn.` and `Destroy target Dragon.`: read as a creature (you control), then narrowed to that type.
+        if (preg_match('/\b[Tt]arget ([A-Z][a-z]+)( you control)?\b(?! card| spell| or| and|,)/', $sentence, $typed) && substr_count($sentence, 'arget ') === 1 && ($subtype = self::subtypeOf($typed[1])) === $typed[1]
+            && ! in_array($subtype, ['Creature', 'Permanent', 'Nonland', 'Noncreature', 'Aura', 'Equipment', 'Vehicle', 'Treasure', 'Food', 'Clue', 'Blood', 'Map', 'Forest', 'Island', 'Swamp', 'Mountain', 'Plains', 'Saga', 'Gate', 'Desert', 'Cave', 'Town', 'Sphere', 'Lesson', 'Class', 'Room', 'Shrine', 'Curse', 'Role', 'Background', 'Case', 'Spacecraft', 'Planet', 'Incubator', 'Powerstone', 'Gold', 'Junk', 'Lander', 'Planeswalker', 'Battle', 'Player', 'Opponent', 'Spell', 'Card'], true)) {
+            $kind = ($typed[2] ?? '') !== '' ? 'creature_you_control' : 'creature';
+            $effects = self::sentenceEffects((string) preg_replace('/\b([Tt])arget [A-Z][a-z]+'.(($typed[2] ?? '') !== '' ? ' you control' : '').'\b/', '$1arget '.str_replace('_', ' ', $kind), $sentence, 1));
+            $narrow = fn (array $effect) => in_array($effect['target'] ?? null, [$kind, "?{$kind}"], true);
+
+            return $effects === null || ! in_array(true, array_map($narrow, $effects), true) ? null
+                : array_map(fn (array $effect) => $narrow($effect) ? ['target' => str_replace($kind, $kind === 'creature' ? "subtype_creature_{$subtype}" : "subtype_you_control_{$subtype}", $effect['target'])] + $effect : $effect, $effects);
+        }
         if (($effect = self::effect($sentence)) !== null) {
             return [$effect];
         }
@@ -3448,7 +3452,7 @@ final class TextParser
         }
         // `Draw a card for each creature you control.`, `Create a 1/1 … token for each creature card in your graveyard.`: counted as it resolves (see Game::perCount()).
         // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.
-        if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent)(?: you have)?|(attacking creature)(?: you control)?)$/', $sentence, $m)
+        if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|(?:other )?[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent)(?: you have)?|(attacking creature)(?: you control)?)$/', $sentence, $m)
                 || (preg_match('/^(.+), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
                     && str_contains($m[1], ' X ') && ($m[1] = preg_replace('/\b(create|draw|gain|loses?|deals?) X\b/i', '$1 1', $m[1], 1, $swapped)) !== null && $swapped === 1))
             && ($found = self::effect($m[1])) !== null && in_array($found['type'], ['draw', 'gain_life', 'lose_life', 'token', 'damage', 'mill'], true)
