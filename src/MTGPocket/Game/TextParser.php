@@ -1011,6 +1011,7 @@ final class TextParser
         if (isset($result['altCosts']['gift']) && preg_match("/^If the gift (was|wasn't) promised, (.+)$/", $sentence, $gift)) {
             [$unkicked, $match] = [$gift[1] !== 'was', [$gift[0], $gift[2]]];
         } elseif (preg_match('/^If (?:an? ([A-Z][a-z]+) card was revealed|you revealed an? ([A-Z][a-z]+) card(?: or controlled an? \\2)?) as you cast CARDNAME, (.+)$/', $sentence, $reveal)
+            || preg_match('/^If (?:an? ([A-Z][a-z]+) was beheld|you beheld an? ([A-Z][a-z]+)), (.+)$/', $sentence, $reveal)
             && in_array('reveal '.($reveal[1] !== '' ? $reveal[1] : $reveal[2]), $result['keywords'], true)) {
             // The reveal reads as kicked; `or controlled a Dragon` too (Game::revealed()).
             if (str_contains($sentence, 'or controlled')) {
@@ -2000,6 +2001,18 @@ final class TextParser
         // Dragons of Tarkir: `As an additional cost to cast CARDNAME, you may reveal a Dragon card from your hand.`; revealed whenever one can be (see Game::cast()).
         if (preg_match('/^As an additional cost to cast CARDNAME, you may reveal an? ([A-Z][a-z]+) card from your hand\.$/', $line, $m)) {
             $result['keywords'][] = "reveal {$m[1]}";
+
+            return true;
+        }
+        // Behold (Tarkir: Dragonstorm): `As an additional cost to cast CARDNAME, you may behold a Dragon.`, a Dragon card in your hand or a Dragon you control; reads as the reveal above.
+        if (preg_match('/^As an additional cost to cast CARDNAME, you may behold an? ([A-Z][a-z]+)\.$/', $line, $m)) {
+            array_push($result['keywords'], "reveal {$m[1]}", 'reveal or control');
+
+            return true;
+        }
+        // `As an additional cost to cast CARDNAME, behold a Dragon or pay {2}.`; see Game::orPay().
+        if (preg_match('/^As an additional cost to cast CARDNAME, behold an? ([A-Z][a-z]+) or pay ((?:\{[^}]+\})+)\.$/', $line, $m)) {
+            array_push($result['keywords'], "reveal or pay {$m[1]}", "or pay {$m[2]}", 'reveal or control');
 
             return true;
         }
@@ -3018,6 +3031,10 @@ final class TextParser
         $exert = false;
         if (preg_match('/^you may exert (?:it|CARDNAME)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text, $exert] = ['exert', $match[1], true];
+        }
+        // Sarkhan, Dragon Ascendant: `you may behold a Dragon. If you do, …`; see Game's `pay` effect.
+        if (preg_match('/^you may behold an? ([A-Z][a-z]+)\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[2], 'target')) {
+            [$pay, $text] = ["behold {$match[1]}", $match[2]];
         }
         // `you may collect evidence 6. If you do, …` (rule 701.59): see Game's `pay` effect.
         if (preg_match('/^(?:you may )?collect evidence (\d+)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[2], 'target')) {
@@ -4205,9 +4222,10 @@ final class TextParser
             return ['type' => 'counters', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])], 'kind' => '-1/-1'];
         }
         // `Put a +1/+1 counter on each creature you control.` / `… each other creature you control.`
-        if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?(creature|[A-Z][a-z]+) you control$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))
+        // `… each creature you control with flying.`: only those with the keyword.
+        if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?(creature|[A-Z][a-z]+) you control( with (flying|reach|vigilance|trample|lifelink|deathtouch|haste|menace))?$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))
             && ($m[3] === 'creature' || ($subtype = self::subtypeOf($m[3])) !== null)) {
-            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []) + ($m[3] !== 'creature' ? ['subtype' => $subtype] : []);
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []) + ($m[3] !== 'creature' ? ['subtype' => $subtype] : []) + (($m[5] ?? '') !== '' ? ['withKeyword' => $m[5]] : []);
         }
         // A ritual: `Add {R}{R}{R}.`
         if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {
