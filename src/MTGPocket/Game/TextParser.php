@@ -2323,6 +2323,11 @@ final class TextParser
             // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too.
             $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
             $text = $match[2];
+        } elseif (preg_match("/^Whenever you activate (an ability that isn't a mana ability|an exhaust ability)(?: that isn't a mana ability)?, (.+)$/", $line, $match)
+            && ! preg_match('/\b(?:it|that ability)\b/', $match[2])) {
+            // See Game::activate(): mana abilities don't use the stack and never get here.
+            $event = str_contains($match[1], 'exhaust') ? 'you_activate_exhaust' : 'you_activate';
+            $text = $match[2];
         } elseif (preg_match('/^Whenever you expend (\d+), (.+)$/', $line, $match)) {
             // See Game::pay(): the Nth total mana spent this turn.
             $event = "expend_{$match[1]}";
@@ -2666,9 +2671,9 @@ final class TextParser
     private static function activated(string $line, array &$result): bool
     {
         // Exhaust (rule 702.177): `Exhaust — {cost}: …` activates only once.
-        $ever = false;
+        [$ever, $exhaust] = [false, false];
         if (str_starts_with($line, 'Exhaust — ')) {
-            [$ever, $line] = [true, substr($line, strlen('Exhaust — '))];
+            [$ever, $exhaust, $line] = [true, true, substr($line, strlen('Exhaust — '))];
         }
         // Power-up: once, as a sorcery (the discount when it entered this turn is not taken).
         $powerUp = false;
@@ -2733,7 +2738,7 @@ final class TextParser
         if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []);
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []);
 
         return true;
     }
