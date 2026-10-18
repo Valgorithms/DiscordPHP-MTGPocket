@@ -1979,10 +1979,11 @@ final class TextParser
      */
     private static function attachedPer(string $line, string $word): ?array
     {
-        if (! preg_match('/^'.$word.' creature gets \+(\d+)\/\+(\d+) for each (other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control\.?$/', $line, $m)) {
+        // `… for each creature card in your graveyard.` and `… for each card in your hand.` count the same way.
+        if (! preg_match('/^'.$word.' creature gets \+(\d+)\/\+(\d+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?card in your (graveyard|hand))\.?$/', $line, $m)) {
             return null;
         }
-        $per = self::per([null, null, $m[3]]);
+        $per = self::per([null, null, $m[3], $m[4] ?? '', 'card', $m[5] ?? '']);
 
         return $per === null ? null : ['perPower' => (int) $m[1], 'perToughness' => (int) $m[2], 'per' => $per];
     }
