@@ -5149,7 +5149,7 @@ final class Game
             case 'surveil':
                 $cards = array_reverse(array_slice($this->players[$controller]->library, -$amount));
                 // `Whenever you scry, …`, `Whenever you surveil, …` (rule 701.22b: not for scry 0).
-                foreach ($amount > 0 ? $this->permanents($controller) : [] as $permanent) {
+                foreach ($amount > 0 && ! ($effect['quiet'] ?? false) ? $this->permanents($controller) : [] as $permanent) {
                     $this->trigger($permanent, "you_{$effect['type']}", $controller);
                 }
                 if ($amount > 0 && $cards !== []) {
