@@ -3900,7 +3900,7 @@ final class Game
             }
             // `If you control a Goblin, it deals 3 damage instead.`
             if (isset($effect['insteadIf']) && $this->conditionMet($effect['insteadIf'], $source, $item['controller'])) {
-                $effect['amount'] = $effect['insteadAmount'];
+                $effect = (isset($effect['insteadAmount']) ? ['amount' => $effect['insteadAmount']] : []) + ($effect['instead'] ?? []) + $effect;
             }
             // `If it's a Human, it also gains indestructible …`: the same target, as it is now.
             if (isset($effect['ifTargetSubtype']) && ! (($it = $this->targetObject((string) $target)) !== null
