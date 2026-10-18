@@ -151,6 +151,9 @@ final class Game
     /** @var int[] Permanents with "Whenever CARDNAME becomes tapped" seen tapped at the last check. */
     public array $seenTapped = [];
 
+    /** @var array<int, int> +1/+1 counters on each permanent at the last check, by id, for `Whenever one or more +1/+1 counters are put on …`. */
+    public array $seenCounters = [];
+
     /** @var array<string, int> Who gains life equal to the damage a shield in {@see $prevent} prevents, by target. */
     public array $preventGain = [];
 
@@ -8737,6 +8740,20 @@ final class Game
             }
         }
         $this->seenTapped = $tapped;
+        // `Whenever one or more +1/+1 counters are put on CARDNAME (a creature you control), …`: more than at the last check.
+        $counters = [];
+        foreach ($this->permanents() as $object) {
+            if (($now = $object->counter('+1/+1')) > 0) {
+                $counters[$object->id] = $now;
+            }
+            if ($now > ($this->seenCounters[$object->id] ?? 0)) {
+                $this->trigger($object, 'counters_put', $object->controller);
+                foreach ($this->isCreature($object) ? $this->permanents($object->controller) : [] as $permanent) {
+                    $this->trigger($permanent, 'counters_put_creature', $permanent->controller, null, $object->id);
+                }
+            }
+        }
+        $this->seenCounters = $counters;
         // Ascend (rule 702.131): ten or more permanents and one with ascend.
         foreach ($this->players as $seat => $player) {
             $permanents = $this->permanents($seat);
@@ -9697,6 +9714,7 @@ final class Game
             'prevent' => $this->prevent,
             'pacts' => $this->pacts,
             'seenTapped' => $this->seenTapped,
+            'seenCounters' => $this->seenCounters,
             'preventGain' => $this->preventGain,
         ];
     }
@@ -9815,6 +9833,13 @@ final class Game
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
         $game->pacts = array_values((array) ($data['pacts'] ?? []));
         $game->seenTapped = array_map('intval', (array) ($data['seenTapped'] ?? []));
+        // Saved before counters were tracked: the counters already there are not new.
+        $game->seenCounters = array_map('intval', (array) ($data['seenCounters'] ?? []));
+        foreach (isset($data['seenCounters']) ? [] : $game->permanents() as $object) {
+            if ($object->counter('+1/+1') > 0) {
+                $game->seenCounters[$object->id] = $object->counter('+1/+1');
+            }
+        }
         $game->preventGain = array_map('intval', (array) ($data['preventGain'] ?? []));
 
         return $game;

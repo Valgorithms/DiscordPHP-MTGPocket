@@ -2426,6 +2426,12 @@ final class TextParser
             // See Game::declareAttackers(): "it" is the attacking creature.
             $event = 'opponent_creature_attacks';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever one or more \+1\/\+1 counters are put on (CARDNAME|a creature you control|another creature you control), (.+)$/', $line, $match)
+            && ! preg_match('/\b(?:it|its|that creature|that many)\b/', $match[2])) {
+            // See Game::checkStateBasedActions(): more +1/+1 counters than at the last check.
+            $event = $match[1] === 'CARDNAME' ? 'counters_put' : 'counters_put_creature';
+            $extra = $match[1] === 'another creature you control' ? ['objectKind' => 'creature', 'other' => true] : [];
+            $text = $match[2];
         } elseif (preg_match('/^Whenever a creature (?:an opponent controls )?deals combat damage to you, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|its|that creature|that player|its controller)\b/', $match[1])) {
             // See Game::combatDamage(): once for each creature that hit you.
             $event = 'creature_combat_damages_you';
