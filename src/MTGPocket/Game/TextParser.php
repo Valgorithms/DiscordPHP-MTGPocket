@@ -4245,9 +4245,10 @@ final class TextParser
         if (preg_match('/^creatures( you control)? of the chosen type get ([+-]\d+)\/([+-]\d+)(?: and gain (.+?))? until end of turn$/i', $s, $m) && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $m[1] !== '' ? 'yours' : 'all', 'subtype' => 'chosen'];
         }
-        if (preg_match('/^([A-Z][a-z]+s?) you control get ([+-]\d+)\/([+-]\d+)(?: and gain (.+?))? until end of turn$/', $s, $m) && ($type = self::subtypeOf($m[1])) !== null
-            && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
-            return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => 'yours', 'subtype' => $type];
+        // `Other Elves you control get +1/+1 until end of turn.` and `Elves you control gain hexproof until end of turn.`
+        if (preg_match('/^([Oo]ther )?([A-Z][a-z]+s?) you control (?:get ([+-]\d+)\/([+-]\d+)(?: and gain (.+?))?|gain (.+?)) until end of turn$/', $s, $m) && ($type = self::subtypeOf($m[2])) !== null
+            && ($keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''))) !== null) {
+            return ['type' => 'pump', 'power' => (int) $m[3], 'toughness' => (int) $m[4], 'keywords' => $keywords, 'each' => 'yours', 'subtype' => $type] + ($m[1] !== '' ? ['other' => true] : []);
         }
         // `Other attacking creatures you control get +1/+0 until end of turn.`: all but CARDNAME.
         $other = preg_match('/^other (creatures you control|attacking creatures you control|attacking creatures) (get|gain) /i', $s) === 1;
