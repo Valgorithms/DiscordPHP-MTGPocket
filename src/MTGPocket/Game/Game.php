@@ -2884,6 +2884,8 @@ final class Game
         }
         // `Whenever a player casts a red spell, …`
         foreach ($this->permanents() as $permanent) {
+            $this->trigger($permanent, 'any_cast', $permanent->controller);
+            $this->trigger($permanent, 'any_cast_kind', $permanent->controller, null, $spell->id);
             foreach ($card->colors as $color) {
                 $this->trigger($permanent, "any_cast_color_{$color}", $permanent->controller);
             }
