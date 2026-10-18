@@ -1616,6 +1616,13 @@ final class TextParser
 
             return true;
         }
+        // `CARDNAME enters with a +1/+1 counter on it for each other creature you control.`: counted as it enters; see Game::perCount().
+        if (preg_match('/^CARDNAME enters(?: the battlefield)? with an? \+1\/\+1 counter on it for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent) you have|(creature that died this turn))\.?$/', $line, $match)
+            && ($per = ($match[6] ?? '') !== '' ? 'died' : self::per([null, null, $match[1], $match[2] ?? '', $match[3] ?? '', $match[4] ?? '', $match[5] ?? ''])) !== null) {
+            $result['counters'] = "per:{$per}";
+
+            return true;
+        }
         if (in_array('multikicker', $result['keywords'], true) && preg_match('/^CARDNAME enters(?: the battlefield)? with an? \+1\/\+1 counter on it for each time it was kicked\.?$/', $line)) {
             $result['kickerCounters'] = 1;
 

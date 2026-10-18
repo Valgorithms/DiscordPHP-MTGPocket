@@ -8235,6 +8235,9 @@ final class Game
 
             return;
         }
+        // `… a +1/+1 counter on it for each creature you control`: counted before it enters, so it never counts itself.
+        $perCounters = ! $faceDown && is_string($card->entersWithCounters) && str_starts_with($card->entersWithCounters, 'per:')
+            ? $this->perCount($controller, substr($card->entersWithCounters, 4), $object) : null;
         $this->removeFromZone($object);
         $object->moveTo(GameObject::BATTLEFIELD);
         $object->faceDown = $faceDown;
@@ -8256,7 +8259,11 @@ final class Game
         if ($card->isPlaneswalker() && $card->loyalty !== null) {
             $object->addCounters('loyalty', $card->loyalty);
         }
-        $counters = ($card->entersWithCounters === 'X' ? $x : (int) $card->entersWithCounters) + ($kicked ? $card->kickerCounters : 0);
+        $counters = match (true) {
+            $card->entersWithCounters === 'X' => $x,
+            is_string($card->entersWithCounters) && str_starts_with($card->entersWithCounters, 'per:') => $perCounters ?? 0,
+            default => (int) $card->entersWithCounters,
+        } + ($kicked ? $card->kickerCounters : 0);
         if ($counters > 0) {
             $object->addCounters('+1/+1', $counters);
         }
@@ -9354,6 +9361,8 @@ final class Game
             $per === 'hand' => count($this->players[$seat]->hand),
             $per === 'opponents' => count($this->players) - 1,
             $per === 'attacking' => count($this->attackers),
+            // `for each creature that died this turn`.
+            $per === 'died' => $this->diedTurn === $this->turn ? $this->died : 0,
             $per === 'gy:card' => count($this->players[$seat]->graveyard),
             str_starts_with($per, 'gy:') => count(array_filter($this->players[$seat]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is(ucfirst(substr($per, 3))))),
             default => $this->countYours($seat, substr($per, 6), $source),
