@@ -138,6 +138,9 @@ final class GameObject
     /** Doesn't untap during its controller's next untap step. */
     public bool $frozen = false;
 
+    /** The seat that goaded it, until that player's next turn (rule 701.15). */
+    public ?int $goadedBy = null;
+
     /** The player an Aura with enchant player is attached to. */
     public ?int $enchantedPlayer = null;
 
@@ -286,6 +289,7 @@ final class GameObject
         $this->earthbent = false;
         $this->echoPaid = false;
         $this->frozen = false;
+        $this->goadedBy = null;
         $this->renowned = false;
         $this->monstrous = false;
         $this->prepared = false;
@@ -387,6 +391,9 @@ final class GameObject
         if ($this->stolenBy !== null) {
             $data['stolenBy'] = $this->stolenBy;
         }
+        if ($this->goadedBy !== null) {
+            $data['goadedBy'] = $this->goadedBy;
+        }
 
         return $data + array_filter($state, fn ($value) => ! in_array($value, [false, null, [], 0], true));
     }
@@ -417,6 +424,7 @@ final class GameObject
         $object->earthbent = (bool) ($data['earthbent'] ?? false);
         $object->echoPaid = (bool) ($data['echoPaid'] ?? false);
         $object->frozen = (bool) ($data['frozen'] ?? false);
+        $object->goadedBy = isset($data['goadedBy']) ? (int) $data['goadedBy'] : null;
         $object->renowned = (bool) ($data['renowned'] ?? false);
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->prepared = (bool) ($data['prepared'] ?? false);
