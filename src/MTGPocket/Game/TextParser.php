@@ -2753,6 +2753,15 @@ final class TextParser
             }
 
             return true;
+        } elseif ((preg_match('/^Whenever (a|another) creature you control with power (\w+) or greater dies, (.+)$/', $line, $match)
+                || preg_match('/^Whenever (a|another) creature you control dies, if it had power (\w+) or greater, (.+)$/', $line, $match))
+            && is_int($power = self::amount($match[2])) && ($effects = self::effects($match[3])) !== null && ! preg_match('/\b(target|it|its|that creature)\b/', $match[3])) {
+            // Its power as it last existed on the battlefield; see Game::$diedPower. "A creature" on a creature includes itself.
+            foreach (self::$creature && $match[1] === 'a' ? ['creature_dies_other', 'dies'] : ['creature_dies_other'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects, 'diedMinPower' => $power];
+            }
+
+            return true;
         } elseif (preg_match('/^Whenever another (nontoken )?creature (you control )?dies, (.+)$/', $line, $match)) {
             // `creature_dies_any` fires for other players' creatures; "another creature dies" listens to both.
             $event = 'creature_dies_other';
