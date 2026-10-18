@@ -2068,7 +2068,7 @@ final class Game
         }
         $player->life -= $payment['life'];
         if ($payment['life'] > 0) {
-            $player->lostLifeOnTurn = $this->turn;
+            $this->lostLife($seat);
         }
         foreach ($payment['made'] ?? [] as $source => $type) {
             $object = $this->objects[$source];
@@ -4262,7 +4262,7 @@ final class Game
                     $this->pay($controller, $payment);
                     foreach ($opponents as $seat) {
                         $this->players[$seat]->life--;
-                        $this->players[$seat]->lostLifeOnTurn = $this->turn;
+                        $this->lostLife($seat);
                     }
                     $this->gainLife($controller, count($opponents));
                     $this->log("{$this->players[$controller]->name} extorts.");
@@ -4280,7 +4280,7 @@ final class Game
                 };
                 foreach ($seats as $seat) {
                     $this->players[$seat]->life -= $amount;
-                    $this->players[$seat]->lostLifeOnTurn = $this->turn;
+                    $this->lostLife($seat);
                 }
                 break;
 
@@ -7562,6 +7562,24 @@ final class Game
     // ----------------------------------------------------------------------
 
     /**
+     * Records that a player lost life this turn, then triggers `Whenever an
+     * opponent loses life, …` on the other players' permanents.
+     *
+     * @param int $seat
+     *
+     * @return void
+     */
+    private function lostLife(int $seat): void
+    {
+        $this->players[$seat]->lostLifeOnTurn = $this->turn;
+        foreach ($this->permanents() as $permanent) {
+            if ($permanent->controller !== $seat) {
+                $this->trigger($permanent, 'opponent_loses_life', $permanent->controller, null, $seat);
+            }
+        }
+    }
+
+    /**
      * Deals damage from a source (rule 120.3): life loss for players,
      * marked damage for creatures, loyalty loss for planeswalkers.
      *
@@ -7600,7 +7618,7 @@ final class Game
                 $this->players[(int) $parts[1]]->poison += $amount;
             } else {
                 $this->players[(int) $parts[1]]->life -= $amount;
-                $this->players[(int) $parts[1]]->lostLifeOnTurn = $this->turn;
+                $this->lostLife((int) $parts[1]);
             }
             // `Whenever CARDNAME deals damage to a player (an opponent), …`: that player is the context.
             $this->trigger($source, 'damages_player', $source->controller, null, (int) $parts[1]);
@@ -8131,7 +8149,7 @@ final class Game
                 return false;
             }
             $this->players[$controller]->life -= $unless['life'];
-            $this->players[$controller]->lostLifeOnTurn = $this->turn;
+            $this->lostLife($controller);
             $this->log("{$this->players[$controller]->name} pays {$unless['life']} life as {$object->name()} enters.");
 
             return true;
