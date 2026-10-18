@@ -9276,6 +9276,7 @@ final class Game
         return match (true) {
             $per === 'hand' => count($this->players[$seat]->hand),
             $per === 'opponents' => count($this->players) - 1,
+            $per === 'attacking' => count($this->attackers),
             $per === 'gy:card' => count($this->players[$seat]->graveyard),
             str_starts_with($per, 'gy:') => count(array_filter($this->players[$seat]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is(ucfirst(substr($per, 3))))),
             default => $this->countYours($seat, substr($per, 6), $source),
