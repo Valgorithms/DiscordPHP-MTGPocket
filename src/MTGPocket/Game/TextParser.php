@@ -236,6 +236,15 @@ final class TextParser
     /** @var string[] The subtypes of the card being parsed: `Whenever a Goblin you control dies, …` on a Goblin includes itself. */
     private static array $subtypes = [];
 
+    /** Whether lines() drops leading ability words, for parse()'s second reading. */
+    private static bool $withoutAbilityWords = false;
+
+    /**
+     * Ability words (rule 207.2c), which have no rules meaning: the text after the dash says everything.
+     * Not saga chapters, `Solved`, `Max speed` or keywords such as Exhaust, whose dash does mean something.
+     */
+    private const ABILITY_WORDS = 'Adamant|Addendum|Alliance|Battalion|Celebration|Channel|Chroma|Cohort|Constellation|Converge|Corrupted|Council\'s dilemma|Coven|Delirium|Descend \d+|Domain|Eerie|Eminence|Enrage|Fateful hour|Fathomless descent|Ferocious|Flurry|Formidable|Grandeur|Hellbent|Heroic|Imprint|Inspired|Join forces|Kinship|Landfall|Lieutenant|Magecraft|Metalcraft|Morbid|Pack tactics|Paradox|Parley|Radiance|Raid|Rally|Renew|Revolt|Spell mastery|Strive|Survival|Sweep|Tempting offer|Threshold|Undergrowth|Valiant|Void|Will of the council';
+
     /** Predefined artifact tokens (rule 111.10). */
     private const array ARTIFACT_TOKENS = [
         'Food' => ['name' => 'Food', 'type' => 'Token Artifact — Food', 'types' => ['Artifact'], 'subtypes' => ['Food'], 'colors' => [], 'text' => '{2}, {T}, Sacrifice this token: You gain 3 life.', 'manaCost' => null],
@@ -830,6 +839,18 @@ final class TextParser
         if (in_array('prowess', $result['keywords'], true)) {
             $result['triggered'][] = ['text' => 'Prowess', 'event' => 'cast_noncreature', 'effects' => [['type' => 'pump', 'power' => 1, 'toughness' => 1, 'keywords' => [], 'self' => true]]];
         }
+        // `Flurry — Whenever you cast your second spell each turn, …`: an ability word some lines aren't read with; read them again without it.
+        if ($result['unsupported'] !== [] && ! self::$withoutAbilityWords && preg_match('/^(?:'.self::ABILITY_WORDS.') — /mu', $card->text)) {
+            self::$withoutAbilityWords = true;
+            try {
+                $plain = self::parse($card);
+            } finally {
+                self::$withoutAbilityWords = false;
+            }
+            if (count($plain['unsupported']) < count($result['unsupported'])) {
+                return $plain;
+            }
+        }
 
         return $result;
     }
@@ -1000,6 +1021,9 @@ final class TextParser
         // A named ability such as `Gae Bolg — Equip {4}` works like the plain one.
         $text = preg_replace('/^[^\n—]+ — (Equip\b)/m', '$1', $text);
         $text = preg_replace('/\s*\([^)]*\)/', '', $text);
+        if (self::$withoutAbilityWords) {
+            $text = preg_replace('/^(?:'.self::ABILITY_WORDS.') — /mu', '', $text);
+        }
 
         return array_values(array_filter(array_map('trim', explode("\n", $text)), fn ($line) => $line !== ''));
     }
