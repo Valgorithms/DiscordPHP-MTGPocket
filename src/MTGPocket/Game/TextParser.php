@@ -1843,6 +1843,8 @@ final class TextParser
             $text === "it's not your turn" => 'not_your_turn',
             (bool) preg_match('/^you have (\w+) or fewer cards in hand$/', $text, $m) && is_int($n = self::amount($m[1])) => "hand_le {$n}",
             (bool) preg_match('/^there are (\w+) or more card types among cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "delirium {$n}",
+            // Descend 4: `as long as there are four or more permanent cards in your graveyard`.
+            (bool) preg_match('/^there are (\w+) or more (permanent|creature|land|artifact|enchantment) cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "gy_{$m[2]} {$n}",
             (bool) preg_match('/^you control (\w+) or more creatures$/', $text, $m) && is_int($n = self::amount($m[1])) => "creatures {$n}",
             (bool) preg_match('/^you have (\w+) or more cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "graveyard {$n}",
             (bool) preg_match('/^you have (\w+) or more cards in hand$/', $text, $m) && is_int($n = self::amount($m[1])) => "hand_ge {$n}",
@@ -3676,6 +3678,16 @@ final class TextParser
 
             return true;
         }
+        // `Exile target card from a graveyard. If it was a creature card, you gain 2 life.`: checked against the card exiled.
+        if (preg_match('/^If it was an? (creature|land|artifact|enchantment|instant|sorcery|noncreature|nonland) card, (.+)$/', $sentence, $m)
+            && ($effects[$last]['type'] ?? null) === 'exile' && in_array(ltrim($effects[$last]['target'] ?? '', '?'), ['card_graveyard', 'creature_card_graveyard', 'card_graveyard_nonbasic'], true)
+            && ($then = self::effects($m[2])) !== null && array_filter($then, fn (array $effect) => isset($effect['target'])) === []) {
+            foreach ($then as $effect) {
+                $effects[] = $effect + ['ifItWas' => $m[1]];
+            }
+
+            return true;
+        }
         // `Clash with an opponent. If you win, …`: those effects only when the clash is won.
         if (preg_match('/^If you win, (.+)$/', $sentence, $m) && in_array('clash', array_column($effects, 'type'), true)
             && (($won = self::effects($m[1])) !== null || ($won = self::thatCreature($m[1], $effects)) !== null)) {
@@ -4195,8 +4207,8 @@ final class TextParser
         if (preg_match('/^mill (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'mill', 'amount' => $n];
         }
-        if (preg_match('/^each opponent mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
-            return ['type' => 'mill', 'amount' => $n, 'each' => 'opponent'];
+        if (preg_match('/^each (opponent|player) mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
+            return ['type' => 'mill', 'amount' => $n, 'each' => strtolower($m[1])];
         }
         if (preg_match('/^discover (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'discover', 'amount' => $n];
@@ -4356,7 +4368,7 @@ final class TextParser
             return ['type' => 'return_card', 'kind' => strtolower($m[1] ?? '') ?: 'card'];
         }
         // Graveyard hate: `Exile target player's graveyard.`, `Exile each opponent's graveyard.`, `Exile all graveyards.`
-        if (preg_match("/^exile (target player|target opponent)'s graveyard$/i", $s, $m)) {
+        if (preg_match("/^exile (?:all cards from )?(target player|target opponent)'s graveyard$/i", $s, $m)) {
             return ['type' => 'exile_graveyard', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         if (preg_match("/^exile (each opponent's graveyard|all graveyards)$/i", $s, $m)) {

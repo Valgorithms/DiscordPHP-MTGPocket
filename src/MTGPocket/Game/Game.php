@@ -3793,6 +3793,7 @@ final class Game
         }
         // Divided damage: how many targets share it.
         $sharing = count(array_filter($steps, fn (array $step) => $step[0]['type'] === 'divided' && $step[1] !== null && $step[1] !== '-'));
+        $exiled = null;
         while ($steps !== []) {
             [$effect, $target] = array_shift($steps);
             if ($effect['type'] === 'divided') {
@@ -3808,6 +3809,18 @@ final class Game
             }
             if (isset($effect['ifCondition']) && ! $this->conditionMet($effect['ifCondition'], $source, $item['controller'])) {
                 continue;
+            }
+            // `If it was a creature card, …`: the card the step before exiled.
+            if (isset($effect['ifItWas'])) {
+                // By id: exiling it made it a new object.
+                $it = $exiled === null || ! str_starts_with($exiled, 'o:') ? null : ($this->objects[(int) explode(':', $exiled)[1]] ?? null);
+                $kind = ucfirst(preg_replace('/^non/', '', $effect['ifItWas']));
+                if ($it === null || $it->zone !== GameObject::EXILE || $it->printed()->is($kind) === str_starts_with($effect['ifItWas'], 'non')) {
+                    continue;
+                }
+            }
+            if ($effect['type'] === 'exile') {
+                $exiled = $target;
             }
             // `Return CARDNAME to its owner's hand.` on a spell: it goes there as it finishes resolving.
             if ($effect['type'] === 'bounce' && ($effect['self'] ?? false) && ! self::isAbility($item)) {
@@ -4789,6 +4802,7 @@ final class Game
             case 'mill':
                 $seats = match ($effect['each'] ?? null) {
                     'opponent' => array_values($opponents),
+                    'player' => array_keys($this->players),
                     default => match (true) {
                         isset($effect['toController']) => [str_starts_with((string) $target, 'p:') ? (int) substr((string) $target, 2) : $this->objects[(int) explode(':', (string) $target)[1]]->controller],
                         default => [$target === null ? $controller : (int) substr($target, 2)],
@@ -5812,6 +5826,8 @@ final class Game
             'no_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object)) === [],
             'artifacts', 'enchantments' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $object->definition()->is(ucfirst(rtrim($kind, 's'))))) >= (int) $n,
             'graveyard' => count($this->players[$controller]->graveyard) >= (int) $n,
+            'gy_permanent' => count(array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->printed()->isPermanentCard())) >= (int) $n,
+            'gy_creature', 'gy_land', 'gy_artifact', 'gy_enchantment' => count(array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->printed()->is(ucfirst(substr($kind, 3))))) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
             'attacked' => $this->players[$controller]->attackedTurn === $this->turn,
