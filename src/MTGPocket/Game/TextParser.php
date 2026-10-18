@@ -3190,6 +3190,13 @@ final class TextParser
 
             return true;
         }
+        // `Mill four cards. You may put a land card from among them into your hand.`: one of the milled cards; see Game's return_card.
+        if (preg_match('/^(?:Then )?(?:you|You) may (?:put|return) (?:a|an|up to one) (creature|artifact|land|enchantment|instant or sorcery|permanent|nonland|creature or land)? ?card from among (?:them|the milled cards|cards milled this way) (?:into|to) your hand$/', $sentence, $m)
+            && $effects[$last]['type'] === 'mill' && ! isset($effects[$last]['each']) && ! isset($effects[$last]['target'])) {
+            $effects[] = ['type' => 'return_card', 'kind' => ($m[1] ?? '') ?: 'card', 'fromMilled' => true];
+
+            return true;
+        }
         // A manland: `… becomes a 3/3 … creature until end of turn. It's still a land.`
         if (preg_match("/^It's still (?:a land|an artifact)$/", $sentence) && ($effects[$last]['animate'] ?? false)) {
             return true;
