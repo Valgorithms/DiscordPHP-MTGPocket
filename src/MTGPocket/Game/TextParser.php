@@ -2441,6 +2441,10 @@ final class TextParser
         $line = (string) preg_replace('/^Whenever (another|a) creature you control enters, if it has power (\d+) or greater, /', 'Whenever $1 creature you control with power $2 or greater enters, ', $line);
         // `Whenever another creature you control enters, if it's a Human, …`: read as `Whenever another Human you control enters, …`.
         $line = (string) preg_replace('/^Whenever (another|a) creature you control enters, if it\'s an? ([A-Z][a-z]+), /', 'Whenever $1 $2 you control enters, ', $line);
+        // `Whenever you attack with two or more creatures, …`: an intervening if on how many attacked.
+        $line = (string) preg_replace('/^Whenever you attack with (\w+) or more creatures, /', 'Whenever you attack, if you attacked with $1 or more creatures this combat, ', $line);
+        // `Whenever an opponent casts a spell during your turn, …`: an intervening if.
+        $line = (string) preg_replace('/^(Whenever an opponent casts (?:a|an) [a-z ]*spell) during your turn, /', "\$1, if it's your turn, ", $line);
         // `Whenever CARDNAME attacks while you control a Dragon, …`: an intervening if.
         $line = (string) preg_replace('/^Whenever CARDNAME attacks while you control (an? [A-Z][a-z]+), /', 'Whenever CARDNAME attacks, if you control $1, ', $line);
         // Exert (rule 701.43): `You may exert CARDNAME as it attacks. When you do, …` is an attack trigger.
@@ -2965,7 +2969,7 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
@@ -2989,6 +2993,8 @@ final class TextParser
                 ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
                 // `if an opponent controls a creature with flying` / `… an artifact`.
                 ($match['theirs'] ?? '') !== '' => $match['theirs'] === 'creature with flying' ? 'opp_flier' : 'opp_controls '.ucfirst($match['theirs']),
+                // `if you attacked with three or more creatures this combat`; see Game::declareAttackers().
+                ($match['attackers'] ?? '') !== '' => 'attackers '.self::amount($match['attackers']),
                 ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
                 ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
                 ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
