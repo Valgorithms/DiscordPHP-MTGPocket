@@ -1421,6 +1421,10 @@ final class Game
         $object = $this->objects[$id];
         $this->putOntoBattlefield($object, $seat);
         $this->players[$seat]->landsPlayed++;
+        // `Whenever you play a land, …`: played, not put onto the battlefield.
+        foreach ($this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'you_play_land', $seat);
+        }
         $this->passes = 0;
         $this->log("{$this->players[$seat]->name} plays {$object->name()}.", $seat, '+'.$object->name());
         $this->settle();
@@ -8378,6 +8382,10 @@ final class Game
         // `When CARDNAME leaves the battlefield, …`
         if ($leaves) {
             $this->trigger($object, 'leaves', $controller, $incarnation);
+            // `Whenever a creature you control leaves the battlefield, …`: itself included.
+            foreach ([$object, ...$this->permanents($controller)] as $permanent) {
+                $this->trigger($permanent, 'permanent_leaves_yours', $controller, null, $object->id);
+            }
         }
         // `When CARDNAME is put into a graveyard from anywhere, shuffle it into its owner's library.`: the card in the graveyard.
         if ($zone === GameObject::GRAVEYARD) {

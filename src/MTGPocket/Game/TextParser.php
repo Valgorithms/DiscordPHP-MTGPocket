@@ -2319,10 +2319,19 @@ final class TextParser
 
                 return true;
             }
-        } elseif (preg_match('/^Whenever you discard (a card|one or more cards), (.+)$/', $line, $match)) {
-            // See Game::discardCards(): "one or more" triggers once for them all.
+        } elseif (preg_match('/^Whenever you (?:cycle or )?discard (a card|one or more cards), (.+)$/', $line, $match)) {
+            // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too.
             $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
             $text = $match[2];
+        } elseif (preg_match('/^Whenever you play a land, (.+)$/', $line, $match)) {
+            $event = 'you_play_land';
+            $text = $match[1];
+        } elseif (preg_match('/^Whenever (a|another) (nontoken creature|creature|permanent|artifact|enchantment|land|[A-Z][a-z]+) you control leaves the battlefield, (.+)$/', $line, $match)
+            && ! preg_match('/\b(?:it|its|that creature|that permanent)\b/', $match[3])) {
+            // See Game::moveTo(): itself included unless "another".
+            $event = 'permanent_leaves_yours';
+            $extra = ['objectKind' => $match[2], 'other' => $match[1] === 'another'];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever a creature dealt damage by CARDNAME this turn dies, (.+)$/', $line, $match)) {
             // Sengir Vampire; see Game::moveTo().
             $event = 'damaged_dies';
