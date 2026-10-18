@@ -3028,21 +3028,20 @@ final class TextParser
         // The Thriving creatures: `you may pay {2}{G}. If you do, put a +1/+1 counter on it.`; paid when it can be (see Game::applyEffect()).
         $pay = null;
         // Energy too (Scrapper Champion): `you may pay {E}{E}. If you do, …`.
-        if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
+        if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X')) {
             [$pay, $text] = [$match[1], $match[2]];
         }
         // `you may sacrifice another creature. If you do, draw two cards.`: see Game's `pay` effect.
-        // A reflexive `When you do, …` without a target works out the same.
-        if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[3], 'target')) {
+        // A reflexive `When you do, …` works out the same; a target is chosen with the trigger.
+        if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text] = ["sacrifice {$match[2]}".($match[1] === 'another' ? ' other' : ''), $match[3]];
         }
         // `you may exert CARDNAME. When you do, …`: see Game's `pay` effect; a target is chosen with the trigger.
-        $exert = false;
         if (preg_match('/^you may exert (?:it|CARDNAME)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
-            [$pay, $text, $exert] = ['exert', $match[1], true];
+            [$pay, $text] = ['exert', $match[1]];
         }
         // Sarkhan, Dragon Ascendant: `you may behold a Dragon. If you do, …`; see Game's `pay` effect.
-        if (preg_match('/^you may behold an? ([A-Z][a-z]+)\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[2], 'target')) {
+        if (preg_match('/^you may behold an? ([A-Z][a-z]+)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text] = ["behold {$match[1]}", $match[2]];
         }
         // `you may collect evidence 6. If you do, …` (rule 701.59): see Game's `pay` effect.
@@ -3073,8 +3072,13 @@ final class TextParser
         }
         if ($effects !== null && $pay !== null) {
             $effects = [['type' => 'pay', 'cost' => $pay, 'then' => $effects]];
-            if ($exert && ($aimed = array_values(array_filter($effects[0]['then'], fn (array $e) => isset($e['target'])))) !== []) {
-                $effects[0]['target'] = $aimed[0]['target'];
+            // The paid-for effects' one target is chosen with the trigger; two different ones are not read yet.
+            $aimed = array_unique(array_column($effects[0]['then'], 'target'));
+            if (count($aimed) > 1) {
+                return false;
+            }
+            if ($aimed !== []) {
+                $effects[0]['target'] = reset($aimed);
             }
         }
         if ($effects === null) {
