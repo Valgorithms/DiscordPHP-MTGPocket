@@ -1174,12 +1174,12 @@ final class Game
                 if ($this->impulsePlayable($seat, $id) && $this->canPlayLand($seat, $id)) {
                     $plays[] = ['id' => $id, 'how' => ''];
                 }
-            } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade'], true) && $exiled->owner === $seat) {
+            } elseif (in_array($exiled->exiledBy, ['plot', 'warp', 'madness', 'suspended', 'impulse', 'foretell', 'cascade', 'airbend'], true) && $exiled->owner === $seat) {
                 foreach (self::castWays($exiled->printed(), false) as $how) {
                     if (preg_match('/kick|dash|evoke|warp|morph|bestow|blitz|buyback|awaken|freerunning|surge|spectacle|cleave|mastery|webslinging|mutate/', $how)) {
                         continue;
                     }
-                    $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc'][$exiled->exiledBy] ?? null, $how]));
+                    $how = implode(',', array_filter([['plot' => 'pl', 'warp' => 'wx', 'madness' => 'md', 'suspended' => 'sp', 'impulse' => 'ix', 'foretell' => 'ft', 'cascade' => 'cc', 'airbend' => 'ab'][$exiled->exiledBy] ?? null, $how]));
                     if ($this->canCast($seat, $id, $how)) {
                         $plays[] = ['id' => $id, 'how' => $how];
                     }
@@ -1309,9 +1309,9 @@ final class Game
                 $options['faceDown'] = true;
             } elseif (in_array($part, ['dash', 'evoke', 'warp', 'overload', 'prototype', 'blitz', 'awaken', 'freerunning', 'surge', 'spectacle', 'cleave', 'mastery', 'miracle', 'sneak', 'emerge', 'webslinging', 'mutate', 'impending', 'conditional'], true)) {
                 $options['alt'] = $part;
-            } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc'], true)) {
-                // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, or cascaded into.
-                $options['exiled'] = ['pl' => 'plot', 'wx' => 'warp', 'md' => 'madness', 'sp' => 'suspended', 'ix' => 'impulse', 'ft' => 'foretell', 'cc' => 'cascade'][$part];
+            } elseif (in_array($part, ['pl', 'wx', 'md', 'sp', 'ix', 'ft', 'cc', 'ab'], true)) {
+                // Cast from exile after plotting it, after warp exiled it, discarded with madness, its last time counter removed, foretold, cascaded into, or airbent.
+                $options['exiled'] = ['pl' => 'plot', 'wx' => 'warp', 'md' => 'madness', 'sp' => 'suspended', 'ix' => 'impulse', 'ft' => 'foretell', 'cc' => 'cascade', 'ab' => 'airbend'][$part];
             } elseif (preg_match('/^splice\d+(?:\+\d+)*$/', $part)) {
                 // Splice onto Arcane (rule 702.47): the cards in hand spliced onto it.
                 $options['splice'] = array_map('intval', explode('+', substr($part, 6)));
@@ -1547,7 +1547,7 @@ final class Game
             if ($options['exiled'] === 'impulse' && $this->turn < $object->playableFrom) {
                 return 'It can be played during your next turn.';
             }
-            if (! in_array($options['exiled'], ['madness', 'suspended', 'impulse', 'cascade'], true) && $object->exiledOn >= $this->turn) {
+            if (! in_array($options['exiled'], ['madness', 'suspended', 'impulse', 'cascade', 'airbend'], true) && $object->exiledOn >= $this->turn) {
                 return 'It can be cast from exile on a later turn.';
             }
         } elseif ($object === null || ! (in_array($id, $player->hand, true) || in_array($id, $this->commandCards($seat), true) || $this->playableFromTop($seat, $id))) {
@@ -1851,6 +1851,10 @@ final class Game
         }
         if (in_array($options['exiled'], ['madness', 'foretell'], true)) {
             return $card->altCosts[$options['exiled']].$more;
+        }
+        // Airbend (TLA): {2} rather than its mana cost.
+        if ($options['exiled'] === 'airbend') {
+            return '{2}'.$more;
         }
         if (in_array($options['grave'], ['escape', 'disturb', 'harmonize', 'mayhem'], true)) {
             return $card->altCosts[$options['grave']].$more;
@@ -4497,6 +4501,16 @@ final class Game
                     break;
                 }
                 $this->moveTo($affected, GameObject::EXILE);
+                break;
+
+            case 'airbend':
+                // Airbend (TLA): exiled; its owner may cast it for {2} for as long as it remains exiled (see Game::castCost()).
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $this->moveTo($affected, GameObject::EXILE);
+                    $affected->exiledBy = 'airbend';
+                    $affected->exiledOn = $this->turn;
+                    $this->log("{$affected->name()} is airbent.");
+                }
                 break;
 
             case 'prevent_dealing':
