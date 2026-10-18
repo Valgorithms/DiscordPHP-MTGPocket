@@ -3834,6 +3834,12 @@ final class TextParser
         if (preg_match('/^you may play an additional land this turn$/i', $s)) {
             return ['type' => 'extra_land'];
         }
+        // `When CARDNAME enters, it fights up to one target creature you don't control.` / `… you may have it fight target creature …`: choosing no target declines.
+        if (preg_match("/^(?:(?:CARDNAME|it) fights (up to one )?|you may have (?:CARDNAME|it) fight (?:up to one )?)(target creature you don't control|target creature an opponent controls|another target creature|target creature)$/i", $s, $m)) {
+            $optional = ($m[1] ?? '') !== '' || stripos($s, 'you may') === 0;
+
+            return ['type' => 'fight', 'target' => ($optional ? '?' : '').self::TARGETS[strtolower($m[2])], 'mutual' => true, 'selfFight' => true];
+        }
         // Infernal Phantom: `When CARDNAME dies, it deals damage equal to its power to any target.` (its power as it last was).
         if (preg_match("/^(?:CARDNAME|it) deals damage equal to its power to ({$targets})$/i", $s, $m)) {
             return ['type' => 'damage', 'amount' => 'self_power', 'target' => self::TARGETS[strtolower($m[1])]];

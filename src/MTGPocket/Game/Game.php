@@ -4814,7 +4814,8 @@ final class Game
                 break;
 
             case 'fight':
-                $fighter = $effect['with'] === null ? null : $this->targetObject($effect['with']);
+                // `it fights target creature`: the source itself.
+                $fighter = ($effect['selfFight'] ?? false) ? $source : ($effect['with'] === null ? null : $this->targetObject($effect['with']));
                 if ($fighter !== null && $affected !== null && $fighter->zone === GameObject::BATTLEFIELD && $affected->zone === GameObject::BATTLEFIELD && $this->isCreature($fighter)) {
                     $this->dealDamage($fighter, "o:{$affected->id}", $this->power($fighter));
                     if ($effect['mutual'] && $this->isCreature($affected)) {
