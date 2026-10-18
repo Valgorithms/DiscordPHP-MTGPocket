@@ -6198,6 +6198,12 @@ final class Game
         if (isset($cost['tapOthers']) && $this->fodderMany($seat, $object, "any {$cost['tapOthers'][1]}", $cost['tapOthers'][0], true) === null) {
             return "You have no untapped {$cost['tapOthers'][1]} to tap.";
         }
+        if (isset($cost['bounce']) && $this->bounceFodder($seat, $object, $cost['bounce']) === null) {
+            return 'You have no '.($cost['bounce'][1] ? 'untapped ' : '').explode(' ', $cost['bounce'][0], 2)[1].' to return.';
+        }
+        if (isset($cost['removeAny']) && $this->counterHost($seat, $object, $cost['removeAny']) === null) {
+            return "You control no {$cost['removeAny'][2]} with {$cost['removeAny'][1]} {$cost['removeAny'][0]} counters.";
+        }
         if (($cost['mill'] ?? 0) > count($this->players[$seat]->library)) {
             return 'Your library is too small to mill.';
         }
@@ -6400,6 +6406,46 @@ final class Game
     }
 
     /**
+     * What `Return a land you control to its owner's hand` returns: a tapped
+     * one first (it has already given its mana), else the weakest.
+     *
+     * @param int        $seat
+     * @param GameObject $source
+     * @param array      $bounce [`any land`/`other creature`, untapped only].
+     *
+     * @return GameObject|null
+     */
+    private function bounceFodder(int $seat, GameObject $source, array $bounce): ?GameObject
+    {
+        [$which, $untapped] = $bounce;
+        $untappedIds = array_map(fn (GameObject $o) => $o->id, array_filter($this->permanents($seat), fn (GameObject $o) => ! $o->tapped));
+        if ($untapped) {
+            return $this->fodderMany($seat, $source, $which, 1, true)[0] ?? null;
+        }
+
+        return $this->fodder($seat, $source, $which, [...$untappedIds, $source->id]) ?? $this->fodder($seat, $source, $which);
+    }
+
+    /**
+     * What `Remove a +1/+1 counter from a creature you control` takes from:
+     * the permanent with the most of them, itself included unless `another`.
+     *
+     * @param int        $seat
+     * @param GameObject $source
+     * @param array      $remove [counter kind, how many, `creature`/`artifact`/`permanent`, another].
+     *
+     * @return GameObject|null
+     */
+    private function counterHost(int $seat, GameObject $source, array $remove): ?GameObject
+    {
+        [$kind, $count, $type, $another] = $remove;
+        $hosts = array_filter($this->permanents($seat), fn (GameObject $o) => $o->counter($kind) >= $count && ($type === 'permanent' || ($type === 'creature' ? $this->isCreature($o) : $this->objectFits($o, $type))) && ! ($another && $o->id === $source->id));
+        usort($hosts, fn (GameObject $a, GameObject $b) => $b->counter($kind) <=> $a->counter($kind));
+
+        return $hosts[0] ?? null;
+    }
+
+    /**
      * Cards exiled from a graveyard to pay a cost (`Exile two cards from your
      * graveyard:`, forage): lands first, then the lowest mana value.
      *
@@ -6533,6 +6579,14 @@ final class Game
             $this->log("{$player->name} sacrifices {$fodder->name()}.");
             $this->sacrifice($fodder);
         }
+        if (isset($cost['bounce']) && ($bounced = $this->bounceFodder($seat, $object, $cost['bounce'])) !== null) {
+            $this->log("{$player->name} returns {$bounced->name()} to its owner's hand.");
+            $this->moveTo($bounced, GameObject::HAND);
+        }
+        if (isset($cost['removeAny']) && ($host = $this->counterHost($seat, $object, $cost['removeAny'])) !== null) {
+            $host->addCounters($cost['removeAny'][0], -$cost['removeAny'][1]);
+            $this->log("{$player->name} removes {$cost['removeAny'][1]} {$cost['removeAny'][0]} counter".($cost['removeAny'][1] === 1 ? '' : 's')." from {$host->name()}.");
+        }
         if (($cost['mill'] ?? 0) > 0) {
             $this->mill($seat, $cost['mill']);
         }
@@ -6605,6 +6659,10 @@ final class Game
         if ($cost['sacrifice'] ?? false) {
             $this->sacrifice($object);
             $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
+        }
+        if (($cost['bounceSelf'] ?? false) && $object->zone === GameObject::BATTLEFIELD) {
+            $this->log("{$player->name} returns {$object->name()} to its owner's hand.");
+            $this->moveTo($object, GameObject::HAND);
         }
         $this->settle();
     }

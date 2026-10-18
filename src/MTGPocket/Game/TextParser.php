@@ -2733,6 +2733,14 @@ final class TextParser
                 $cost += ['exileGrave' => 1, 'exileGraveKind' => $grave[1]];
             } elseif (preg_match('/^Exile (\w+) cards? from your graveyard$/', $part, $grave) && is_int($n = self::amount($grave[1]))) {
                 $cost['exileGrave'] = $n;
+            } elseif ($part === "Return CARDNAME to its owner's hand") {
+                $cost['bounceSelf'] = true;
+            } elseif (preg_match("/^Return (an?|another) (untapped )?(creature|artifact|enchantment|land|[A-Z][a-z]+) you control to its owner's hand$/", $part, $bounce)) {
+                // Paid with a tapped one first; see Game::bounceFodder().
+                $cost['bounce'] = [($bounce[1] === 'another' ? 'other' : 'any').' '.$bounce[3], $bounce[2] !== ''];
+            } elseif (preg_match('/^Remove (a|an|one|two|three) ([+-]1\/[+-]1|\w+) counters? from (a|another) (creature|artifact|permanent) you control$/', $part, $remove) && is_int($n = in_array($remove[1], ['a', 'an'], true) ? 1 : self::amount($remove[1]))) {
+                // From the permanent with the most of them; see Game::counterHost().
+                $cost['removeAny'] = [$remove[2], $n, $remove[4], $remove[3] === 'another'];
             } elseif ($part === 'Forage') {
                 // Forage (Bloomburrow): exile three cards from your graveyard or sacrifice a Food.
                 $cost['forage'] = true;
