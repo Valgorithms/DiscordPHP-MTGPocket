@@ -1933,20 +1933,7 @@ final class Game
                 $tax -= count(array_filter($this->permanents($seat), fn (GameObject $o) => in_array(substr($keyword, 17), $o->definition()->subtypes, true)));
             }
             if (preg_match('/^costs (\d+) less for each (\w+)$/', $keyword, $m)) {
-                $tax -= (int) $m[1] * match ($m[2]) {
-                    'party' => $this->partySize($seat),
-                    'creature' => $this->countYours($seat, 'creature'),
-                    'artifact' => $this->countYours($seat, 'artifact'),
-                    'land' => $this->countYours($seat, 'land'),
-                    'card' => count(array_diff($this->players[$seat]->hand, [$id])),
-                    'opponent' => count($this->players) - 1,
-                    'graveyard_spell', 'graveyard_creature', 'graveyard_card' => count(array_filter($this->players[$seat]->graveyard, fn (int $card) => match ($m[2]) {
-                        'graveyard_spell' => $this->objects[$card]->definition()->is('Instant') || $this->objects[$card]->definition()->is('Sorcery'),
-                        'graveyard_creature' => $this->objects[$card]->definition()->is('Creature'),
-                        default => true,
-                    })),
-                    default => 0,
-                };
+                $tax -= (int) $m[1] * $this->costCount($seat, $id, $m[2]);
             }
             if (preg_match('/^costs (\d+) less if you control (.+)$/', $keyword, $m)
                 && array_filter($this->permanents($seat), fn (GameObject $o) => match ($m[2]) {
@@ -1984,7 +1971,7 @@ final class Game
                     default => str_starts_with($reduction['kind'], 'color_') ? in_array(substr($reduction['kind'], 6), $card->colors, true)
                         : in_array(substr($reduction['kind'], 8), $card->subtypes, true),
                 }) {
-                    $tax -= $reduction['amount'];
+                    $tax -= $reduction['amount'] * (isset($reduction['each']) ? $this->costCount($seat, $id, $reduction['each']) : 1);
                 }
             }
         }
@@ -2835,6 +2822,25 @@ final class Game
         }
 
         return null;
+    }
+
+    /** How many of `$what` count toward a `costs {N} less for each` reduction for this spell. */
+    private function costCount(int $seat, int $id, string $what): int
+    {
+        return match ($what) {
+            'party' => $this->partySize($seat),
+            'creature' => $this->countYours($seat, 'creature'),
+            'artifact' => $this->countYours($seat, 'artifact'),
+            'land' => $this->countYours($seat, 'land'),
+            'card' => count(array_diff($this->players[$seat]->hand, [$id])),
+            'opponent' => count($this->players) - 1,
+            'graveyard_spell', 'graveyard_creature', 'graveyard_card' => count(array_filter($this->players[$seat]->graveyard, fn (int $card) => match ($what) {
+                'graveyard_spell' => $this->objects[$card]->definition()->is('Instant') || $this->objects[$card]->definition()->is('Sorcery'),
+                'graveyard_creature' => $this->objects[$card]->definition()->is('Creature'),
+                default => true,
+            })),
+            default => 0,
+        };
     }
 
     /**
