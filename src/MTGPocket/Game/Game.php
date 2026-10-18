@@ -7252,6 +7252,7 @@ final class Game
                 $this->objects[$id]->tapped = true;
             }
             $this->trigger($this->objects[$id], 'attacks', $seat);
+            $this->attachedTrigger($id, 'attached_attacks');
             // `Whenever a creature attacks you, …` (two players: each attacker attacks its controller's opponent).
             foreach ($this->permanents() as $permanent) {
                 if ($permanent->controller !== $seat) {
@@ -7613,6 +7614,7 @@ final class Game
         // `Whenever CARDNAME blocks, …`
         foreach (array_unique(array_keys($this->blockers)) as $id) {
             $this->trigger($this->objects[$id], 'blocks', $this->objects[$id]->controller);
+            $this->attachedTrigger($id, 'attached_blocks');
             // `Whenever a creature you control blocks, …`: "it" is that creature.
             foreach ($this->permanents($this->objects[$id]->controller) as $permanent) {
                 $this->trigger($permanent, 'creature_blocks', $permanent->controller, null, $id);
@@ -7845,6 +7847,7 @@ final class Game
         }
         foreach ($hitPlayer as $source) {
             $this->trigger($source, 'combat_damage', $source->controller);
+            $this->attachedTrigger($source->id, 'attached_combat_damage');
             foreach ($this->permanents($source->controller) as $permanent) {
                 $this->trigger($permanent, 'creature_combat_damage', $source->controller, null, $source->id);
                 if ($permanent->id !== $source->id) {
@@ -8637,6 +8640,8 @@ final class Game
             // `When enchanted land dies, return that card to its owner's hand.` (the Zendikons)
             foreach ($enchanters as $aura) {
                 $this->trigger($aura, 'enchanted_dies', $aura->controller, null, $object->id);
+                // `Whenever equipped creature dies, …`: the Equipment or Aura stays behind to see it.
+                $this->trigger($aura, 'attached_dies', $aura->controller, null, $object->id);
             }
         }
         // Blitz (rule 702.152): `When this creature dies, draw a card.`
@@ -9215,6 +9220,23 @@ final class Game
     private function bonusOf(GameObject $attached): ?array
     {
         return $attached->bestowed ? $attached->definition()->bestow : $attached->definition()->attachmentBonus();
+    }
+
+    /**
+     * `Whenever equipped (enchanted) creature attacks, …`: each Equipment and Aura on it sees the event, with the creature as context.
+     *
+     * @param int    $creature
+     * @param string $event
+     *
+     * @return void
+     */
+    private function attachedTrigger(int $creature, string $event): void
+    {
+        foreach ($this->permanents() as $attached) {
+            if ($attached->attachedTo === $creature) {
+                $this->trigger($attached, $event, $attached->controller, null, $creature);
+            }
+        }
     }
 
     /**

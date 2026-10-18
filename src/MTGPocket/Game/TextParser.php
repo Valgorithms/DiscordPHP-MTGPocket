@@ -2494,6 +2494,10 @@ final class TextParser
             }
 
             return true;
+        } elseif (preg_match('/^(?:When|Whenever) (?:equipped|enchanted) creature (attacks|blocks|deals combat damage to a player|dies), (.+)$/', $line, $match)) {
+            // The Swords: `Whenever equipped creature deals combat damage to a player, …`; see Game::attachedTrigger(). "It" is that creature.
+            $event = 'attached_'.['attacks' => 'attacks', 'blocks' => 'blocks', 'deals combat damage to a player' => 'combat_damage', 'dies' => 'dies'][$match[1]];
+            $text = $match[2];
         } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|becomes blocked|deals combat damage to a player), (.+)$/', $line, $match)
             && ($match[1] === 'an') === (bool) preg_match('/^[AEIOU]/', $match[2])) {
             // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
@@ -2736,11 +2740,11 @@ final class TextParser
             $text = $match['rest'];
         }
         // `Whenever CARDNAME deals combat damage to a player, destroy target artifact that player controls.`: with two players, the opponent's.
-        if ($event === 'combat_damage' && self::effects($text) === null && preg_match('/\btarget [a-z ,]+ that player controls\b/', $text)) {
+        if (in_array($event, ['combat_damage', 'attached_combat_damage'], true) && self::effects($text) === null && preg_match('/\btarget [a-z ,]+ that player controls\b/', $text)) {
             $text = (string) preg_replace('/\b(target [a-z ,]+) that player controls\b/', '$1 an opponent controls', $text);
         }
         // `Whenever CARDNAME deals combat damage to a player, that player discards a card.`: the opponent, untargeted.
-        if (in_array($event, ['combat_damage', 'opponent_cast', 'opponent_cast_kind'], true) && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
+        if (in_array($event, ['combat_damage', 'attached_combat_damage', 'opponent_cast', 'opponent_cast_kind'], true) && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
             $text = 'each opponent '.substr($text, strlen('that player '));
         }
         // `Whenever an opponent casts a noncreature spell, CARDNAME deals 1 damage to that player.`: two players, so the opponent.
@@ -2772,7 +2776,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_blocked', 'creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['attached_attacks', 'attached_blocks', 'attached_combat_damage', 'permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_blocked', 'creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         // `Whenever CARDNAME blocks (becomes blocked by) a creature, that creature gets -1/-0 …`: the other creature; "it" stays CARDNAME.
         if (in_array($event, ['blocks_creature', 'blocked_by_creature'], true) && str_contains($text, 'that creature') && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
             $effects = self::effects(str_replace('that creature', 'CARDNAME', $text));
