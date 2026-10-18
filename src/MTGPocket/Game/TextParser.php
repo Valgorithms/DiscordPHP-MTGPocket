@@ -2718,6 +2718,19 @@ final class TextParser
             } elseif (preg_match('/^Sacrifice (an?|another) (creature|artifact|enchantment|land|permanent|token|nontoken creature|[A-Z][a-z]+)$/', $part, $sac)) {
                 // Nantuko Husk: the weakest creature (or artifact, Food, …); see Game::fodder().
                 $cost['fodder'] = ($sac[1] === 'another' ? 'other' : 'any').' '.$sac[2];
+            } elseif (preg_match('/^Sacrifice (two|three|four|five) (other )?(creature|artifact|land|permanent)s$/', $part, $sac)) {
+                $cost += ['fodder' => ($sac[2] !== '' ? 'other' : 'any').' '.$sac[3], 'fodderCount' => self::amount($sac[1])];
+            } elseif (preg_match('/^Tap (an|two|three|four|five) untapped (creature|artifact|land|[A-Z][a-z]+)s? you control$/', $part, $tapCost)) {
+                // Tapped as a cost: never the source itself, which `{T}` taps; see Game::fodderMany().
+                $cost['tapOthers'] = [$tapCost[1] === 'an' ? 1 : self::amount($tapCost[1]), $tapCost[2]];
+            } elseif (preg_match('/^Discard (two|three) cards$/', $part, $discards)) {
+                $cost['discard'] = self::amount($discards[1]);
+            } elseif (preg_match('/^Mill (a|two|three|four|five) cards?$/', $part, $mills)) {
+                $cost['mill'] = $mills[1] === 'a' ? 1 : self::amount($mills[1]);
+            } elseif (preg_match('/^((?:\{E\})+)$/', $part, $energy)) {
+                $cost['energy'] = substr_count($energy[1], '{E}');
+            } elseif (preg_match('/^Exile an? (creature|artifact|land|instant or sorcery|enchantment|[A-Z][a-z]+) card from your graveyard$/', $part, $grave)) {
+                $cost += ['exileGrave' => 1, 'exileGraveKind' => $grave[1]];
             } elseif (preg_match('/^Exile (\w+) cards? from your graveyard$/', $part, $grave) && is_int($n = self::amount($grave[1]))) {
                 $cost['exileGrave'] = $n;
             } elseif ($part === 'Forage') {

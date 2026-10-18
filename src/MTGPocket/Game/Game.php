@@ -6192,10 +6192,16 @@ final class Game
         if (($cost['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             return 'You have no card to discard.';
         }
-        if (isset($cost['fodder']) && $this->fodder($seat, $object, $cost['fodder']) === null) {
+        if (isset($cost['fodder']) && $this->fodderMany($seat, $object, $cost['fodder'], $cost['fodderCount'] ?? 1) === null) {
             return 'You have no '.(explode(' ', $cost['fodder'], 2)[1] ?? 'creature').' to sacrifice.';
         }
-        if (isset($cost['exileGrave']) && $this->graveFodder($seat, $cost['exileGrave']) === null) {
+        if (isset($cost['tapOthers']) && $this->fodderMany($seat, $object, "any {$cost['tapOthers'][1]}", $cost['tapOthers'][0], true) === null) {
+            return "You have no untapped {$cost['tapOthers'][1]} to tap.";
+        }
+        if (($cost['mill'] ?? 0) > count($this->players[$seat]->library)) {
+            return 'Your library is too small to mill.';
+        }
+        if (isset($cost['exileGrave']) && $this->graveFodder($seat, $cost['exileGrave'], $cost['exileGraveKind'] ?? 'card') === null) {
             return "You need {$cost['exileGrave']} cards in your graveyard.";
         }
         if (($cost['forage'] ?? false) && $this->graveFodder($seat, 3) === null && $this->fodder($seat, $object, 'any Food') === null) {
@@ -6354,28 +6360,58 @@ final class Game
      *
      * @return GameObject|null
      */
-    private function fodder(int $seat, GameObject $source, string $which): ?GameObject
+    private function fodder(int $seat, GameObject $source, string $which, array $except = []): ?GameObject
     {
         // `any creature`, `other artifact`, `any Food`, …: see Game::objectFits().
         $kind = explode(' ', $which, 2)[1] ?? 'creature';
         $fits = $kind === 'creature' ? fn (GameObject $o) => $this->isCreature($o) : fn (GameObject $o) => $this->objectFits($o, $kind);
 
-        return $this->weakest($seat, fn (GameObject $o) => $o->id !== $source->id && $fits($o))
-            ?? (str_starts_with($which, 'any') && $source->zone === GameObject::BATTLEFIELD && $source->controller === $seat && $fits($source) ? $source : null);
+        return $this->weakest($seat, fn (GameObject $o) => $o->id !== $source->id && ! in_array($o->id, $except, true) && $fits($o))
+            ?? (str_starts_with($which, 'any') && ! in_array($source->id, $except, true) && $source->zone === GameObject::BATTLEFIELD && $source->controller === $seat && $fits($source) ? $source : null);
+    }
+
+    /**
+     * Several permanents for one cost: `Sacrifice two creatures`, `Tap two
+     * untapped creatures you control`; the weakest first.
+     *
+     * @param int        $seat
+     * @param GameObject $source
+     * @param string     $which  As for {@see fodder()}.
+     * @param int        $count
+     * @param bool       $untapped Only untapped ones, never the source itself.
+     *
+     * @return GameObject[]|null Null when there are not enough.
+     */
+    private function fodderMany(int $seat, GameObject $source, string $which, int $count, bool $untapped = false): ?array
+    {
+        $chosen = [];
+        for ($i = 0; $i < $count; $i++) {
+            $except = array_map(fn (GameObject $o) => $o->id, $chosen);
+            if ($untapped) {
+                $except = [...$except, $source->id, ...array_map(fn (GameObject $o) => $o->id, array_filter($this->permanents($seat), fn (GameObject $o) => $o->tapped))];
+            }
+            if (($next = $this->fodder($seat, $source, $which, $except)) === null) {
+                return null;
+            }
+            $chosen[] = $next;
+        }
+
+        return $chosen;
     }
 
     /**
      * Cards exiled from a graveyard to pay a cost (`Exile two cards from your
      * graveyard:`, forage): lands first, then the lowest mana value.
      *
-     * @param int $seat
-     * @param int $count
+     * @param int    $seat
+     * @param int    $count
+     * @param string $kind  `card`, or a kind {@see objectFits()} knows: `Exile a creature card from your graveyard:`.
      *
      * @return GameObject[]|null Null when there are not enough.
      */
-    private function graveFodder(int $seat, int $count): ?array
+    private function graveFodder(int $seat, int $count, string $kind = 'card'): ?array
     {
-        $cards = array_map(fn (int $id) => $this->objects[$id], $this->players[$seat]->graveyard);
+        $cards = array_values(array_filter(array_map(fn (int $id) => $this->objects[$id], $this->players[$seat]->graveyard), fn (GameObject $c) => $kind === 'card' || $this->objectFits($c, $kind)));
         if (count($cards) < $count) {
             return null;
         }
@@ -6489,12 +6525,19 @@ final class Game
         foreach ($crew as $creature) {
             $this->objects[$creature]->tapped = true;
         }
-        if (isset($cost['fodder']) && ($fodder = $this->fodder($seat, $object, $cost['fodder'])) !== null) {
+        foreach (isset($cost['tapOthers']) ? (array) $this->fodderMany($seat, $object, "any {$cost['tapOthers'][1]}", $cost['tapOthers'][0], true) : [] as $tapped) {
+            $tapped->tapped = true;
+            $this->log("{$player->name} taps {$tapped->name()}.");
+        }
+        foreach (isset($cost['fodder']) ? (array) $this->fodderMany($seat, $object, $cost['fodder'], $cost['fodderCount'] ?? 1) : [] as $fodder) {
             $this->log("{$player->name} sacrifices {$fodder->name()}.");
             $this->sacrifice($fodder);
         }
+        if (($cost['mill'] ?? 0) > 0) {
+            $this->mill($seat, $cost['mill']);
+        }
         // Forage: exile three cards from your graveyard or sacrifice a Food; the graveyard when it can.
-        $exiled = isset($cost['exileGrave']) ? $this->graveFodder($seat, $cost['exileGrave']) : (($cost['forage'] ?? false) ? $this->graveFodder($seat, 3) : null);
+        $exiled = isset($cost['exileGrave']) ? $this->graveFodder($seat, $cost['exileGrave'], $cost['exileGraveKind'] ?? 'card') : (($cost['forage'] ?? false) ? $this->graveFodder($seat, 3) : null);
         if (($cost['forage'] ?? false) && $exiled === null && ($food = $this->fodder($seat, $object, 'any Food')) !== null) {
             $this->log("{$player->name} forages, sacrificing {$food->name()}.");
             $this->sacrifice($food);
