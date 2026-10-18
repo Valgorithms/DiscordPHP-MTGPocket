@@ -218,6 +218,9 @@ final class Game
     /** The spell whose casting is triggering abilities, for `copy that spell`; see {@see castTriggers()}. */
     private ?int $castSpell = null;
 
+    /** Inside a `create N tokens` effect: `Whenever you create one or more tokens, …` waits for the whole batch. */
+    private bool $creatingTokens = false;
+
     /** The spell a payment is for, while {@see paymentFor()} works it out. */
     private ?GameObject $spending = null;
 
@@ -4508,6 +4511,7 @@ final class Game
             case 'token':
                 // Beast Within: the destroyed permanent's last controller.
                 $for = isset($effect['toController']) && $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null)?->controller ?? $controller : $controller;
+                $this->creatingTokens = true;
                 for ($i = 0; $i < $amount; $i++) {
                     $token = $this->createToken((array) $effect['token'], $for);
                     if ($effect['haste'] ?? false) {
@@ -4527,6 +4531,10 @@ final class Game
                     if (($effect['attachSelf'] ?? false) && $self !== null && $self->zone === GameObject::BATTLEFIELD) {
                         $self->attachedTo = $token->id;
                     }
+                }
+                $this->creatingTokens = false;
+                foreach ($amount > 0 ? $this->permanents($for) : [] as $permanent) {
+                    $this->trigger($permanent, 'you_create_tokens', $for);
                 }
                 $this->log("{$this->players[$for]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
                 break;
@@ -5585,6 +5593,13 @@ final class Game
         $object = new GameObject($this->nextId++, $controller, ['token' => true] + $token, GameObject::GONE);
         $this->objects[$object->id] = $object;
         $this->putOntoBattlefield($object, $controller, entryState: $entryState);
+        // `Whenever you create a (creature) token, …`; `… one or more tokens, …` once per batch.
+        foreach ($this->permanents($controller) as $permanent) {
+            $this->trigger($permanent, 'you_create_token', $controller, null, $object->id);
+            if (! $this->creatingTokens) {
+                $this->trigger($permanent, 'you_create_tokens', $controller);
+            }
+        }
 
         return $object;
     }
