@@ -7477,6 +7477,16 @@ final class Game
             }
         }
 
+        // `CARDNAME can't be blocked as long as defending player controls an artifact.`
+        foreach ($this->permanents($blocker->controller) as $permanent) {
+            $card = $permanent->definition();
+            foreach (['artifact' => $card->is('Artifact'), 'enchantment' => $card->is('Enchantment')] + array_map(fn (string $color) => in_array($color, $card->colors, true), ['white permanent' => 'W', 'blue permanent' => 'U', 'black permanent' => 'B', 'red permanent' => 'R', 'green permanent' => 'G']) as $kind => $is) {
+                if ($is && $this->hasKeyword($attacker, "unblockable if defender controls {$kind}")) {
+                    return false;
+                }
+            }
+        }
+
         return ! match (true) {
             $this->hasKeyword($attacker, "can't be blocked") => true,
             // Shadow (rule 702.28): blocks and is blocked only by creatures with shadow.
