@@ -3711,6 +3711,11 @@ final class TextParser
             && array_filter($then, fn (array $effect) => isset($effect['target'])) === []) {
             return array_map(fn (array $effect) => $effect + ['ifCondition' => 'controls '.ucfirst($m[1])], $then);
         }
+        // `If it's your turn, scry 1.`, `If you control two or more artifacts, draw a card.`: a game condition checked as it resolves.
+        if (preg_match('/^If (.+?), (.+)$/', $sentence, $m) && ($if = self::staticCondition($m[1])) !== null && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)
+            && ($then = self::sentenceEffects($m[2])) !== null && array_filter($then, fn (array $effect) => isset($effect['target']) || isset($effect['ifCondition'])) === []) {
+            return array_map(fn (array $effect) => $effect + ['ifCondition' => $if], $then);
+        }
         // Tarkir: `If you cast CARDNAME during your main phase, …`; checked as it resolves.
         if (preg_match('/^If you cast CARDNAME during your main phase, (.+)$/', $sentence, $m) && ($then = self::sentenceEffects($m[1])) !== null) {
             return array_map(fn (array $effect) => $effect + ['ifCondition' => 'main_phase'], $then);
@@ -4086,6 +4091,14 @@ final class TextParser
         if (preg_match("/^If it's an? ([A-Z][a-z]+), (it|that creature) also ((?:gets|gains) .+ until end of turn)$/", $sentence, $m) && ($subtype = self::subtypeOf($m[1])) !== null
             && (isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false)) && self::modifies(ucfirst($m[2]).' '.$m[3], $effects)) {
             $effects[array_key_last($effects)]['ifTargetSubtype'] = $subtype;
+
+            return true;
+        }
+        // `CARDNAME deals 2 damage to any target. If you control a Goblin, it deals 3 damage instead.`: the larger amount when the condition holds as it resolves.
+        if (preg_match('/^If (.+?), (?:it|CARDNAME) deals (\w+) damage instead$/', $sentence, $m) && ($effects[$last]['type'] ?? null) === 'damage' && is_int($effects[$last]['amount'] ?? null)
+            && is_int($n = self::amount($m[2])) && ($if = self::staticCondition($m[1])) !== null
+            && ! in_array($if, ['untapped', 'tapped', 'attacking', 'has_counter'], true)) {
+            $effects[$last] += ['insteadIf' => $if, 'insteadAmount' => $n];
 
             return true;
         }
