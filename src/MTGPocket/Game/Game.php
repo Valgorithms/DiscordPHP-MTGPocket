@@ -2236,6 +2236,12 @@ final class Game
             if (($ability['chosen'] ?? false) && $object->chosen !== null) {
                 $ability['colors'] = [$object->chosen];
             }
+            if (isset($ability['countPer'])) {
+                $ability['count'] = count(array_filter($this->permanents($seat), fn (GameObject $o) => in_array($ability['countPer'], $o->definition()->subtypes, true) || $o->definition()->is($ability['countPer'])));
+                if ($ability['count'] <= 0) {
+                    continue;
+                }
+            }
             if ($ability['powerCount'] ?? false) {
                 $ability['count'] = $this->power($object);
                 if ($ability['count'] <= 0) {
@@ -5873,6 +5879,8 @@ final class Game
             'main_phase' => $this->active === $controller && in_array($this->step, [Step::PrecombatMain, Step::PostcombatMain], true),
             'attacking' => isset($this->attackers[$source->id]),
             'controls' => array_filter($this->permanents($controller), fn (GameObject $o) => (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
+            // `if you control two or more other Elves`.
+            'controls_others' => count(array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && (in_array(explode('_', $n)[0], $o->definition()->subtypes, true) || $o->definition()->is(explode('_', $n)[0])))) >= (int) (explode('_', $n)[1] ?? 1),
             'controls_other' => array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
             'not_your_turn' => $this->active !== $controller,
             'cast_noncreature' => $this->players[$controller]->noncreatureCastTurn === $this->turn,
@@ -7067,7 +7075,9 @@ final class Game
             'permanent_you_control', 'permanent_you_control_other' => $object->controller === $controller,
             'nonland_permanent_you_control', 'nonland_permanent_you_control_other' => ! $card->isLand() && $object->controller === $controller,
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
-            default => ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
+            default => ((bool) preg_match('/^subtype_card_yours_([A-Z][a-z]+)$/', $kind, $m) && $object->owner === $controller
+                && (in_array($m[1], $object->printed()->subtypes, true) || in_array('changeling', $object->printed()->keywords, true)))
+                || ((bool) preg_match('/^spirit_card_yours_(\d+)$/', $kind, $m) && $object->owner === $controller
                 && in_array('Spirit', $object->printed()->subtypes, true) && $object->printed()->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^attacking_power_lt_(-?\d+)$/', $kind, $m) && $creature && isset($this->attackers[$object->id]) && $this->power($object) < (int) $m[1])
                 // `another target creature`: not the source.
@@ -7102,7 +7112,7 @@ final class Game
      */
     private static function isGraveyardKind(string $kind): bool
     {
-        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_') || str_starts_with($kind, 'creature_card_yours_mv_le_') || str_starts_with($kind, 'creature_card_yours_not_');
+        return in_array($kind, self::GRAVEYARD_KINDS, true) || str_starts_with($kind, 'spirit_card_yours_') || str_starts_with($kind, 'creature_card_yours_mv_le_') || str_starts_with($kind, 'creature_card_yours_not_') || str_starts_with($kind, 'subtype_card_yours_');
     }
 
     /**
