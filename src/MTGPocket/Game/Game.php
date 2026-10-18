@@ -5500,6 +5500,17 @@ final class Game
                     }
                     break;
                 }
+                // `you may exert CARDNAME. When you do, …` (rule 701.43): always, while it is still on the battlefield; it skips its controller's next untap step.
+                if ($effect['cost'] === 'exert') {
+                    if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
+                        $self->frozen = true;
+                        $this->log("{$this->players[$controller]->name} exerts {$self->name()}.");
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        }
+                    }
+                    break;
+                }
                 // `you may collect evidence 4. If you do, …`: when the graveyard has enough, highest mana values first; see evidence().
                 if (preg_match('/^evidence (\d+)$/', $effect['cost'], $m)) {
                     if (($evidence = $this->evidence($controller, $source->id, (int) $m[1])) !== null) {

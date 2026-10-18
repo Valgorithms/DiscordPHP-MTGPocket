@@ -2409,6 +2409,8 @@ final class TextParser
     {
         // Creatures only attack players here (see Game::declareAttackers()), so "or planeswalker" adds nothing.
         $line = (string) preg_replace('/deals combat damage to a player(?:, planeswalker,)? or (?:planeswalker|battle)\b/', 'deals combat damage to a player', $line);
+        // Exert (rule 701.43): `You may exert CARDNAME as it attacks. When you do, …` is an attack trigger.
+        $line = (string) preg_replace('/^You may exert CARDNAME as it attacks\. When you do, /', 'Whenever CARDNAME attacks, you may exert CARDNAME. When you do, ', $line);
         $events = [
             'becomes the target of a spell or ability' => 'targeted',
             'becomes the target of a spell or ability an opponent controls' => 'targeted_by_opponent',
@@ -3000,6 +3002,11 @@ final class TextParser
         if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[3], 'target')) {
             [$pay, $text] = ["sacrifice {$match[2]}".($match[1] === 'another' ? ' other' : ''), $match[3]];
         }
+        // `you may exert CARDNAME. When you do, …`: see Game's `pay` effect; a target is chosen with the trigger.
+        $exert = false;
+        if (preg_match('/^you may exert (?:it|CARDNAME)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
+            [$pay, $text, $exert] = ['exert', $match[1], true];
+        }
         // `you may collect evidence 6. If you do, …` (rule 701.59): see Game's `pay` effect.
         if (preg_match('/^(?:you may )?collect evidence (\d+)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[2], 'target')) {
             [$pay, $text] = ["evidence {$match[1]}", $match[2]];
@@ -3028,6 +3035,9 @@ final class TextParser
         }
         if ($effects !== null && $pay !== null) {
             $effects = [['type' => 'pay', 'cost' => $pay, 'then' => $effects]];
+            if ($exert && ($aimed = array_values(array_filter($effects[0]['then'], fn (array $e) => isset($e['target'])))) !== []) {
+                $effects[0]['target'] = $aimed[0]['target'];
+            }
         }
         if ($effects === null) {
             return false;
