@@ -3549,6 +3549,12 @@ final class TextParser
      */
     private static function sentenceEffects(string $sentence): ?array
     {
+        // `It deals 1 damage to each opponent and each creature your opponents control.`: one damage effect for each group.
+        if (preg_match('/^(.+ deals? \w+ damage to) (each (?:(?!\band\b).)+) and (each .+)$/', $sentence, $m)
+            && ($first = self::sentenceEffects("{$m[1]} {$m[2]}")) !== null && ($second = self::sentenceEffects("{$m[1]} {$m[3]}")) !== null
+            && count($first) === 1 && count($second) === 1 && $first[0]['type'] === 'damage' && $second[0]['type'] === 'damage' && isset($first[0]['each'], $second[0]['each'])) {
+            return [$first[0], $second[0]];
+        }
         // Lure for a turn: `Target creature must be blocked this turn if able.`, `It must be blocked this turn if able.`
         if (preg_match('/^(.+?) must be blocked this turn if able$/', $sentence, $m) && preg_match('/^(?:[Tt]arget creature(?: you control)?|It|That creature|CARDNAME)$/', $m[1])) {
             return self::sentenceEffects("{$m[1]} gains must be blocked if able until end of turn");
@@ -4112,8 +4118,8 @@ final class TextParser
         if (preg_match("/^CARDNAME deals damage to ({$targets}) equal to the number of (lands|creatures|artifacts|enchantments|Forests|Islands|Mountains|Plains|Swamps) you control$/i", $s, $m)) {
             return ['type' => 'damage', 'amount' => 'yours:'.$m[2], 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match('/^CARDNAME deals (\w+) damage to each opponent$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
-            return ['type' => 'damage', 'amount' => $n, 'each' => 'opponent'];
+        if (preg_match('/^CARDNAME deals (\w+) damage to each (opponent|player)$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'damage', 'amount' => $n, 'each' => strtolower($m[2])];
         }
         if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying| with flying| your opponents control)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => match ($m[2] ?? '') {

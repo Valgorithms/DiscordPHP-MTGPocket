@@ -4278,6 +4278,7 @@ final class Game
                 }
                 $hits = match ($effect['each'] ?? null) {
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
+                    'player' => array_map(fn (int $seat) => "p:{$seat}", $this->turnOrderSeats()),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
                     'creature_without_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'))),
                     'creature_with_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $this->hasKeyword($o, 'flying'))),
