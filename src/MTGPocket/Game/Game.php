@@ -2860,6 +2860,12 @@ final class Game
                         return '';
                     }
                 }
+                // Behold: a Dragon you control does as well.
+                foreach (in_array('reveal or control', $card->keywords, true) ? $this->permanents($seat) : [] as $permanent) {
+                    if (in_array($type, $permanent->definition()->subtypes, true)) {
+                        return '';
+                    }
+                }
 
                 return $mana;
             }
@@ -4596,7 +4602,8 @@ final class Game
             case 'counters':
                 if (($effect['each'] ?? null) === 'yours') {
                     foreach ($this->permanents($controller) as $object) {
-                        if ($this->isCreature($object) && (! ($effect['other'] ?? false) || $object->id !== $source->id) && (! isset($effect['subtype']) || in_array($effect['subtype'], $object->definition()->subtypes, true) || in_array('changeling', $object->definition()->keywords, true))) {
+                        if ($this->isCreature($object) && (! ($effect['other'] ?? false) || $object->id !== $source->id) && (! isset($effect['subtype']) || in_array($effect['subtype'], $object->definition()->subtypes, true) || in_array('changeling', $object->definition()->keywords, true))
+                            && (! isset($effect['withKeyword']) || $this->hasKeyword($object, $effect['withKeyword']))) {
                             $object->addCounters('+1/+1', $amount);
                         }
                     }
@@ -5498,6 +5505,20 @@ final class Game
                     if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
                         $self->frozen = true;
                         $this->log("{$this->players[$controller]->name} exerts {$self->name()}.");
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        }
+                    }
+                    break;
+                }
+                // `you may behold a Dragon. If you do, …`: a Dragon card in your hand or a Dragon you control, whenever there is one.
+                if (preg_match('/^behold (\w+)$/', $effect['cost'], $m)) {
+                    $beheld = array_filter(
+                        [...array_map(fn (int $id) => $this->objects[$id], $this->players[$controller]->hand), ...$this->permanents($controller)],
+                        fn (GameObject $o) => $o->id !== $source->id && in_array($m[1], $o->definition()->subtypes, true)
+                    );
+                    if ($beheld !== []) {
+                        $this->log("{$this->players[$controller]->name} beholds ".reset($beheld)->name()." for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
                             $this->applyEffect($then, $source, $self, $controller, $x, $target);
                         }
