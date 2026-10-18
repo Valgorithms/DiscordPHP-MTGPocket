@@ -8035,6 +8035,10 @@ final class Game
             $this->trigger($source, 'damages_player', $source->controller, null, (int) $parts[1]);
             if ((int) $parts[1] !== $source->controller) {
                 $this->trigger($source, 'damages_opponent', $source->controller, null, (int) $parts[1]);
+                // `Whenever a source an opponent controls deals damage to you, …`
+                foreach ($this->permanents((int) $parts[1]) as $permanent) {
+                    $this->trigger($permanent, 'opponent_source_damages_you', (int) $parts[1]);
+                }
             }
         } else {
             $object = $this->targetObject($target);

@@ -2619,6 +2619,10 @@ final class TextParser
             // See Game::combatDamage(): once for each creature that hit you.
             $event = 'creature_combat_damages_you';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever a source an opponent controls deals damage to you, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|its|that source|that much|that player|its controller)\b/', $match[1])) {
+            // See Game::dealDamage(): once for each source and each time it deals damage.
+            $event = 'opponent_source_damages_you';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever one or more creatures you control deal combat damage to a player, (.+)$/', $line, $match) && ! preg_match('/\b(?:they|those creatures|that player)\b/', $match[1])) {
             // Once, however many; see Game::combatDamage().
             $event = 'you_combat_damage_batch';
