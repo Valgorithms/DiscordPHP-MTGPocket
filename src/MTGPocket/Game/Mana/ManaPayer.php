@@ -34,7 +34,7 @@ final class ManaPayer
      * @param ManaPool                                                 $pool
      * @param array<int, array{count: int, colors: string[], fixed?: string[][], same?: bool}> $sources Untapped mana sources by object id: each makes `count` mana of one of `colors` (all the same one when `same`), or one mana of each of `fixed`.
      *
-     * @return array{pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>}|null What to take from the pool, which sources to tap, the mana they make beyond the cost (it stays in the pool) and the type each tapped source made. Null when it cannot be paid.
+     * @return array{pool: array<string, int>, tap: int[], float: array<string, int>, made: array<int, string>, count: int}|null What to take from the pool, which sources to tap, the mana they make beyond the cost (it stays in the pool), the type each tapped source made and how much mana is spent. Null when it cannot be paid.
      */
     public static function plan(array $payment, ManaPool $pool, array $sources): ?array
     {
@@ -136,7 +136,9 @@ final class ManaPayer
             }
         }
 
-        return ['pool' => $fromPool, 'tap' => array_keys($tap), 'float' => $float, 'made' => $made];
+        return ['pool' => $fromPool, 'tap' => array_keys($tap), 'float' => $float, 'made' => $made,
+            // Mana spent, for expend: convoked creatures pay without making mana.
+            'count' => count(array_filter(array_keys($used), fn (int $unit) => ! ($sources[$units[$unit]['source']]['convoke'] ?? false)))];
     }
 
     /**

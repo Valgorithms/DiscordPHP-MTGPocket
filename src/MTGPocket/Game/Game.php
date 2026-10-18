@@ -2087,6 +2087,16 @@ final class Game
         foreach ($payment['float'] as $type => $amount) {
             $player->manaPool->add($type, $amount);
         }
+        // Expend: `Whenever you expend 4, …` as the fourth total mana this turn is spent.
+        if (($count = (int) ($payment['count'] ?? 0)) > 0) {
+            $before = $player->expendedTurn === $this->turn ? $player->expended : 0;
+            [$player->expended, $player->expendedTurn] = [$before + $count, $this->turn];
+            foreach ($this->permanents($seat) as $permanent) {
+                for ($n = $before + 1; $n <= $before + $count; $n++) {
+                    $this->trigger($permanent, "expend_{$n}", $seat);
+                }
+            }
+        }
         $player->life -= $payment['life'];
         if ($payment['life'] > 0) {
             $this->lostLife($seat);
