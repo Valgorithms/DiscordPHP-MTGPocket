@@ -2529,6 +2529,10 @@ final class TextParser
         if ($effects === null) {
             return false;
         }
+        // Returning itself to the battlefield only makes sense from the graveyard (see Game::trigger()).
+        if (! in_array($event, ['dies', 'to_graveyard'], true) && in_array('return_self', array_column($effects, 'type'), true)) {
+            return false;
+        }
         $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects] + ($kicked ? ['kicked' => true] : []) + ($saddled ? ['saddled' => true] : []) + ($if !== null ? ['if' => $if] : []) + array_diff_key($extra ?? [], ['anyController' => true]);
         if ($extra['anyController'] ?? false) {
             $result['triggered'][] = ['event' => 'creature_dies_any'] + $result['triggered'][count($result['triggered']) - 1];
@@ -3439,6 +3443,13 @@ final class TextParser
         }
         if (preg_match("/^(?:you may )?shuffle (?:CARDNAME|it) into its owner's library$/i", $s)) {
             return ['type' => 'shuffle_self', 'self' => true];
+        }
+        // `When CARDNAME dies, return it to the battlefield tapped under its owner's control.`: see Game::trigger().
+        if (preg_match("/^return CARDNAME to the battlefield( tapped)?(?: under (?:its owner's|your) control)?$/i", $s, $m)) {
+            return ['type' => 'return_self', 'self' => true] + (($m[1] ?? '') !== '' ? ['tapped' => true] : []);
+        }
+        if (preg_match("/^put CARDNAME on the bottom of its owner's library$/i", $s)) {
+            return ['type' => 'bottom_self', 'self' => true];
         }
         // Haru-Onna: `you may return CARDNAME to its owner's hand` (it always does).
         if (preg_match("/^(?:you may )?return CARDNAME to its owner's hand$/i", $s)) {

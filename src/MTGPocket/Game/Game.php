@@ -4085,6 +4085,7 @@ final class Game
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {
             isset($effect['thatObject']) => ($that = $this->objects[$effect['thatObject']] ?? null)?->zone === GameObject::BATTLEFIELD ? $that : null,
+            isset($effect['graveyardSelf']) => $source->zone === GameObject::GRAVEYARD && $source->incarnation === $effect['graveyardSelf'] ? $source : null,
             (bool) ($effect['self'] ?? false) => $self,
             (bool) ($effect['enchanted'] ?? false) => $self?->attachedTo === null ? null : ($this->objects[$self->attachedTo] ?? null),
             default => $target === null ? null : $this->targetObject($target),
@@ -4346,7 +4347,30 @@ final class Game
                 break;
 
             case 'bounce':
-                $this->moveTo($affected, GameObject::HAND);
+                if ($affected !== null) {
+                    $this->moveTo($affected, GameObject::HAND);
+                }
+                break;
+
+            case 'return_self':
+                // `When CARDNAME dies, return it to the battlefield tapped under its owner's control.`
+                if ($affected !== null && $affected->zone !== GameObject::BATTLEFIELD) {
+                    $this->log("{$affected->name()} returns to the battlefield.");
+                    $this->putOntoBattlefield($affected, $affected->owner, tapped: (bool) ($effect['tapped'] ?? false));
+                }
+                break;
+
+            case 'bottom_self':
+                if ($affected !== null) {
+                    $this->log("{$affected->name()} is put on the bottom of {$this->players[$affected->owner]->name}'s library.");
+                    $this->moveTo($affected, GameObject::LIBRARY);
+                    // moveTo() puts it on top (the end of the list); the bottom is the start.
+                    $library = &$this->players[$affected->owner]->library;
+                    if ($affected->zone === GameObject::LIBRARY && end($library) === $affected->id) {
+                        array_unshift($library, array_pop($library));
+                    }
+                    unset($library);
+                }
                 break;
 
             case 'cant_block_source':
@@ -5649,6 +5673,9 @@ final class Game
                 ($effect['target'] ?? null) === 'attacking_lesser' => ['target' => 'attacking_power_lt_'.$this->power($source)] + $effect,
                 in_array($effect['target'] ?? null, ['creature_other', '?creature_other'], true) => ['target' => str_replace('creature_other', "creature_not_{$source->id}", $effect['target'])] + $effect,
                 in_array($effect['target'] ?? null, ['creature_you_control_other', '?creature_you_control_other'], true) => ['target' => str_replace('creature_you_control_other', "creature_yours_not_{$source->id}", $effect['target'])] + $effect,
+                // `When CARDNAME dies, return it to its owner's hand.`: the card it became in the graveyard (rule 400.7).
+                in_array($event, ['dies', 'to_graveyard'], true) && $source->zone === GameObject::GRAVEYARD && ($effect['self'] ?? false)
+                    && in_array($effect['type'], ['bounce', 'return_self', 'bottom_self'], true) => ['graveyardSelf' => $source->incarnation] + $effect,
                 default => $effect,
             }, $ability['effects']);
             if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
