@@ -4581,6 +4581,12 @@ final class Game
                 }
                 break;
 
+            case 'freeze':
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $affected->frozen = true;
+                }
+                break;
+
             case 'token':
                 // Beast Within: the destroyed permanent's last controller.
                 $for = isset($effect['toController']) && $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null)?->controller ?? $controller : $controller;

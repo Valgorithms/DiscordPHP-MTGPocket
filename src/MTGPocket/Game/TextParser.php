@@ -3951,6 +3951,10 @@ final class TextParser
         if (preg_match('/^(tap|untap) CARDNAME$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'self' => true];
         }
+        // `Whenever CARDNAME blocks a creature, that creature doesn't untap during its controller's next untap step.`: tapped or not.
+        if ($s === "CARDNAME doesn't untap during its controller's next untap step") {
+            return ['type' => 'freeze', 'self' => true];
+        }
         // `When CARDNAME enters, enchanted creature gains first strike until end of turn.`
         if (preg_match('/^enchanted creature (?:gets ([+-]\d+)\/([+-]\d+)(?: and gains (.+?))?|gains (.+?)) until end of turn$/i', $s, $m)
             && ($keywords = self::keywordList(($m[4] ?? '') !== '' ? $m[4] : ($m[3] ?? ''))) !== null) {
