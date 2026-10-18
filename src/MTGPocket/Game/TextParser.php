@@ -3352,7 +3352,7 @@ final class TextParser
         }
         // `Draw a card for each creature you control.`, `Create a 1/1 … token for each creature card in your graveyard.`: counted as it resolves (see Game::perCount()).
         // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.
-        if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent) you have|(attacking creature)(?: you control)?)$/', $sentence, $m)
+        if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent)(?: you have)?|(attacking creature)(?: you control)?)$/', $sentence, $m)
                 || (preg_match('/^(.+), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
                     && str_contains($m[1], ' X ') && ($m[1] = preg_replace('/\b(create|draw|gain|loses?|deals?) X\b/i', '$1 1', $m[1], 1, $swapped)) !== null && $swapped === 1))
             && ($found = self::effect($m[1])) !== null && in_array($found['type'], ['draw', 'gain_life', 'lose_life', 'token', 'damage', 'mill'], true)
