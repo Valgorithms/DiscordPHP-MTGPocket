@@ -538,6 +538,7 @@ final class TextParser
                 'You have hexproof.' => 'you have hexproof',
                 // Read by Game::putOntoBattlefield().
                 'Creatures your opponents control enter tapped.' => 'opponent creatures enter tapped',
+                'Artifacts and creatures your opponents control enter tapped.' => 'opponent artifacts and creatures enter tapped',
                 'Creatures your opponents control enter the battlefield tapped.' => 'opponent creatures enter tapped',
                 // Read by Game::whyNotCast().
                 "Your opponents can't cast spells during your turn." => 'opponents cast nothing on your turn',
@@ -580,6 +581,7 @@ final class TextParser
                 // Read by Game::gainLife().
                 "Players can't gain life." => "players can't gain life",
                 "Your opponents can't gain life." => "opponents can't gain life",
+                "Each opponent can't gain life." => "opponents can't gain life",
             ];
             if (! $spell && isset($statics[$line])) {
                 $result['keywords'][] = $statics[$line];
@@ -2533,7 +2535,8 @@ final class TextParser
                 str_contains($line, 'loses life') => 'opponent_loses_life',
                 default => 'opponent_landfall',
             };
-            $text = $match[1];
+            // `Whenever an opponent draws a card, they lose 1 life.`
+            $text = (string) preg_replace('/^they (lose|discard|mill|sacrifice)\b/', 'that player $1s', $match[1]);
             if (str_contains($text, 'that player') && ! str_contains($text, 'target')) {
                 $effects = self::effects(str_replace('that player', 'target player', $text));
                 if ($effects === null) {
