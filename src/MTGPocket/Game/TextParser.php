@@ -2093,6 +2093,14 @@ final class TextParser
             $text = $match[1];
             $found = [...$found, ...(self::restrictions($match[2]) ?? [null])];
         }
+        // `can't attack unless you control another creature`, `can't block unless you control a Dragon`: read by Game::attackAllowedByLands() and canBlock().
+        if (preg_match('/^can\'t (attack|block|attack or block) unless you control (another|an?) (artifact|creature|enchantment|[A-Z][a-z]+)$/', $text, $match)
+            && (in_array($match[3], ['artifact', 'creature', 'enchantment'], true) || self::subtypeOf($match[3]) !== null)) {
+            $kind = in_array($match[3], ['artifact', 'creature', 'enchantment'], true) ? ucfirst($match[3]) : self::subtypeOf($match[3]);
+            $needs = ($match[2] === 'another' ? 'another ' : '').$kind;
+
+            return [...$found, ...array_map(fn (string $what) => "can't {$what} unless you control {$needs}", $match[1] === 'attack or block' ? ['attack', 'block'] : [$match[1]])];
+        }
         // `can't be blocked as long as defending player controls an artifact`; a basic land type is landwalk (rule 702.14). Read by Game::canBlock().
         if (preg_match('/^can\'t be blocked as long as defending player controls (?:an? )?(artifact|enchantment|Plains|Island|Swamp|Mountain|Forest|(white|blue|black|red|green) permanent)$/', $text, $match)) {
             return [...$found, match (true) {
@@ -4372,6 +4380,8 @@ final class TextParser
             && ($keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''))) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[3], 'toughness' => (int) $m[4], 'keywords' => $keywords, 'each' => 'yours', 'subtype' => $type] + ($m[1] !== '' ? ['other' => true] : []);
         }
+        // `each other attacking creature gets +1/+0 until end of turn.`
+        $s = (string) preg_replace('/^each other attacking creature gets /i', 'other attacking creatures get ', $s);
         // `Other attacking creatures you control get +1/+0 until end of turn.`: all but CARDNAME.
         $other = preg_match('/^other (creatures you control|attacking creatures you control|attacking creatures) (get|gain) /i', $s) === 1;
         $s = $other ? substr($s, 6) : $s;
