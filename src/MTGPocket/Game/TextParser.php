@@ -3003,9 +3003,11 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
+                // Coven: `if you control three or more creatures with different powers`.
+                $match[1] === 'you control three or more creatures with different powers' => 'coven',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
                 $match[1] === 'you gained life this turn' => 'gained 1',
                 $match[1] === 'a creature died this turn' => 'died 1',
@@ -4360,6 +4362,10 @@ final class TextParser
         // Connive (rule 701.50): draw a card, then discard a card; a nonland discard puts a +1/+1 counter on it.
         if (preg_match('/^(?:CARDNAME|it) connives$/i', $s)) {
             return ['type' => 'connive', 'self' => true];
+        }
+        // `Target creature you control connives.`: its controller (you) draws and discards.
+        if (preg_match('/^(?:up to one )?target creature you control connives$/i', $s, $m)) {
+            return ['type' => 'connive', 'target' => (str_starts_with(strtolower($s), 'up to one') ? '?' : '').self::TARGETS['target creature you control']];
         }
         if (preg_match('/^you lose (\w+) life$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'lose_life', 'amount' => $n, 'you' => true];
