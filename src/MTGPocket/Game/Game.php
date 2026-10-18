@@ -4498,6 +4498,13 @@ final class Game
                 $this->moveTo($affected, GameObject::EXILE);
                 break;
 
+            case 'prevent_dealing':
+                if ($affected !== null) {
+                    $affected->preventDealing = $this->turn;
+                    $this->log("Damage {$affected->name()} would deal is prevented this turn.");
+                }
+                break;
+
             case 'fog':
                 $this->fogTurn = $this->turn;
                 $this->log('Combat damage is prevented this turn.');
@@ -8198,6 +8205,8 @@ final class Game
             }
         }
 
+        // `Prevent all damage target creature would deal this turn.`: it deals none, so nothing triggers on it.
+        $assignments = array_values(array_filter($assignments, fn (array $assignment) => $assignment[0]->preventDealing !== $this->turn || $this->unpreventableTurn === $this->turn));
         // All combat damage is dealt at once (rule 510.2).
         $lines = $hitPlayer = $toPlayers = [];
         $this->combatDealt = [];
@@ -8321,6 +8330,11 @@ final class Game
         // Shields are keyed without a target's incarnation (`o:ID`, not `o:ID:N`).
         $shielded = implode(':', array_slice(explode(':', $target), 0, 2));
         $preventable = $this->unpreventableTurn !== $this->turn;
+        if ($preventable && $source->preventDealing === $this->turn) {
+            $this->log("{$amount} damage from {$source->name()} is prevented.");
+
+            return;
+        }
         if ($preventable && ($shield = $this->prevent[$shielded] ?? 0) > 0) {
             $prevented = min($shield, $amount);
             $this->prevent[$shielded] = $shield - $prevented;
