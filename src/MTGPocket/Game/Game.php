@@ -2427,6 +2427,16 @@ final class Game
             $object = str_starts_with($target, 'o:') ? $this->targetObject($target) : null;
             if ($object !== null && $object->zone === GameObject::BATTLEFIELD) {
                 $this->trigger($object, 'targeted', $object->controller);
+                foreach ($this->permanents($object->controller) as $permanent) {
+                    $this->trigger($permanent, 'yours_targeted', $object->controller, null, $object->id);
+                }
+                // `Whenever CARDNAME (a creature you control) becomes the target of a spell or ability you control, …`
+                if ($object->controller === $seat) {
+                    $this->trigger($object, 'targeted_by_you', $seat);
+                    foreach ($this->permanents($seat) as $permanent) {
+                        $this->trigger($permanent, 'yours_targeted_by_you', $seat, null, $object->id);
+                    }
+                }
                 // `Whenever CARDNAME (a creature you control) becomes the target of a spell or ability an opponent controls, …`
                 if ($object->controller !== $seat) {
                     $this->trigger($object, 'targeted_by_opponent', $object->controller);
