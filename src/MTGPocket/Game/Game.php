@@ -9542,7 +9542,8 @@ final class Game
                 if (($anthem['self'] ?? false) && ($source->id !== $object->id || ! $this->conditionMet($anthem['if'], $source, $source->controller))) {
                     continue;
                 }
-                if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id])) || (($anthem['artifact'] ?? false) && ! $object->definition()->is('Artifact'))) {
+                if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id])) || (($anthem['artifact'] ?? false) && ! $object->definition()->is('Artifact'))
+                    || (isset($anthem['token']) && $anthem['token'] !== $object->definition()->isToken())) {
                     continue;
                 }
                 // `Other creatures you control with flying get +1/+1.`: printed keywords, so anthems don't feed each other.
