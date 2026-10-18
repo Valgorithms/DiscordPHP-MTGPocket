@@ -1705,6 +1705,10 @@ final class TextParser
 
             return true;
         }
+        // `Each other creature you control that's a Wizard gets +1/+1.`: read as `Other Wizard creatures you control get +1/+1.`
+        if (preg_match("/^Each (other )?creature you control that's an? ([A-Z][a-z]+) (gets|has) (.+)$/", $line, $m)) {
+            $line = ($m[1] !== '' ? 'Other ' : '')."{$m[2]} creatures you control ".($m[3] === 'gets' ? 'get' : 'have')." {$m[4]}";
+        }
         // A lord: `Other Kithkin you control get +1/+1.`, `Elf creatures you control get +1/+1 and have trample.`
         if (preg_match('/^(Other )?([A-Z][a-z]+(?:-[a-z]+)?)(?: creatures)? you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)
             && ($type = self::subtypeOf($m[2])) !== null) {
