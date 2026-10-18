@@ -7526,6 +7526,27 @@ final class Game
     }
 
     /**
+     * `This creature can't attack (block) unless you control another creature (a Dragon).`
+     *
+     * @param GameObject $creature
+     * @param string     $what     `attack` or `block`.
+     *
+     * @return bool
+     */
+    private function controlsNeeded(GameObject $creature, string $what): bool
+    {
+        foreach ($this->keywords($creature) as $keyword) {
+            if (preg_match("/^can't {$what} unless you control (another )?(\\w+)$/", $keyword, $m)
+                && array_filter($this->permanents($creature->controller), fn (GameObject $o) => ($m[1] === '' || $o->id !== $creature->id)
+                    && (in_array($m[2], ['Artifact', 'Creature', 'Enchantment'], true) ? $o->definition()->is($m[2]) : in_array($m[2], $o->definition()->subtypes, true))) === []) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * `This creature can't attack unless defending player controls an Island.`
      *
      * @param GameObject $creature
@@ -7534,6 +7555,9 @@ final class Game
      */
     private function attackAllowedByLands(GameObject $creature): bool
     {
+        if (! $this->controlsNeeded($creature, 'attack')) {
+            return false;
+        }
         foreach ($this->keywords($creature) as $keyword) {
             if (preg_match("/^can't attack unless defending player controls an? (\w+)$/", $keyword, $m)
                 && array_filter($this->permanents($this->defender()), fn (GameObject $o) => in_array($m[1], $o->definition()->subtypes, true)) === []) {
@@ -7756,7 +7780,7 @@ final class Game
 
     public function canBlock(GameObject $blocker, GameObject $attacker): bool
     {
-        if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block")
+        if (! $this->isCreature($blocker) || $blocker->tapped || $blocker->zone !== GameObject::BATTLEFIELD || $blocker->controller !== $this->defender() || $this->hasKeyword($blocker, "can't block") || ! $this->controlsNeeded($blocker, 'block')
             || ($this->hasKeyword($blocker, 'unleash') && $blocker->counter('+1/+1') > 0)) {
             return false;
         }
