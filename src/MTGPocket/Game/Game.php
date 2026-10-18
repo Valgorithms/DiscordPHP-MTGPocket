@@ -4300,8 +4300,8 @@ final class Game
                 break;
 
             case 'draw':
-                if (($effect['each'] ?? null) === 'player') {
-                    foreach ($this->turnOrderSeats() as $seat) {
+                if (isset($effect['each'])) {
+                    foreach (array_filter($this->turnOrderSeats(), fn (int $seat) => $effect['each'] === 'player' || in_array($seat, $opponents, true)) as $seat) {
                         $this->draw($seat, $amount);
                     }
                     break;
@@ -4313,8 +4313,8 @@ final class Game
                 if ($effect['perOpponent'] ?? false) {
                     $amount *= count($opponents);
                 }
-                if (($effect['each'] ?? null) === 'player') {
-                    foreach ($this->turnOrderSeats() as $seat) {
+                if (isset($effect['each'])) {
+                    foreach (array_filter($this->turnOrderSeats(), fn (int $seat) => $effect['each'] === 'player' || in_array($seat, $opponents, true)) as $seat) {
                         $this->gainLife($seat, $amount);
                     }
                     break;

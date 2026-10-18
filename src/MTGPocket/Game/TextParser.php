@@ -3549,6 +3549,12 @@ final class TextParser
      */
     private static function sentenceEffects(string $sentence): ?array
     {
+        // `Each creature you control gets +1/+1 until end of turn.`: read as `Creatures you control get …`; `Each creature gets …` as `All creatures get …`.
+        if (preg_match('/^([Ee])ach (other )?creature( you control| your opponents control)? (gets|gains) (.+)$/', $sentence, $m) && ($m[2] === '' || $m[3] !== '')) {
+            $subject = $m[3] === '' ? 'All creatures' : ($m[2] !== '' ? 'Other creatures' : 'Creatures').$m[3];
+
+            return self::sentenceEffects(($m[1] === 'e' ? lcfirst($subject) : $subject).' '.substr($m[4], 0, -1).' '.$m[5]);
+        }
         // `Target Elf you control gets +2/+2 until end of turn.` and `Destroy target Dragon.`: read as a creature (you control), then narrowed to that type.
         if (preg_match('/\b[Tt]arget ([A-Z][a-z]+)( you control)?\b(?! card| spell| or| and|,)/', $sentence, $typed) && substr_count($sentence, 'arget ') === 1 && ($subtype = self::subtypeOf($typed[1])) === $typed[1]
             && ! in_array($subtype, ['Creature', 'Permanent', 'Nonland', 'Noncreature', 'Aura', 'Equipment', 'Vehicle', 'Treasure', 'Food', 'Clue', 'Blood', 'Map', 'Forest', 'Island', 'Swamp', 'Mountain', 'Plains', 'Saga', 'Gate', 'Desert', 'Cave', 'Town', 'Sphere', 'Lesson', 'Class', 'Room', 'Shrine', 'Curse', 'Role', 'Background', 'Case', 'Spacecraft', 'Planet', 'Incubator', 'Powerstone', 'Gold', 'Junk', 'Lander', 'Planeswalker', 'Battle', 'Player', 'Opponent', 'Spell', 'Card'], true)) {
@@ -4107,9 +4113,9 @@ final class TextParser
         if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
         }
-        // `Each player draws a card.`, `Each player gains 2 life.`: in turn order; see Game::applyEffect().
-        if (preg_match('/^each player (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[2] !== '' ? $m[2] : $m[3])) !== null) {
-            return ['type' => $m[2] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => 'player'];
+        // `Each player draws a card.`, `Each opponent gains 2 life.`: in turn order; see Game::applyEffect(). "Each other player" is each opponent.
+        if (preg_match('/^each (player|opponent|other player) (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[3] !== '' ? $m[3] : $m[4])) !== null) {
+            return ['type' => $m[3] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => strtolower($m[1]) === 'player' ? 'player' : 'opponent'];
         }
         if (preg_match('/^target player draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n, 'target' => 'player'];
