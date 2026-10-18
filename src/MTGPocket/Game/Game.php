@@ -2361,23 +2361,32 @@ final class Game
             $this->copySpell(end($this->stack), $seat, 'conspire');
         }
         $this->castTriggers($seat, $object);
-        $this->targetedTriggers($targets);
+        $this->targetedTriggers($targets, $seat);
         $this->settle();
     }
 
     /**
-     * `When this creature becomes the target of a spell or ability, …`
+     * `When this creature becomes the target of a spell or ability, …`, and
+     * the versions for an opponent's spell or ability.
      *
      * @param string[] $targets
+     * @param int      $seat    Who controls the spell or ability.
      *
      * @return void
      */
-    private function targetedTriggers(array $targets): void
+    private function targetedTriggers(array $targets, int $seat): void
     {
         foreach (array_unique($targets) as $target) {
             $object = str_starts_with($target, 'o:') ? $this->targetObject($target) : null;
             if ($object !== null && $object->zone === GameObject::BATTLEFIELD) {
                 $this->trigger($object, 'targeted', $object->controller);
+                // `Whenever CARDNAME (a creature you control) becomes the target of a spell or ability an opponent controls, …`
+                if ($object->controller !== $seat) {
+                    $this->trigger($object, 'targeted_by_opponent', $object->controller);
+                    foreach ($this->permanents($object->controller) as $permanent) {
+                        $this->trigger($permanent, 'yours_targeted_by_opponent', $object->controller, null, $object->id);
+                    }
+                }
             }
         }
     }
@@ -6416,7 +6425,7 @@ final class Game
             'label' => $label,
             'x' => $x,
         ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
-        $this->targetedTriggers($targets);
+        $this->targetedTriggers($targets, $seat);
         if ($cost['sacrifice'] ?? false) {
             $this->sacrifice($object);
             $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
