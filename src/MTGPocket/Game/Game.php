@@ -8581,6 +8581,10 @@ final class Game
                     $this->trigger($permanent, 'artifact_to_graveyard', $controller, null, $object->id);
                 }
             }
+            // `Whenever a land (an enchantment, a Treasure) you control is put into a graveyard from the battlefield, …`
+            foreach ([$object, ...$this->permanents($controller)] as $permanent) {
+                $this->trigger($permanent, 'permanent_to_graveyard_yours', $controller, null, $object->id);
+            }
         }
         // `When CARDNAME leaves the battlefield, …`
         if ($leaves) {
