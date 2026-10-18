@@ -3627,7 +3627,7 @@ final class TextParser
             return self::sentenceEffects("{$m[1]} X {$m[2]}, where X is the number of {$m[3]}");
         }
         // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
-        if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
+        if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?|[Mm]ills?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
             || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (?<to>to .+)$/', $sentence, $m)) {
             return self::sentenceEffects("{$m[1]} X {$m[2]}".(isset($m['to']) ? " {$m['to']}" : '').", where X is the number of {$m[3]}");
         }
@@ -3635,7 +3635,7 @@ final class TextParser
         // `Create X 1/1 … tokens, where X is the number of lands you control.` reads the same way.
         if ((preg_match('/^(.+) for each (?:(other creature|creature|artifact|land|enchantment|(?:other )?[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?(card) in your (graveyard|hand)|(opponent)(?: you have)?|(attacking creature)(?: you control)?)$/', $sentence, $m)
                 || (preg_match('/^(.+), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
-                    && str_contains($m[1], ' X ') && ($m[1] = preg_replace('/\b(create|draw|gain|loses?|deals?) X\b/i', '$1 1', $m[1], 1, $swapped)) !== null && $swapped === 1))
+                    && str_contains($m[1], ' X ') && ($m[1] = preg_replace('/\b(create|draw|gain|loses?|deals?|mills?) X\b/i', '$1 1', $m[1], 1, $swapped)) !== null && $swapped === 1))
             && ($found = self::effect($m[1])) !== null && in_array($found['type'], ['draw', 'gain_life', 'lose_life', 'token', 'damage', 'mill'], true)
             && ! isset($found['per']) && is_int($found['amount'] ?? 1) && ($per = self::per($m)) !== null) {
             return [['per' => $per] + $found];
@@ -4536,6 +4536,10 @@ final class TextParser
         // `it gets +1/+0 until end of turn for each other attacking creature`: any of them.
         if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each other attacking ([A-Z][a-z]+|creature)$/', $s, $m) && ($type = $m[3] === 'creature' ? 'creature' : self::subtypeOf($m[3])) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perAttacking' => $type];
+        }
+        // `Whenever CARDNAME becomes blocked, it deals 2 damage to each creature blocking it.`
+        if (preg_match('/^(?:CARDNAME|it) deals (\w+) damage to each creature blocking it$/', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'damage', 'amount' => $n, 'each' => 'blocking_self'];
         }
         // `Whenever CARDNAME becomes blocked, it gets +1/+1 until end of turn for each creature blocking it.`
         if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each creature blocking it$/', $s, $m)) {
