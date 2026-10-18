@@ -2332,6 +2332,11 @@ final class TextParser
             // See Game::pay(): the Nth total mana spent this turn.
             $event = "expend_{$match[1]}";
             $text = $match[2];
+        } elseif (preg_match('/^Whenever (a|another) creature you control becomes tapped, (.+)$/', $line, $match)) {
+            // See Game::checkStateBasedActions(): "it" is that creature.
+            $event = 'creature_becomes_tapped';
+            $extra = $match[1] === 'another' ? ['objectKind' => 'creature', 'other' => true] : [];
+            $text = $match[2];
         } elseif (preg_match('/^Whenever you commit a crime, (.+)$/', $line, $match)) {
             // See Game::targetedTriggers().
             $event = 'you_commit_crime';
@@ -2627,7 +2632,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_tapped', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         if ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
             $effects = [['type' => 'attach', 'entering' => true]];
         } elseif ($entering && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
