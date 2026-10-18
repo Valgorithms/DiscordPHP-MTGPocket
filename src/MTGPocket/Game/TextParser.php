@@ -2696,6 +2696,10 @@ final class TextParser
             }
             $text = $match['rest'];
         }
+        // `Whenever CARDNAME deals combat damage to a player, destroy target artifact that player controls.`: with two players, the opponent's.
+        if ($event === 'combat_damage' && self::effects($text) === null && preg_match('/\btarget [a-z ,]+ that player controls\b/', $text)) {
+            $text = (string) preg_replace('/\b(target [a-z ,]+) that player controls\b/', '$1 an opponent controls', $text);
+        }
         // `Whenever CARDNAME deals combat damage to a player, that player discards a card.`: the opponent, untargeted.
         if (in_array($event, ['combat_damage', 'opponent_cast', 'opponent_cast_kind'], true) && self::effects($text) === null && preg_match('/^that player (discards|loses|mills|sacrifices) /', $text)) {
             $text = 'each opponent '.substr($text, strlen('that player '));
