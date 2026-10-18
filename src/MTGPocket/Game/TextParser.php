@@ -3322,6 +3322,13 @@ final class TextParser
             return $found;
         }
         // "… to up to one target creature": the same effect with its one target optional.
+        // "up to one other target …" is the optional form of "another target …".
+        if (str_contains($sentence, 'up to one other target ') && ($found = self::sentenceEffects(preg_replace('/\bup to one other target /', 'another target ', $sentence, 1))) !== null
+            && count($withTarget = array_keys(array_filter($found, fn (array $effect) => isset($effect['target'])))) === 1) {
+            $found[$withTarget[0]]['target'] = '?'.$found[$withTarget[0]]['target'];
+
+            return $found;
+        }
         if (str_contains($sentence, 'up to one target ') && ($found = self::sentenceEffects(preg_replace('/\bup to one target /', 'target ', $sentence, 1))) !== null
             && count($withTarget = array_keys(array_filter($found, fn (array $effect) => isset($effect['target'])))) === 1) {
             $found[$withTarget[0]]['target'] = '?'.$found[$withTarget[0]]['target'];
