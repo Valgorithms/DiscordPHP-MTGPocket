@@ -2599,11 +2599,11 @@ final class TextParser
             $event = 'permanent_turned_face_up';
             $extra = ['objectKind' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
-        } elseif (preg_match('/^Whenever (a|another) creature you control becomes tapped, (.+)$/', $line, $match)) {
-            // See Game::checkStateBasedActions(): "it" is that creature.
+        } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control becomes tapped, (.+)$/', $line, $match) && ($match[2] === 'creature' || self::subtypeOf($match[2]) === $match[2])) {
+            // See Game::checkStateBasedActions(): "it" is that creature. `Whenever an Elf you control becomes tapped, …` by subtype.
             $event = 'creature_becomes_tapped';
-            $extra = $match[1] === 'another' ? ['objectKind' => 'creature', 'other' => true] : [];
-            $text = $match[2];
+            $extra = $match[1] === 'another' || $match[2] !== 'creature' ? ['objectKind' => $match[2], 'other' => $match[1] === 'another'] : [];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever you commit a crime, (.+)$/', $line, $match)) {
             // See Game::targetedTriggers().
             $event = 'you_commit_crime';
@@ -2923,7 +2923,7 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
@@ -2945,6 +2945,8 @@ final class TextParser
                 $match[1] === 'an opponent has more life than you' => 'life_behind',
                 // Lorwyn: `When this creature enters, if you control another Elf, …`.
                 ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
+                // `if an opponent controls a creature with flying` / `… an artifact`.
+                ($match['theirs'] ?? '') !== '' => $match['theirs'] === 'creature with flying' ? 'opp_flier' : 'opp_controls '.ucfirst($match['theirs']),
                 ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
                 ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
                 ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),

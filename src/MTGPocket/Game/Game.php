@@ -5879,6 +5879,8 @@ final class Game
             'main_phase' => $this->active === $controller && in_array($this->step, [Step::PrecombatMain, Step::PostcombatMain], true),
             'attacking' => isset($this->attackers[$source->id]),
             'controls' => array_filter($this->permanents($controller), fn (GameObject $o) => (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
+            'opp_controls' => array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller && (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
+            'opp_flier' => array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller && $this->isCreature($o) && $this->hasKeyword($o, 'flying')) !== [],
             // `if you control two or more other Elves`.
             'controls_others' => count(array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && (in_array(explode('_', $n)[0], $o->definition()->subtypes, true) || $o->definition()->is(explode('_', $n)[0])))) >= (int) (explode('_', $n)[1] ?? 1),
             'controls_other' => array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
