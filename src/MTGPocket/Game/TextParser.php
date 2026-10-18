@@ -3366,6 +3366,11 @@ final class TextParser
             && ($found = self::effect("{$m[1]} 1 ".($m[2] === 'cards' ? 'card' : 'life'))) !== null && in_array($found['type'], ['gain_life', 'lose_life', 'draw'], true) && ($found['amount'] ?? null) === 1) {
             return [['amount' => 'self_'.$m[3]] + $found];
         }
+        // `Put a +1/+1 counter on target creature, then double the number of +1/+1 counters on it.`
+        if (preg_match('/^(.+), then double the number of \\+1\\/\\+1 counters on (?:it|that creature)$/i', $sentence, $m)
+            && ($first = self::sentenceEffects($m[1])) !== null && count($first) === 1 && in_array($first[0]['target'] ?? null, self::CREATURE_KINDS, true)) {
+            return [$first[0], ['type' => 'double_counters', 'sameTarget' => true]];
+        }
         // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
         if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
             || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (to .+)$/', $sentence, $m)) {
@@ -3839,6 +3844,11 @@ final class TextParser
             $optional = ($m[1] ?? '') !== '' || stripos($s, 'you may') === 0;
 
             return ['type' => 'fight', 'target' => ($optional ? '?' : '').self::TARGETS[strtolower($m[2])], 'mutual' => true, 'selfFight' => true];
+        }
+        // `Double the number of +1/+1 counters on target creature.`
+        if (preg_match("/^double the number of \\+1\\/\\+1 counters on ({$targets}|CARDNAME)$/i", $s, $m)
+            && ($m[1] === 'CARDNAME' || in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true))) {
+            return ['type' => 'double_counters'] + ($m[1] === 'CARDNAME' ? ['self' => true] : ['target' => self::TARGETS[strtolower($m[1])]]);
         }
         // Infernal Phantom: `When CARDNAME dies, it deals damage equal to its power to any target.` (its power as it last was).
         if (preg_match("/^(?:CARDNAME|it) deals damage equal to its power to ({$targets})$/i", $s, $m)) {

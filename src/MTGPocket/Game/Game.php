@@ -4556,6 +4556,14 @@ final class Game
                 $affected?->addCounters($effect['kind'] ?? '+1/+1', $amount);
                 break;
 
+            case 'double_counters':
+                // Rule 701.10e: put as many +1/+1 counters on it as it already has.
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD && $affected->counter('+1/+1') > 0) {
+                    $affected->addCounters('+1/+1', $affected->counter('+1/+1'));
+                    $this->log("{$affected->name()} now has {$affected->counter('+1/+1')} +1/+1 counters.");
+                }
+                break;
+
             case 'endure':
                 // Endure N: counters while it's here, else an N/N Spirit.
                 if ($source->zone === GameObject::BATTLEFIELD) {
