@@ -4082,6 +4082,13 @@ final class TextParser
 
             return true;
         }
+        // `If it's a Human, it also gains indestructible until end of turn.`: only when the same creature has that type as this resolves.
+        if (preg_match("/^If it's an? ([A-Z][a-z]+), (it|that creature) also ((?:gets|gains) .+ until end of turn)$/", $sentence, $m) && ($subtype = self::subtypeOf($m[1])) !== null
+            && (isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false)) && self::modifies(ucfirst($m[2]).' '.$m[3], $effects)) {
+            $effects[array_key_last($effects)]['ifTargetSubtype'] = $subtype;
+
+            return true;
+        }
         // "It gains haste until end of turn." after an effect with a target: the same creature. `It must be blocked this turn if able.` reads the same way.
         $sentence = (string) preg_replace('/^(It|That creature) must be blocked this turn if able$/', '$1 gains must be blocked if able until end of turn', $sentence);
         if ((isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false))
