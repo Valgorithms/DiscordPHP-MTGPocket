@@ -2592,6 +2592,12 @@ final class TextParser
 
                 return true;
             }
+        } elseif (preg_match('/^Whenever one or more (other )?creatures (?:you control enter|enter(?: the battlefield)? under your control)(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] !== '' || ! self::$creature)
+            && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[2])) {
+            // Once per batch, such as several tokens created together; see Game::putOntoBattlefield().
+            $match = [$m2[0], $m2[2]];
+            $event = 'creatures_enter_other';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever (?:another|(a)) creature you control enters(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] === '' || ! self::$creature)) {
             // "a creature" on a noncreature (an Equipment) is any other creature.
             $match = [$m2[0], $m2[2]];

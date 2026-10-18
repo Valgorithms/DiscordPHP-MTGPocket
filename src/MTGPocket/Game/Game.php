@@ -4591,8 +4591,10 @@ final class Game
                 // Beast Within: the destroyed permanent's last controller.
                 $for = isset($effect['toController']) && $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null)?->controller ?? $controller : $controller;
                 $this->creatingTokens = true;
+                $created = [];
                 for ($i = 0; $i < $amount; $i++) {
                     $token = $this->createToken((array) $effect['token'], $for);
+                    $created[] = $token;
                     if ($effect['haste'] ?? false) {
                         $token->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
                     }
@@ -4614,6 +4616,9 @@ final class Game
                 $this->creatingTokens = false;
                 foreach ($amount > 0 ? $this->permanents($for) : [] as $permanent) {
                     $this->trigger($permanent, 'you_create_tokens', $for);
+                    if (array_filter($created, fn (GameObject $token) => $token->id !== $permanent->id && $token->zone === GameObject::BATTLEFIELD && $this->isCreature($token)) !== []) {
+                        $this->trigger($permanent, 'creatures_enter_other', $for);
+                    }
                 }
                 $this->log("{$this->players[$for]->name} creates {$amount} {$effect['token']['name']}".($amount === 1 ? '' : 's').'.');
                 break;
@@ -8335,6 +8340,10 @@ final class Game
                 foreach ($this->permanents($controller) as $permanent) {
                     if ($permanent->id !== $object->id) {
                         $this->trigger($permanent, 'creature_enters_other', $controller, null, $object->id);
+                        // `Whenever one or more other creatures you control enter, …`: tokens created together trigger it once; see Game::applyEffect().
+                        if (! $this->creatingTokens) {
+                            $this->trigger($permanent, 'creatures_enter_other', $controller);
+                        }
                         if (in_array('Ally', $object->definition()->subtypes, true)) {
                             $this->trigger($permanent, 'ally_enters_other', $controller);
                         }
