@@ -7980,6 +7980,14 @@ final class Game
             }
             // Boros Reckoner: `Whenever CARDNAME is dealt damage, it deals that much damage to any target.`: the amount is the context.
             $this->trigger($object, 'dealt_damage', $object->controller, null, $amount);
+            // `Whenever CARDNAME deals damage to a creature, destroy that creature.`: that creature, not targeted.
+            foreach ($this->isCreature($object) && $source->zone === GameObject::BATTLEFIELD ? $source->definition()->triggersOn('damages_creature') : [] as $ability) {
+                $this->pendingTriggers[] = [
+                    'source' => $source->id, 'incarnation' => $source->incarnation, 'controller' => $source->controller,
+                    'effects' => $ability['effects'], 'kinds' => $kinds = self::targetKindsOf($ability['effects']), 'targets' => $kinds === [] ? [] : ["o:{$object->id}:{$object->incarnation}"],
+                    'label' => "{$source->name()}'s ability", 'text' => str_replace('CARDNAME', $source->name(), $ability['text']),
+                ];
+            }
         }
         if ($this->hasKeyword($source, 'lifelink')) {
             $this->gainLife($source->controller, $amount);
