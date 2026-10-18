@@ -2928,6 +2928,9 @@ final class Game
         }
         $caster = $this->players[$seat];
         [$caster->cast, $caster->castTurn] = [$caster->castTurn === $this->turn ? $caster->cast + 1 : 1, $this->turn];
+        if (! $card->isCreature()) {
+            $caster->noncreatureCastTurn = $this->turn;
+        }
         $events = [...($caster->cast === 1 ? ['first_spell'] : []), ...($caster->cast === 2 ? ['second_spell'] : []), ...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : []),
             ...array_map(fn (string $color) => "cast_color_{$color}", $card->colors), ...(count($card->colors) > 1 ? ['cast_multicolored'] : [])];
@@ -5769,6 +5772,7 @@ final class Game
             'controls' => array_filter($this->permanents($controller), fn (GameObject $o) => (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
             'controls_other' => array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
             'not_your_turn' => $this->active !== $controller,
+            'cast_noncreature' => $this->players[$controller]->noncreatureCastTurn === $this->turn,
             'hand_le' => count($this->players[$controller]->hand) <= (int) $n,
             'hand_ge' => count($this->players[$controller]->hand) >= (int) $n,
             'opp_life_le' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life <= (int) $n) !== [],
