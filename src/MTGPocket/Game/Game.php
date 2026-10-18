@@ -10105,6 +10105,10 @@ final class Game
                 if (($anthem['self'] ?? false) && ($source->id !== $object->id || ! $this->conditionMet($anthem['if'], $source, $source->controller))) {
                     continue;
                 }
+                // `Creatures you control get +1/+0 as long as it's your turn.`
+                if (! ($anthem['self'] ?? false) && isset($anthem['if']) && ! $this->conditionMet($anthem['if'], $source, $source->controller)) {
+                    continue;
+                }
                 if ((isset($anthem['color']) && ! in_array($anthem['color'], $object->definition()->colors, true)) || (($anthem['attacking'] ?? false) && ! isset($this->attackers[$object->id])) || (($anthem['artifact'] ?? false) && ! $object->definition()->is('Artifact'))
                     || (isset($anthem['token']) && $anthem['token'] !== $object->definition()->isToken())) {
                     continue;
