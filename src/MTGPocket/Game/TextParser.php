@@ -2195,7 +2195,7 @@ final class TextParser
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
             'is put into a graveyard from the battlefield' => 'to_graveyard', 'is put into a graveyard from anywhere' => 'to_graveyard_anywhere', 'becomes blocked' => 'blocked',
-            'blocks' => 'blocks', 'leaves the battlefield' => 'leaves',
+            'blocks' => 'blocks', 'leaves the battlefield' => 'leaves', 'blocks a creature' => 'blocks_creature', 'becomes blocked by a creature' => 'blocked_by_creature',
         ];
         $casts = [
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
@@ -2264,7 +2264,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability you control|becomes the target of a spell or ability|becomes blocked|becomes tapped|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability you control|becomes the target of a spell or ability|becomes blocked by a creature|becomes blocked|becomes tapped|blocks a creature|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -2498,6 +2498,12 @@ final class TextParser
             $event = 'artifact_to_graveyard';
             $extra = ['objectKind' => 'artifact', 'other' => $match[1] === 'another'] + ($match[2] !== '' ? ['nontoken' => true] : []);
             $text = $match[3];
+        } elseif (preg_match('/^Whenever (an?|another) (enchantment|land|permanent|nontoken permanent|Treasure|Food|Clue|Blood|[A-Z][a-z]+) you control is put into a graveyard( from the battlefield)?, (.+)$/', $line, $match)
+            && ($match[3] !== '' || in_array($match[2], ['Treasure', 'Food', 'Clue', 'Blood'], true)) && ! preg_match('/\b(it|its|that (?:card|permanent|land|enchantment))\b/', $match[4])) {
+            // See Game::moveTo(): itself too, unless "another". A token goes to a graveyard only from the battlefield.
+            $event = 'permanent_to_graveyard_yours';
+            $extra = ['objectKind' => $match[2], 'other' => $match[1] === 'another'];
+            $text = $match[4];
         } elseif (preg_match('/^Whenever (you sacrifice|a player sacrifices|an opponent sacrifices) (a|an|another) (permanent|creature|artifact|enchantment|land|token|nontoken creature|[A-Z][a-z]+), (.+)$/', $line, $match)
             && ! preg_match('/\b(it|its|that (?:permanent|creature|artifact|enchantment|land|token|player))\b/', $match[4])) {
             // `Whenever you sacrifice a permanent, …`, Mayhem Devil's `Whenever a player sacrifices a permanent, …`: see Game::sacrifice().
@@ -2652,7 +2658,11 @@ final class TextParser
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
         $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_blocks', 'creature_becomes_tapped', 'creature_explores', 'permanent_turned_face_up', 'opponent_creature_attacks', 'creature_combat_damage', 'creature_combat_damage_other'], true);
-        if ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
+        // `Whenever CARDNAME blocks (becomes blocked by) a creature, that creature gets -1/-0 …`: the other creature; "it" stays CARDNAME.
+        if (in_array($event, ['blocks_creature', 'blocked_by_creature'], true) && str_contains($text, 'that creature') && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
+            $effects = self::effects(str_replace('that creature', 'CARDNAME', $text));
+            $effects = $effects === null ? null : array_map(fn (array $effect) => ($effect['self'] ?? false) ? ['entering' => true] + array_diff_key($effect, ['self' => true]) : $effect, $effects);
+        } elseif ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
             $effects = [['type' => 'attach', 'entering' => true]];
         } elseif ($entering && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
             $effects = self::effects(preg_replace('/\b(?:it|that creature)\b/', 'CARDNAME', $text));
