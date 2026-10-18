@@ -3044,6 +3044,21 @@ final class TextParser
         if (preg_match('/^you may behold an? ([A-Z][a-z]+)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text] = ["behold {$match[1]}", $match[2]];
         }
+        // `you may discard a card. When you do, …`; `If you do, draw a card.` is read as a discard effect instead.
+        if (preg_match('/^you may discard a card\. (?:If|When) you do, (.+)$/u', $text, $match) && self::effects($text) === null) {
+            [$pay, $text] = ['discard', $match[1]];
+        }
+        // `you may sacrifice a Treasure (it). If you do, …`, `you may pay 2 life. …`, `you may mill two cards. …`: see Game's `pay` effect.
+        if (preg_match('/^you may (?:sacrifice (?:an? ([A-Z][a-z]+)|(it|CARDNAME))|pay (\w+) life|mill (\w+) cards?)\. (?:If|When) you do, (.+)$/u', $text, $match)
+            && (($match[1] ?? '') === '' || self::subtypeOf($match[1]) !== null)) {
+            $pay = match (true) {
+                $match[1] !== '' => 'sacrifice sub:'.self::subtypeOf($match[1]),
+                $match[2] !== '' => 'sacrifice self',
+                $match[3] !== '' => 'life '.self::amount($match[3]),
+                default => 'mill '.self::amount($match[4]),
+            };
+            $text = $match[5];
+        }
         // `you may forage. If you do, …` and `you may tap an untapped creature you control. If you do, …`: see Game's `pay` effect.
         if (preg_match('/^you may forage\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text] = ['forage', $match[1]];

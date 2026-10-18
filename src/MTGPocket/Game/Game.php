@@ -981,7 +981,9 @@ final class Game
             $this->pendingChoice['seat'] = array_shift($this->pendingChoice['next']);
         } else {
             $this->pendingChoice = null;
-            $this->runSteps($choice['resume']['item'], $choice['resume']['steps'], $choice['resume']['self']);
+            // `you may discard a card. When you do, …`: what discarding pays for comes first.
+            $steps = $ids !== [] ? [...$choice['then'] ?? [], ...$choice['resume']['steps']] : $choice['resume']['steps'];
+            $this->runSteps($choice['resume']['item'], $steps, $choice['resume']['self']);
         }
         $this->settle();
     }
@@ -5528,6 +5530,42 @@ final class Game
                         foreach ($effect['then'] as $then) {
                             $this->applyEffect($then, $source, $self, $controller, $x, $target);
                         }
+                    }
+                    break;
+                }
+                // `you may discard a card. When you do, …`: its controller chooses, as with `If you do, draw a card.`; see discard().
+                if ($effect['cost'] === 'discard') {
+                    if ($this->players[$controller]->hand !== []) {
+                        $this->pendingChoice = ['type' => 'discard', 'seat' => $controller, 'count' => 1, 'next' => [], 'may' => true, 'then' => array_map(fn (array $then) => [$then, $target], $effect['then'])];
+
+                        return true;
+                    }
+                    break;
+                }
+                // `you may sacrifice a Food (it, CARDNAME). If you do, …`, `you may mill two cards. …`: whenever it can.
+                // `you may pay 2 life. …`: while 10 or more life would be left.
+                if (preg_match('/^(?:sacrifice (?:self|sub:(\w+))|mill (\d+)|life (\d+))$/', $effect['cost'], $m)) {
+                    $paid = match (true) {
+                        ($m[1] ?? '') !== '' => $this->fodder($controller, $source, "any {$m[1]}"),
+                        ($m[2] ?? '') !== '' => true,
+                        ($m[3] ?? '') !== '' => $this->players[$controller]->life - (int) $m[3] >= 10,
+                        default => $self !== null && $self->zone === GameObject::BATTLEFIELD && $self->controller === $controller ? $self : null,
+                    };
+                    if ($paid === null || $paid === false) {
+                        break;
+                    }
+                    if ($paid instanceof GameObject) {
+                        $this->log("{$this->players[$controller]->name} sacrifices {$paid->name()} for {$source->name()}.");
+                        $this->sacrifice($paid);
+                    } elseif (($m[2] ?? '') !== '') {
+                        $this->mill($controller, (int) $m[2]);
+                    } else {
+                        $this->players[$controller]->life -= (int) $m[3];
+                        $this->lostLife($controller);
+                        $this->log("{$this->players[$controller]->name} pays {$m[3]} life for {$source->name()}.");
+                    }
+                    foreach ($effect['then'] as $then) {
+                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
                     }
                     break;
                 }
