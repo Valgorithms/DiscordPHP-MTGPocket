@@ -8539,13 +8539,16 @@ final class Game
     private function checkStateBasedActions(): void
     {
         $this->updateSpeed();
-        // `Whenever CARDNAME becomes tapped, …`: compared with the last check, wherever it was tapped.
+        // `Whenever CARDNAME (a creature you control) becomes tapped, …`: compared with the last check, wherever it was tapped.
         $tapped = [];
         foreach ($this->permanents() as $object) {
-            if ($object->tapped && $object->definition()->triggersOn('becomes_tapped') !== []) {
+            if ($object->tapped) {
                 $tapped[] = $object->id;
                 if (! in_array($object->id, $this->seenTapped, true)) {
                     $this->trigger($object, 'becomes_tapped', $object->controller);
+                    foreach ($this->isCreature($object) ? $this->permanents($object->controller) : [] as $permanent) {
+                        $this->trigger($permanent, 'creature_becomes_tapped', $permanent->controller, null, $object->id);
+                    }
                 }
             }
         }
