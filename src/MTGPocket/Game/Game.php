@@ -5531,6 +5531,37 @@ final class Game
                     }
                     break;
                 }
+                // `you may forage. If you do, …`: three cards from your graveyard, else a Food, whenever it can.
+                if ($effect['cost'] === 'forage') {
+                    $exiled = $this->graveFodder($controller, 3);
+                    $food = $exiled === null ? $this->fodder($controller, $source, 'any Food') : null;
+                    if ($exiled !== null || $food !== null) {
+                        foreach ($exiled ?? [] as $card) {
+                            $this->moveTo($card, GameObject::EXILE);
+                        }
+                        if ($food !== null) {
+                            $this->sacrifice($food);
+                        }
+                        $this->log("{$this->players[$controller]->name} forages for {$source->name()}.");
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        }
+                    }
+                    break;
+                }
+                // `you may tap an untapped creature you control. If you do, …`: the weakest one, whenever there is one.
+                if (preg_match('/^tap (creature|artifact)( other)?$/', $effect['cost'], $m)) {
+                    $tapped = $this->weakest($controller, fn (GameObject $o) => ! $o->tapped && (($m[2] ?? '') === '' || $o->id !== $source->id)
+                        && ($m[1] === 'creature' ? $this->isCreature($o) : $o->definition()->is('Artifact')));
+                    if ($tapped !== null) {
+                        $tapped->tapped = true;
+                        $this->log("{$this->players[$controller]->name} taps {$tapped->name()} for {$source->name()}.");
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        }
+                    }
+                    break;
+                }
                 // `you may collect evidence 4. If you do, …`: when the graveyard has enough, highest mana values first; see evidence().
                 if (preg_match('/^evidence (\d+)$/', $effect['cost'], $m)) {
                     if (($evidence = $this->evidence($controller, $source->id, (int) $m[1])) !== null) {
@@ -5546,7 +5577,7 @@ final class Game
                 }
                 // `you may sacrifice another creature. If you do, …`: only something cheap to lose, a token or a small creature.
                 if (preg_match('/^sacrifice (\w+)( other)?$/', $effect['cost'], $m)) {
-                    $fodder = $this->weakest($controller, fn (GameObject $o) => ($m[2] === '' || $o->id !== $source->id)
+                    $fodder = $this->weakest($controller, fn (GameObject $o) => (($m[2] ?? '') === '' || $o->id !== $source->id)
                         && ($m[1] === 'permanent' || ($m[1] === 'creature' ? $this->isCreature($o) : $o->definition()->is(ucfirst($m[1])))));
                     if ($fodder !== null && ($fodder->definition()->isToken() || ($this->isCreature($fodder) && $this->power($fodder) + $this->toughness($fodder) <= 2))) {
                         $this->log("{$this->players[$controller]->name} sacrifices {$fodder->name()} for {$source->name()}.");

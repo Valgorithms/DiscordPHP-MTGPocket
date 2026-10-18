@@ -3044,6 +3044,13 @@ final class TextParser
         if (preg_match('/^you may behold an? ([A-Z][a-z]+)\. (?:If|When) you do, (.+)$/u', $text, $match)) {
             [$pay, $text] = ["behold {$match[1]}", $match[2]];
         }
+        // `you may forage. If you do, …` and `you may tap an untapped creature you control. If you do, …`: see Game's `pay` effect.
+        if (preg_match('/^you may forage\. (?:If|When) you do, (.+)$/u', $text, $match)) {
+            [$pay, $text] = ['forage', $match[1]];
+        }
+        if (preg_match('/^you may tap (an|another) untapped (creature|artifact) you control\. (?:If|When) you do, (.+)$/u', $text, $match)) {
+            [$pay, $text] = ["tap {$match[2]}".($match[1] === 'another' ? ' other' : ''), $match[3]];
+        }
         // `you may collect evidence 6. If you do, …` (rule 701.59): see Game's `pay` effect.
         if (preg_match('/^(?:you may )?collect evidence (\d+)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[2], 'target')) {
             [$pay, $text] = ["evidence {$match[1]}", $match[2]];
