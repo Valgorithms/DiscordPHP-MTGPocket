@@ -4662,7 +4662,7 @@ final class Game
                 // `Untap all creatures you control.` / `Tap all creatures your opponents control.`
                 if (isset($effect['each'])) {
                     foreach ($this->permanents() as $object) {
-                        if ($this->isCreature($object) && ($object->controller === $controller) === ($effect['each'] === 'yours')) {
+                        if ($this->isCreature($object) && ($object->controller === $controller) === ($effect['each'] === 'yours') && ! (($effect['other'] ?? false) && $object->id === $source->id)) {
                             $object->tapped = $effect['type'] === 'tap';
                         }
                     }

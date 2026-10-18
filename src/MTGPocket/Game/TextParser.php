@@ -3476,6 +3476,11 @@ final class TextParser
             && ($found = self::effect($m[1])) !== null && isset($found['xPump']) && ! isset($found['amount']) && ($per = self::per($m)) !== null) {
             return [['amount' => 1, 'per' => $per] + $found];
         }
+        // `Target creature gets +1/+1 until end of turn for each Elf you control.`: an X pump, N for each, counted as it resolves.
+        if (preg_match('/^(.+ gets?) ([+-])(\d+)\/([+-])(\d+) until end of turn for each (other creature|creature|artifact|land|enchantment|(?:other )?[A-Z][a-z]+) you control$/', $sentence, $m)
+            && ($found = self::effect("{$m[1]} {$m[2]}X/{$m[4]}X until end of turn")) !== null && isset($found['xPump']) && ! isset($found['amount']) && ($per = self::per([2 => $m[6]])) !== null) {
+            return [['amount' => 1, 'per' => $per, 'xPump' => [(int) ($m[2].$m[3]), (int) ($m[4].$m[5])]] + $found];
+        }
         // Fire // Ice: `CARDNAME deals 2 damage divided as you choose among one or two targets.`; split evenly, the rest to the first (see Game::runSteps()).
         if (preg_match('/^CARDNAME deals (\w+) damage divided as you choose among (one or two|one, two, or three|any number of) targets$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1) {
             $slots = min($n, match (strtolower($m[2])) {
@@ -4392,8 +4397,9 @@ final class TextParser
         if (preg_match('/^put its counters on target creature you control$/i', $s)) {
             return ['type' => 'counters', 'amount' => 'counters', 'target' => 'creature_you_control'];
         }
-        if (preg_match('/^(tap|untap) all creatures (you control|your opponents control)$/i', $s, $m)) {
-            return ['type' => strtolower($m[1]), 'each' => strtolower($m[2]) === 'you control' ? 'yours' : 'theirs'];
+        // Ahn-Crop Champion: `untap all other creatures you control`; all but the source.
+        if (preg_match('/^(tap|untap) all (other )?creatures (you control|your opponents control)$/i', $s, $m) && ($m[2] === '' || strtolower($m[3]) === 'you control')) {
+            return ['type' => strtolower($m[1]), 'each' => strtolower($m[3]) === 'you control' ? 'yours' : 'theirs'] + ($m[2] !== '' ? ['other' => true] : []);
         }
         // Bolster (rule 701.39): counters on your creature with the least toughness.
         if (preg_match('/^bolster (\w+)$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
