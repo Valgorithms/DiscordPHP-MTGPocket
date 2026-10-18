@@ -1779,6 +1779,17 @@ final class TextParser
             $text === "it's not your turn" => 'not_your_turn',
             (bool) preg_match('/^you have (\w+) or fewer cards in hand$/', $text, $m) && is_int($n = self::amount($m[1])) => "hand_le {$n}",
             (bool) preg_match('/^there are (\w+) or more card types among cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "delirium {$n}",
+            (bool) preg_match('/^you control (\w+) or more creatures$/', $text, $m) && is_int($n = self::amount($m[1])) => "creatures {$n}",
+            (bool) preg_match('/^you have (\w+) or more cards in your graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "graveyard {$n}",
+            (bool) preg_match('/^you have (\w+) or more cards in hand$/', $text, $m) && is_int($n = self::amount($m[1])) => "hand_ge {$n}",
+            $text === 'you have no cards in hand' => 'hand_le 0',
+            (bool) preg_match('/^an opponent has (\w+) or less life$/', $text, $m) && is_int($n = self::amount($m[1])) => "opp_life_le {$n}",
+            $text === 'you gained life this turn' => 'gained 1',
+            $text === 'you attacked this turn' => 'attacked',
+            $text === 'a creature died this turn' => 'died 1',
+            $text === 'an opponent lost life this turn' => 'opponent_lost',
+            $text === 'it has a +1/+1 counter on it' => 'has_counter',
+            $text === 'you control no other creatures' => 'alone',
             default => null,
         };
     }
