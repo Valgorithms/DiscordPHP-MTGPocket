@@ -4103,12 +4103,18 @@ final class TextParser
             && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => 'yours', 'subtype' => $type];
         }
+        // `Other attacking creatures you control get +1/+0 until end of turn.`: all but CARDNAME.
+        $other = preg_match('/^other (creatures you control|attacking creatures you control|attacking creatures) (get|gain) /i', $s) === 1;
+        $s = $other ? substr($s, 6) : $s;
         if (preg_match("/^({$group}) get ([+-]\\d+)\\/([+-]\\d+)(?: and gain (.+?))? until end of turn$/i", $s, $m)
             && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
-            return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]];
+            return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]] + ($other ? ['other' => true] : []);
         }
         if (preg_match("/^({$group}) gain (.+?) until end of turn$/i", $s, $m) && ($keywords = self::keywordList($m[2])) !== null) {
-            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]];
+            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]] + ($other ? ['other' => true] : []);
+        }
+        if ($other) {
+            return null;
         }
         // Shrewd Hatchling: `Target creature can't block CARDNAME this turn.`
         if (preg_match("/^({$targets}) can't block CARDNAME this turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {

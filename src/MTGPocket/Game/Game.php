@@ -4515,7 +4515,7 @@ final class Game
                 };
                 $subtype = ($effect['subtype'] ?? null) === 'chosen' ? $this->chosenType ?? $this->choiceFor($controller, 'type') : $effect['subtype'] ?? null;
                 foreach ($pumped as $object) {
-                    if (isset($effect['each']) && ! $this->isCreature($object)) {
+                    if (isset($effect['each']) && ! $this->isCreature($object) || (($effect['other'] ?? false) && $object->id === $source->id)) {
                         continue;
                     }
                     // `If that creature would die this turn, exile it instead.`
