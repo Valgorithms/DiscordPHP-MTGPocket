@@ -6340,6 +6340,10 @@ final class Game
 
             return $match[2] === 'greater' ? $value >= (int) $match[1] : $value <= (int) $match[1];
         }
+        // `a creature you control with flying`: as it is now.
+        if (preg_match('/^creature with ([a-z ]+)$/', $kind, $match) && ! str_contains($kind, 'or greater')) {
+            return $this->isCreature($object) && $this->hasKeyword($object, $match[1]);
+        }
         // `a creature spell with power 4 or greater`: as printed, or as it is on the battlefield.
         if (preg_match('/^creature with (power|toughness) (\d+) or greater$/', $kind, $match)) {
             $onField = $object->zone === GameObject::BATTLEFIELD;
