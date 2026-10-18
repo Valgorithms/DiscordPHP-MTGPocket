@@ -1544,6 +1544,13 @@ final class TextParser
 
             return true;
         }
+        // Elvish Archdruid: `{T}: Add {G} for each Elf you control.`; see Game::manaSources().
+        if (preg_match('/^\{T\}: Add \{([WUBRGC])\} for each (creature|artifact|[A-Z][a-z]+) you control\.$/', $line, $match) && $result['mana'] === null
+            && ($kind = $match[2] === 'creature' ? 'Creature' : ($match[2] === 'artifact' ? 'Artifact' : self::subtypeOf($match[2]))) !== null) {
+            $result['mana'] = ['count' => 1, 'colors' => [$match[1]], 'same' => true, 'countPer' => $kind];
+
+            return true;
+        }
         // Topiary Lecturer: `{T}: Add an amount of {G} equal to CARDNAME's power.`; see Game::manaSources().
         if (preg_match("/^\{T\}: Add an amount of \{([WUBRGC])\} equal to CARDNAME's power\.$/", $line, $match) && $result['mana'] === null) {
             $result['mana'] = ['count' => 1, 'colors' => [$match[1]], 'same' => true, 'powerCount' => true];
@@ -2914,7 +2921,7 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
@@ -2936,6 +2943,7 @@ final class TextParser
                 $match[1] === 'an opponent has more life than you' => 'life_behind',
                 // Lorwyn: `When this creature enters, if you control another Elf, …`.
                 ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
+                ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
                 ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
                 ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
                 ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
@@ -4326,6 +4334,11 @@ final class TextParser
             && in_array($kind = self::TARGETS[strtolower($m[1])], ['creature_card_yours', 'creature_card_yours_other', 'legendary_creature_card_yours', 'card_yours', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours'], true)
             && ($m[2] === 'your hand' ? ! isset($m[3]) : ! in_array($kind, ['card_yours', 'instant_sorcery_card_yours'], true))) {
             return ['type' => $m[2] === 'your hand' ? 'bounce' : 'reanimate', 'target' => $kind] + (isset($m[3]) ? ['tapped' => true] : []);
+        }
+        // `Return target Elf card from your graveyard to your hand.`: any card with that subtype.
+        if (preg_match('/^[Rr]eturn target ([A-Z][a-z]+) card from your graveyard to your hand$/', $s, $m)
+            && ! in_array($m[1], ['Creature', 'Land', 'Artifact', 'Enchantment', 'Instant', 'Sorcery', 'Permanent', 'Legendary', 'Planeswalker', 'Nonland', 'Noncreature', 'Spirit', 'Historic', 'Basic', 'Nonbasic'], true)) {
+            return ['type' => 'bounce', 'target' => "subtype_card_yours_{$m[1]}"];
         }
         // `Return target creature card with mana value 3 or less from your graveyard to the battlefield.`
         if (preg_match("/^return ({$targets}) to (your hand|the battlefield)$/i", $s, $m) && str_starts_with($kind = self::TARGETS[strtolower($m[1])], 'creature_card_yours_mv_le_')) {
