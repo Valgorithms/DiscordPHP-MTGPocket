@@ -2917,8 +2917,10 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
-        // `Look at the top card of your library. You may put that card into your graveyard.` is surveil 1 in all but name.
-        $text = (string) preg_replace_callback('/\b([Ll])ook at the top card of your library\. You may put (?:that card|it) into your graveyard(?=\.|$)/', fn (array $m) => ($m[1] === 'L' ? 'S' : 's').'urveil 1', $text);
+        // `Look at the top card of your library. You may put that card into your graveyard.`: surveil 1 in all but name, so no `Whenever you surveil` triggers.
+        if (preg_match('/^[Ll]ook at the top card of your library\. You may put (?:that card|it) into your graveyard\.?$/', trim($text))) {
+            return [['type' => 'surveil', 'amount' => 1, 'quiet' => true]];
+        }
         if (($impulse = self::impulse($text)) !== null) {
             return [$impulse];
         }
