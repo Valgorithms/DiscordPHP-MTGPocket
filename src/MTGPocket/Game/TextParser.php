@@ -2914,7 +2914,7 @@ final class TextParser
         }
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you), (?<rest>.+)$/", $text, $match)) {
+        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)), (?<rest>.+)$/", $text, $match)) {
             $if = match (true) {
                 $match[1] === 'you control no creatures' => 'no_creatures',
                 $match[1] === "CARDNAME isn't prepared" => 'unprepared',
@@ -2934,6 +2934,8 @@ final class TextParser
                 $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
                 $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
                 $match[1] === 'an opponent has more life than you' => 'life_behind',
+                // Lorwyn: `When this creature enters, if you control another Elf, …`.
+                ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
                 ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
                 ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
                 ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
@@ -2978,11 +2980,12 @@ final class TextParser
         // The Thriving creatures: `you may pay {2}{G}. If you do, put a +1/+1 counter on it.`; paid when it can be (see Game::applyEffect()).
         $pay = null;
         // Energy too (Scrapper Champion): `you may pay {E}{E}. If you do, …`.
-        if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
+        if (preg_match('/^you may pay ((?:\{E\})+|'.substr(self::COST, 1).'\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[1], 'X') && ! str_contains($match[2], 'target')) {
             [$pay, $text] = [$match[1], $match[2]];
         }
         // `you may sacrifice another creature. If you do, draw two cards.`: see Game's `pay` effect.
-        if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[3], 'target')) {
+        // A reflexive `When you do, …` without a target works out the same.
+        if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. (?:If|When) you do, (.+)$/u', $text, $match) && ! str_contains($match[3], 'target')) {
             [$pay, $text] = ["sacrifice {$match[2]}".($match[1] === 'another' ? ' other' : ''), $match[3]];
         }
         // `you may collect evidence 6. If you do, …` (rule 701.59): see Game's `pay` effect.
