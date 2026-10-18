@@ -2459,6 +2459,13 @@ final class TextParser
             $event = 'creature_dies_other';
             $extra = ($match[2] === '' ? ['anyController' => true] : []) + ($match[1] !== '' ? ['nontoken' => true] : []);
             $text = $match[3];
+        } elseif (preg_match('/^Whenever a player casts (?:a spell|an? (creature|noncreature|artifact|enchantment|instant or sorcery|multicolored|[A-Z][a-z]+) spell|a spell with (mana value \d+ or (?:greater|less))), (.+)$/', $line, $match)
+            && ! preg_match('/\b(that player|its controller|that spell|it)\b/', $match[3])) {
+            // Any player's spell, the caster's own included; see Game::castSpell().
+            $kind = $match[1] !== '' ? $match[1] : $match[2];
+            $event = $kind === '' ? 'any_cast' : 'any_cast_kind';
+            $extra = $kind === '' ? [] : ['objectKind' => $kind];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever a player casts an? (white|blue|black|red|green) spell, (?:you may gain (\w+) life\.?$|(.+)$)/', $line, $match)) {
             // Kor Firewalker, the Crystal Rods; see Game::castSpell().
             $event = 'any_cast_color_'.['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$match[1]];
