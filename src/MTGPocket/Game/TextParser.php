@@ -4107,6 +4107,10 @@ final class TextParser
         if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
         }
+        // `Each player draws a card.`, `Each player gains 2 life.`: in turn order; see Game::applyEffect().
+        if (preg_match('/^each player (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[2] !== '' ? $m[2] : $m[3])) !== null) {
+            return ['type' => $m[2] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => 'player'];
+        }
         if (preg_match('/^target player draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n, 'target' => 'player'];
         }
