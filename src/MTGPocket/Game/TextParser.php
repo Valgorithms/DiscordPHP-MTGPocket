@@ -2419,6 +2419,13 @@ final class TextParser
             $event = 'subtype_enters';
             $extra = ['subtype' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[3];
+        } elseif (preg_match("/^Whenever (an?|another) (nontoken creature|nontoken permanent|noncreature permanent|permanent|artifact|enchantment|land|token|[A-Z][a-z]+) (you control enters|an opponent controls enters|enters)(?: the battlefield)?( under your control| under an opponent's control)?, (.+)$/", $line, $match)
+            && ! preg_match('/\b(?:controller|that player)\b/', $match[5])) {
+            // See Game::putOntoBattlefield(): the permanent that entered is the context, itself included unless "another".
+            $whose = str_contains($match[3].$match[4], 'opponent') ? 'opponent' : (str_contains($match[3].$match[4], 'your') || str_contains($match[3], 'you control') ? 'yours' : 'any');
+            $event = "permanent_enters_{$whose}";
+            $extra = ['objectKind' => $match[2], 'other' => $match[1] === 'another'];
+            $text = $match[5];
         } elseif (preg_match('/^Whenever (a|another) (creature|permanent|artifact|enchantment|land|[A-Z][a-z]+) you control becomes the target of a spell or ability an opponent controls, (.+)$/', $line, $match)
             && ! preg_match('/\b(it|its|that (?:spell|ability|creature|permanent))\b/', $match[3])) {
             // See Game::targetedTriggers(): the permanent targeted is the context.
@@ -2567,7 +2574,7 @@ final class TextParser
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
         }
         // `Whenever another creature you control enters, put a +1/+1 counter on it.`: "it" is the creature that entered.
-        $entering = in_array($event, ['creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_combat_damage', 'creature_combat_damage_other'], true);
+        $entering = in_array($event, ['permanent_enters_yours', 'permanent_enters_any', 'permanent_enters_opponent', 'creature_enters_other', 'subtype_enters', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'creature_combat_damage', 'creature_combat_damage_other'], true);
         if ($entering && preg_match('/^you may attach CARDNAME to (?:it|that creature)\.?$/', $text)) {
             $effects = [['type' => 'attach', 'entering' => true]];
         } elseif ($entering && ! str_contains($text, 'target') && ! str_contains($text, 'CARDNAME')) {
