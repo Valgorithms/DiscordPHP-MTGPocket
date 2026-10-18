@@ -2437,6 +2437,12 @@ final class TextParser
         }
         // Creatures only attack players here (see Game::declareAttackers()), so "or planeswalker" adds nothing.
         $line = (string) preg_replace('/deals combat damage to a player(?:, planeswalker,)? or (?:planeswalker|battle)\b/', 'deals combat damage to a player', $line);
+        // `Whenever another creature you control enters, if it has power 3 or greater, …`: read as `… with power 3 or greater enters, …`.
+        $line = (string) preg_replace('/^Whenever (another|a) creature you control enters, if it has power (\d+) or greater, /', 'Whenever $1 creature you control with power $2 or greater enters, ', $line);
+        // `Whenever another creature you control enters, if it's a Human, …`: read as `Whenever another Human you control enters, …`.
+        $line = (string) preg_replace('/^Whenever (another|a) creature you control enters, if it\'s an? ([A-Z][a-z]+), /', 'Whenever $1 $2 you control enters, ', $line);
+        // `Whenever CARDNAME attacks while you control a Dragon, …`: an intervening if.
+        $line = (string) preg_replace('/^Whenever CARDNAME attacks while you control (an? [A-Z][a-z]+), /', 'Whenever CARDNAME attacks, if you control $1, ', $line);
         // Exert (rule 701.43): `You may exert CARDNAME as it attacks. When you do, …` is an attack trigger.
         $line = (string) preg_replace('/^You may exert CARDNAME as it attacks\. When you do, /', 'Whenever CARDNAME attacks, you may exert CARDNAME. When you do, ', $line);
         $events = [
@@ -3049,6 +3055,10 @@ final class TextParser
             && self::effects(ucfirst($match[1]).'. '.ucfirst($match[2])) !== null) {
             $text = ucfirst($match[1]).'. '.ucfirst($match[2]);
         }
+        // `When CARDNAME dies, you may exile it. If you do, …`: the card it became in the graveyard; see Game's `pay` effect.
+        if (in_array($event, ['dies', 'to_graveyard'], true) && preg_match('/^you may exile (?:it|CARDNAME)\. If you do, (.+)$/u', $text, $match)) {
+            [$pay, $text] = ['exile self', $match[1]];
+        }
         // `you may exile a card from your graveyard. If you do, …`, `you may return a land you control to its owner's hand. …`: see Game's `pay` effect.
         if (preg_match("/^you may (?:exile (a|two|three) cards? from your graveyard|return a land you control to its owner's hand)\\. (?:If|When) you do, (.+)$/u", $text, $match)) {
             [$pay, $text] = [$match[1] !== '' ? 'exile grave '.self::amount($match[1] === 'a' ? 'one' : $match[1]) : 'bounce land', $match[2]];
@@ -3102,7 +3112,7 @@ final class TextParser
             $effects = self::effects(preg_replace('/\bit\b/', 'CARDNAME', $text));
         }
         if ($effects !== null && $pay !== null) {
-            $effects = [['type' => 'pay', 'cost' => $pay, 'then' => $effects]];
+            $effects = [['type' => 'pay', 'cost' => $pay, 'then' => $effects] + ($pay === 'exile self' ? ['self' => true] : [])];
             // The paid-for effects' one target is chosen with the trigger; two different ones are not read yet.
             $aimed = array_unique(array_column($effects[0]['then'], 'target'));
             if (count($aimed) > 1) {

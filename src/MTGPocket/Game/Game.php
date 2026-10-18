@@ -5569,6 +5569,17 @@ final class Game
                     }
                     break;
                 }
+                // `When CARDNAME dies, you may exile it. If you do, …`: while it is still that card in the graveyard.
+                if ($effect['cost'] === 'exile self') {
+                    if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
+                        $this->log("{$this->players[$controller]->name} exiles {$affected->name()} from their graveyard.");
+                        $this->moveTo($affected, GameObject::EXILE);
+                        foreach ($effect['then'] as $then) {
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        }
+                    }
+                    break;
+                }
                 // `you may exile a card from your graveyard. If you do, …`: lands first, then the lowest mana value; see graveFodder().
                 // `you may return a land you control to its owner's hand. …`: only a land already tapped for mana.
                 if (preg_match('/^(?:exile grave (\d+)|bounce land)$/', $effect['cost'], $m)) {
@@ -6067,7 +6078,7 @@ final class Game
                 (bool) preg_match('/^\??(nonland_)?permanent_you_control_other$/', $effect['target'] ?? '') => ['target' => str_replace('_you_control_other', "_yours_not_{$source->id}", $effect['target'])] + $effect,
                 // `When CARDNAME dies, return it to its owner's hand.`: the card it became in the graveyard (rule 400.7).
                 in_array($event, ['dies', 'to_graveyard'], true) && $source->zone === GameObject::GRAVEYARD && ($effect['self'] ?? false)
-                    && in_array($effect['type'], ['bounce', 'return_self', 'bottom_self'], true) => ['graveyardSelf' => $source->incarnation] + $effect,
+                    && (in_array($effect['type'], ['bounce', 'return_self', 'bottom_self'], true) || $effect['type'] === 'pay' && $effect['cost'] === 'exile self') => ['graveyardSelf' => $source->incarnation] + $effect,
                 default => $effect,
             }, $ability['effects']);
             if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
