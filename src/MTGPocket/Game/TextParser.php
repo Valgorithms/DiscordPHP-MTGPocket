@@ -73,6 +73,46 @@ final class TextParser
         'target opponent or planeswalker' => 'player_or_planeswalker',
         'target artifact' => 'artifact',
         'target enchantment' => 'enchantment',
+        'target artifact or planeswalker' => 'any:artifact|planeswalker',
+        'target artifact or planeswalker an opponent controls' => 'any:artifact|planeswalker@opp',
+        'target artifact or planeswalker you don\'t control' => 'any:artifact|planeswalker@opp',
+        'target artifact or planeswalker you control' => 'any:artifact|planeswalker@you',
+        'target enchantment or planeswalker' => 'any:enchantment|planeswalker',
+        'target enchantment or planeswalker an opponent controls' => 'any:enchantment|planeswalker@opp',
+        'target enchantment or planeswalker you don\'t control' => 'any:enchantment|planeswalker@opp',
+        'target enchantment or planeswalker you control' => 'any:enchantment|planeswalker@you',
+        'target artifact, enchantment, or planeswalker' => 'any:artifact|enchantment|planeswalker',
+        'target artifact, enchantment, or planeswalker an opponent controls' => 'any:artifact|enchantment|planeswalker@opp',
+        'target artifact, enchantment, or planeswalker you don\'t control' => 'any:artifact|enchantment|planeswalker@opp',
+        'target artifact, enchantment, or planeswalker you control' => 'any:artifact|enchantment|planeswalker@you',
+        'target artifact, creature, or enchantment' => 'any:artifact|creature|enchantment',
+        'target artifact, creature, or enchantment you don\'t control' => 'any:artifact|creature|enchantment@opp',
+        'target artifact, creature, or enchantment you control' => 'any:artifact|creature|enchantment@you',
+        'target artifact, creature, or planeswalker' => 'any:artifact|creature|planeswalker',
+        'target artifact, creature, or planeswalker an opponent controls' => 'any:artifact|creature|planeswalker@opp',
+        'target artifact, creature, or planeswalker you don\'t control' => 'any:artifact|creature|planeswalker@opp',
+        'target artifact, creature, or planeswalker you control' => 'any:artifact|creature|planeswalker@you',
+        'target creature or enchantment' => 'any:creature|enchantment',
+        'target creature or enchantment an opponent controls' => 'any:creature|enchantment@opp',
+        'target creature or enchantment you don\'t control' => 'any:creature|enchantment@opp',
+        'target creature or enchantment you control' => 'any:creature|enchantment@you',
+        'target artifact or creature you don\'t control' => 'any:artifact|creature@opp',
+        'target artifact or creature you control' => 'any:artifact|creature@you',
+        'target creature or land' => 'any:creature|land',
+        'target creature or land an opponent controls' => 'any:creature|land@opp',
+        'target creature or land you don\'t control' => 'any:creature|land@opp',
+        'target creature or land you control' => 'any:creature|land@you',
+        'target artifact or land an opponent controls' => 'any:artifact|land@opp',
+        'target artifact or land you don\'t control' => 'any:artifact|land@opp',
+        'target artifact or land you control' => 'any:artifact|land@you',
+        'target artifact, enchantment, or land' => 'any:artifact|enchantment|land',
+        'target artifact, enchantment, or land an opponent controls' => 'any:artifact|enchantment|land@opp',
+        'target artifact, enchantment, or land you don\'t control' => 'any:artifact|enchantment|land@opp',
+        'target artifact, enchantment, or land you control' => 'any:artifact|enchantment|land@you',
+        'target creature, enchantment, or planeswalker' => 'any:creature|enchantment|planeswalker',
+        'target creature, enchantment, or planeswalker an opponent controls' => 'any:creature|enchantment|planeswalker@opp',
+        'target creature, enchantment, or planeswalker you don\'t control' => 'any:creature|enchantment|planeswalker@opp',
+        'target creature, enchantment, or planeswalker you control' => 'any:creature|enchantment|planeswalker@you',
         'target artifact or enchantment' => 'artifact_or_enchantment',
         'target artifact or creature' => 'artifact_or_creature',
         'target artifact creature' => 'artifact_creature',
@@ -3480,6 +3520,10 @@ final class TextParser
             && ($m[1] === 'deals damage equal to its power to' || ! str_contains($kind, 'planeswalker'))) {
             return [['type' => 'chosen', 'target' => 'creature_you_control'], ['type' => 'fight', 'target' => $kind, 'mutual' => strtolower($m[1]) === 'fights']];
         }
+        // `Target player draws two cards, then discards a card.`: that player chooses what to discard.
+        if (preg_match('/^(target player|target opponent) draws (\w+) cards?, then discards (\w+) cards?$/i', $sentence, $m) && is_int($draw = self::amount($m[2])) && is_int($discard = self::amount($m[3]))) {
+            return [['type' => 'draw', 'amount' => $draw, 'target' => self::TARGETS[strtolower($m[1])]], ['type' => 'discard', 'amount' => $discard, 'sameTarget' => true]];
+        }
         if (preg_match('/^you draw (\w+) cards? and (?:you )?(gain|lose) (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[1])) !== null && ($life = self::amount($m[3])) !== null) {
             return [['type' => 'draw', 'amount' => $draw], strtolower($m[2]) === 'gain' ? ['type' => 'gain_life', 'amount' => $life] : ['type' => 'lose_life', 'amount' => $life, 'you' => true]];
         }
@@ -3679,6 +3723,13 @@ final class TextParser
         if (in_array($effects[$last]['target'] ?? null, ['creature_you_control', 'creature'], true)
             && preg_match("/^(?:Then )?(?:[Ii]t|[Tt]hat creature) fights (target creature you don't control|target creature an opponent controls|another target creature)$/", $sentence, $m)) {
             $effects[] = ['type' => 'fight', 'target' => $m[1] === 'another target creature' ? 'creature' : 'creature_opponent', 'mutual' => true];
+
+            return true;
+        }
+        // `Put a +1/+1 counter on each creature you control. Those creatures gain trample until end of turn.`: the same creatures.
+        if (preg_match('/^Those creatures ((?:gain|get) .+ until end of turn)$/', $sentence, $m) && ($effects[$last]['type'] ?? null) === 'counters' && ($effects[$last]['each'] ?? null) === 'yours'
+            && ! ($effects[$last]['other'] ?? false) && ($team = self::effects('Creatures you control '.$m[1])) !== null) {
+            array_push($effects, ...$team);
 
             return true;
         }
