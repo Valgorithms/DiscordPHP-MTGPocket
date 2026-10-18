@@ -3898,6 +3898,11 @@ final class Game
             if (isset($effect['ifCondition']) && ! $this->conditionMet($effect['ifCondition'], $source, $item['controller'])) {
                 continue;
             }
+            // `If it's a Human, it also gains indestructible …`: the same target, as it is now.
+            if (isset($effect['ifTargetSubtype']) && ! (($it = $this->targetObject((string) $target)) !== null
+                && (in_array($effect['ifTargetSubtype'], $it->definition()->subtypes, true) || in_array('changeling', $it->definition()->keywords, true)))) {
+                continue;
+            }
             // `If it was a creature card, …`: the card the step before exiled.
             if (isset($effect['ifItWas'])) {
                 // By id: exiling it made it a new object.
