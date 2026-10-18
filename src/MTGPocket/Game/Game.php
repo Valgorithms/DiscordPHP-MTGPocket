@@ -162,6 +162,11 @@ final class Game
 
     public int $diedTurn = 0;
 
+    /** The last turn a nonland permanent left the battlefield, and the last turn a spell was cast for its warp cost, for Void. */
+    public int $nonlandLeftTurn = 0;
+
+    public int $warpedTurn = 0;
+
     /** Spells cast in turn `$spellsTurn`, by anyone, for storm (rule 702.40). */
     public int $spellsCast = 0;
 
@@ -2376,6 +2381,9 @@ final class Game
             'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0,
             // Splice onto Arcane: the spliced cards' effects, copied as it is cast (rule 702.47b).
             'spliced' => $this->splicedEffects($options['splice'])]);
+        if ($options['alt'] === 'warp') {
+            $this->warpedTurn = $this->turn;
+        }
         $this->passes = 0;
 
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
@@ -5776,6 +5784,7 @@ final class Game
             'controls_other' => array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && (in_array($n, $o->definition()->subtypes, true) || $o->definition()->is($n))) !== [],
             'not_your_turn' => $this->active !== $controller,
             'cast_noncreature' => $this->players[$controller]->noncreatureCastTurn === $this->turn,
+            'void' => $this->nonlandLeftTurn === $this->turn || $this->warpedTurn === $this->turn,
             'hand_le' => count($this->players[$controller]->hand) <= (int) $n,
             'hand_ge' => count($this->players[$controller]->hand) >= (int) $n,
             'opp_life_le' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life <= (int) $n) !== [],
@@ -8626,6 +8635,9 @@ final class Game
             $zone = GameObject::EXILE;
         }
         $leaves = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD;
+        if ($leaves && ! $object->definition()->is('Land')) {
+            $this->nonlandLeftTurn = $this->turn;
+        }
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
         $plusCounters = $object->counter('+1/+1');
@@ -9877,6 +9889,8 @@ final class Game
             'unpreventableTurn' => $this->unpreventableTurn,
             'attackedWith' => $this->attackedWith,
             'spellsCast' => $this->spellsCast,
+            'nonlandLeftTurn' => $this->nonlandLeftTurn,
+            'warpedTurn' => $this->warpedTurn,
             'died' => $this->died,
             'diedTurn' => $this->diedTurn,
             'spellsTurn' => $this->spellsTurn,
@@ -9999,6 +10013,8 @@ final class Game
         $game->unpreventableTurn = (int) ($data['unpreventableTurn'] ?? 0);
         $game->attackedWith = (int) ($data['attackedWith'] ?? 0);
         $game->spellsCast = (int) ($data['spellsCast'] ?? 0);
+        $game->nonlandLeftTurn = (int) ($data['nonlandLeftTurn'] ?? 0);
+        $game->warpedTurn = (int) ($data['warpedTurn'] ?? 0);
         $game->died = (int) ($data['died'] ?? 0);
         $game->diedTurn = (int) ($data['diedTurn'] ?? 0);
         $game->spellsTurn = (int) ($data['spellsTurn'] ?? 0);
