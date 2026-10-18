@@ -1021,6 +1021,12 @@ final class TextParser
         // A named ability such as `Gae Bolg — Equip {4}` works like the plain one.
         $text = preg_replace('/^[^\n—]+ — (Equip\b)/m', '$1', $text);
         $text = preg_replace('/\s*\([^)]*\)/', '', $text);
+        // `Whenever CARDNAME or another creature you control dies`: the same as "a creature you control", which includes itself.
+        $text = preg_replace_callback('/\bCARDNAME or another (nontoken creature|creature|[A-Z][a-z]+) you control\b/', function (array $m) {
+            $kind = str_ends_with($m[1], 'creature') ? self::$creature : in_array($m[1], self::$subtypes, true);
+
+            return $kind ? (preg_match('/^[AEIOU]/i', $m[1]) ? 'an ' : 'a ').$m[1].' you control' : $m[0];
+        }, $text);
         if (self::$withoutAbilityWords) {
             $text = preg_replace('/^(?:'.self::ABILITY_WORDS.') — /mu', '', $text);
         }
@@ -2648,6 +2654,14 @@ final class TextParser
             $match = [$m2[0], $m2[2]];
             $event = 'creature_enters_other';
             $text = $match[1];
+        } elseif (self::$creature && preg_match('/^Whenever a creature you control enters(?: the battlefield)?, (.+)$/', $line, $match)
+            && ! preg_match('/\b(?:it|its|that creature(?:\'s)?)\b/', $match[1]) && ($effects = self::effects($match[1])) !== null) {
+            // On a creature, once for itself and once for each other creature, like the Allies above.
+            foreach (['enters', 'creature_enters_other'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => $effects];
+            }
+
+            return true;
         } elseif (preg_match('/^Whenever (another|a) (nontoken )?creature (enters(?: the battlefield)?|an opponent controls enters|enters(?: the battlefield)? under an opponent\'s control), (.+)$/', $line, $match)
             && ! preg_match('/\b(it|its|that creature(?:\'s)?|that player)\b/', $match[4]) && ($effects = self::effects($match[4])) !== null) {
             // Any player's creature (Soul Warden), or only an opponent's; see Game::putOntoBattlefield().
