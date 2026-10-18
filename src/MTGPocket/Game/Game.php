@@ -6271,6 +6271,14 @@ final class Game
                 }
             }
         }
+        // Renew and the like: abilities activated by exiling the card from your graveyard.
+        foreach ($this->players[$seat]->graveyard as $id) {
+            foreach ($this->objects[$id]->definition()->activated as $index => $ability) {
+                if (($ability['graveyard'] ?? false) && $this->canActivate($seat, $id, $index)) {
+                    $abilities[] = [$id, $index];
+                }
+            }
+        }
 
         return $abilities;
     }
@@ -6321,7 +6329,11 @@ final class Game
         if ($fromHand && ($object->zone !== GameObject::HAND || $object->owner !== $seat)) {
             return 'That card is not in your hand.';
         }
-        if (! $fromHand && ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $seat)) {
+        $fromGraveyard = (bool) ($object?->definition()->activated[$index]['graveyard'] ?? false);
+        if ($fromGraveyard && ($object->zone !== GameObject::GRAVEYARD || $object->owner !== $seat)) {
+            return 'That card is not in your graveyard.';
+        }
+        if (! $fromHand && ! $fromGraveyard && ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $seat)) {
             return 'You do not control that permanent.';
         }
         $card = $object->definition();
@@ -6857,6 +6869,9 @@ final class Game
         $player->energy -= $cost['energy'] ?? 0;
         if ($cost['discardSelf'] ?? false) {
             $this->discardCards($seat, [$object->id]);
+        }
+        if ($cost['exileSelf'] ?? false) {
+            $this->moveTo($object, GameObject::EXILE);
         }
         // `Discard a card` as a cost, with ward's: the cheapest cards.
         $this->discardCheapest($seat, $wardDiscard + ($cost['discard'] ?? 0));

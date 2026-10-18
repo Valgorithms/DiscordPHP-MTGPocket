@@ -3109,6 +3109,9 @@ final class TextParser
                 $cost['sacrifice'] = true;
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
+            } elseif ($part === 'Exile CARDNAME from your graveyard') {
+                // Renew and the like: activated from your graveyard; see Game::activatable().
+                $cost['exileSelf'] = true;
             } elseif (preg_match('/^Sacrifice (an?|another) (creature|artifact|enchantment|land|permanent|token|nontoken creature|[A-Z][a-z]+)$/', $part, $sac)) {
                 // Nantuko Husk: the weakest creature (or artifact, Food, …); see Game::fodder().
                 $cost['fodder'] = ($sac[1] === 'another' ? 'other' : 'any').' '.$sac[2];
@@ -3172,7 +3175,7 @@ final class TextParser
         if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []);
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []);
 
         return true;
     }
