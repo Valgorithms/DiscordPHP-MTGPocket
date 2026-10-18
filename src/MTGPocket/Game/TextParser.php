@@ -4143,9 +4143,15 @@ final class TextParser
                 return ['type' => 'counters', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
             }
         }
+        // `Put a -1/-1 counter on target creature.`
+        if (preg_match("/^(?:you may )?put (\w+) -1\/-1 counters? on ({$targets})$/i", $s, $m) && is_int($n = self::amount($m[1]))
+            && in_array(self::TARGETS[strtolower($m[2])], self::CREATURE_KINDS, true)) {
+            return ['type' => 'counters', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])], 'kind' => '-1/-1'];
+        }
         // `Put a +1/+1 counter on each creature you control.` / `… each other creature you control.`
-        if (preg_match('/^put (\w+) \+1\/\+1 counters? on each (other )?creature you control$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
-            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []);
+        if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?(creature|[A-Z][a-z]+) you control$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))
+            && ($m[3] === 'creature' || ($subtype = self::subtypeOf($m[3])) !== null)) {
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'yours'] + (($m[2] ?? '') !== '' ? ['other' => true] : []) + ($m[3] !== 'creature' ? ['subtype' => $subtype] : []);
         }
         // A ritual: `Add {R}{R}{R}.`
         if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {

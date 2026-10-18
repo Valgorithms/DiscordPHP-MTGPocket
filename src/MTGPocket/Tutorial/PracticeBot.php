@@ -224,7 +224,9 @@ final class PracticeBot
      */
     private static function targets(Game $game, int $seat, array $kinds, array $effects, ?int $self = null, bool $forced = false): ?array
     {
-        $harmful = array_intersect(array_column($effects, 'type'), self::HARMFUL) !== [];
+        $harmful = array_intersect(array_column($effects, 'type'), self::HARMFUL) !== []
+            // `gets -2/-2` and -1/-1 counters shrink what they hit.
+            || array_filter($effects, fn (array $effect) => ($effect['type'] === 'pump' && ($effect['toughness'] ?? 0) < 0) || ($effect['type'] === 'counters' && ($effect['kind'] ?? '') === '-1/-1')) !== [];
         $damage = array_values(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage'))[0]['amount'] ?? null;
         $targets = [];
         foreach ($kinds as $kind) {
