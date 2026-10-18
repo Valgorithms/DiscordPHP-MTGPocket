@@ -5783,6 +5783,9 @@ final class Game
             'total_power' => array_sum(array_map(fn (GameObject $o) => $this->power($o), array_filter($this->permanents($controller), fn (GameObject $o) => $this->isCreature($o)))) >= (int) $n,
             'attackers' => $this->players[$controller]->attackedTurn === $this->turn && $this->attackedWith >= (int) $n,
             'hand_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && count($player->hand) > count($this->players[$controller]->hand)) !== [],
+            'lands_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $this->countYours($player->seat, 'land') > $this->countYours($controller, 'land')) !== [],
+            'creatures_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $this->countYours($player->seat, 'creature') > $this->countYours($controller, 'creature')) !== [],
+            'life_behind' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life > $this->players[$controller]->life) !== [],
             default => false,
         };
     }
