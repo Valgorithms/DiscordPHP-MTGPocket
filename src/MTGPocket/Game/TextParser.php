@@ -2247,6 +2247,14 @@ final class TextParser
 
             return true;
         }
+        // Boros Reckoner: `Whenever CARDNAME is dealt damage, it deals that much damage to any target.`; see Game::dealDamage().
+        if (preg_match('/^Whenever CARDNAME is dealt damage, (.+)\.$/', $line, $m) && substr_count($m[1], 'that much') === 1
+            && ($effects = self::sentenceEffects((string) preg_replace(['/^it deals that much damage\b/', '/\bthat much (damage|life)\b/'], ['CARDNAME deals 1 damage', '1 $1'], $m[1]))) !== null
+            && count($effects) === 1 && ($effects[0]['amount'] ?? null) === 1 && ! isset($effects[0]['per'])) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'dealt_damage', 'effects' => [['amount' => 'that_much'] + $effects[0]]];
+
+            return true;
+        }
         // `Whenever CARDNAME deals combat damage to a creature, destroy that creature.`: that creature, not targeted; see Game::combatDamage().
         if (preg_match('/^Whenever CARDNAME deals combat damage to a creature, (.+)\.$/', $line, $m)
             && ($effects = self::sentenceEffects((string) preg_replace('/\bthat creature\b/', 'target creature', $m[1]))) !== null
