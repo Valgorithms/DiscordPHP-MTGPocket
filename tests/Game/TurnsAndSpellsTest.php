@@ -276,8 +276,8 @@ final class TurnsAndSpellsTest extends GameTestCase
         $this->game->pass(1);
         $this->assertSame(GameObject::BATTLEFIELD, $this->zone($ornithopter));
 
-        $this->assertSame(['Look at target player\'s hand.'], $this->game->objects[$probe]->definition()->unsupported);
-        $this->game->cast(0, $probe);
+        $this->assertSame([], $this->game->objects[$probe]->definition()->unsupported, 'Looking at a hand reads like a reveal.');
+        $this->game->cast(0, $probe, 0, ['p:1']);
         $this->assertSame(18, $this->life(0), 'With no blue mana, {U/P} costs 2 life.');
 
         try {
