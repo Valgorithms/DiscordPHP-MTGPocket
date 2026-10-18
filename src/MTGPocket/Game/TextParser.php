@@ -2456,6 +2456,12 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
+        } elseif (preg_match('/^Whenever (you|an opponent) casts? (?:a spell with (mana value \d+ or (?:greater|less))|an? ([A-Z][a-z]+) spell), (.+)$/', $line, $match)
+            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ') && ! in_array($match[3] ?? '', ['Spirit', 'Arcane'], true)) {
+            // `Whenever you cast a spell with mana value 5 or greater, …`, `Whenever you cast a Dragon spell, …`; see Game::castSpell() and Game::objectFits().
+            $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
+            $extra = ['objectKind' => $match[2] !== '' ? $match[2] : $match[3]];
+            $text = $match[4];
         } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
@@ -2463,7 +2469,7 @@ final class TextParser
             return false;
         }
         // `Whenever you cast your second spell each turn, copy it.`: the spell just cast.
-        if (str_starts_with($event, 'cast_') || in_array($event, ['first_spell', 'second_spell', 'third_spell'], true)) {
+        if (str_starts_with($event, 'cast_') || in_array($event, ['first_spell', 'second_spell', 'third_spell', 'you_cast_kind'], true)) {
             $text = (string) preg_replace('/^copy it\./i', 'copy that spell.', $text);
         }
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {

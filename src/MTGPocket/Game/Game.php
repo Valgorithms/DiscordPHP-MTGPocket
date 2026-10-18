@@ -2865,6 +2865,7 @@ final class Game
             foreach ($events as $event) {
                 $this->trigger($permanent, $event, $seat);
             }
+            $this->trigger($permanent, 'you_cast_kind', $seat, null, $spell->id);
         }
         $this->castSpell = null;
         // Chalice of the Void: a spell with mana value equal to its charge counters is countered.
@@ -6213,13 +6214,25 @@ final class Game
      * graveyard, or a spell cast) is the kind it names: `Whenever you sacrifice a Food, …`.
      *
      * @param GameObject $object
-     * @param string     $kind   `permanent`, `creature`, `noncreature`, `token`, `nontoken creature`, `instant or sorcery`, `multicolored`, a card type or a subtype.
+     * @param string     $kind   `permanent`, `creature`, `noncreature`, `token`, `nontoken creature`, `instant or sorcery`, `multicolored`, `mana value N or greater` (or less), a card type or a subtype.
      *
      * @return bool
      */
     private function objectFits(GameObject $object, string $kind): bool
     {
         $card = $object->definition();
+        // `a spell with mana value 5 or greater`: X counts on the stack (rule 202.3e).
+        if (preg_match('/^mana value (\d+) or (greater|less)$/', $kind, $match)) {
+            $x = 0;
+            foreach ($this->stack as $item) {
+                if (($item['object'] ?? null) === $object->id) {
+                    $x = (int) ($item['x'] ?? 0);
+                }
+            }
+            $value = $card->cost->manaValue($x);
+
+            return $match[2] === 'greater' ? $value >= (int) $match[1] : $value <= (int) $match[1];
+        }
 
         return match ($kind) {
             'permanent' => true,
