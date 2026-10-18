@@ -6337,6 +6337,13 @@ final class Game
 
             return $match[2] === 'greater' ? $value >= (int) $match[1] : $value <= (int) $match[1];
         }
+        // `a creature spell with power 4 or greater`: as printed, or as it is on the battlefield.
+        if (preg_match('/^creature with (power|toughness) (\d+) or greater$/', $kind, $match)) {
+            $onField = $object->zone === GameObject::BATTLEFIELD;
+            $value = $match[1] === 'power' ? ($onField ? $this->power($object) : (int) $card->power) : ($onField ? $this->toughness($object) : (int) $card->toughness);
+
+            return $card->is('Creature') && $value >= (int) $match[2];
+        }
 
         return match ($kind) {
             'permanent' => true,
