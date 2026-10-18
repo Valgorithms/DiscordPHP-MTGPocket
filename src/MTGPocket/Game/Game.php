@@ -4597,7 +4597,7 @@ final class Game
             case 'counters':
                 if (($effect['each'] ?? null) === 'yours') {
                     foreach ($this->permanents($controller) as $object) {
-                        if ($this->isCreature($object) && (! ($effect['other'] ?? false) || $object->id !== $source->id)) {
+                        if ($this->isCreature($object) && (! ($effect['other'] ?? false) || $object->id !== $source->id) && (! isset($effect['subtype']) || in_array($effect['subtype'], $object->definition()->subtypes, true) || in_array('changeling', $object->definition()->keywords, true))) {
                             $object->addCounters('+1/+1', $amount);
                         }
                     }
