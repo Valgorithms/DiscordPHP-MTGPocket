@@ -2236,6 +2236,15 @@ final class TextParser
 
             return true;
         }
+        // `Whenever CARDNAME deals combat damage to a creature, destroy that creature.`: that creature, not targeted; see Game::combatDamage().
+        if (preg_match('/^Whenever CARDNAME deals combat damage to a creature, (.+)\.$/', $line, $m)
+            && ($effects = self::sentenceEffects((string) preg_replace('/\bthat creature\b/', 'target creature', $m[1]))) !== null
+            && count(array_filter($effects, fn (array $effect) => isset($effect['target']))) === (str_contains($m[1], 'that creature') ? 1 : 0)
+            && array_filter($effects, fn (array $effect) => isset($effect['target']) && $effect['target'] !== 'creature') === []) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => $effects];
+
+            return true;
+        }
         // Court Hussar: `When CARDNAME enters, sacrifice it unless {W} was spent to cast it.`; see GameObject::$spent.
         if (preg_match('/^When CARDNAME enters(?: the battlefield)?, sacrifice it unless \{([WUBRG])\} was spent to cast it\.$/', $line, $m)) {
             $result['triggered'][] = ['text' => $line, 'event' => 'enters', 'effects' => [['type' => 'sacrifice_unless_spent', 'color' => $m[1], 'self' => true]]];

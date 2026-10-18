@@ -7799,7 +7799,7 @@ final class Game
             foreach ($hurt !== null ? $source->definition()->triggersOn('combat_damage_creature') : [] as $ability) {
                 $this->pendingTriggers[] = [
                     'source' => $source->id, 'incarnation' => $source->incarnation, 'controller' => $source->controller,
-                    'effects' => $ability['effects'], 'kinds' => self::targetKindsOf($ability['effects']), 'targets' => ["o:{$hurt->id}:{$hurt->incarnation}"],
+                    'effects' => $ability['effects'], 'kinds' => $kinds = self::targetKindsOf($ability['effects']), 'targets' => $kinds === [] ? [] : ["o:{$hurt->id}:{$hurt->incarnation}"],
                     'label' => "{$source->name()}'s ability", 'text' => str_replace('CARDNAME', $source->name(), $ability['text']),
                 ];
             }
