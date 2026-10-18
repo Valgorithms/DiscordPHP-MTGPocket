@@ -8422,8 +8422,8 @@ final class Game
         $object->prepared = ! $faceDown && in_array('enters prepared', $card->keywords, true) && $card->prepare !== null;
         $untapped = $card->entersTappedUnless === null || $this->entersUntapped($object, $controller, $payLife ?? false);
         $object->tapped = $tapped || $card->entersTapped || ! $untapped
-            // `Creatures your opponents control enter tapped.`
-            || (! $faceDown && $card->isCreature() && array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller && $this->hasKeyword($o, 'opponent creatures enter tapped')) !== []);
+            // `Creatures your opponents control enter tapped.`, and Blind Obedience's artifacts and creatures.
+            || (! $faceDown && ($card->isCreature() || $card->is('Artifact')) && array_filter($this->permanents(), fn (GameObject $o) => $o->controller !== $controller && (($card->isCreature() && $this->hasKeyword($o, 'opponent creatures enter tapped')) || $this->hasKeyword($o, 'opponent artifacts and creatures enter tapped'))) !== []);
         if ($card->isPlaneswalker() && $card->loyalty !== null) {
             $object->addCounters('loyalty', $card->loyalty);
         }
