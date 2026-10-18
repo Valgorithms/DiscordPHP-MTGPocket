@@ -2608,6 +2608,12 @@ final class TextParser
         } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
+        } elseif (preg_match('/^Whenever (you|an opponent) casts? (a historic spell|a creature spell (?:that has|with) (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender)), (.+)$/', $line, $match)
+            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ')) {
+            // Historic: an artifact, legendary or Saga (rule 700.6). See Game::objectFits().
+            $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
+            $extra = ['objectKind' => $match[3] !== '' ? "creature with {$match[3]}" : 'historic'];
+            $text = $match[4];
         } elseif (preg_match('/^Whenever (you|an opponent) casts? a creature spell with (power|toughness) (\w+) or greater, (.+)$/', $line, $match)
             && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ') && is_int($n = self::amount($match[3]))) {
             // `Whenever you cast a creature spell with power 4 or greater, …`: its printed power; see Game::objectFits().
