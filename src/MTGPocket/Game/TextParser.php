@@ -156,6 +156,9 @@ final class TextParser
         'another target permanent you control' => 'permanent_you_control_other',
         'target nonland permanent you control' => 'nonland_permanent_you_control',
         'another target nonland permanent you control' => 'nonland_permanent_you_control_other',
+        // Not the source; see Game::trigger().
+        'another target permanent' => 'permanent_other',
+        'another target nonland permanent' => 'nonland_permanent_other',
         'target creature an opponent controls' => 'creature_opponent',
         'target creature defending player controls' => 'creature_opponent',
         'target creature you don\'t control' => 'creature_opponent',
@@ -4472,7 +4475,7 @@ final class TextParser
         if (preg_match('/^counter (target spell|target creature spell|target noncreature spell) unless its controller pays \{(\d+|X)\}$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])], 'unless' => '{'.$m[2].'}'];
         }
-        $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying', 'attacking creatures' => 'attacking', 'attacking creatures you control' => 'attacking'];
+        $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'creatures you don\'t control' => 'opponents', 'creatures defending player controls' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying', 'attacking creatures' => 'attacking', 'attacking creatures you control' => 'attacking'];
         $group = implode('|', array_keys($each));
         if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];

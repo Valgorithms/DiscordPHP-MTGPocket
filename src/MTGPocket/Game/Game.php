@@ -6144,8 +6144,9 @@ final class Game
                 // `another target creature card from your graveyard`: not the source, even once it is there.
                 in_array($effect['target'] ?? null, ['creature_card_yours_other', '?creature_card_yours_other'], true) => ['target' => str_replace('creature_card_yours_other', "creature_card_yours_not_{$source->id}", $effect['target'])] + $effect,
                 in_array($effect['target'] ?? null, ['creature_you_control_other', '?creature_you_control_other'], true) => ['target' => str_replace('creature_you_control_other', "creature_yours_not_{$source->id}", $effect['target'])] + $effect,
-                // `another target permanent you control`: not the source.
+                // `another target permanent you control`, `another target nonland permanent`: not the source.
                 (bool) preg_match('/^\??(nonland_)?permanent_you_control_other$/', $effect['target'] ?? '') => ['target' => str_replace('_you_control_other', "_yours_not_{$source->id}", $effect['target'])] + $effect,
+                (bool) preg_match('/^\??(nonland_)?permanent_other$/', $effect['target'] ?? '') => ['target' => str_replace('_other', "_not_{$source->id}", $effect['target'])] + $effect,
                 // `When CARDNAME dies, return it to its owner's hand.`: the card it became in the graveyard (rule 400.7).
                 in_array($event, ['dies', 'to_graveyard'], true) && $source->zone === GameObject::GRAVEYARD && ($effect['self'] ?? false)
                     && (in_array($effect['type'], ['bounce', 'return_self', 'bottom_self'], true) || $effect['type'] === 'pay' && $effect['cost'] === 'exile self') => ['graveyardSelf' => $source->incarnation] + $effect,
@@ -7313,6 +7314,8 @@ final class Game
             'creature_you_control_other' => $creature && $object->controller === $controller,
             'permanent_you_control', 'permanent_you_control_other' => $object->controller === $controller,
             'nonland_permanent_you_control', 'nonland_permanent_you_control_other' => ! $card->isLand() && $object->controller === $controller,
+            'permanent_other' => true,
+            'nonland_permanent_other' => ! $card->isLand(),
             // Soulshift N: a Spirit card with mana value N or less. Mentor: an attacker with power less than N.
             default => ((bool) preg_match('/^subtype_creature_([A-Z][a-z]+)$/', $kind, $m) && $creature
                 && (in_array($m[1], $card->subtypes, true) || in_array('changeling', $card->keywords, true)))
@@ -7327,6 +7330,7 @@ final class Game
                 || ((bool) preg_match('/^creature_not_(\d+)$/', $kind, $m) && $creature && $object->id !== (int) $m[1])
                 || ((bool) preg_match('/^creature_yours_not_(\d+)$/', $kind, $m) && $creature && $object->controller === $controller && $object->id !== (int) $m[1])
                 || ((bool) preg_match('/^(nonland_)?permanent_yours_not_(\d+)$/', $kind, $m) && ($m[1] === '' || ! $card->isLand()) && $object->controller === $controller && $object->id !== (int) $m[2])
+                || ((bool) preg_match('/^(nonland_)?permanent_not_(\d+)$/', $kind, $m) && ($m[1] === '' || ! $card->isLand()) && $object->id !== (int) $m[2])
                 // `target non-Zombie creature`.
                 || ((bool) preg_match('/^creature_nonsub_(\w+)$/', $kind, $m) && $creature && ! in_array($m[1], $card->subtypes, true) && ! in_array('changeling', $card->keywords, true))
                 // `Enchant Forest`: a permanent with that subtype.
