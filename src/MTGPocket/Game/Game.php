@@ -6240,8 +6240,9 @@ final class Game
             'permanent' => true,
             'token' => $card->isToken(),
             'nontoken creature' => ! $card->isToken() && $card->is('Creature'),
+            'nontoken permanent' => ! $card->isToken(),
             'creature', 'artifact', 'enchantment', 'land' => $card->is(ucfirst($kind)),
-            'noncreature' => ! $card->is('Creature'),
+            'noncreature', 'noncreature permanent' => ! $card->is('Creature'),
             'instant or sorcery' => $card->is('Instant') || $card->is('Sorcery'),
             'multicolored' => count($card->colors) > 1,
             default => in_array($kind, $card->subtypes, true),
@@ -7953,6 +7954,11 @@ final class Game
         $this->battlefield[] = $object->id;
         if ($triggers) {
             $this->trigger($object, 'enters', $controller);
+            // `Whenever an artifact you control enters, …`, `… an opponent controls enters, …`, `Whenever a land enters, …`: itself included.
+            foreach ($this->permanents() as $permanent) {
+                $this->trigger($permanent, 'permanent_enters_any', $permanent->controller, null, $object->id);
+                $this->trigger($permanent, $permanent->controller === $controller ? 'permanent_enters_yours' : 'permanent_enters_opponent', $permanent->controller, null, $object->id);
+            }
             // A Saga gets its first lore counter as it enters (rule 714.3a).
             if ($this->keywordAmount($object, 'saga') > 0) {
                 $this->addLore($object);
