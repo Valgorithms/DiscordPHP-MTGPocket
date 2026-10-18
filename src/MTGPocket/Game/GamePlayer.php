@@ -59,6 +59,9 @@ final class GamePlayer
 
     public int $castTurn = 0;
 
+    /** The last turn they cast a noncreature spell. */
+    public int $noncreatureCastTurn = 0;
+
     /** Mana spent this turn, for expend, and the turn that was. */
     public int $expended = 0;
 
@@ -143,6 +146,7 @@ final class GamePlayer
             'gainedTurn' => $this->gainedTurn,
             'cast' => $this->cast,
             'castTurn' => $this->castTurn,
+            'noncreatureCastTurn' => $this->noncreatureCastTurn,
             'drawnTurn' => $this->drawnTurn,
             'expended' => $this->expended,
             'expendedTurn' => $this->expendedTurn,
@@ -184,6 +188,7 @@ final class GamePlayer
         $player->gainedTurn = (int) ($data['gainedTurn'] ?? 0);
         $player->cast = (int) ($data['cast'] ?? 0);
         $player->castTurn = (int) ($data['castTurn'] ?? 0);
+        $player->noncreatureCastTurn = (int) ($data['noncreatureCastTurn'] ?? 0);
         $player->library = array_map('intval', (array) $data['library']);
         $player->hand = array_map('intval', (array) $data['hand']);
         $player->graveyard = array_map('intval', (array) $data['graveyard']);
