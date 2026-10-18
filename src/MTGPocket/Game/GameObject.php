@@ -102,6 +102,9 @@ final class GameObject
     /** The turn in which it is exiled instead if it would die (`If that creature would die this turn, exile it instead.`). */
     public int $exileIfDies = 0;
 
+    /** The turn in which all damage it would deal is prevented (`Prevent all damage target creature would deal this turn.`). */
+    public int $preventDealing = 0;
+
     /** How it was cast, when that matters later: `dash`, `evoke` or `warp`; `temporary` for a Mobilize token. */
     public ?string $alt = null;
 
@@ -300,6 +303,7 @@ final class GameObject
         $this->hidden = null;
         $this->encoded = [];
         $this->exileIfDies = 0;
+        $this->preventDealing = 0;
         $this->alt = null;
         $this->exiledOn = 0;
         $this->attackedTurn = 0;
@@ -371,6 +375,7 @@ final class GameObject
             'holding' => $this->holding,
             'encoded' => $this->encoded,
             'exileIfDies' => $this->exileIfDies,
+            'preventDealing' => $this->preventDealing,
             'alt' => $this->alt,
             'exiledOn' => $this->exiledOn,
             'attackedTurn' => $this->attackedTurn,
@@ -435,6 +440,7 @@ final class GameObject
         $object->holding = array_map('intval', (array) ($data['holding'] ?? []));
         $object->encoded = array_map('intval', (array) ($data['encoded'] ?? []));
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
+        $object->preventDealing = (int) ($data['preventDealing'] ?? 0);
         $object->alt = isset($data['alt']) ? (string) $data['alt'] : null;
         $object->exiledOn = (int) ($data['exiledOn'] ?? 0);
         $object->attackedTurn = (int) ($data['attackedTurn'] ?? 0);

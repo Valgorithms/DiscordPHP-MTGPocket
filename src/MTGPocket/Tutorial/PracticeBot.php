@@ -36,7 +36,7 @@ final class PracticeBot
     public const string NAME = 'Practice Bot';
 
     /** Effects aimed at the opponent's side; anything else helps its own. */
-    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life', 'discard', 'control', 'mill', 'base_pt', 'self_damage', 'divided'];
+    private const array HARMFUL = ['damage', 'destroy', 'exile', 'bounce', 'tap', 'counter', 'lose_life', 'discard', 'control', 'mill', 'base_pt', 'self_damage', 'divided', 'prevent_dealing'];
 
     /** Moves in a row before the bot gives up and concedes, so a game never hangs on it. */
     private const int MOVE_LIMIT = 500;

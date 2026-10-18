@@ -3843,6 +3843,13 @@ final class TextParser
 
             return true;
         }
+        // `Destroy target artifact or enchantment. Its controller gains 3 life.`
+        if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell'], true)
+            && preg_match('/^Its controller gains (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
+            $effects[] = ['type' => 'gain_life', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
+
+            return true;
+        }
         // Beast Within: `Destroy target permanent. Its controller creates a 3/3 green Beast creature token.`
         if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true)
             && preg_match('/^Its controller creates (.+)$/', $sentence, $m) && ($token = self::token('create '.$m[1])) !== null) {
@@ -3960,7 +3967,7 @@ final class TextParser
         for ($i = $last; isset($effects[$i]) && $effects[$i]['type'] === 'tap' && isset($effects[$i]['target']); $i--) {
             $tapped[] = $i;
         }
-        $freeze = preg_match("/^(?:It|They|That creature|Those creatures|That permanent|Those permanents) (?:doesn't|don't) untap during (?:its|their) controller's next untap step$/i", $sentence);
+        $freeze = preg_match("/^(?:It|They|That creature|Those creatures|That permanent|Those permanents) (?:doesn't|don't) untap during (?:its|their) (?:controller's next untap step|controllers' next untap steps)$/i", $sentence);
         if ($tapped !== [] && ($freeze || preg_match('/^Put a stun counter on (?:it|that creature|that permanent|each of them)$/i', $sentence))) {
             foreach ($tapped as $i) {
                 $effects[$i][$freeze ? 'freeze' : 'stun'] = $freeze ? true : 1;
@@ -4161,6 +4168,10 @@ final class TextParser
         }
         if (preg_match('/^at the beginning of your next upkeep, pay '.self::COST.'$/i', $s, $m) && ! str_contains($m[1], 'X')) {
             return ['type' => 'pact', 'cost' => $m[1]];
+        }
+        // `Prevent all damage target creature would deal this turn.`; see Game::dealDamage().
+        if (preg_match('/^prevent all damage (?:target creature would deal|that would be dealt by target creature) this turn$/i', $s)) {
+            return ['type' => 'prevent_dealing', 'target' => 'creature'];
         }
         if (preg_match('/^prevent all combat damage that would be dealt this turn$/i', $s)) {
             return ['type' => 'fog'];
