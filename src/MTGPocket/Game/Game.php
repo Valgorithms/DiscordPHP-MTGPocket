@@ -6502,6 +6502,13 @@ final class Game
             'x' => $x,
         ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
         $this->targetedTriggers($targets, $seat);
+        // `Whenever you activate an ability that isn't a mana ability (an exhaust ability), …`
+        foreach ($this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'you_activate', $seat);
+            if ($ability['exhaust'] ?? false) {
+                $this->trigger($permanent, 'you_activate_exhaust', $seat);
+            }
+        }
         if ($cost['sacrifice'] ?? false) {
             $this->sacrifice($object);
             $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
