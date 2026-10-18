@@ -3457,6 +3457,10 @@ final class TextParser
             && ($first = self::sentenceEffects($m[1])) !== null && count($first) === 1 && in_array($first[0]['target'] ?? null, self::CREATURE_KINDS, true)) {
             return [$first[0], ['type' => 'double_counters', 'sameTarget' => true]];
         }
+        // `Create a number of 1/1 … tokens equal to the number of Elves you control.`: read as `Create X …, where X is the number of …`.
+        if (preg_match('/^([Cc]reate) a number of (.+ tokens) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)) {
+            return self::sentenceEffects("{$m[1]} X {$m[2]}, where X is the number of {$m[3]}");
+        }
         // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
         if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
             || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (to .+)$/', $sentence, $m)) {
@@ -3472,7 +3476,7 @@ final class TextParser
             return [['per' => $per] + $found];
         }
         // `Target creature gets -X/-X until end of turn, where X is the number of Swamps you control.`: X counted as it resolves.
-        if (preg_match('/^(.+ gets [+-]X\/[+-](?:X|0) until end of turn), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
+        if (preg_match('/^(.+ gets? [+-]X\/[+-](?:X|0) until end of turn), where X is the number of '.self::X_COUNT.'$/', $sentence, $m)
             && ($found = self::effect($m[1])) !== null && isset($found['xPump']) && ! isset($found['amount']) && ($per = self::per($m)) !== null) {
             return [['amount' => 1, 'per' => $per] + $found];
         }
@@ -4281,6 +4285,10 @@ final class TextParser
         if (preg_match("/^({$group}) get ([+-]\\d+)\\/([+-]\\d+)(?: and gain (.+?))? until end of turn$/i", $s, $m)
             && ($keywords = self::keywordList($m[4] ?? '')) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[2], 'toughness' => (int) $m[3], 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]] + ($other ? ['other' => true] : []);
+        }
+        // `Creatures you control get +X/+X until end of turn, where X is …` (see sentenceEffects()).
+        if (preg_match("/^({$group}) get ([+-])X\\/([+-])(X|0) until end of turn$/i", $s, $m)) {
+            return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => [], 'xPump' => [$m[2] === '-' ? -1 : 1, $m[4] === '0' ? 0 : ($m[3] === '-' ? -1 : 1)], 'each' => $each[strtolower($m[1])]] + ($other ? ['other' => true] : []);
         }
         if (preg_match("/^({$group}) gain (.+?) until end of turn$/i", $s, $m) && ($keywords = self::keywordList($m[2])) !== null) {
             return ['type' => 'pump', 'power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'each' => $each[strtolower($m[1])]] + ($other ? ['other' => true] : []);
