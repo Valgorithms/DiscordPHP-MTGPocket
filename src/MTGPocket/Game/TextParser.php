@@ -2999,6 +2999,11 @@ final class TextParser
         } elseif (preg_match('/^(?:Heroic — )?Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
             $event = 'heroic';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you cast a spell that targets (?:a|one or more) creatures? you control, (.+)$/u', $line, $match)
+            && ! preg_match('/\b(?:it|its|that creature|that spell|those creatures)\b/', $match[1])) {
+            // Once for each such spell, however many of your creatures it targets; see Game::castSpell().
+            $event = 'heroic_any';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
