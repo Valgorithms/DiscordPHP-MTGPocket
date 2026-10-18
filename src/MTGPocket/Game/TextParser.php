@@ -1055,7 +1055,7 @@ final class TextParser
 
             return true;
         }
-        $effects = self::effects($match[1]) ?? self::thatCreature(preg_replace('/^that creature also /', 'that creature ', $match[1]), $result['effects']);
+        $effects = self::effects($match[1]) ?? self::thatCreature(preg_replace('/^(?:that creature|it) also /', 'that creature ', $match[1]), $result['effects']);
         if ($effects === null) {
             return false;
         }
@@ -2762,6 +2762,12 @@ final class TextParser
 
                 return true;
             }
+        } elseif (preg_match('/^Whenever one or more other (creatures|nontoken creatures) you control die, (.+)$/', $line, $m2) && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[2])) {
+            // Once for creatures dying together; see Game::trigger().
+            $match = [$m2[0], $m2[2]];
+            $event = 'creature_dies_other';
+            $extra = ['batch' => true] + ($m2[1] !== 'creatures' ? ['nontoken' => true] : []);
+            $text = $match[1];
         } elseif (preg_match('/^Whenever one or more (other )?creatures (?:you control enter|enter(?: the battlefield)? under your control)(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] !== '' || ! self::$creature)
             && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[2])) {
             // Once per batch, such as several tokens created together; see Game::putOntoBattlefield().

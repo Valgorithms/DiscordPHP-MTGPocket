@@ -6021,6 +6021,11 @@ final class Game
                 }
                 $source->used[$key] = $this->turn;
             }
+            // `Whenever one or more other creatures you control die, …`: once for those dying together, while it waits to go on the stack.
+            if (($ability['batch'] ?? false) && array_filter($this->pendingTriggers, fn (array $pending) => $pending['source'] === $source->id
+                && $pending['text'] === str_replace('CARDNAME', $source->name(), $ability['text'])) !== []) {
+                continue;
+            }
             $this->pendingTriggers[] = [
                 'source' => $source->id,
                 'incarnation' => $incarnation ?? $source->incarnation,
