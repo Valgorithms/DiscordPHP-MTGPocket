@@ -4300,12 +4300,24 @@ final class Game
                 break;
 
             case 'draw':
+                if (($effect['each'] ?? null) === 'player') {
+                    foreach ($this->turnOrderSeats() as $seat) {
+                        $this->draw($seat, $amount);
+                    }
+                    break;
+                }
                 $this->draw($target !== null ? (int) substr($target, 2) : (isset($effect['opponent']) ? $this->opponent($controller) : $controller), $amount);
                 break;
 
             case 'gain_life':
                 if ($effect['perOpponent'] ?? false) {
                     $amount *= count($opponents);
+                }
+                if (($effect['each'] ?? null) === 'player') {
+                    foreach ($this->turnOrderSeats() as $seat) {
+                        $this->gainLife($seat, $amount);
+                    }
+                    break;
                 }
                 if (isset($effect['toController'])) {
                     $this->gainLife(str_starts_with((string) $target, 'o:') ? ($this->objects[(int) explode(':', (string) $target)[1]] ?? null)?->controller ?? $controller : $controller, $amount);
@@ -8534,6 +8546,20 @@ final class Game
         $this->moveTo($this->objects[$id], GameObject::HAND);
 
         return true;
+    }
+
+    /**
+     * Every seat in turn order, starting with the active player (rule 101.4).
+     *
+     * @return list<int>
+     */
+    private function turnOrderSeats(): array
+    {
+        $seats = array_keys($this->players);
+        $count = count($seats);
+        usort($seats, fn (int $a, int $b) => ($a - $this->active + $count) % $count <=> ($b - $this->active + $count) % $count);
+
+        return $seats;
     }
 
     private function draw(int $seat, int $count): void
