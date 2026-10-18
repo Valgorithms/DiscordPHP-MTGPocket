@@ -4254,6 +4254,10 @@ final class TextParser
         if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
+        // Evacuation, Aetherize-style sweepers: `Return all creatures to their owners' hands.`
+        if (preg_match('/^return (all creatures|all creatures you don\'t control|all creatures your opponents control|all nonland permanents|all other creatures|all attacking creatures|all creatures with flying|all creatures without flying|all artifacts|all enchantments) to their owners\' hands$/i', $s, $m)) {
+            return ['type' => 'bounce', 'all' => strtolower($m[1])];
+        }
         // Time Stop, Ultima: `End the turn.`; see Game::endTheTurn().
         if (preg_match('/^end the turn$/i', $s)) {
             return ['type' => 'end_turn'];

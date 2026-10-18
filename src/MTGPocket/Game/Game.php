@@ -4440,21 +4440,7 @@ final class Game
             case 'destroy':
             case 'exile':
                 if (isset($effect['all'])) {
-                    $doomed = array_filter($this->permanents(), fn (GameObject $o) => match ($effect['all']) {
-                        'all creatures' => $this->isCreature($o),
-                        'all other creatures' => $this->isCreature($o) && $o->id !== $source->id,
-                        'all creatures with flying' => $this->isCreature($o) && $this->hasKeyword($o, 'flying'),
-                        'all creatures without flying' => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'),
-                        'all tapped creatures' => $this->isCreature($o) && $o->tapped,
-                        "all creatures you don't control", 'all creatures your opponents control' => $this->isCreature($o) && $o->controller !== $controller,
-                        'all artifacts' => $o->definition()->is('Artifact'),
-                        'all enchantments' => $o->definition()->is('Enchantment'),
-                        'all artifacts and enchantments' => $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'),
-                        // `Destroy all creatures with power 3 or less.`, or with mana value.
-                        default => preg_match('/^all creatures with (power|mana value) (\d+) or (less|greater)$/', $effect['all'], $m)
-                            ? $this->isCreature($o) && (($m[1] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[2]) !== ($m[3] === 'less' ? 1 : -1)
-                            : ! $o->definition()->isLand(),
-                    });
+                    $doomed = $this->allMatching($effect['all'], $source, $controller);
                     foreach ($doomed as $object) {
                         if ($effect['type'] === 'exile') {
                             $this->moveTo($object, GameObject::EXILE);
@@ -4512,6 +4498,13 @@ final class Game
                 break;
 
             case 'bounce':
+                // Evacuation: `Return all creatures to their owners' hands.`
+                if (isset($effect['all'])) {
+                    foreach ($this->allMatching($effect['all'], $source, $controller) as $object) {
+                        $this->moveTo($object, GameObject::HAND);
+                    }
+                    break;
+                }
                 if ($affected !== null) {
                     $this->moveTo($affected, GameObject::HAND);
                 }
@@ -9002,6 +8995,35 @@ final class Game
             }
         }
         $this->pacts = array_values($this->pacts);
+    }
+
+    /**
+     * The permanents a `… all creatures (artifacts, nonland permanents …)` effect covers, as the parser names them.
+     *
+     * @param string     $all        Such as `all creatures` or `all creatures with power 3 or less`.
+     * @param GameObject $source
+     * @param int        $controller
+     *
+     * @return array<int, GameObject>
+     */
+    private function allMatching(string $all, GameObject $source, int $controller): array
+    {
+        return array_filter($this->permanents(), fn (GameObject $o) => match ($all) {
+            'all creatures' => $this->isCreature($o),
+            'all other creatures' => $this->isCreature($o) && $o->id !== $source->id,
+            'all creatures with flying' => $this->isCreature($o) && $this->hasKeyword($o, 'flying'),
+            'all creatures without flying' => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'),
+            'all tapped creatures' => $this->isCreature($o) && $o->tapped,
+            'all attacking creatures' => $this->isCreature($o) && isset($this->attackers[$o->id]),
+            "all creatures you don't control", 'all creatures your opponents control' => $this->isCreature($o) && $o->controller !== $controller,
+            'all artifacts' => $o->definition()->is('Artifact'),
+            'all enchantments' => $o->definition()->is('Enchantment'),
+            'all artifacts and enchantments' => $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'),
+            // `Destroy all creatures with power 3 or less.`, or with mana value.
+            default => preg_match('/^all creatures with (power|mana value) (\d+) or (less|greater)$/', $all, $m)
+                ? $this->isCreature($o) && (($m[1] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[2]) !== ($m[3] === 'less' ? 1 : -1)
+                : ! $o->definition()->isLand(),
+        });
     }
 
     /**
