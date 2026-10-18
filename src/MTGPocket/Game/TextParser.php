@@ -2900,6 +2900,10 @@ final class TextParser
         if (preg_match('/^you may sacrifice (an?|another) (creature|artifact|enchantment|land|permanent)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[3], 'target')) {
             [$pay, $text] = ["sacrifice {$match[2]}".($match[1] === 'another' ? ' other' : ''), $match[3]];
         }
+        // `you may collect evidence 6. If you do, …` (rule 701.59): see Game's `pay` effect.
+        if (preg_match('/^(?:you may )?collect evidence (\d+)\. If you do, (.+)$/u', $text, $match) && ! str_contains($match[2], 'target')) {
+            [$pay, $text] = ["evidence {$match[1]}", $match[2]];
+        }
         // `you may pay any amount of {E}. Put that many +1/+1 counters on it.`: X is the energy paid.
         if (preg_match('/^you may pay any amount of \{E\}\. (?:If you do, )?(.+?)(?:, where X is the amount of \{E\} paid)?\.?$/u', $text, $match)) {
             [$pay, $text] = ['any {E}', preg_replace('/\bthat many\b/', 'X', $match[1])];
