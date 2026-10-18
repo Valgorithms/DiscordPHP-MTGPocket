@@ -3378,7 +3378,7 @@ final class TextParser
         $dest = 'hand';
         if ($head[1] === 'Look at' && preg_match("/^, then put them back in any order{$after}", $head[3], $m)) {
             [$take, $may, $filter, $rest, $tail] = [0, true, 'any', 'top', $m[1]];
-        } elseif (preg_match("/^\\. Put (up to )?(\\w+) of (?:them|those cards) into your hand and the (?:rest|other|others) {$where}{$after}", $head[3], $m) && is_int($take = self::amount($m[2]))) {
+        } elseif (preg_match("/^\\. Put (up to )?(\\w+)(?: of (?:them|those cards))? into your hand and the (?:rest|other|others) {$where}{$after}", $head[3], $m) && is_int($take = self::amount($m[2]))) {
             [$may, $filter, $rest, $tail] = [$m[1] !== '', 'any', $m[3], $m[4]];
         } elseif (preg_match("/^\\. (?:You may (?:reveal|put|choose) (an?|up to \\w+|any number of) (?:(.+?) )?cards? from among them(?: and put (?:it|that card|them|those cards|the revealed cards) {$to}| {$to})?|Put all (.+?) cards revealed this way {$to})(?:\\. (?:Then p|P)ut the rest| and the rest) {$where}{$after}", $head[3], $m)) {
             if (($m[5] ?? '') !== '') {
@@ -3549,6 +3549,11 @@ final class TextParser
      */
     private static function sentenceEffects(string $sentence): ?array
     {
+        // Airbend (TLA): exile the permanent; its owner may cast it for {2} while it stays exiled. See Game's `airbend` effect.
+        if (preg_match('/^([Aa])irbend (.+)$/', $sentence, $m) && ($found = self::sentenceEffects(($m[1] === 'A' ? 'E' : 'e')."xile {$m[2]}")) !== null
+            && count($found) === 1 && $found[0]['type'] === 'exile' && array_keys($found[0]) === ['type', 'target'] && ! preg_match('/card|spell|player|opponent|^\??any$/', $found[0]['target'])) {
+            return [['type' => 'airbend'] + $found[0]];
+        }
         // `It deals 1 damage to each opponent and each creature your opponents control.`: one damage effect for each group.
         if (preg_match('/^(.+ deals? \w+ damage to) (each (?:(?!\band\b).)+) and (each .+)$/', $sentence, $m)
             && ($first = self::sentenceEffects("{$m[1]} {$m[2]}")) !== null && ($second = self::sentenceEffects("{$m[1]} {$m[3]}")) !== null

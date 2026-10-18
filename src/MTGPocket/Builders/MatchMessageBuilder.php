@@ -899,6 +899,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             in_array($options['exiled'], ['warp', 'impulse'], true) ? 'from exile' : '',
             $options['exiled'] === 'madness' ? "madness {$card->altCosts['madness']}" : '',
             $options['exiled'] === 'foretell' ? "foretold, {$card->altCosts['foretell']}" : '',
+            $options['exiled'] === 'airbend' ? 'airbent, {2}' : '',
             $options['entwined'] ? (isset($card->altCosts['teamwork']) ? "teamwork {$card->altCosts['teamwork']}, both modes" : "entwined +{$card->entwine}") : '',
             $options['alt'] === '' ? '' : "{$options['alt']} {$card->altCosts[$options['alt']]}",
             $options['faceDown'] ? 'face down for {3}' : '',
