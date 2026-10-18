@@ -3549,6 +3549,10 @@ final class TextParser
      */
     private static function sentenceEffects(string $sentence): ?array
     {
+        // Lure for a turn: `Target creature must be blocked this turn if able.`, `It must be blocked this turn if able.`
+        if (preg_match('/^(.+?) must be blocked this turn if able$/', $sentence, $m) && preg_match('/^(?:[Tt]arget creature(?: you control)?|It|That creature|CARDNAME)$/', $m[1])) {
+            return self::sentenceEffects("{$m[1]} gains must be blocked if able until end of turn");
+        }
         // `Each creature you control gets +1/+1 until end of turn.`: read as `Creatures you control get …`; `Each creature gets …` as `All creatures get …`.
         if (preg_match('/^([Ee])ach (other )?creature( you control| your opponents control)? (gets|gains) (.+)$/', $sentence, $m) && ($m[2] === '' || $m[3] !== '')) {
             $subject = $m[3] === '' ? 'All creatures' : ($m[2] !== '' ? 'Other creatures' : 'Creatures').$m[3];
@@ -3980,10 +3984,11 @@ final class TextParser
 
             return true;
         }
-        // "It gains haste until end of turn." after an effect with a target: the same creature.
+        // "It gains haste until end of turn." after an effect with a target: the same creature. `It must be blocked this turn if able.` reads the same way.
+        $sentence = (string) preg_replace('/^(It|That creature) must be blocked this turn if able$/', '$1 gains must be blocked if able until end of turn', $sentence);
         if ((isset($effects[$last]['target']) || ($effects[$last]['sameTarget'] ?? false))
             && preg_match('/^(?:It|That creature) (?:gets ([+-]\d+)\/([+-]\d+)(?: and gains (.+?))?|gains (.+?)) until end of turn$/', $sentence, $m)
-            && ($keywords = self::keywordList(($m[3] ?? '') !== '' ? $m[3] : ($m[4] ?? ''))) !== null) {
+            && ($keywords = self::keywordList(($m[3] ?? '') !== '' ? $m[3] : ($m[4] ?? ''), true)) !== null) {
             $effects[] = ['type' => 'pump', 'power' => (int) ($m[1] ?? 0), 'toughness' => (int) ($m[2] ?? 0), 'keywords' => $keywords, 'sameTarget' => true];
 
             return true;
@@ -4017,7 +4022,8 @@ final class TextParser
                 continue;
             }
             // `gains protection from the color of your choice until end of turn`: the color is picked as it resolves (see Game::applyEffect()).
-            if (! in_array($word, CardDefinition::KEYWORDS, true) && ! ($untilEndOfTurn && $word === 'protection from the color of your choice')) {
+            // `It must be blocked this turn if able.`: read as a keyword until end of turn (see TextParser::sentenceEffects() and Game::blockersAllowed()).
+            if (! in_array($word, CardDefinition::KEYWORDS, true) && ! ($untilEndOfTurn && in_array($word, ['protection from the color of your choice', 'must be blocked if able'], true))) {
                 return null;
             }
         }
