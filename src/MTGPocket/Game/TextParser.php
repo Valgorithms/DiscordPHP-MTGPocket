@@ -643,16 +643,18 @@ final class TextParser
                 continue;
             }
             // `CARDNAME costs {1} less to cast for each creature in your party.`: read by Game::paymentFor().
-            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast for each (creature in your party|artifact you control|creature you control|land you control|card in your hand|opponent you have|instant and sorcery card in your graveyard|creature card in your graveyard|card in your graveyard)\.$/', $line, $match)) {
-                $result['keywords'][] = "costs {$match[1]} less for each ".match ($match[2]) {
-                    'creature in your party' => 'party',
-                    'opponent you have' => 'opponent',
-                    'card in your hand' => 'card',
-                    'instant and sorcery card in your graveyard' => 'graveyard_spell',
-                    'creature card in your graveyard' => 'graveyard_creature',
-                    'card in your graveyard' => 'graveyard_card',
-                    default => strtok($match[2], ' '),
-                };
+            $eachCost = fn (string $each) => match ($each) {
+                'creature in your party' => 'party',
+                'opponent you have' => 'opponent',
+                'card in your hand' => 'card',
+                'instant and sorcery card in your graveyard' => 'graveyard_spell',
+                'creature card in your graveyard' => 'graveyard_creature',
+                'card in your graveyard' => 'graveyard_card',
+                default => strtok($each, ' '),
+            };
+            $eachCostPattern = 'creature in your party|artifact you control|creature you control|land you control|card in your hand|opponent you have|instant and sorcery card in your graveyard|creature card in your graveyard|card in your graveyard';
+            if (preg_match('/^(?:This spell|CARDNAME) costs \{(\d+)\} less to cast for each ('.$eachCostPattern.')\.$/', $line, $match)) {
+                $result['keywords'][] = "costs {$match[1]} less for each ".$eachCost($match[2]);
 
                 continue;
             }
@@ -668,8 +670,9 @@ final class TextParser
                 continue;
             }
             $kinds = ['' => 'any', 'Instant and sorcery ' => 'instant_sorcery', 'Creature ' => 'creature', 'Noncreature ' => 'noncreature', 'Artifact ' => 'artifact', 'Enchantment ' => 'enchantment'];
-            if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?[Ss]pells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
-                $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]];
+            // `Creature spells you cast cost {1} less to cast for each creature card in your graveyard.`
+            if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?[Ss]pells you cast cost \{(\d+)\} less to cast(?: for each ('.$eachCostPattern.'))?\.$/', $line, $match)) {
+                $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]] + (($match[3] ?? '') !== '' ? ['each' => $eachCost($match[3])] : []);
 
                 continue;
             }
@@ -4171,7 +4174,7 @@ final class TextParser
             return ['type' => 'flicker', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // Scaled Herbalist: `You may put a land card from your hand onto the battlefield.`
-        if (preg_match('/^(?:you may )?put a land card from your hand onto the battlefield( tapped)?$/i', $s, $m)) {
+        if (preg_match('/^(?:then )?(?:you may )?put a land card from your hand onto the battlefield( tapped)?$/i', $s, $m)) {
             return ['type' => 'land_from_hand', 'tapped' => ($m[1] ?? '') !== ''];
         }
         // Cackling Counterpart: `Create a token that's a copy of target creature you control.`
