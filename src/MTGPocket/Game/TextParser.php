@@ -2485,6 +2485,12 @@ final class TextParser
         } elseif (preg_match('/^Whenever you draw your second card each turn, (.+)$/', $line, $match)) {
             $event = 'second_draw';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you create (an?|one or more) (?:(creature|artifact|[A-Z][a-z]+) )?tokens?, (.+)$/', $line, $match) && ($match[1] !== 'one or more' || $match[2] === '')
+            && ! preg_match('/\b(?:it|that token|they|those tokens)\b/', $match[3])) {
+            // See Game::createToken(): "one or more" once per batch of tokens.
+            $event = $match[1] === 'one or more' ? 'you_create_tokens' : 'you_create_token';
+            $extra = $match[2] !== '' ? ['objectKind' => $match[2]] : [];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever you (scry|surveil), (.+)$/', $line, $match)) {
             $event = "you_{$match[1]}";
             $text = $match[2];
