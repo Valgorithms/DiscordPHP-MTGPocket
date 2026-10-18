@@ -182,6 +182,9 @@ final class Game
     /** @var array<int, true> Creatures that dealt first-strike damage this combat. */
     public array $struckFirst = [];
 
+    /** @var array<int, int> Creatures to destroy at end of combat, by id, with the incarnation that was marked. */
+    public array $destroyAtEndOfCombat = [];
+
     /** @var array<string, true> Turn-based choices already made this step: `attack`, `block`. */
     public array $declared = [];
 
@@ -634,6 +637,13 @@ final class Game
                     $this->sacrifice($this->objects[$blocker]);
                 }
             }
+            // `… destroy that creature at end of combat.`
+            foreach ($this->destroyAtEndOfCombat as $id => $incarnation) {
+                if (($object = $this->objects[$id] ?? null) !== null && $object->incarnation === $incarnation) {
+                    $this->destroy($object);
+                }
+            }
+            $this->destroyAtEndOfCombat = [];
             $this->attackers = $this->blockers = $this->extraBlocks = $this->blocked = $this->struckFirst = [];
         }
         $this->enterStep($this->step->next());
@@ -4578,6 +4588,14 @@ final class Game
                     $affected->tapped = $effect['type'] === 'tap';
                     $affected->frozen = $affected->frozen || ($effect['freeze'] ?? false);
                     $affected->addCounters('stun', (int) ($effect['stun'] ?? 0));
+                }
+                break;
+
+            case 'destroy_end_combat':
+                // `Whenever CARDNAME blocks or becomes blocked by a (non-Wall) creature, destroy that creature at end of combat.`
+                $that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null;
+                if ($that !== null && $that->zone === GameObject::BATTLEFIELD && ! in_array($effect['notSubtype'] ?? null, $that->definition()->subtypes, true)) {
+                    $this->destroyAtEndOfCombat[$that->id] = $that->incarnation;
                 }
                 break;
 
@@ -9826,6 +9844,7 @@ final class Game
             'blockers' => array_map(fn ($blocker, $attacker) => [$blocker, $attacker, ...$this->extraBlocks[$blocker] ?? []], array_keys($this->blockers), $this->blockers),
             'blocked' => array_keys($this->blocked),
             'struckFirst' => array_keys($this->struckFirst),
+            'destroyAtEndOfCombat' => array_map(fn ($id, $incarnation) => [$id, $incarnation], array_keys($this->destroyAtEndOfCombat), $this->destroyAtEndOfCombat),
             'declared' => array_keys($this->declared),
             'autoPass' => $this->autoPass,
             'winner' => $this->winner,
@@ -9942,6 +9961,9 @@ final class Game
         }
         $game->blocked = array_fill_keys(array_map('intval', (array) ($data['blocked'] ?? [])), true);
         $game->struckFirst = array_fill_keys(array_map('intval', (array) ($data['struckFirst'] ?? [])), true);
+        foreach ((array) ($data['destroyAtEndOfCombat'] ?? []) as [$id, $incarnation]) {
+            $game->destroyAtEndOfCombat[(int) $id] = (int) $incarnation;
+        }
         $game->declared = array_fill_keys(array_map('strval', (array) ($data['declared'] ?? [])), true);
         foreach ((array) ($data['autoPass'] ?? []) as $seat => $on) {
             $game->autoPass[(int) $seat] = (bool) $on;
