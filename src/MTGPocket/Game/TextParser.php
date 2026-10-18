@@ -2354,6 +2354,14 @@ final class TextParser
 
             return true;
         }
+        // Cockatrice-style: `Whenever CARDNAME blocks or becomes blocked by a creature, destroy that creature at end of combat.`; see Game::$destroyAtEndOfCombat.
+        if (preg_match('/^Whenever CARDNAME (blocks|becomes blocked by|blocks or becomes blocked by) a(?: non-?(\w+))? creature, destroy that creature at end of combat\.$/', $line, $m)
+            && (($m[2] ?? '') === '' || in_array(strtolower($m[2]), ['wall'], true))) {
+            $event = ['blocks' => 'blocks_creature', 'becomes blocked by' => 'blocked_by_creature'][$m[1]] ?? 'block_pair';
+            $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => [['type' => 'destroy_end_combat', 'each' => 'that'] + (($m[2] ?? '') === '' ? [] : ['notSubtype' => 'Wall'])]];
+
+            return true;
+        }
         // Ornery Goblin: `Whenever CARDNAME blocks or becomes blocked by a creature, CARDNAME deals 1 damage to that creature.`; see Game::declareBlockers().
         if (preg_match('/^Whenever CARDNAME (blocks|becomes blocked by|blocks or becomes blocked by) a creature, CARDNAME deals (\w+) damage to that creature\.$/', $line, $m) && is_int($n = self::amount($m[2]))) {
             $event = ['blocks' => 'blocks_creature', 'becomes blocked by' => 'blocked_by_creature'][$m[1]] ?? 'block_pair';
