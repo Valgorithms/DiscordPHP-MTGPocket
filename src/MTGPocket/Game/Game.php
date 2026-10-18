@@ -6193,7 +6193,13 @@ final class Game
             return 'You have no card to discard.';
         }
         if (isset($cost['fodder']) && $this->fodder($seat, $object, $cost['fodder']) === null) {
-            return 'You have no '.(str_ends_with($cost['fodder'], ' artifact') ? 'artifact' : 'creature').' to sacrifice.';
+            return 'You have no '.(explode(' ', $cost['fodder'], 2)[1] ?? 'creature').' to sacrifice.';
+        }
+        if (isset($cost['exileGrave']) && $this->graveFodder($seat, $cost['exileGrave']) === null) {
+            return "You need {$cost['exileGrave']} cards in your graveyard.";
+        }
+        if (($cost['forage'] ?? false) && $this->graveFodder($seat, 3) === null && $this->fodder($seat, $object, 'any Food') === null) {
+            return 'To forage, you need three cards in your graveyard or a Food.';
         }
         if (isset($cost['craft']) && $this->craftMaterial($seat, $object, $cost['craft']) === null) {
             return "You have no {$cost['craft']} to craft {$object->name()} with.";
@@ -6350,10 +6356,32 @@ final class Game
      */
     private function fodder(int $seat, GameObject $source, string $which): ?GameObject
     {
-        $fits = str_ends_with($which, ' artifact') ? fn (GameObject $o) => $o->definition()->is('Artifact') : fn (GameObject $o) => $this->isCreature($o);
+        // `any creature`, `other artifact`, `any Food`, …: see Game::objectFits().
+        $kind = explode(' ', $which, 2)[1] ?? 'creature';
+        $fits = $kind === 'creature' ? fn (GameObject $o) => $this->isCreature($o) : fn (GameObject $o) => $this->objectFits($o, $kind);
 
         return $this->weakest($seat, fn (GameObject $o) => $o->id !== $source->id && $fits($o))
             ?? (str_starts_with($which, 'any') && $source->zone === GameObject::BATTLEFIELD && $source->controller === $seat && $fits($source) ? $source : null);
+    }
+
+    /**
+     * Cards exiled from a graveyard to pay a cost (`Exile two cards from your
+     * graveyard:`, forage): lands first, then the lowest mana value.
+     *
+     * @param int $seat
+     * @param int $count
+     *
+     * @return GameObject[]|null Null when there are not enough.
+     */
+    private function graveFodder(int $seat, int $count): ?array
+    {
+        $cards = array_map(fn (int $id) => $this->objects[$id], $this->players[$seat]->graveyard);
+        if (count($cards) < $count) {
+            return null;
+        }
+        usort($cards, fn (GameObject $a, GameObject $b) => [! $a->definition()->isLand(), $a->definition()->cost->manaValue()] <=> [! $b->definition()->isLand(), $b->definition()->cost->manaValue()]);
+
+        return array_slice($cards, 0, $count);
     }
 
     /**
@@ -6464,6 +6492,18 @@ final class Game
         if (isset($cost['fodder']) && ($fodder = $this->fodder($seat, $object, $cost['fodder'])) !== null) {
             $this->log("{$player->name} sacrifices {$fodder->name()}.");
             $this->sacrifice($fodder);
+        }
+        // Forage: exile three cards from your graveyard or sacrifice a Food; the graveyard when it can.
+        $exiled = isset($cost['exileGrave']) ? $this->graveFodder($seat, $cost['exileGrave']) : (($cost['forage'] ?? false) ? $this->graveFodder($seat, 3) : null);
+        if (($cost['forage'] ?? false) && $exiled === null && ($food = $this->fodder($seat, $object, 'any Food')) !== null) {
+            $this->log("{$player->name} forages, sacrificing {$food->name()}.");
+            $this->sacrifice($food);
+        }
+        foreach ($exiled ?? [] as $card) {
+            $this->moveTo($card, GameObject::EXILE);
+        }
+        if ($exiled !== null) {
+            $this->log("{$player->name} exiles ".implode(', ', array_map(fn (GameObject $c) => $c->name(), $exiled)).' from their graveyard.');
         }
         if (isset($cost['craft']) && ($material = $this->craftMaterial($seat, $object, $cost['craft'])) !== null) {
             $this->log("{$player->name} exiles {$material->name()} to craft {$object->name()}.");
