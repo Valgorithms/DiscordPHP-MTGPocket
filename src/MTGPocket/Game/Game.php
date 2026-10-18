@@ -1007,6 +1007,7 @@ final class Game
             foreach ($this->permanents($seat) as $permanent) {
                 $this->trigger($permanent, 'you_discard', $seat);
             }
+            $this->discardedBy($seat, $id);
         }
         // `Whenever you discard one or more cards, …`: once for them all.
         foreach ($this->permanents($seat) as $permanent) {
@@ -3015,6 +3016,7 @@ final class Game
             $this->trigger($permanent, 'you_discard', $seat);
             $this->trigger($permanent, 'you_discard_batch', $seat);
         }
+        $this->discardedBy($seat, $object->id);
         $this->pushAbility([
             'source' => $object->id,
             'incarnation' => $object->incarnation,
@@ -6363,6 +6365,26 @@ final class Game
             'multicolored' => count($card->colors) > 1,
             default => in_array($kind, $card->subtypes, true),
         };
+    }
+
+    /**
+     * `Whenever you discard a creature card, …` (the card is the context)
+     * and `Whenever an opponent discards a card, …` (that player is).
+     *
+     * @param int $seat Who discarded it.
+     * @param int $id   The card.
+     *
+     * @return void
+     */
+    private function discardedBy(int $seat, int $id): void
+    {
+        foreach ($this->permanents() as $permanent) {
+            if ($permanent->controller === $seat) {
+                $this->trigger($permanent, 'you_discard_kind', $seat, null, $id);
+            } else {
+                $this->trigger($permanent, 'opponent_discards', $permanent->controller, null, $seat);
+            }
+        }
     }
 
     /**
