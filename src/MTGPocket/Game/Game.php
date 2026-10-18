@@ -4288,6 +4288,8 @@ final class Game
                     'creature_without_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'))),
                     'creature_with_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $this->hasKeyword($o, 'flying'))),
                     'creature_opponents' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $o->controller !== $controller)),
+                    // `… deals 2 damage to each creature blocking it.`
+                    'blocking_self' => array_map(fn (int $id) => "o:{$id}", array_values(array_filter(array_keys($this->blockers, $source->id, true), fn (int $id) => ($this->objects[$id] ?? null)?->zone === GameObject::BATTLEFIELD))),
                     // `… deals 1 damage to that creature.`: the creature it blocked or was blocked by.
                     'that' => ($that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null) !== null && $that->zone === GameObject::BATTLEFIELD ? ["o:{$that->id}"] : [],
                     // `… deals 3 damage to that creature's controller.`
