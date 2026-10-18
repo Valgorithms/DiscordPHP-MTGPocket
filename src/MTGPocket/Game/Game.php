@@ -1345,6 +1345,25 @@ final class Game
     }
 
     /**
+     * Leyline of Anticipation: `You may cast spells as though they had flash.`, or only creature spells.
+     *
+     * @param int            $seat
+     * @param CardDefinition $card
+     *
+     * @return bool
+     */
+    private function flashGranted(int $seat, CardDefinition $card): bool
+    {
+        foreach ($this->permanents($seat) as $permanent) {
+            if ($this->hasKeyword($permanent, 'spells have flash') || ($card->isCreature() && $this->hasKeyword($permanent, 'creature spells have flash'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * The extra {2} a commander costs for each time it was cast from the
      * command zone before (rule 903.8).
      *
@@ -1658,7 +1677,7 @@ final class Game
         // A plotted card is cast as a sorcery (rule 702.170d).
         // Madness casts it whenever its trigger waits (rule 702.35c).
         // Cascade casts it while its trigger waits (rule 702.85a).
-        if (! $options['rebound'] && ! in_array($options['alt'], ['miracle', 'sneak'], true) && ! in_array($options['exiled'], ['madness', 'suspended', 'cascade'], true) && ($options['faceDown'] || ! $card->hasInstantSpeed() || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
+        if (! $options['rebound'] && ! in_array($options['alt'], ['miracle', 'sneak'], true) && ! in_array($options['exiled'], ['madness', 'suspended', 'cascade'], true) && ($options['faceDown'] || ! ($card->hasInstantSpeed() || $this->flashGranted($seat, $card)) || $options['exiled'] === 'plot') && ! $this->sorcerySpeed($seat)) {
             return "{$card->name} can be cast only in your own main phase, when the stack is empty.";
         }
 
@@ -2156,7 +2175,7 @@ final class Game
         $life = $discard = 0;
         foreach ($targets as $target) {
             $object = $this->targetObject($target);
-            if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller === $seat || ($ward = $object->definition()->ward) === null || (($ward['tax'] ?? false) && ! $spell)) {
+            if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller === $seat || ($ward = $object->definition()->ward ?? $this->grantedWard($object)) === null || (($ward['tax'] ?? false) && ! $spell)) {
                 continue;
             }
             $mana .= $ward['mana'] ?? '';
@@ -2165,6 +2184,24 @@ final class Game
         }
 
         return [$mana, $life, $discard];
+    }
+
+    /**
+     * Ward a permanent has from another one: `Creatures you control have ward {1}.`
+     *
+     * @param GameObject $object
+     *
+     * @return array{mana: string}|null
+     */
+    private function grantedWard(GameObject $object): ?array
+    {
+        foreach ($this->keywords($object) as $keyword) {
+            if (preg_match('/^ward (\{\d+\})$/', $keyword, $match)) {
+                return ['mana' => $match[1]];
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -541,6 +541,8 @@ final class TextParser
                 'Creatures your opponents control enter the battlefield tapped.' => 'opponent creatures enter tapped',
                 // Read by Game::whyNotCast().
                 "Your opponents can't cast spells during your turn." => 'opponents cast nothing on your turn',
+                'You may cast spells as though they had flash.' => 'spells have flash',
+                'You may cast creature spells as though they had flash.' => 'creature spells have flash',
                 // Chromatic Lantern; read by Game::manaSources().
                 'Lands you control have "{T}: Add one mana of any color."' => 'lands tap for any color',
                 'You may look at the top card of your library any time.' => 'look at top any time',
@@ -664,7 +666,7 @@ final class TextParser
                 continue;
             }
             $kinds = ['' => 'any', 'Instant and sorcery ' => 'instant_sorcery', 'Creature ' => 'creature', 'Noncreature ' => 'noncreature', 'Artifact ' => 'artifact', 'Enchantment ' => 'enchantment'];
-            if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?spells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
+            if (! $spell && preg_match('/^(Instant and sorcery |Creature |Noncreature |Artifact |Enchantment )?[Ss]pells you cast cost \{(\d+)\} less to cast\.$/', $line, $match)) {
                 $result['costReductions'][] = ['kind' => $kinds[$match[1]], 'amount' => (int) $match[2]];
 
                 continue;
@@ -3833,6 +3835,10 @@ final class TextParser
         foreach ($words as $word) {
             // See Game::protectedFrom().
             if (preg_match('/^protection from (white|blue|black|red|green|artifacts|creatures|enchantments|instants|sorceries|planeswalkers)$/', $word)) {
+                continue;
+            }
+            // A granted ward: see Game::wardCost().
+            if (preg_match('/^ward \{\d+\}$/', $word)) {
                 continue;
             }
             // `gains protection from the color of your choice until end of turn`: the color is picked as it resolves (see Game::applyEffect()).
