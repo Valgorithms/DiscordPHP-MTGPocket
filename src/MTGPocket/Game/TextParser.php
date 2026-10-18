@@ -3920,6 +3920,10 @@ final class TextParser
         if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each other attacking ([A-Z][a-z]+|creature)$/', $s, $m) && ($type = $m[3] === 'creature' ? 'creature' : self::subtypeOf($m[3])) !== null) {
             return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perAttacking' => $type];
         }
+        // `Whenever CARDNAME becomes blocked, it gets +1/+1 until end of turn for each creature blocking it.`
+        if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each creature blocking it$/', $s, $m)) {
+            return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perBlocking' => true];
+        }
         // Drifter il-Dal: `At the beginning of your upkeep, sacrifice CARDNAME unless you pay {U}.`
         if (preg_match('/^sacrifice (?:CARDNAME|it) unless you pay ((?:\{[0-9WUBRGC]\})+)$/i', $s, $m)) {
             return ['type' => 'sac_unless', 'cost' => $m[1], 'self' => true];

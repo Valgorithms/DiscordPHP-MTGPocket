@@ -4471,6 +4471,11 @@ final class Game
                         && ($effect['perAttacking'] === 'creature' || in_array($effect['perAttacking'], $this->objects[$id]->definition()->subtypes, true))));
                     $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
                 }
+                // `… for each creature blocking it.`
+                if ($effect['perBlocking'] ?? false) {
+                    $times = count(array_keys($this->blockers, $source->id, true));
+                    $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
+                }
                 if (isset($effect['xPump'])) {
                     $n = isset($effect['amount']) ? $amount : $x;
                     $effect = ['power' => $effect['xPump'][0] * $n, 'toughness' => $effect['xPump'][1] * $n] + $effect;
