@@ -4851,6 +4851,9 @@ final class TextParser
                 default => 'battlefield',
             }];
         }
+        if (preg_match('/^sacrifice (?:it|CARDNAME) at end of combat$/i', $s)) {
+            return ['type' => 'sacrifice_end_combat', 'self' => true];
+        }
         if (preg_match('/^discard (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'discard', 'amount' => $n];
         }
