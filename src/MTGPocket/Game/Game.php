@@ -3898,6 +3898,20 @@ final class Game
             if (isset($effect['ifCondition']) && ! $this->conditionMet($effect['ifCondition'], $source, $item['controller'])) {
                 continue;
             }
+            // Excess damage (rule 120.4a): beyond lethal damage, which is 1 from a deathtouch source.
+            if (isset($effect['excess']) && is_int($effect['amount']) && ($hurt = $this->targetObject((string) $target)) !== null && $this->isCreature($hurt)) {
+                $lethal = max(0, $this->toughness($hurt) - $hurt->damage);
+                $excess = max(0, $effect['amount'] - ($this->hasKeyword($source, 'deathtouch') ? min(1, $lethal) : $lethal));
+                $item['excess'] = $excess > 0;
+                if ($effect['excess'] === 'controller' && $excess > 0) {
+                    // `Excess damage is dealt to that creature's controller instead.`
+                    $effect['amount'] -= $excess;
+                    array_unshift($steps, [['type' => 'damage', 'amount' => $excess], "p:{$hurt->controller}"]);
+                }
+            }
+            if (($effect['ifExcess'] ?? false) && ! ($item['excess'] ?? false)) {
+                continue;
+            }
             // `If you control a Goblin, it deals 3 damage instead.`
             if (isset($effect['insteadIf']) && $this->conditionMet($effect['insteadIf'], $source, $item['controller'])) {
                 $effect = (isset($effect['insteadAmount']) ? ['amount' => $effect['insteadAmount']] : []) + ($effect['instead'] ?? []) + $effect;
