@@ -4923,6 +4923,9 @@ final class Game
                     // With no more cards than they must discard, there is nothing to choose.
                     if (count($this->players[$seat]->hand) <= $amount) {
                         $this->discardCards($seat, $this->players[$seat]->hand);
+                    } elseif ($effect['random'] ?? false) {
+                        // `discards a card at random`: from the game's seed, so a replay discards the same card.
+                        $this->discardCards($seat, array_slice($this->random()->shuffleArray($this->players[$seat]->hand), 0, $amount));
                     } else {
                         $choosing[] = $seat;
                     }
