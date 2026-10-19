@@ -6856,6 +6856,8 @@ final class Game
             'instant or sorcery' => $card->is('Instant') || $card->is('Sorcery'),
             'historic' => $card->is('Artifact') || in_array('Legendary', $card->supertypes, true) || in_array('Saga', $card->subtypes, true),
             'multicolored' => count($card->colors) > 1,
+            // `a spell that has an X in its mana cost`
+            'x spell' => $card->cost->xCount > 0,
             default => in_array($kind, $card->subtypes, true),
         };
     }

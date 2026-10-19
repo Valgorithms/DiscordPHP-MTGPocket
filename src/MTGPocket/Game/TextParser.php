@@ -3032,6 +3032,12 @@ final class TextParser
             $event = $match[2] === 'you control' ? 'heroic_any' : 'cast_targets_opponent_creature';
             $extra = $match[1] !== '' ? ['objectKind' => $match[1]] : [];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever (you|an opponent) casts? a spell that has an X in its mana cost, (.+)$/', $line, $match)
+            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ')) {
+            // See Game::objectFits().
+            $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
+            $extra = ['objectKind' => 'x spell'];
+            $text = $match[2];
         } elseif (preg_match("/^Whenever you cast your first spell during each opponent's turn, (.+)$/", $line, $match)) {
             // See Game::castSpell().
             $event = 'first_spell_opponent_turn';
