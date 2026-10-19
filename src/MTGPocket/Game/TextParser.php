@@ -2162,6 +2162,10 @@ final class TextParser
             // Read by Game::canBlock().
             return [...$found, "can't be blocked by power {$match[1]} or {$match[2]}"];
         }
+        if (preg_match('/^can\'t block creatures with power (\d+) or (greater|less)$/', $text, $match)) {
+            // Read by Game::canBlock().
+            return [...$found, "can't block power {$match[1]} or {$match[2]}"];
+        }
         $found = [...$found, ...match ($text) {
             'can block only creatures with flying' => ['can block only creatures with flying'],
             "can't attack" => ["can't attack"],

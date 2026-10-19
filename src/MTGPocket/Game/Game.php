@@ -8005,6 +8005,7 @@ final class Game
             $artifact && $this->hasKeyword($attacker, "can't be blocked by artifact creatures") => true,
             array_filter($colors, fn (string $color) => $this->hasKeyword($attacker, "can't be blocked by ".(['W' => 'white', 'U' => 'blue', 'B' => 'black', 'R' => 'red', 'G' => 'green'][$color] ?? 'colorless').' creatures')) !== [] => true,
             $this->evadesByPower($attacker, $this->power($blocker)) => true,
+            $this->blocksOnlyByPower($blocker, $this->power($attacker)) => true,
             array_filter($blocker->definition()->subtypes, fn (string $type) => $this->hasKeyword($attacker, "can't be blocked by sub:{$type}")) !== [] => true,
             $this->hasKeyword($attacker, "can't be blocked by lesser power") && $this->power($blocker) < $this->power($attacker) => true,
             // Your Ring-bearer can't be blocked by creatures with greater power.
@@ -8026,6 +8027,27 @@ final class Game
     {
         foreach ($this->keywords($attacker) as $keyword) {
             if (preg_match("/^can't be blocked by power (\\d+) or (greater|less)$/", $keyword, $m)
+                && ($m[2] === 'greater' ? $power >= (int) $m[1] : $power <= (int) $m[1])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a blocker can't block creatures with this power
+     * (`can't block creatures with power 2 or less`).
+     *
+     * @param GameObject $blocker
+     * @param int        $power
+     *
+     * @return bool
+     */
+    private function blocksOnlyByPower(GameObject $blocker, int $power): bool
+    {
+        foreach ($this->keywords($blocker) as $keyword) {
+            if (preg_match("/^can't block power (\\d+) or (greater|less)$/", $keyword, $m)
                 && ($m[2] === 'greater' ? $power >= (int) $m[1] : $power <= (int) $m[1])) {
                 return true;
             }
