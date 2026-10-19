@@ -6136,6 +6136,9 @@ final class Game
             'your_turn' => $this->active === $controller,
             'attacked' => $this->players[$controller]->attackedTurn === $this->turn,
             'self_attacked' => $source->attackedTurn === $this->turn,
+            // Day and night (rule 726): neither until it becomes day.
+            'night' => $this->dayNight === 'night',
+            'day' => $this->dayNight === 'day',
             'opponent_lost' => array_filter($this->players, fn (GamePlayer $other, int $seat) => $seat !== $controller && $other->lostLifeOnTurn === $this->turn, ARRAY_FILTER_USE_BOTH) !== [],
             'main_phase' => $this->active === $controller && in_array($this->step, [Step::PrecombatMain, Step::PostcombatMain], true),
             'attacking' => isset($this->attackers[$source->id]),

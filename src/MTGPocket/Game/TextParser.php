@@ -1930,6 +1930,8 @@ final class TextParser
             $text === "it's tapped" => 'tapped',
             (bool) preg_match('/^you have (\w+) or more life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life {$n}",
             $text === "it's your turn" => 'your_turn',
+            $text === "it's night" => 'night',
+            $text === "it's day" => 'day',
             $text === "it's attacking" => 'attacking',
             // Kird Ape: `as long as you control a Forest`.
             (bool) preg_match('/^you control an? ([A-Z][a-z]+)$/', $text, $m) => "controls {$m[1]}",
@@ -3113,6 +3115,10 @@ final class TextParser
                 return false;
             }
             $text = $match['rest'];
+        } elseif (self::effects($text) === null && preg_match("/^if it's (night|day), (.+)$/", $text, $match)) {
+            // Day and night (rule 726): `When CARDNAME enters, if it's night, draw a card.`
+            $if = $match[1];
+            $text = $match[2];
         }
         // `Whenever CARDNAME deals combat damage to a player, that player mills that many cards.`: the damage it dealt; see Game::combatDamage().
         $dealt = in_array($event, ['combat_damage', 'attached_combat_damage', 'creature_combat_damage', 'creature_combat_damage_other'], true) && preg_match_all('/\bthat (?:many|much)\b/', $text) === 1;
