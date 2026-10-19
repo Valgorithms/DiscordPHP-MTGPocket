@@ -3072,14 +3072,14 @@ final class Game
         // `Whenever you cast a spell that targets a creature you control, …`
         if (array_filter(array_keys($targeted), fn (int $id) => $this->isCreature($this->objects[$id])) !== []) {
             foreach ($this->permanents($seat) as $permanent) {
-                $this->trigger($permanent, 'heroic_any', $seat);
+                $this->trigger($permanent, 'heroic_any', $seat, null, $spell->id);
             }
         }
         // `Whenever you cast a spell that targets a creature an opponent controls, …`
         foreach ($item !== false && $item['object'] === $spell->id ? $item['targets'] : [] as $target) {
             if (($object = $this->targetObject((string) $target)) !== null && $object->zone === GameObject::BATTLEFIELD && $object->controller !== $seat && $this->isCreature($object)) {
                 foreach ($this->permanents($seat) as $permanent) {
-                    $this->trigger($permanent, 'cast_targets_opponent_creature', $seat);
+                    $this->trigger($permanent, 'cast_targets_opponent_creature', $seat, null, $spell->id);
                 }
                 break;
             }
