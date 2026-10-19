@@ -4701,8 +4701,11 @@ final class TextParser
         if (preg_match('/^you get ((?:\{E\})+)$/i', $s, $m)) {
             return ['type' => 'energy', 'amount' => substr_count($m[1], '{E}')];
         }
-        if (preg_match('/^investigate$/i', $s)) {
-            return ['type' => 'token', 'amount' => 1, 'token' => self::ARTIFACT_TOKENS['Clue']];
+        // `Investigate twice.`: a Clue each time.
+        if (preg_match('/^investigate(?: (twice|three times|(\w+) times))?$/i', $s, $m) && is_int($n = match ($m[1] ?? '') {
+            '' => 1, 'twice' => 2, 'three times' => 3, default => self::amount($m[2])
+        })) {
+            return ['type' => 'token', 'amount' => $n, 'token' => self::ARTIFACT_TOKENS['Clue']];
         }
         if (preg_match('/^create (\w+) (Food|Clue|Treasure|Blood|Lander|Map|Junk) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'token', 'amount' => $n, 'token' => self::ARTIFACT_TOKENS[ucfirst(strtolower($m[2]))]];
@@ -4713,8 +4716,8 @@ final class TextParser
         if (preg_match('/^attach (?:it|CARDNAME) to target creature you control$/', $s)) {
             return ['type' => 'attach', 'target' => 'creature_you_control'];
         }
-        if (preg_match('/^untap (that creature|that permanent|it)$/i', $s)) {
-            return ['type' => 'untap', 'sameTarget' => true];
+        if (preg_match('/^(untap|tap) (that creature|that permanent|it)$/i', $s, $m)) {
+            return ['type' => strtolower($m[1]), 'sameTarget' => true];
         }
         // `Return target land card from your graveyard to the battlefield tapped.`: any permanent card returns to the battlefield.
         if (preg_match("/^return ({$targets}) to (your hand|the battlefield)( tapped)?$/i", $s, $m)
