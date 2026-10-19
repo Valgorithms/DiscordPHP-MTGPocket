@@ -2469,7 +2469,8 @@ final class TextParser
     private static function triggered(string $line, array &$result): bool
     {
         // Valiant: `Whenever CARDNAME becomes the target of a spell or ability you control for the first time each turn, …`: see Game::trigger().
-        if (preg_match('/^(Whenever .+?) for the first time each turn, (.+)$/', $line, $once)) {
+        // `Whenever …, draw a card. This ability triggers only once each turn.`: the same record.
+        if (preg_match('/^(Whenever .+?) for the first time each turn, (.+)$/', $line, $once) || preg_match('/^(Whenever [^.]+?), (.+\.) This ability triggers only once each turn\.$/', $line, $once)) {
             $before = count($result['triggered'] ?? []);
             if (! self::triggered("{$once[1]}, {$once[2]}", $result)) {
                 return false;
