@@ -4318,7 +4318,9 @@ final class Game
         };
         // `Draw a card for each creature you control.`: counted as it resolves.
         if (isset($effect['per'])) {
-            $amount *= $this->perCount($controller, (string) $effect['per'], $source);
+            // `Target opponent loses life equal to the number of cards in their hand.`: the targeted player's hand.
+            $amount *= $effect['per'] === 'their_hand' ? (str_starts_with((string) $target, 'p:') ? count($this->players[(int) substr((string) $target, 2)]->hand) : 0)
+                : $this->perCount($controller, (string) $effect['per'], $source);
         }
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {

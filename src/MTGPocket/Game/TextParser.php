@@ -3699,6 +3699,12 @@ final class TextParser
         if (preg_match('/^([Cc]reate) a number of (.+ tokens) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)) {
             return self::sentenceEffects("{$m[1]} X {$m[2]}, where X is the number of {$m[3]}");
         }
+        // `Target opponent loses life equal to the number of cards in their hand.`, Sudden Impact's `… deals damage to target player equal to the number of cards in that player's hand.`
+        if ((preg_match('/^([Tt]arget (?:player|opponent) loses) life equal to the number of cards in their hand$/', $sentence, $m)
+                || preg_match('/^(CARDNAME deals) damage to (target (?:player|opponent)) equal to the number of cards in (?:that player\'s|their) hand$/', $sentence, $m))
+            && ($found = self::effect(isset($m[2]) ? "{$m[1]} 1 damage to {$m[2]}" : "{$m[1]} 1 life")) !== null && in_array($found['target'] ?? null, ['player', 'opponent'], true) && ! isset($found['per'])) {
+            return [['per' => 'their_hand'] + $found];
+        }
         // `Each opponent loses life equal to the number of creatures you control.`: read as `… X life, where X is the number of …`.
         if (preg_match('/^((?:.+ )?(?:[Gg]ains?|[Ll]oses?|[Dd]raws?|[Mm]ills?)) (life|cards) equal to the number of ('.self::X_COUNT.')$/', $sentence, $m)
             || preg_match('/^(.+ deals?) (damage) equal to the number of ('.self::X_COUNT.') (?<to>to .+)$/', $sentence, $m)) {
