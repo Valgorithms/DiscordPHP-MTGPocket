@@ -3017,16 +3017,12 @@ final class TextParser
         } elseif (preg_match('/^(?:Heroic — )?Whenever you cast a spell that targets CARDNAME, (.+)$/u', $line, $match)) {
             $event = 'heroic';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast a spell that targets (?:a|one or more) creatures? you control, (.+)$/u', $line, $match)
-            && ! preg_match('/\b(?:it|its|that creature|that spell|those creatures)\b/', $match[1])) {
-            // Once for each such spell, however many of your creatures it targets; see Game::castSpell().
-            $event = 'heroic_any';
-            $text = $match[1];
-        } elseif (preg_match('/^Whenever you cast a spell that targets (?:a|one or more) creatures? (?:an opponent controls|your opponents control|you don\'t control), (.+)$/u', $line, $match)
-            && ! preg_match('/\b(?:it|its|that creature|that spell|those creatures)\b/', $match[1])) {
-            // Once for each such spell; see Game::castSpell().
-            $event = 'cast_targets_opponent_creature';
-            $text = $match[1];
+        } elseif (preg_match('/^Whenever you cast an? (?:(instant or sorcery|noncreature|creature) )?spell that targets (?:a|one or more) creatures? (you control|an opponent controls|your opponents control|you don\'t control), (.+)$/u', $line, $match)
+            && ! preg_match('/\b(?:it|its|that creature|that spell|those creatures)\b/', $match[3])) {
+            // Once for each such spell, however many creatures it targets; an `instant or sorcery spell` checks the spell; see Game::castSpell().
+            $event = $match[2] === 'you control' ? 'heroic_any' : 'cast_targets_opponent_creature';
+            $extra = $match[1] !== '' ? ['objectKind' => $match[1]] : [];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
