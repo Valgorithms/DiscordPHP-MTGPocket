@@ -1955,6 +1955,9 @@ final class TextParser
             $text === 'a creature died this turn' => 'died 1',
             $text === 'an opponent lost life this turn' => 'opponent_lost',
             $text === 'it has a +1/+1 counter on it' => 'has_counter',
+            // `As long as CARDNAME is equipped, it has first strike.`: an Aura or Equipment attached to it.
+            $text === "it's enchanted" => 'enchanted',
+            $text === "it's equipped" => 'equipped',
             $text === 'you control no other creatures' => 'alone',
             default => null,
         };
