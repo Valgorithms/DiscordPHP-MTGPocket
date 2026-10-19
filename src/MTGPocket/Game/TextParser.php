@@ -3639,6 +3639,13 @@ final class TextParser
             && count($found) === 1 && ($found[0]['per'] ?? null) === 'yours:creature') {
             return [['per' => 'yours:countered creature'] + $found[0]];
         }
+        // Reforge the Soul: `Each player discards their hand, then draws seven cards.`; `Discard your hand, then draw four cards.`
+        if (preg_match('/^(Discard your hand|Each player discards their hand)(?:, then (draws?) (\w+) cards?)?$/', $sentence, $m)
+            && (! isset($m[2]) || ($m[2] === 'draw') === str_starts_with($m[1], 'Discard')) && (! isset($m[3]) || is_int(self::amount($m[3])))) {
+            $each = str_starts_with($m[1], 'Each') ? ['each' => 'player'] : [];
+
+            return [['type' => 'discard', 'amount' => 0, 'all' => true] + $each, ...(isset($m[3]) ? [['type' => 'draw', 'amount' => self::amount($m[3])] + $each] : [])];
+        }
         // Airbend (TLA): exile the permanent; its owner may cast it for {2} while it stays exiled. See Game's `airbend` effect.
         if (preg_match('/^([Aa])irbend (.+)$/', $sentence, $m) && ($found = self::sentenceEffects(($m[1] === 'A' ? 'E' : 'e')."xile {$m[2]}")) !== null
             && count($found) === 1 && $found[0]['type'] === 'exile' && array_keys($found[0]) === ['type', 'target'] && ! preg_match('/card|spell|player|opponent|^\??any$/', $found[0]['target'])) {

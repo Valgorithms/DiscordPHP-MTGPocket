@@ -4909,6 +4909,13 @@ final class Game
                     'player' => array_keys($this->players),
                     default => [$target === null ? $controller : (int) substr($target, 2)],
                 };
+                // `Discard your hand.`, `Each player discards their hand.`
+                if ($effect['all'] ?? false) {
+                    foreach ($seats as $seat) {
+                        $this->discardCards($seat, $this->players[$seat]->hand);
+                    }
+                    break;
+                }
                 // `You may discard a card. If you do, draw a card.`
                 if ($effect['may'] ?? false) {
                     if ($this->players[$controller]->hand !== []) {
