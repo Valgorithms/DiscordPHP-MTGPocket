@@ -3066,6 +3066,8 @@ final class TextParser
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {
             $text = $match[1];
         }
+        // `if there are three or more cards in your graveyard`: the same as `if you have …`.
+        $text = (string) preg_replace('/^if there are (\w+) or more cards in your graveyard, /', 'if you have $1 or more cards in your graveyard, ', $text);
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
         if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater), (?<rest>.+)$/", $text, $match)) {
@@ -3143,6 +3145,10 @@ final class TextParser
         // `Whenever CARDNAME attacks, defending player loses 1 life.`: with two players, the opponent.
         if (in_array($event, ['attacks', 'creature_attacks', 'creature_attacks_other'], true) && self::effects($text) === null && preg_match('/^defending player (discards|loses|mills|sacrifices) /', $text)) {
             $text = 'each opponent '.substr($text, strlen('defending player '));
+        }
+        // `Whenever CARDNAME attacks, it deals 1 damage to defending player.`
+        if (in_array($event, ['attacks', 'creature_attacks', 'creature_attacks_other'], true) && self::effects($text) === null) {
+            $text = (string) preg_replace('/^(?:CARDNAME|it) deals (\w+) damage to defending player\b/', 'CARDNAME deals $1 damage to each opponent', $text);
         }
         $kicked = false;
         if ($event === 'enters' && ($result['kicker'] !== null && preg_match('/^if it was kicked, (.+)$/', $text, $match)
