@@ -2719,7 +2719,7 @@ final class TextParser
         } elseif (preg_match('/^Whenever you play a land, (.+)$/', $line, $match)) {
             $event = 'you_play_land';
             $text = $match[1];
-        } elseif (preg_match('/^Whenever (a|another) (nontoken creature|creature|permanent|artifact|enchantment|land|[A-Z][a-z]+) you control leaves the battlefield, (.+)$/', $line, $match)
+        } elseif (preg_match('/^Whenever (a|another) (nontoken creature|creature token|token|nontoken permanent|creature|permanent|artifact|enchantment|land|[A-Z][a-z]+) you control leaves the battlefield, (.+)$/', $line, $match)
             && ! preg_match('/\b(?:it|its|that creature|that permanent)\b/', $match[3])) {
             // See Game::moveTo(): itself included unless "another".
             $event = 'permanent_leaves_yours';
