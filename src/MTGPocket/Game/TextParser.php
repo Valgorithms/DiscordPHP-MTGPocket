@@ -4837,11 +4837,12 @@ final class TextParser
         if (preg_match('/^you may discard a card$/i', $s)) {
             return ['type' => 'discard', 'amount' => 1, 'may' => true];
         }
-        if (preg_match('/^(target player|target opponent) discards (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
-            return ['type' => 'discard', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]];
+        // `Target player discards a card at random.`: see Game::applyEffect().
+        if (preg_match('/^(target player|target opponent) discards (\w+) cards?( at random)?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
+            return ['type' => 'discard', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]] + (($m[3] ?? '') !== '' ? ['random' => true] : []);
         }
-        if (preg_match('/^each (opponent|player) discards (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
-            return ['type' => 'discard', 'amount' => $n, 'each' => strtolower($m[1])];
+        if (preg_match('/^each (opponent|player) discards (\w+) cards?( at random)?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
+            return ['type' => 'discard', 'amount' => $n, 'each' => strtolower($m[1])] + (($m[3] ?? '') !== '' ? ['random' => true] : []);
         }
         if (preg_match("/^({$targets}) gains (.+?) until end of turn$/i", $s, $m)
             && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)
