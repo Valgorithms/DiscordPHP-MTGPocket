@@ -2004,6 +2004,10 @@ final class TextParser
     private static function attachedPer(string $line, string $word): ?array
     {
         // `… for each creature card in your graveyard.` and `… for each card in your hand.` count the same way.
+        // `Enchanted creature gets +1/+1 for each Aura attached to it.`: counted on the creature; see Game::perCount().
+        if (preg_match('/^'.$word.' creature gets \+(\d+)\/\+(\d+) for each (Aura|Equipment|Aura and Equipment) attached to it\.?$/', $line, $m)) {
+            return ['perPower' => (int) $m[1], 'perToughness' => (int) $m[2], 'per' => 'attached:'.str_replace(' and ', '|', $m[3])];
+        }
         if (! preg_match('/^'.$word.' creature gets \+(\d+)\/\+(\d+) for each (?:(other creature|creature|artifact|land|enchantment|[A-Z][a-z]+) you control|(creature |artifact |land |instant |sorcery )?card in your (graveyard|hand))\.?$/', $line, $m)) {
             return null;
         }

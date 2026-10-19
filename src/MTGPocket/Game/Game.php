@@ -10003,6 +10003,9 @@ final class Game
             // `for each creature that died this turn`.
             $per === 'died' => $this->diedTurn === $this->turn ? $this->died : 0,
             $per === 'gy:card' => count($this->players[$seat]->graveyard),
+            // `for each Aura attached to it`: the Auras (or Equipment) on the creature this is attached to.
+            str_starts_with($per, 'attached:') => ($host = $this->objects[$source?->attachedTo ?? -1] ?? null) === null ? 0
+                : count(array_filter($this->attachments($host), fn (GameObject $o) => array_intersect(explode('|', substr($per, 9)), $o->definition()->subtypes) !== [])),
             str_starts_with($per, 'gy:') => count(array_filter($this->players[$seat]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is(ucfirst(substr($per, 3))))),
             default => $this->countYours($seat, substr($per, 6), $source),
         };
