@@ -664,7 +664,7 @@ final class Game
             // Decayed (rule 702.147a): `When this creature attacks, sacrifice it at end of combat.`
             foreach ($this->sacrificeAtEndOfCombat as $id => $incarnation) {
                 if (($object = $this->objects[$id] ?? null) !== null && $object->incarnation === $incarnation && $object->zone === GameObject::BATTLEFIELD) {
-                    $this->log("{$object->name()} decays.");
+                    $this->log(in_array('decayed', $object->definition()->keywords, true) ? "{$object->name()} decays." : "{$object->name()} is sacrificed at end of combat.");
                     $this->sacrifice($object);
                 }
             }
@@ -4788,6 +4788,13 @@ final class Game
                     $affected->tapped = $effect['type'] === 'tap';
                     $affected->frozen = $affected->frozen || ($effect['freeze'] ?? false);
                     $affected->addCounters('stun', (int) ($effect['stun'] ?? 0));
+                }
+                break;
+
+            case 'sacrifice_end_combat':
+                // `Whenever CARDNAME attacks, sacrifice it at end of combat.`
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
+                    $this->sacrificeAtEndOfCombat[$self->id] = $self->incarnation;
                 }
                 break;
 
