@@ -2541,6 +2541,13 @@ final class TextParser
 
             return true;
         }
+        // Enrage: `Whenever CARDNAME is dealt damage, create a Treasure token.`; see Game::dealDamage().
+        if (preg_match('/^Whenever CARDNAME is dealt damage, (.+)\.$/', $line, $m) && ! str_contains($m[1], 'that much')
+            && ($effects = self::sentenceEffects((string) preg_replace('/^it deals\b/', 'CARDNAME deals', $m[1]))) !== null) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'dealt_damage', 'effects' => $effects];
+
+            return true;
+        }
         // `Whenever CARDNAME deals combat damage to a creature, destroy that creature.`: that creature, not targeted; see Game::combatDamage().
         if (preg_match('/^Whenever CARDNAME deals (combat )?damage to a creature, (.+)\.$/', $line, $m)
             && ($effects = self::sentenceEffects((string) preg_replace('/\bthat creature\b/', 'target creature', $m[2]))) !== null
