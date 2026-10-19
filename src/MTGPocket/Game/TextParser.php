@@ -4834,9 +4834,14 @@ final class TextParser
             return ['type' => 'tutor', 'filter' => $filter, 'to' => 'top'];
         }
         // A tutor: `Search your library for a creature card, reveal it, put it into your hand, then shuffle.`
-        if (preg_match('/^(?:you may )?search your library for an? (?:(.+?) )?card, (?:reveal it, )?put (?:it|that card) (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)
+        // `… for a creature card with mana value 3 or less, …` and `… with power 2 or less, …`: as printed.
+        if (preg_match('/^(?:you may )?search your library for an? (?:(.+?) )?card(?: with (mana value|power|toughness) (\d+) or (less|greater))?, (?:reveal it, )?put (?:it|that card) (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)
             && ($filter = ($m[1] ?? '') === '' ? 'any' : self::cardFilter($m[1])) !== null) {
-            return ['type' => 'tutor', 'filter' => $filter, 'to' => match (strtolower($m[2])) {
+            if (($m[2] ?? '') !== '') {
+                $filter = ($filter === 'any' ? '' : "{$filter}&").['mana value' => 'mv', 'power' => 'pow', 'toughness' => 'tou'][strtolower($m[2])].'_'.(strtolower($m[4]) === 'less' ? 'le' : 'ge')."_{$m[3]}";
+            }
+
+            return ['type' => 'tutor', 'filter' => $filter, 'to' => match (strtolower($m[5])) {
                 'into your hand' => 'hand',
                 'onto the battlefield tapped' => 'tapped',
                 default => 'battlefield',

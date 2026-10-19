@@ -5933,9 +5933,11 @@ final class Game
             default => str_contains($filter, '&') ? array_filter(explode('&', $filter), fn (string $piece) => ! $this->matchesFilter($card, $piece)) === []
                 : (str_starts_with($filter, 'not:') ? ! $this->matchesFilter($card, substr($filter, 4))
                 : (preg_match('/^mv_(le|ge)_(\d+)$/', $filter, $m) ? ($m[1] === 'le' ? $card->cost->manaValue() <= (int) $m[2] : $card->cost->manaValue() >= (int) $m[2])
+                // `pow_le_2`: a creature card's printed power or toughness.
+                : (preg_match('/^(pow|tou)_(le|ge)_(\d+)$/', $filter, $m) ? $card->isCreature() && is_numeric($value = $m[1] === 'pow' ? $card->power : $card->toughness) && ($m[2] === 'le' ? (int) $value <= (int) $m[3] : (int) $value >= (int) $m[3])
                 // `creature|land` or `sub:Dwarf|sub:Equipment`: any of them.
                 : (str_contains($filter, '|') ? array_filter(explode('|', $filter), fn (string $piece) => $this->matchesFilter($card, $piece)) !== []
-                : (! str_starts_with($filter, 'sub:') || in_array(substr($filter, 4), $card->subtypes, true))))),
+                : (! str_starts_with($filter, 'sub:') || in_array(substr($filter, 4), $card->subtypes, true)))))),
         };
     }
 
