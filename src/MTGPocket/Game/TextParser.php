@@ -3883,6 +3883,21 @@ final class TextParser
         if ($last === null) {
             return false;
         }
+        // Excess damage (rule 120.4a): `If excess damage was dealt this way, draw a card.`; `Excess damage is dealt to that creature's controller instead.` See Game::runSteps().
+        if ($effects[$last]['type'] === 'damage' && is_int($effects[$last]['amount'] ?? null) && in_array($effects[$last]['target'] ?? null, ['creature', 'creature_opponent'], true) && ! isset($effects[$last]['excess'])) {
+            if ($sentence === "Excess damage is dealt to that creature's controller instead") {
+                $effects[$last]['excess'] = 'controller';
+
+                return true;
+            }
+            if (preg_match('/^If excess damage was dealt this way, (.+)$/', $sentence, $m) && ($then = self::sentenceEffects(ucfirst($m[1]))) !== null
+                && array_filter($then, fn (array $effect) => isset($effect['target']) || isset($effect['sameTarget'])) === []) {
+                $effects[$last]['excess'] = 'if';
+                array_push($effects, ...array_map(fn (array $effect) => $effect + ['ifExcess' => true], $then));
+
+                return true;
+            }
+        }
         // `Each opponent loses 3 life. You gain life equal to the life lost this way.`
         if ($sentence === 'You gain life equal to the life lost this way' && $effects[$last]['type'] === 'lose_life' && ($effects[$last]['each'] ?? null) === 'opponent' && is_int($effects[$last]['amount'])) {
             $effects[] = ['type' => 'gain_life', 'amount' => $effects[$last]['amount'], 'perOpponent' => true];
