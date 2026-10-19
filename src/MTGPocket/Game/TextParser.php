@@ -3073,6 +3073,13 @@ final class TextParser
             $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
             $extra = ['objectKind' => $match[3] !== '' ? ($match[2] !== '' ? "{$match[2]}with {$match[3]}" : $match[3]) : $match[4]];
             $text = $match[5];
+        } elseif (preg_match('/^Whenever (you|an opponent) casts? an? ((?:[A-Z][a-z]+, )*[A-Z][a-z]+,? or [A-Z][a-z]+) spell, (.+)$/', $line, $match)
+            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ')
+            && ($types = array_map(fn (string $word) => self::subtypeOf($word), preg_split('/,? or |, /', $match[2]))) !== [] && ! in_array(null, $types, true)) {
+            // `Whenever you cast an Aura, Equipment, or Vehicle spell, …`: any of those subtypes; see Game::objectFits().
+            $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
+            $extra = ['objectKind' => 'any:'.implode('|', $types)];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
