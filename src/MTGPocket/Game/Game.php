@@ -3075,6 +3075,15 @@ final class Game
                 $this->trigger($permanent, 'heroic_any', $seat);
             }
         }
+        // `Whenever you cast a spell that targets a creature an opponent controls, …`
+        foreach ($item !== false && $item['object'] === $spell->id ? $item['targets'] : [] as $target) {
+            if (($object = $this->targetObject((string) $target)) !== null && $object->zone === GameObject::BATTLEFIELD && $object->controller !== $seat && $this->isCreature($object)) {
+                foreach ($this->permanents($seat) as $permanent) {
+                    $this->trigger($permanent, 'cast_targets_opponent_creature', $seat);
+                }
+                break;
+            }
+        }
     }
 
     /**
