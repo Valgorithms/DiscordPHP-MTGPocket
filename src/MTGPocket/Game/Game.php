@@ -6761,6 +6761,10 @@ final class Game
     private function objectFits(GameObject $object, string $kind): bool
     {
         $card = $object->definition();
+        // `a creature spell with mana value 5 or greater`: both.
+        if (preg_match('/^(creature|noncreature|artifact|enchantment) with (mana value \d+ or (?:greater|less))$/', $kind, $match)) {
+            return $this->objectFits($object, $match[1]) && $this->objectFits($object, $match[2]);
+        }
         // `a spell with mana value 5 or greater`: X counts on the stack (rule 202.3e).
         if (preg_match('/^mana value (\d+) or (greater|less)$/', $kind, $match)) {
             $x = 0;

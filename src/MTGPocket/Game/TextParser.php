@@ -3033,12 +3033,12 @@ final class TextParser
             $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
             $extra = ['objectKind' => "creature with {$match[2]} {$n} or greater"];
             $text = $match[4];
-        } elseif (preg_match('/^Whenever (you|an opponent) casts? (?:a spell with (mana value \d+ or (?:greater|less))|an? ([A-Z][a-z]+) spell), (.+)$/', $line, $match)
-            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ') && ! in_array($match[3] ?? '', ['Spirit', 'Arcane'], true)) {
-            // `Whenever you cast a spell with mana value 5 or greater, …`, `Whenever you cast a Dragon spell, …`; see Game::castSpell() and Game::objectFits().
+        } elseif (preg_match('/^Whenever (you|an opponent) casts? (?:an? ((?:creature|noncreature|artifact|enchantment) )?spell with (mana value \d+ or (?:greater|less))|an? ([A-Z][a-z]+) spell), (.+)$/', $line, $match)
+            && ($match[1] === 'you') === str_starts_with($match[0], 'Whenever you cast ') && ! in_array($match[4] ?? '', ['Spirit', 'Arcane'], true)) {
+            // `Whenever you cast a (creature) spell with mana value 5 or greater, …`, `Whenever you cast a Dragon spell, …`; see Game::castSpell() and Game::objectFits().
             $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
-            $extra = ['objectKind' => $match[2] !== '' ? $match[2] : $match[3]];
-            $text = $match[4];
+            $extra = ['objectKind' => $match[3] !== '' ? ($match[2] !== '' ? "{$match[2]}with {$match[3]}" : $match[3]) : $match[4]];
+            $text = $match[5];
         } elseif (preg_match('/^Whenever you cast ('.implode('|', array_keys($casts)).'), (.+)$/', $line, $match)) {
             $event = $casts[$match[1]];
             $text = $match[2];
