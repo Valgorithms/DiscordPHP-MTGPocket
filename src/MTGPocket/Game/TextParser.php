@@ -2553,6 +2553,14 @@ final class TextParser
 
             return true;
         }
+        // `Whenever CARDNAME deals combat damage to a creature, you gain that much life.`: the damage it dealt; see Game::combatDamage().
+        if (preg_match('/^Whenever CARDNAME deals combat damage to a creature, (.+)\.$/', $line, $m) && substr_count($m[1], 'that much') === 1
+            && ($effects = self::sentenceEffects((string) preg_replace('/\bthat much (damage|life)\b/', '1 $1', $m[1]))) !== null
+            && count($effects) === 1 && ($effects[0]['amount'] ?? null) === 1 && ! isset($effects[0]['per']) && ! isset($effects[0]['target'])) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['amount' => 'that_much'] + $effects[0]]];
+
+            return true;
+        }
         // `Whenever CARDNAME deals combat damage to a creature, destroy that creature.`: that creature, not targeted; see Game::combatDamage().
         if (preg_match('/^Whenever CARDNAME deals (combat )?damage to a creature, (.+)\.$/', $line, $m)
             && ($effects = self::sentenceEffects((string) preg_replace('/\bthat creature\b/', 'target creature', $m[2]))) !== null
