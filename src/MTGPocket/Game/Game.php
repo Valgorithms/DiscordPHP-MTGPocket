@@ -4768,7 +4768,8 @@ final class Game
 
             case 'destroy_end_combat':
                 // `Whenever CARDNAME blocks or becomes blocked by a (non-Wall) creature, destroy that creature at end of combat.`
-                $that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null;
+                // `Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.`: the creature it dealt damage to.
+                $that = isset($effect['target']) ? $affected : $this->objects[(int) ($effect['that'] ?? -1)] ?? null;
                 if ($that !== null && $that->zone === GameObject::BATTLEFIELD && ! in_array($effect['notSubtype'] ?? null, $that->definition()->subtypes, true)) {
                     $this->destroyAtEndOfCombat[$that->id] = $that->incarnation;
                 }

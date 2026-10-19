@@ -2563,6 +2563,12 @@ final class TextParser
 
             return true;
         }
+        // Basilisk-style: `Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.`; see Game::combatDamage().
+        if ($line === 'Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'destroy_end_combat', 'target' => 'creature']]];
+
+            return true;
+        }
         // Cockatrice-style: `Whenever CARDNAME blocks or becomes blocked by a creature, destroy that creature at end of combat.`; see Game::$destroyAtEndOfCombat.
         if (preg_match('/^Whenever CARDNAME (blocks|becomes blocked by|blocks or becomes blocked by) a(?: non-?(\w+))? creature, destroy that creature at end of combat\.$/', $line, $m)
             && (($m[2] ?? '') === '' || in_array(strtolower($m[2]), ['wall'], true))) {
