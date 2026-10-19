@@ -3023,6 +3023,10 @@ final class TextParser
             $event = $match[2] === 'you control' ? 'heroic_any' : 'cast_targets_opponent_creature';
             $extra = $match[1] !== '' ? ['objectKind' => $match[1]] : [];
             $text = $match[3];
+        } elseif (preg_match("/^Whenever you cast your first spell during each opponent's turn, (.+)$/", $line, $match)) {
+            // See Game::castSpell().
+            $event = 'first_spell_opponent_turn';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you cast your (first|second|third) spell each turn, (.+)$/', $line, $match)) {
             $event = "{$match[1]}_spell";
             $text = $match[2];
@@ -3055,7 +3059,7 @@ final class TextParser
             return false;
         }
         // `Whenever you cast your second spell each turn, copy it.`: the spell just cast.
-        if ((str_starts_with($event, 'cast_') && $event !== 'cast_self') || in_array($event, ['first_spell', 'second_spell', 'third_spell', 'you_cast_kind'], true)) {
+        if ((str_starts_with($event, 'cast_') && $event !== 'cast_self') || in_array($event, ['first_spell', 'first_spell_opponent_turn', 'second_spell', 'third_spell', 'you_cast_kind'], true)) {
             $text = (string) preg_replace('/^copy it\./i', 'copy that spell.', $text);
         }
         if ($event === 'enters' && preg_match("/^if tribute wasn't paid, (.+)$/", $text, $match) && preg_grep('/^tribute \d+$/', $result['keywords']) !== []) {
