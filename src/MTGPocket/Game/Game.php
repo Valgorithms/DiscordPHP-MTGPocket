@@ -3762,7 +3762,7 @@ final class Game
         }
 
         if (! $ability && $card->isPermanentCard()) {
-            $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0), (bool) ($item['disturbed'] ?? false));
+            $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0), (bool) ($item['disturbed'] ?? false), entryState: ['cast' => ($item['fromHand'] ?? false) ? 'hand' : 'elsewhere']);
             // Multikicker: a counter set for each time it was kicked.
             if (($item['kicks'] ?? 0) > 1 && $card->kickerCounters > 0) {
                 $object->addCounters('+1/+1', $card->kickerCounters * ((int) $item['kicks'] - 1));
@@ -6138,6 +6138,9 @@ final class Game
             'self_attacked' => $source->attackedTurn === $this->turn,
             // Day and night (rule 726): neither until it becomes day.
             'night' => $this->dayNight === 'night',
+            // `When CARDNAME enters, if you cast it (from your hand), …`: as it entered.
+            'cast_it' => $source->cast !== '',
+            'cast_hand' => $source->cast === 'hand',
             'day' => $this->dayNight === 'day',
             'opponent_lost' => array_filter($this->players, fn (GamePlayer $other, int $seat) => $seat !== $controller && $other->lostLifeOnTurn === $this->turn, ARRAY_FILTER_USE_BOTH) !== [],
             'main_phase' => $this->active === $controller && in_array($this->step, [Step::PrecombatMain, Step::PostcombatMain], true),
@@ -8762,7 +8765,7 @@ final class Game
      * @param bool       $triggers   Whether its "enters" abilities trigger.
      * @param bool       $faceDown
      * @param bool       $kicked
-     * @param array{alt?: string, unearthed?: bool, haste?: bool, counters?: array<string, int>, attacking?: bool} $entryState State applied after entering, including after a saved decision.
+     * @param array{alt?: string, cast?: string, unearthed?: bool, haste?: bool, counters?: array<string, int>, attacking?: bool} $entryState State applied after entering, including after a saved decision.
      *
      * @return void
      */
@@ -8851,6 +8854,7 @@ final class Game
             }
         }
         $object->alt = $entryState['alt'] ?? null;
+        $object->cast = $entryState['cast'] ?? '';
         $object->unearthed = $entryState['unearthed'] ?? false;
         if ($object->unearthed || ($entryState['haste'] ?? false)) {
             $object->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
@@ -10197,7 +10201,7 @@ final class Game
                 continue;
             }
             foreach ($source->definition()->anthem as $anthem) {
-                if (($anthem['enchantedPlayer'] ?? false) || ($anthem['opponents'] ?? false) || ! $this->gained($source, $anthem) || (($anthem['withCounter'] ?? false) && $object->counter('+1/+1') === 0)) {
+                if (($anthem['enchantedPlayer'] ?? false) || ($anthem['opponents'] ?? false) || ! $this->gained($source, $anthem) || (($anthem['withCounter'] ?? false) && ($anthem['withCounter'] === 'any' ? array_filter($object->counters) === [] : $object->counter('+1/+1') === 0))) {
                     continue;
                 }
                 if (($anthem['chosenType'] ?? false) && ! in_array($source->chosen, $object->definition()->subtypes, true) && ! in_array('changeling', $object->definition()->keywords, true)) {

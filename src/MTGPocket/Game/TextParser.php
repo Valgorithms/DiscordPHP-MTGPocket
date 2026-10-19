@@ -1809,11 +1809,12 @@ final class TextParser
             return true;
         }
         // `Each creature you control with a +1/+1 counter on it has trample.`
-        if (preg_match('/^(?:Each (other )?creature you control with a \+1\/\+1 counter on it has|(Other )?[Cc]reatures you control with \+1\/\+1 counters on them have) (.+?)\.?$/', $line, $m)) {
-            if (($keywords = self::keywordList($m[3])) === null) {
+        // `Each creature you control with a counter on it has trample.`: any kind of counter.
+        if (preg_match('/^(?:Each (other )?creature you control with an? (\+1\/\+1 )?counter on it has|(Other )?[Cc]reatures you control with (\+1\/\+1 )?counters on them have) (.+?)\.?$/', $line, $m)) {
+            if (($keywords = self::keywordList($m[5])) === null) {
                 return false;
             }
-            $result['anthem'][] = ['power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'other' => $m[1] !== '' || $m[2] !== '', 'withCounter' => true];
+            $result['anthem'][] = ['power' => 0, 'toughness' => 0, 'keywords' => $keywords, 'other' => $m[1] !== '' || $m[3] !== '', 'withCounter' => $m[2] !== '' || $m[4] !== '' ? true : 'any'];
 
             return true;
         }
@@ -3115,9 +3116,10 @@ final class TextParser
                 return false;
             }
             $text = $match['rest'];
-        } elseif (self::effects($text) === null && preg_match("/^if it's (night|day), (.+)$/", $text, $match)) {
-            // Day and night (rule 726): `When CARDNAME enters, if it's night, draw a card.`
-            $if = $match[1];
+        } elseif (self::effects($text) === null && preg_match("/^if (it's night|it's day|you cast it|you cast it from your hand), (.+)$/", $text, $match)
+            && ($event === 'enters' || ! str_starts_with($match[1], 'you'))) {
+            // Day and night (rule 726): `When CARDNAME enters, if it's night, draw a card.`; and `When CARDNAME enters, if you cast it, …`.
+            $if = ['you cast it' => 'cast_it', 'you cast it from your hand' => 'cast_hand'][$match[1]] ?? substr($match[1], 5);
             $text = $match[2];
         }
         // `Whenever CARDNAME deals combat damage to a player, that player mills that many cards.`: the damage it dealt; see Game::combatDamage().

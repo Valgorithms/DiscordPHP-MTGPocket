@@ -129,6 +129,9 @@ final class GameObject
     /** The colors of mana spent to cast it, as letters (`WU`): `sacrifice it unless {W} was spent to cast it`. */
     public string $spent = '';
 
+    /** Where it was cast from as it entered, `hand` or `elsewhere`; empty when it entered without being cast: `When CARDNAME enters, if you cast it, …`. */
+    public string $cast = '';
+
     /** Miracle: `{turn}:{step}` when it was revealed as the first card drawn that turn. */
     public string $miracle = '';
 
@@ -369,6 +372,7 @@ final class GameObject
             'monstrous' => $this->monstrous,
             'prepared' => $this->prepared,
             'spent' => $this->spent,
+            'cast' => $this->cast,
             'miracle' => $this->miracle,
             'pairedWith' => $this->pairedWith,
             'hidden' => $this->hidden,
@@ -434,6 +438,7 @@ final class GameObject
         $object->monstrous = (bool) ($data['monstrous'] ?? false);
         $object->prepared = (bool) ($data['prepared'] ?? false);
         $object->spent = (string) ($data['spent'] ?? '');
+        $object->cast = (string) ($data['cast'] ?? '');
         $object->miracle = (string) ($data['miracle'] ?? '');
         $object->pairedWith = isset($data['pairedWith']) ? (int) $data['pairedWith'] : null;
         $object->hidden = isset($data['hidden']) ? (int) $data['hidden'] : null;
