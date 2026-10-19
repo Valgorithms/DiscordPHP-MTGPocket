@@ -2502,6 +2502,7 @@ final class TextParser
             'becomes the target of a spell or ability' => 'targeted',
             'becomes the target of a spell or ability an opponent controls' => 'targeted_by_opponent',
             'becomes the target of a spell or ability you control' => 'targeted_by_you',
+            'becomes the target of a spell' => 'targeted_by_spell',
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks', 'attacks alone' => 'attacks_alone',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
@@ -2613,7 +2614,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability you control|becomes the target of a spell or ability|becomes blocked by a creature|becomes blocked|becomes tapped|blocks a creature|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability you control|becomes the target of a spell or ability|becomes the target of a spell|becomes blocked by a creature|becomes blocked|becomes tapped|blocks a creature|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
