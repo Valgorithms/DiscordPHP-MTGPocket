@@ -172,6 +172,8 @@ final class TextParser
         'target creature or planeswalker defending player controls' => 'creature_or_planeswalker_opponent',
         'target creature or planeswalker you don\'t control' => 'creature_or_planeswalker_opponent',
         'target attacking or blocking creature' => 'attacking_or_blocking',
+        'target attacking creature without flying' => 'attacking_no_flying',
+        'target attacking creature with flying' => 'attacking_flying',
         'target attacking creature' => 'attacking',
         'target blocking creature' => 'blocking',
         'target creature with flying' => 'creature_flying',
@@ -333,7 +335,7 @@ final class TextParser
 
     /** Target kinds that are always a creature. */
     private const array CREATURE_KINDS = [
-        'creature', 'creature_other', 'creature_you_control', 'creature_you_control_other', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'blocking',
+        'creature', 'creature_other', 'creature_you_control', 'creature_you_control_other', 'creature_opponent', 'attacking_or_blocking', 'attacking', 'attacking_flying', 'attacking_no_flying', 'blocking',
         'creature_flying', 'creature_no_flying', 'tapped_creature', 'untapped_creature',
         'creature_power_ge_2', 'creature_power_ge_3', 'creature_power_ge_4', 'creature_power_ge_5', 'creature_power_ge_6', 'creature_power_le_1', 'creature_power_le_2', 'creature_power_le_3', 'creature_power_le_4',
         'creature_mv_le_1', 'creature_mv_le_2', 'creature_mv_le_3', 'creature_mv_le_4', 'creature_mv_le_5',

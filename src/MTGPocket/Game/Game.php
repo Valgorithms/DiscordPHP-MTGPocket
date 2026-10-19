@@ -7359,6 +7359,8 @@ final class Game
             'creature_or_vehicle' => $creature || in_array('Vehicle', $card->subtypes, true),
             'attacking_or_blocking' => $creature && (isset($this->attackers[$object->id]) || isset($this->blockers[$object->id])),
             'attacking' => $creature && isset($this->attackers[$object->id]),
+            'attacking_flying' => $creature && isset($this->attackers[$object->id]) && $this->hasKeyword($object, 'flying'),
+            'attacking_no_flying' => $creature && isset($this->attackers[$object->id]) && ! $this->hasKeyword($object, 'flying'),
             'blocking' => $creature && isset($this->blockers[$object->id]),
             'creature_flying' => $creature && $this->hasKeyword($object, 'flying'),
             'creature_no_flying' => $creature && ! $this->hasKeyword($object, 'flying'),
