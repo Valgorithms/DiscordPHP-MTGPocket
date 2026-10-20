@@ -14,12 +14,12 @@ Only an exact numeric fading keyword on a permanent is accepted. Entry uses the 
 
 ## Recognition measurement
 
-Pre-rebase baseline: main `e280cce21ce39972a59f9f43fd78755b7bedeb38` (#328). These numbers isolate fading's **+9 all-pool / zero Modern** delta before integration with the delayed-draw batch. Both reports use the unchanged imported pools and hashed MTGJSON database described in the [shared corpus checkpoint](card-coverage-progress.md). No download or reimport occurred.
+Integrated baseline: main `710a47cde58525c24d59fb591ef81b6d63ee945d` (#329). These numbers measure fading's **+9 all-pool / zero Modern** delta after integration with the delayed-draw batch. Both reports use the unchanged imported pools and hashed MTGJSON database described in the [shared corpus checkpoint](card-coverage-progress.md). No download or reimport occurred.
 
 | Imported scope | Baseline read whole | With fading |
 | --- | --- | --- |
-| Modern | 9,517 / 22,399 (42.5%) | 9,517 / 22,399 (42.5%) |
-| All imported pools | 11,257 / 28,729 (39.2%) | 11,266 / 28,729 (39.2%) |
+| Modern | 9,520 / 22,399 (42.5%) | 9,520 / 22,399 (42.5%) |
+| All imported pools | 11,278 / 28,729 (39.3%) | 11,287 / 28,729 (39.3%) |
 
 The nine newly wholly recognized cards are **Blastoderm**, **Cloudskate**, **Defender en-Vec**, **Jolting Merfolk**, **Phyrexian Prowler**, **Rejuvenation Chamber**, **Skyshroud Behemoth**, **Skyshroud Ridgeback**, and **Woodripper**.
 
@@ -37,4 +37,4 @@ Other cards lose only their unsupported fading line. Ancient Hydra, Parallax Dem
 - Save/resume with casting and upkeep abilities on the stack, zero counters, control changes and returned permanents.
 - A distinct existing vanishing lifecycle regression; this is not a claim of complete vanishing rules support.
 
-The default full suite passes with its two normal absent-corpus skips: 692 tests / 31,507 assertions. Both corpus-dependent tests then pass separately against the existing local data: 2 tests / 71,268 assertions, including 50 official-deck simulations. Pint passes for all three changed PHP files. No live bot, Discord acceptance, publication, release, deployment or token-bearing build was run.
+The final integrated full suite passes against the existing local corpus: **713 tests / 102,978 assertions, zero skips**, including all imported-card parsing and 50 official-deck simulations. Pint and whitespace checks pass. No live bot, Discord acceptance, release, deployment or token-bearing build was run.
