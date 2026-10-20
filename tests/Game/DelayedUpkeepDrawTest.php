@@ -260,11 +260,51 @@ final class DelayedUpkeepDrawTest extends GameTestCase
         $this->resolve();
         $this->passUntil(Step::Upkeep, 2);
         $this->assertCount(2, $game->stack);
-        $this->assertEqualsCanonicalizing([0, 1], array_column($game->stack, 'controller'));
+        $this->assertSame(1, $game->active);
+        $this->assertSame([1, 0], array_column($game->stack, 'controller'), 'The active player’s trigger is below the nonactive player’s trigger.');
         $this->resolve();
+        $this->assertCount(1, $game->players[0]->hand);
+        $this->assertCount(0, $game->players[1]->hand);
         $this->resolve();
         $this->assertCount(1, $game->players[0]->hand);
         $this->assertCount(1, $game->players[1]->hand);
+    }
+
+    public function testSavingAPendingDelayedDrawBehindAnUpkeepTargetChoicePreservesApnapOrder(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Island', 1);
+        $ray = $this->put(0, 'Ray of Erasure');
+        $game->cast(0, $ray, 0, ['p:1']);
+        $this->resolve();
+        $bears = $this->battlefield(0, 'Grizzly Bears');
+        $this->battlefield(1, 'Grizzly Bears');
+        $upkeep = ['uuid' => 'targeted-upkeep-fixture', 'name' => 'Targeted Upkeep Fixture', 'type' => 'Enchantment', 'text' => 'At the beginning of your upkeep, target creature gets +1/+1 until end of turn.'];
+        $this->assertSame([], (new CardDefinition($upkeep))->unsupported);
+        $game->addCard(1, $upkeep, GameObject::BATTLEFIELD);
+        $this->passUntil(Step::Upkeep, 2);
+        $this->assertSame([], $game->delayedDraws);
+        $this->assertSame([1, 0], array_column($game->pendingTriggers, 'controller'));
+        $this->assertSame('trigger', $game->decision(1));
+
+        $game = $this->reload();
+        $this->assertSame([], $game->delayedDraws);
+        $this->assertSame([1, 0], array_column($game->pendingTriggers, 'controller'));
+        $this->assertSame('trigger', $game->decision(1));
+        $game->chooseTriggerTargets(1, ["o:{$bears}"]);
+        $this->assertSame([], $game->pendingTriggers);
+        $this->assertSame([1, 0], array_column($game->stack, 'controller'));
+        $this->resolve();
+        $this->assertCount(1, $game->players[0]->hand);
+        $this->assertCount(0, $game->players[1]->hand);
+        $this->assertCount(1, $game->stack);
+        $this->assertSame(2, $game->power($game->objects[$bears]));
+        $this->resolve();
+        $this->assertSame(3, $game->power($game->objects[$bears]));
+        $this->passUntil(Step::Upkeep, 3);
+        $this->assertSame([], $game->stack);
+        $this->assertSame([], $game->delayedDraws);
+        $this->assertCount(1, $game->players[0]->hand, 'Resuming the pending trigger must not schedule a duplicate draw.');
     }
 
     public function testCounteredSpellsDoNotCreateDelayedDraws(): void
@@ -403,6 +443,36 @@ final class DelayedUpkeepDrawTest extends GameTestCase
         $this->assertCount(0, $game->players[1]->hand);
     }
 
+    public function testBouncingTheSourceBeforeItsEntryTriggerResolvesStillSchedulesTheDraw(): void
+    {
+        $game = $this->newGame();
+        $this->lands(0, 'Forest', 3);
+        $this->lands(1, 'Island', 1);
+        $pyknite = $this->put(0, 'Pyknite');
+        $bounce = $this->hand(1, 'Unsummon');
+        $game->cast(0, $pyknite);
+        $this->resolve();
+        $entryIncarnation = $game->stack[0]['incarnation'];
+        $game->pass(0);
+        $game->cast(1, $bounce, 0, ["o:{$pyknite}"]);
+        $this->resolve();
+        $this->assertSame(GameObject::HAND, $this->zone($pyknite));
+        $this->assertNotSame($entryIncarnation, $game->objects[$pyknite]->incarnation);
+        $this->assertSame([], $game->delayedDraws);
+        $this->assertCount(1, $game->stack);
+        $game = $this->reload();
+        $this->resolve();
+        $this->assertCount(1, $game->delayedDraws, 'The entry trigger resolves independently of its departed source.');
+        $this->assertSame($pyknite, $game->delayedDraws[0]['source']);
+        $this->assertCount(1, $game->players[0]->hand, 'Only the bounced Pyknite is in hand.');
+        $game = $this->reload();
+        $this->passUntil(Step::Upkeep, 2);
+        $this->assertCount(1, $game->stack);
+        $this->resolve();
+        $this->assertCount(2, $game->players[0]->hand);
+        $this->assertContains($pyknite, $game->players[0]->hand);
+    }
+
     public function testNearbyUnsupportedWordingIsNotAcceptedAsAMandatorySingleDraw(): void
     {
         foreach ([
@@ -449,15 +519,16 @@ final class DelayedUpkeepDrawTest extends GameTestCase
         $this->resolve();
         $data = $game->toArray();
         $this->assertCount(1, $data['delayedDraws']);
-        foreach (['not a queue', null, ['not a record']] as $queue) {
+        foreach (['not a queue', null, ['not a record'], ['draw' => $data['delayedDraws'][0]]] as $queue) {
             $invalid = $data;
             $invalid['delayedDraws'] = $queue;
             $this->assertInvalidSave($invalid);
         }
         foreach ([
-            ['createdTurn', '1'], ['createdTurn', -1],
+            ['createdTurn', '1'], ['createdTurn', -1], ['createdTurn', 0], ['createdTurn', $game->turn + 1],
             ['source', 999999], ['controller', 999999],
-            ['incarnation', -1], ['label', []],
+            ['incarnation', -1], ['incarnation', $game->objects[$data['delayedDraws'][0]['source']]->incarnation + 1],
+            ['label', []], ['label', ''],
         ] as [$field, $value]) {
             $invalid = $data;
             $invalid['delayedDraws'][0][$field] = $value;
@@ -466,6 +537,11 @@ final class DelayedUpkeepDrawTest extends GameTestCase
         foreach (['createdTurn', 'source', 'incarnation', 'controller', 'label'] as $field) {
             $invalid = $data;
             unset($invalid['delayedDraws'][0][$field]);
+            $this->assertInvalidSave($invalid);
+        }
+        foreach ([1, 2] as $version) {
+            $invalid = $data;
+            $invalid['schemaVersion'] = $version;
             $this->assertInvalidSave($invalid);
         }
     }
