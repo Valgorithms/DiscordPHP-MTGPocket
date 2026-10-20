@@ -57,3 +57,7 @@ PR #125 adds **zero whole-card coverage**. It accepts the uncontracted two-sente
 [PR #124](https://github.com/Valgorithms/DiscordPHP-MTGPocket/pull/124), branch `claude/card-coverage-gaps-sc84tj`, head `6ba030f8a6844f4a11b52b677d142c34399a4853`, covers chosen creature types and typed team pumps. Claude ownership was unresolved at review time: preserve its branch and treat it as potentially owned. Refresh ownership and upstream before touching that family; do not assume Claude was stopped or its parent session migrated.
 
 Use descriptive branches and open PRs, preserve unrelated local files, and distinguish recognized text from functional gameplay. This continuation plan authorizes neither runtime refactoring by itself nor live bot startup, token-bearing builds, releases or deployment. Follow the current human task authorization and repository workflow.
+
+## Current coverage continuation
+
+The [2026-10-20 coverage checkpoint](card-coverage-progress.md) records a fresh, hashed public corpus, the current recognition baseline, tested graveyard-cast behavior, and remaining scope. It also refreshes the older ownership status above: #124 is merged, while #327 covers enchanted/equipped conditional bonuses and keywords. Recognition percentages remain separate from gameplay support.

@@ -2414,7 +2414,9 @@ final class Game
         $this->discardCheapest($seat, $wardDiscard, $id);
 
         $player = $this->players[$seat];
-        $fromCommand = $object->zone === GameObject::COMMAND;
+        // Cast triggers need the actual origin, not the zone after moving or the payment method.
+        $castFrom = $object->zone;
+        $fromCommand = $castFrom === GameObject::COMMAND;
         $fromHand = $object->zone === GameObject::HAND;
         if ($fromCommand) {
             $tax = $this->commanderTax($id);
@@ -2478,7 +2480,7 @@ final class Game
         if ($conspirators !== null) {
             $this->copySpell(end($this->stack), $seat, 'conspire');
         }
-        $this->castTriggers($seat, $object);
+        $this->castTriggers($seat, $object, $castFrom);
         $this->targetedTriggers($targets, $seat, true);
         $this->settle();
     }
@@ -2992,10 +2994,11 @@ final class Game
      *
      * @param int        $seat
      * @param GameObject $spell
+     * @param string     $from The zone the spell was cast from, before moving to the stack.
      *
      * @return void
      */
-    private function castTriggers(int $seat, GameObject $spell): void
+    private function castTriggers(int $seat, GameObject $spell, string $from): void
     {
         $card = $spell->definition();
         if ($this->spellsTurn !== $this->turn) {
@@ -3030,7 +3033,7 @@ final class Game
         if (! $card->isCreature()) {
             $caster->noncreatureCastTurn = $this->turn;
         }
-        $events = [...($caster->cast === 1 ? ['first_spell', ...($this->active !== $seat ? ['first_spell_opponent_turn'] : [])] : []), ...($caster->cast === 2 ? ['second_spell'] : []), ...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
+        $events = [...($from === GameObject::GRAVEYARD ? ['cast_from_graveyard'] : []), ...($caster->cast === 1 ? ['first_spell', ...($this->active !== $seat ? ['first_spell_opponent_turn'] : [])] : []), ...($caster->cast === 2 ? ['second_spell'] : []), ...($caster->cast === 3 ? ['third_spell'] : []), 'cast_spell', ...($card->isCreature() ? ['cast_creature'] : ['cast_noncreature']), ...($card->is('Artifact') ? ['cast_artifact'] : []), ...($card->is('Enchantment') ? ['cast_enchantment'] : []), ...($card->isPermanentCard() ? [] : ['cast_instant_sorcery']),
             ...(array_intersect(['Spirit', 'Arcane'], $card->subtypes) !== [] ? ['cast_spirit_arcane'] : []),
             ...array_map(fn (string $color) => "cast_color_{$color}", $card->colors), ...(count($card->colors) > 1 ? ['cast_multicolored'] : [])];
         $this->castSpell = $spell->id;
