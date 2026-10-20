@@ -4363,6 +4363,10 @@ final class TextParser
         if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
         }
+        // Slow cantrips: a one-shot triggered draw, not a draw now or in the draw step.
+        if (strcasecmp($s, "draw a card at the beginning of the next turn's upkeep") === 0) {
+            return ['type' => 'draw_next_upkeep'];
+        }
         // `Each player draws a card.`, `Each opponent gains 2 life.`: in turn order; see Game::applyEffect(). "Each other player" is each opponent.
         if (preg_match('/^each (player|opponent|other player) (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[3] !== '' ? $m[3] : $m[4])) !== null) {
             return ['type' => $m[3] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => strtolower($m[1]) === 'player' ? 'player' : 'opponent'];

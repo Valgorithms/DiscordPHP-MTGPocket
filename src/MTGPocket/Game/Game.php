@@ -85,7 +85,7 @@ final class Game
     public ?array $pendingChoice = null;
 
     /** Persisted rules-state format; unversioned records are version 1. */
-    public const int STATE_VERSION = 2;
+    public const int STATE_VERSION = 3;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -150,6 +150,9 @@ final class Game
 
     /** @var array<int, array{seat: int, cost: string, turn: int, name: string, lose: bool}> The Pacts: pay at its caster's next upkeep or lose the game. */
     public array $pacts = [];
+
+    /** @var list<array{createdTurn: int, source: int, incarnation: int, controller: int, label: string}> One-card draws waiting for the next turn's upkeep. */
+    public array $delayedDraws = [];
 
     /** @var int[] Permanents with "Whenever CARDNAME becomes tapped" seen tapped at the last check. */
     public array $seenTapped = [];
@@ -775,6 +778,7 @@ final class Game
                 if ($step === Step::Upkeep) {
                     $this->dayNightCheck();
                     $this->payPacts();
+                    $this->triggerDelayedDraws();
                 }
                 foreach ($this->permanents($this->active) as $object) {
                     $this->trigger($object, $step === Step::Upkeep ? 'upkeep' : 'end_step', $object->controller);
@@ -4379,6 +4383,17 @@ final class Game
                     break;
                 }
                 $this->draw($target !== null ? (int) substr($target, 2) : (isset($effect['opponent']) ? $this->opponent($controller) : $controller), $amount);
+                break;
+
+            case 'draw_next_upkeep':
+                // Created only as this effect resolves, not when its spell or ability is put on the stack.
+                $this->delayedDraws[] = [
+                    'createdTurn' => $this->turn,
+                    'source' => $source->id,
+                    'incarnation' => $source->incarnation,
+                    'controller' => $controller,
+                    'label' => "{$source->name()}'s delayed draw",
+                ];
                 break;
 
             case 'gain_life':
@@ -9386,6 +9401,33 @@ final class Game
     }
 
     /**
+     * Transfers one-shot draws to the ordinary trigger queue at the next
+     * turn's upkeep, whoever is active. Removing each schedule now prevents
+     * a countered trigger or a resumed game from scheduling it again.
+     *
+     * @return void
+     */
+    private function triggerDelayedDraws(): void
+    {
+        foreach ($this->delayedDraws as $index => $draw) {
+            if ($draw['createdTurn'] >= $this->turn) {
+                continue;
+            }
+            unset($this->delayedDraws[$index]);
+            $this->pendingTriggers[] = [
+                'source' => $draw['source'],
+                'incarnation' => $draw['incarnation'],
+                'controller' => $draw['controller'],
+                'effects' => [['type' => 'draw', 'amount' => 1]],
+                'kinds' => [],
+                'label' => $draw['label'],
+                'text' => 'Draw a card.',
+            ];
+        }
+        $this->delayedDraws = array_values($this->delayedDraws);
+    }
+
+    /**
      * The Pacts: at the active player's upkeep after the turn each was cast, its cost is paid when it can be, or they lose the game.
      *
      * @return void
@@ -10496,6 +10538,7 @@ final class Game
             'freerun' => $this->freerun,
             'prevent' => $this->prevent,
             'pacts' => $this->pacts,
+            'delayedDraws' => $this->delayedDraws,
             'seenTapped' => $this->seenTapped,
             'seenCounters' => $this->seenCounters,
             'preventGain' => $this->preventGain,
@@ -10623,6 +10666,27 @@ final class Game
         $game->freerun = array_map('intval', (array) ($data['freerun'] ?? []));
         $game->prevent = array_map('intval', (array) ($data['prevent'] ?? []));
         $game->pacts = array_values((array) ($data['pacts'] ?? []));
+        // Version 3 makes pending delayed draws mandatory so missing state cannot silently lose them.
+        $delayedDraws = $data['delayedDraws'] ?? ($version < 3 ? [] : null);
+        if (! is_array($delayedDraws) || ! array_is_list($delayedDraws) || ($version < 3 && $delayedDraws !== [])) {
+            throw new GameException('Invalid saved delayed draws.');
+        }
+        foreach ($delayedDraws as $draw) {
+            if (! is_array($draw) || ! is_int($draw['createdTurn'] ?? null) || $draw['createdTurn'] < 1 || $draw['createdTurn'] > $game->turn
+                || ! is_int($draw['source'] ?? null) || ! isset($game->objects[$draw['source']])
+                || ! is_int($draw['incarnation'] ?? null) || $draw['incarnation'] < 0 || $draw['incarnation'] > $game->objects[$draw['source']]->incarnation
+                || ! is_int($draw['controller'] ?? null) || ! isset($game->players[$draw['controller']])
+                || ! is_string($draw['label'] ?? null) || $draw['label'] === '') {
+                throw new GameException('Invalid saved delayed draw.');
+            }
+            $game->delayedDraws[] = [
+                'createdTurn' => $draw['createdTurn'],
+                'source' => $draw['source'],
+                'incarnation' => $draw['incarnation'],
+                'controller' => $draw['controller'],
+                'label' => $draw['label'],
+            ];
+        }
         $game->seenTapped = array_map('intval', (array) ($data['seenTapped'] ?? []));
         // Saved before counters were tracked: the counters already there are not new.
         $game->seenCounters = array_map('intval', (array) ($data['seenCounters'] ?? []));
