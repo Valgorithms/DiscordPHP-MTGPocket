@@ -4580,7 +4580,7 @@ final class TextParser
         }
         // `Put a +1/+1 counter on each other attacking creature.`: whoever controls them.
         if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?attacking creature$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))) {
-            return ['type' => 'counters', 'amount' => $n, 'each' => 'attacking'] + ($m[2] !== '' ? ['other' => true] : []);
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'attacking'] + (($m[2] ?? '') !== '' ? ['other' => true] : []);
         }
         // A ritual: `Add {R}{R}{R}.`
         if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {
