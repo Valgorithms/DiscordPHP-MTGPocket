@@ -63,3 +63,5 @@ Use descriptive branches and open PRs, preserve unrelated local files, and disti
 The [2026-10-20 coverage checkpoint](card-coverage-progress.md) records a fresh, hashed public corpus, the current recognition baseline, tested graveyard-cast behavior, and remaining scope. It also refreshes the older ownership status above: #124 is merged, while #327 covers enchanted/equipped conditional bonuses and keywords. Recognition percentages remain separate from gameplay support.
 
 The next [delayed-upkeep-draw milestone](delayed-upkeep-draw.md) adds an exact one-card delayed-draw family through the ordinary trigger queue. It advances saved-state format to version 3, with legacy migration and rejection of missing delayed state. See that note for the tested behavior, compatibility boundary, recognition delta, and remaining limits.
+
+The [fading milestone](fading-coverage.md) adds numbered fade counters and the distinct upkeep sacrifice timing, with source/control-change and save/resume tests. It reuses the existing persisted counters and trigger records without changing the state schema introduced by delayed draws.

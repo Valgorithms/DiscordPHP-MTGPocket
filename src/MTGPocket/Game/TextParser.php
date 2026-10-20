@@ -1435,6 +1435,11 @@ final class TextParser
             } elseif ($word === 'riot' && ! $spell) {
                 // Riot (rule 702.136): always the counter, not haste.
                 $found['counters'] = (int) $found['counters'] + 1;
+            } elseif (preg_match('/^fading (\d+)$/i', $part, $m) && ! $spell) {
+                // Fading (rule 702.32): sacrifice only when an upkeep cannot remove a fade counter.
+                $found['keywords'][] = "fading {$m[1]}";
+                $found['otherCounters']['fade'] = ($found['otherCounters']['fade'] ?? 0) + (int) $m[1];
+                $found['triggered'][] = ['text' => $part, 'event' => 'upkeep', 'effects' => [['type' => 'fading', 'self' => true]]];
             } elseif (preg_match('/^vanishing (\d+)$/i', $part, $m) && ! $spell) {
                 // Vanishing (rule 702.63): time counters, one removed each upkeep; sacrificed when the last goes.
                 $found['keywords'][] = "vanishing {$m[1]}";

@@ -4463,6 +4463,19 @@ final class Game
                 }
                 break;
 
+            case 'fading':
+                if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    if ($affected->counter('fade') > 0) {
+                        $affected->addCounters('fade', -1);
+                        $this->log("A fade counter is removed from {$affected->name()}.");
+                    } elseif ($affected->controller === $controller) {
+                        // The trigger's controller cannot sacrifice a permanent now controlled by someone else.
+                        $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()} (fading).");
+                        $this->sacrifice($affected);
+                    }
+                }
+                break;
+
             case 'vanishing':
                 if ($affected !== null && $affected->counter('time') > 0) {
                     $affected->addCounters('time', -1);
