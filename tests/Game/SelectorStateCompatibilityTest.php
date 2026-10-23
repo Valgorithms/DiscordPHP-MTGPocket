@@ -26,9 +26,9 @@ final class SelectorStateCompatibilityTest extends GameTestCase
         $this->game->pass($this->game->priority);
     }
 
-    public function testNewSavesAlwaysRequireVersionFourEvenBeforeANewSelectorIsUsed(): void
+    public function testNewSavesRequireTheCurrentVersionEvenBeforeANewSelectorIsUsed(): void
     {
-        $this->assertSame(4, $this->newGame()->toArray()['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $this->newGame()->toArray()['schemaVersion']);
     }
 
     public function testPendingUnionAbilityRetainsItsVersionAndSelectionAfterReload(): void
@@ -45,7 +45,7 @@ final class SelectorStateCompatibilityTest extends GameTestCase
         $game->activate(0, $device, 0);
         // Compare the persisted JSON contract, including JSON's numeric normalization.
         $saved = json_decode(json_encode($game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-        $this->assertSame(4, $saved['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $saved['schemaVersion']);
         $this->assertSame('all artifacts, creatures, and lands', $saved['stack'][0]['effects'][0]['all']);
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($device));
         $this->game = Game::fromArray($saved);
@@ -84,11 +84,11 @@ final class SelectorStateCompatibilityTest extends GameTestCase
         $this->assertCount(1, $this->game->delayedDraws);
     }
 
-    public function testBothVersionThreeAndVersionFourRequireExistingDelayedDrawState(): void
+    public function testVersionsThreeThroughFiveRequireExistingDelayedDrawState(): void
     {
         $saved = $this->newGame()->toArray();
         unset($saved['delayedDraws']);
-        foreach ([3, 4] as $version) {
+        foreach ([3, 4, 5] as $version) {
             $saved['schemaVersion'] = $version;
             try {
                 Game::fromArray($saved);

@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 4 prevents older readers from misinterpreting new mass-removal selectors.
+     * Version 5 adds resumable, simultaneous creature-sacrifice choices.
      */
-    public const int STATE_VERSION = 4;
+    public const int STATE_VERSION = 5;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4171,6 +4171,105 @@ final class Game
     }
 
     /**
+     * Chooses the exact creatures for the current simultaneous sacrifice.
+     * All players' selections wait until the last answer; invalid answers change nothing.
+     *
+     * @param int   $seat
+     * @param int   $choiceId Identity from choiceAwaiting().
+     * @param int[] $ids      Exactly the current choice's count of distinct objects.
+     *
+     * @return void
+     */
+    public function chooseSacrifice(int $seat, int $choiceId, array $ids): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || $choice === null || $choice['type'] !== 'sacrifice' || $choice['seat'] !== $seat || $choice['id'] !== $choiceId) {
+            throw new GameException('That sacrifice choice is no longer available to you.');
+        }
+        if (count($ids) !== $choice['count'] || count(array_unique($ids, SORT_REGULAR)) !== count($ids)) {
+            throw new GameException("Choose exactly {$choice['count']} distinct creatures.");
+        }
+        foreach ($ids as $id) {
+            if (! is_int($id) || ! in_array($id, $choice['cards'], true)) {
+                throw new GameException('Choose only creatures available for this sacrifice.');
+            }
+        }
+        $groups = $choice['groups'];
+        $groups[$choice['group']]['selected'] = array_values($ids);
+        $this->validateEdictGroups($groups);
+        $this->followed = $choice['resume']['followed'] ?? [];
+        $this->pendingChoice = null;
+        if ($this->advanceEdictChoices($groups, $choice['resume'])) {
+            return;
+        }
+        $resume = $choice['resume'];
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+    /** Validates the whole pre-event selection plan before any state changes. */
+    private function validateEdictGroups(array $groups): void
+    {
+        if (! array_is_list($groups) || count($groups) !== count($this->players)) {
+            throw new GameException('Invalid sacrifice selection plan.');
+        }
+        $seen = [];
+        $seats = [];
+        foreach ($groups as $group) {
+            if (! is_array($group) || ! is_int($group['seat'] ?? null) || ! isset($this->players[$group['seat']]) ||
+                isset($seats[$group['seat']]) || ! is_array($group['cards'] ?? null) || ! array_is_list($group['cards']) || ! is_array($group['incarnations'] ?? null) ||
+                ! is_int($group['count'] ?? null) || $group['count'] < 0 || $group['count'] > count($group['cards']) ||
+                ! array_key_exists('selected', $group)) {
+                throw new GameException('Invalid sacrifice selection plan.');
+            }
+            $seats[$group['seat']] = true;
+            if ($group['selected'] === null && ($group['count'] === 0 || $group['count'] === count($group['cards']))) {
+                throw new GameException('Invalid sacrifice selection plan.');
+            }
+            foreach ($group['cards'] as $id) {
+                $object = is_int($id) ? ($this->objects[$id] ?? null) : null;
+                if ($object === null || isset($seen[$id]) || $object->zone !== GameObject::BATTLEFIELD ||
+                    $object->controller !== $group['seat'] || $object->incarnation !== ($group['incarnations'][$id] ?? null) || ! $this->isCreature($object)) {
+                    throw new GameException('That sacrifice selection is no longer legal.');
+                }
+                $seen[$id] = true;
+            }
+            if ($group['selected'] !== null) {
+                if (! is_array($group['selected']) || ! array_is_list($group['selected']) || count($group['selected']) !== $group['count'] || count(array_unique($group['selected'], SORT_REGULAR)) !== $group['count']) {
+                    throw new GameException('Invalid sacrifice selection plan.');
+                }
+                foreach ($group['selected'] as $id) {
+                    if (! is_int($id) || ! in_array($id, $group['cards'], true)) {
+                        throw new GameException('Invalid sacrifice selection plan.');
+                    }
+                }
+            }
+        }
+    }
+
+    /** Requests the next player's choice, or moves the fully selected group once. */
+    private function advanceEdictChoices(array $groups, ?array $resume = null): bool
+    {
+        $this->validateEdictGroups($groups);
+        foreach ($groups as $index => $group) {
+            if ($group['selected'] === null) {
+                $this->pendingChoice = ['type' => 'sacrifice', 'id' => $this->nextChoiceId++, 'seat' => $group['seat'],
+                    'cards' => $group['cards'], 'count' => $group['count'], 'min' => $group['count'], 'max' => $group['count'],
+                    'group' => $index, 'groups' => $groups] + ($resume === null ? [] : ['resume' => $resume]);
+
+                return true;
+            }
+        }
+        $victims = array_merge(...array_column($groups, 'selected'));
+        $this->withDeathObservers(array_map(fn (int $id) => $this->objects[$id], $victims), function (GameObject $victim): void {
+            $this->log("{$this->players[$victim->controller]->name} sacrifices {$victim->name()}.");
+            $this->sacrifice($victim);
+        });
+
+        return false;
+    }
+
+    /**
      * Finishes a scry or surveil (rules 701.22 and 701.25): the chosen cards
      * go to the bottom of the library (scry) or into the graveyard
      * (surveil), and the rest stay on top in the same order. Then the spell
@@ -5089,7 +5188,7 @@ final class Game
                 break;
 
             case 'edict':
-                // Annihilator, or `Target player sacrifices a creature`: each sacrifices their weakest that fit.
+                // Each-player creature edicts request choices; other edict families retain their existing policy.
                 $seats = match ($effect['each'] ?? (isset($effect['kind']) && $target !== null ? 'target' : 'opponent')) {
                     'target' => [(int) substr($target, 2)],
                     'player' => array_keys($this->players),
@@ -5104,6 +5203,21 @@ final class Game
                     'permanent' => true,
                     default => $o->definition()->is(ucfirst($effect['kind'])),
                 };
+                if (($effect['each'] ?? null) === 'player' && ($effect['kind'] ?? null) === 'creature' && ! isset($effect['pick'])) {
+                    // Each player chooses in APNAP order; no selected object moves until all have chosen.
+                    usort($seats, fn (int $a, int $b) => (($a - $this->active + count($this->players)) % count($this->players)) <=> (($b - $this->active + count($this->players)) % count($this->players)));
+                    $groups = [];
+                    foreach ($seats as $seat) {
+                        $eligible = array_values(array_filter($this->permanents($seat), $fits));
+                        $cards = array_map(fn (GameObject $o) => $o->id, $eligible);
+                        $groups[] = ['seat' => $seat, 'cards' => $cards, 'incarnations' => array_column(array_map(fn (GameObject $o) => ['id' => $o->id, 'incarnation' => $o->incarnation], $eligible), 'incarnation', 'id'),
+                            'count' => min($amount, count($cards)), 'selected' => $amount === 0 ? [] : (count($cards) <= $amount ? $cards : null)];
+                    }
+                    if ($this->advanceEdictChoices($groups)) {
+                        return true;
+                    }
+                    break;
+                }
                 $victims = [];
                 foreach ($seats as $seat) {
                     $fitting = $fits;
@@ -10686,6 +10800,31 @@ final class Game
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
         $game->pendingEntries = array_values((array) ($data['pendingEntries'] ?? []));
         $game->nextChoiceId = (int) ($data['nextChoiceId'] ?? 1);
+        if (($game->pendingChoice['type'] ?? null) === 'sacrifice') {
+            $choice = $game->pendingChoice;
+            $groups = $choice['groups'] ?? null;
+            $index = $choice['group'] ?? null;
+            $group = is_array($groups) && is_int($index) ? ($groups[$index] ?? null) : null;
+            $resume = $choice['resume'] ?? null;
+            if ($version < 5 || $game->stage !== self::PLAYING || ! is_array($group) || ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id'] ||
+                ! array_key_exists('selected', $group) || $group['selected'] !== null || ($choice['seat'] ?? null) !== ($group['seat'] ?? null) ||
+                ($choice['cards'] ?? null) !== ($group['cards'] ?? null) || ($choice['count'] ?? null) !== ($group['count'] ?? null) ||
+                ($choice['min'] ?? null) !== $choice['count'] || ($choice['max'] ?? null) !== $choice['count'] ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_key_exists('self', $resume) ||
+                ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
+                    ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1]))) || ! is_array($resume['followed'] ?? null)) {
+                throw new GameException('Invalid saved sacrifice choice.');
+            }
+            $game->validateEdictGroups($groups);
+            foreach ($groups as $previous => $candidate) {
+                if ($candidate['selected'] === null) {
+                    if ($previous !== $index) {
+                        throw new GameException('Invalid saved sacrifice choice order.');
+                    }
+                    break;
+                }
+            }
+        }
         if (($game->pendingChoice['type'] ?? null) === 'entry_life') {
             $choice = $game->pendingChoice;
             $entry = $game->pendingEntries[0] ?? null;

@@ -359,6 +359,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'scry', 'surveil' => $game->decision($seat),
                 'look' => 'choose from the top of their library',
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
+                'sacrifice' => 'choose creatures to sacrifice',
                 'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
@@ -531,6 +532,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $player = $game->players[$seat];
         $decision = $game->decision($seat);
         $choice = $match->choice($playerId);
+        if ($decision === 'sacrifice' && ($choice['sacrifice']['id'] ?? null) !== $game->choiceAwaiting()['id']) {
+            $choice['sacrifice'] = ['id' => $game->choiceAwaiting()['id'], 'page' => 0, 'selected' => []];
+        }
         $playable = $decision === 'priority' ? $game->playableCards($seat) : [];
 
         $container = Container::new()->setAccentColor(CardMessageBuilder::ACCENTS['colorless']);
@@ -652,6 +656,32 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 if ($look['may'] || $look['take'] === 0) {
                     $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('takenone'))->setLabel($look['take'] === 0 ? 'Continue' : 'Take none')));
                 }
+                break;
+
+            case 'sacrifice':
+                $sacrifice = $game->choiceAwaiting();
+                $picks = $choice['sacrifice'];
+                $page = $picks['page'];
+                $pages = (int) ceil(count($sacrifice['cards']) / 25);
+                $visible = array_slice($sacrifice['cards'], $page * 25, 25);
+                $message->addComponent(self::cardSelect(
+                    $id('sacpick', (string) $sacrifice['id'], (string) $page),
+                    "Choose {$sacrifice['count']} creatures total (page ".($page + 1)."/{$pages})",
+                    $visible,
+                    fn (int $object) => $cardOption($object)->setDefault(in_array($object, $picks['selected'], true)),
+                    0,
+                    $sacrifice['count']
+                ));
+                $row = ActionRow::new();
+                if ($page > 0) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacpage', (string) $sacrifice['id'], (string) ($page - 1)))->setLabel('Previous page'));
+                }
+                if ($page + 1 < $pages) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacpage', (string) $sacrifice['id'], (string) ($page + 1)))->setLabel('Next page'));
+                }
+                $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacreset', (string) $sacrifice['id']))->setLabel('Clear selections'));
+                $row->addComponent(Button::new(Button::STYLE_DANGER, $id('sacgo', (string) $sacrifice['id']))->setLabel('Confirm sacrifices')->setDisabled(count($picks['selected']) !== $sacrifice['count']));
+                $message->addComponent($row);
                 break;
 
             case 'entry_life':
@@ -806,6 +836,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $player = $game->players[$seat];
 
         return match ($decision) {
+            'sacrifice' => self::sacrificePrompt($game, $choice),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'mulligan' => $player->mulligans === 0
                 ? 'Keep this hand, or shuffle it away and draw a new seven?'
@@ -845,6 +876,22 @@ class MatchMessageBuilder extends PocketMessageBuilder
             },
             default => $game->stage === Game::OVER ? 'The game is over.' : 'Nothing to do right now; the game is waiting on your opponent.',
         };
+    }
+
+    /** Describes the pending choice and earlier public battlefield selections. */
+    private static function sacrificePrompt(Game $game, array $choice): string
+    {
+        $pending = $game->choiceAwaiting();
+        $names = fn (array $ids) => implode(', ', array_map(fn (int $id) => $game->objects[$id]->name(), $ids));
+        $lines = ['Choose exactly '.$pending['count'].' creatures to sacrifice. All selections wait until every player has chosen.',
+            'Selected: '.(($choice['sacrifice']['selected'] ?? []) === [] ? 'none' : $names($choice['sacrifice']['selected']))];
+        foreach ($pending['groups'] as $group) {
+            if ($group['selected'] !== null && $group['selected'] !== []) {
+                $lines[] = 'Already chosen by '.$game->players[$group['seat']]->name.': '.$names($group['selected']);
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
