@@ -53,7 +53,8 @@
         ],
         "phpacker:bot": "phpacker build --src=bot.php --dest=bin/build/bot",
         "import-cards": "php bin/import-cards.php",
-        "card-coverage": "php bin/card-coverage.php"
+        "card-coverage": "php bin/card-coverage.php",
+        "functional-coverage": "php bin/functional-coverage.php"
     },
     "scripts-descriptions": {
         "pint": "Format src, tests, bin and bot.php with Laravel Pint.",
@@ -65,6 +66,7 @@
         "phpacker": "Build a standalone binary for bot.php (all platforms).",
         "phpacker:bot": "Build a standalone binary for bot.php into bin/build/bot.",
         "import-cards": "Import per-set card pools from the MTGJSON build.",
-        "card-coverage": "Report how much card text the rules engine understands."
+        "card-coverage": "Report how much card text the rules engine understands.",
+        "functional-coverage": "Build a pinned offline evidence ledger from explicit pool/report paths; does not certify whole cards."
     }
 }

@@ -1,4 +1,5 @@
 # Build output and local build tooling: never committed, never shipped.
+/config/coverage-recognition-2026-10-22.json text eol=lf
 # A packed binary can be decompiled; keep it out of the repo and dist archives.
 /bin/build         export-ignore
 /linux             export-ignore
