@@ -1,6 +1,6 @@
 # Functional coverage evidence ledger
 
-The [Disciple milestone](disciple-optional-artifact-burial.md) supersedes the earlier Disciple unread-gap assertion: complete pinned 2XM wording now has scoped optional/all-player behavior evidence. The current manifest records twelve names with scoped evidence, one explicit gap and zero whole-card certificates, including the later Fangren, Molder Beast and Moriok Rigger milestones. Its overall recognition totals remain the historical pinned report, not current parser totals. The [Fabricate milestone](fabricate-resolution-choices.md) retains its scoped entry decisions on the complete KLD Marionette fixture.
+The [Disciple milestone](disciple-optional-artifact-burial.md) supersedes the earlier Disciple unread-gap assertion: complete pinned 2XM wording now has scoped optional/all-player behavior evidence. The current manifest records thirteen names with scoped evidence, one explicit gap and zero whole-card certificates, including the later Fangren, Molder Beast, Moriok Rigger and Summoning Station milestones. Its overall recognition totals remain the historical pinned report, not current parser totals. The [Fabricate milestone](fabricate-resolution-choices.md) retains its scoped entry decisions on the complete KLD Marionette fixture.
 
 This ledger makes the existing 100% functionality goal measurable against the pinned **28,729 newest-printing card names** in 181 imported pools, MTGJSON `5.3.0+20261022`. It does not redefine the goal as parser recognition or a smaller supported deck. A card name is the unit; all selected card data, including extra faces, contribute to the corpus fingerprint. It is not the complete MTGJSON database or a fresh Modern measurement.
 
@@ -12,7 +12,7 @@ This ledger makes the existing 100% functionality goal measurable against the pi
 | Recognized whole | 11,282 | No unread parser clauses in the saved recognition audit |
 | Has unread text | 17,447 | Complement of recognized names, not a gameplay verdict |
 | Recognized without a whole-card certificate | 11,282 | Recognition does not clear the functional review |
-| Named cards with scoped regression evidence | 12 | Three departure exemplars, two death observers, Barter, Mayhem Devil, Marionette Master, Disciple, Fangren, Molder Beast and Moriok Rigger; each has a bounded evidence scope |
+| Named cards with scoped regression evidence | 13 | Three departure exemplars, two death observers, Barter, Mayhem Devil, Marionette Master, Disciple, Fangren, Molder Beast, Moriok Rigger and Summoning Station; each has a bounded evidence scope |
 | Named cards with an explicit unsupported gap | 1 | Akroma's unread Partner; this reviewed seed is not an exhaustive list of unsupported cards |
 | Intersection of the previous two rows | 0 | Closing one specific observer gap does not certify its other interactions |
 | Recorded whole-card certificates | 0 | No whole-card reviews have been issued |
@@ -64,3 +64,7 @@ The [Molder Beast milestone](molder-beast-artifact-burial.md) adds the exact tem
 ## Moriok Rigger optional source counters (2026-10-23)
 
 The [Moriok milestone](moriok-rigger-optional-counter.md) adds explicit accept/decline, permanent counters on the original source incarnation, saved schema 10 and Discord/practice controls. Twelve names have scoped evidence, one explicit gap remains and whole-card certificates stay zero. The targeted eight-name scan now reads Disciple, Fangren, Molder and Moriok; four remain unread. Aggregate recognition remains historical. Summoning Station is the next measured optional source-untap seed.
+
+## Summoning Station optional source untap (2026-10-23)
+
+The [Station milestone](summoning-station-optional-untap.md) adds explicit untap/decline, paid tap-token activation and repeated activation, original-incarnation isolation, schema11 and Discord/practice controls. It also reproduces and fixes stun replacement in the shared single-permanent untap effect. Thirteen scoped names/one gap/zero whole-card certificates remain separate from the historical aggregate recognition. The eight-name targeted scan has five readable records and three unread; Krenko's optional red-payment token is the next measured seed.
