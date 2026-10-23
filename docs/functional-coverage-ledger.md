@@ -10,15 +10,15 @@ This ledger makes the existing 100% functionality goal measurable against the pi
 | Recognized whole | 11,282 | No unread parser clauses in the saved recognition audit |
 | Has unread text | 17,447 | Complement of recognized names, not a gameplay verdict |
 | Recognized without a whole-card certificate | 11,282 | Recognition does not clear the functional review |
-| Named cards with scoped regression evidence | 3 | Partial Thragtusk, Hatching Plans and Hopeful Eidolon fixtures |
-| Named cards with an explicit unsupported gap | 3 | One unread Partner exemplar; two simultaneous-death candidates |
-| Intersection of the previous two rows | 0 | These are overlapping dimensions, not additive tiers |
+| Named cards with scoped regression evidence | 5 | Three departure exemplars and two exact-printing destroy-all observers |
+| Named cards with an explicit unsupported gap | 3 | One unread Partner exemplar; two observers with remaining simultaneous-event gaps |
+| Intersection of the previous two rows | 2 | The destroy-all observers retain explicit gaps in other interactions |
 | Recorded whole-card certificates | 0 | No whole-card reviews have been issued |
 | Remaining whole-card reviews | 28,729 | The initial certification backlog, not a count of broken cards |
 
 The completion target is 28,729 reviewed whole-card certificates against this pinned inventory. **Zero recorded certificates does not mean zero cards function.** No functional percentage is inferred. Schema 1 intentionally cannot issue whole-card certificates from partial tests. A future certification record needs a reviewed rules/mode scope, every printed face and ability, targeting/payment/timing/control restrictions, relevant interactions and negative controls, save/resume, and exact source/test evidence. Scope exclusions must remain explicit; narrowing the goal requires a separate decision. Shared parser shape, unrelated passing tests, games finishing and engine bug fixes cannot substitute for those reviews.
 
-The three named evidence records are an initial, deliberately non-exhaustive index of recent regressions, not a count of all tested cards in the repository. Their fixtures use card-name wording or abbreviated reminders rather than byte-identical newest-printing text. The ledger records those limits. Synthetic fixtures are not attributed to additional corpus cards. The three explicit gaps are likewise a reviewed seed, not an exhaustive unsupported-card list. Other known gaps include continuous subtype/ability characteristics, source conditions after movement, replacement ordering, APNAP decisions and heuristic type/color/devour choices.
+The named evidence records are a deliberately non-exhaustive index of recent regressions, not a count of all tested cards in the repository. The original three departure exemplars use card-name wording or abbreviated reminders; the two destroy-all observers use exact selected printings. The ledger records those limits. Synthetic fixtures are not attributed to additional corpus cards. The three explicit gaps are likewise a reviewed seed, not an exhaustive unsupported-card list. Other known gaps include continuous subtype/ability characteristics, source conditions after movement, replacement ordering, APNAP decisions and heuristic type/color/devour choices.
 
 ## Reproduce without live effects
 
@@ -41,13 +41,13 @@ Provenance:
 - Recognition source: `65134ebb3a748e9ee23ae3c188b1411a52023440`. `TextParser.php` and `CardDefinition.php` Git blobs are unchanged through merged engine source `e40c470d74c7f9da5f798e9d3f6635d1b6f6bad4`.
 - Historical behavior evidence: exact PR339 head `9f2f5670b533283130ab29f8a94492964eaf7dd1`, [CI 39970148365](https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/39970148365), PHP 8.3/8.4/8.5. Local full suite: 777 tests, 32,292 assertions, two expected imported-data skips, exit 0. Ledger generation does not rerun these behaviors.
 
-The source pins cover all twelve current files in the Game namespace, including the departure snapshot, plus the two cited regression test files. Updating a pinned engine or evidence source intentionally invalidates its pin. Review affected claims, rerun meaningful checks and update provenance before accepting new pins; never refresh hashes solely to silence a failing test. This milestone introduces no environment variables or runtime configuration, so `env.example` has no new entries.
+The source pins cover all fourteen current files in the Game namespace, including departure and death-batch snapshots, plus the three cited regression test files. The simultaneous-death test also pins its complete selected-printing JSON fixture. Updating a pinned engine or evidence source intentionally invalidates its pin. Review affected claims, rerun meaningful checks and update provenance before accepting new pins; never refresh hashes solely to silence a failing test. Current destroy-all evidence and its precise limits are recorded in [the milestone note](simultaneous-death-observers.md) and manifest validation fields. This milestone introduces no environment variables or runtime configuration, so `env.example` has no new entries.
 
 ## Next measured family
 
-**Two selected candidates: Zulaport Cutthroat and Grim Haruspex.** Both are recognized in this exact corpus. Sequential departure dispatch cannot retain all departing observers during simultaneous removal; neither card receives a whole-card certificate. This is a bounded seed, not a claim that only two cards are affected.
+**Two selected candidates: Zulaport Cutthroat and Grim Haruspex, during simultaneous state-based deaths after lethal mass damage.** Both are recognized in this exact corpus and now have [destroy-all observer evidence](simultaneous-death-observers.md). State-based death groups and mass sacrifices remain distinct gaps; neither card receives a whole-card certificate. This is a bounded seed, not a claim that only two cards are affected.
 
-Start with exact pinned wording and paid mass removal, checking both battlefield insertion orders. Each qualifying death must be seen once with prior controller, self/other and nontoken restrictions intact. Include opposing-controller, token and non-death controls plus pending-stack JSON replay. General replacement semantics and APNAP decisions remain distinct gaps. Count the resulting scoped evidence separately; do not automatically promote either card to whole-card support.
+Start with exact pinned wording and paid mass damage, checking both battlefield insertion orders. Each qualifying death must be seen once with prior controller, self/other and nontoken restrictions intact. Process the state-based group before rechecking continuous sources removed by that group. Include opposing-controller, token, nonlethal/prevented damage controls and pending-stack JSON replay. General replacement semantics and APNAP decisions remain distinct gaps. Count scoped evidence separately; do not automatically promote either card to whole-card support.
 
 An exact bounded text scan found no `Whenever an Elf ... leaves the battlefield` card in this pinned inventory. That synthetic wording gap is not used as the next corpus-coverage family.
 
