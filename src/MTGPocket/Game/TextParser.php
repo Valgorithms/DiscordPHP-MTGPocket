@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Exact source-plus-Golem wording; the existing effects preserve source incarnation and controller.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, put a +1/+1 counter on CARDNAME and a +1/+1 counter on each Golem you control.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'counters', 'amount' => 1, 'self' => true], ['type' => 'counters', 'amount' => 1, 'each' => 'yours', 'subtype' => 'Golem']]];
+
+            return true;
+        }
         // Exact optional red-payment token family; payment is a resolution choice.
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may pay {R}. If you do, create a 1/1 red Goblin creature token. It gains haste until end of turn.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',

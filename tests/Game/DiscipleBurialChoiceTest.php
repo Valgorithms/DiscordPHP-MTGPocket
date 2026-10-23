@@ -324,6 +324,9 @@ final class DiscipleBurialChoiceTest extends GameTestCase
             $definition = new CardDefinition($entry['card']);
             if ($definition->unsupported === []) {
                 $recognized[] = $entry['card']['name'];
+            } elseif ($entry['card']['name'] === 'Ich-Tekik, Salvage Splicer') {
+                $this->assertSame(['Partner'], $definition->unsupported);
+                $this->assertCount(1, $definition->triggersOn('artifact_to_graveyard_any'));
             } else {
                 $this->assertSame([], $definition->triggersOn('artifact_to_graveyard_any'), $entry['card']['name']);
             }
