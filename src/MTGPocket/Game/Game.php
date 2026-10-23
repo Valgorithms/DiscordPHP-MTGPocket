@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 6 persists departure statistics per source incarnation; version 5 added sacrifice choices.
+     * Version 7 adds resumable Fabricate choices; version 6 added departure statistics.
      */
-    public const int STATE_VERSION = 6;
+    public const int STATE_VERSION = 7;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4834,6 +4834,19 @@ final class Game
                 $this->log("{$this->players[$controller]->name} chooses {$this->chosenType}.");
                 break;
 
+            case 'fabricate':
+                if ($self === null) {
+                    $this->fabricateServos($source, $controller, $amount);
+                    break;
+                }
+                $this->pendingChoice = [
+                    'type' => 'fabricate', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'count' => $amount, 'label' => $source->name(), 'options' => ['counters', 'servos'],
+                ];
+
+                return true;
+
             case 'counters':
                 if (($effect['each'] ?? null) === 'yours') {
                     foreach ($this->permanents($controller) as $object) {
@@ -9227,6 +9240,49 @@ final class Game
         $this->settle();
     }
 
+    /**
+     * Answers Fabricate at resolution. The trigger controller chooses even if
+     * another player now controls the original permanent. Stale/illegal answers
+     * change nothing; a returned incarnation cannot receive these counters.
+     *
+     * @param int    $seat
+     * @param int    $choiceId
+     * @param string $option `counters` or `servos`, from choiceAwaiting()['options'].
+     *
+     * @return void
+     */
+    public function chooseFabricate(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || $choice === null || $choice['type'] !== 'fabricate' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That Fabricate choice is no longer available to you.');
+        }
+        $object = $this->objects[$choice['object']];
+        if ($option === 'counters' && ($object->zone !== GameObject::BATTLEFIELD || $object->incarnation !== $choice['incarnation'])) {
+            throw new GameException('That Fabricate choice is no longer legal.');
+        }
+        $this->followed = $choice['resume']['followed'];
+        $this->pendingChoice = null;
+        if ($option === 'counters') {
+            $object->addCounters('+1/+1', $choice['count']);
+        } else {
+            $this->fabricateServos($object, $seat, $choice['count']);
+        }
+        $resume = $choice['resume'];
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+    /** Reuse ordinary token batching and its entry/creation observers. */
+    private function fabricateServos(GameObject $source, int $controller, int $count): void
+    {
+        $this->applyEffect(['type' => 'token', 'amount' => $count, 'token' => [
+            'name' => 'Servo Token', 'type' => 'Token Artifact Creature — Servo', 'types' => ['Artifact', 'Creature'],
+            'subtypes' => ['Servo'], 'colors' => [], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null,
+        ]], $source, null, $controller, 0, null);
+    }
+
     /** Starts the next entry decision, or completes entries without choices. */
     private function advanceEntries(): void
     {
@@ -10869,6 +10925,33 @@ final class Game
                         throw new GameException('Invalid saved sacrifice choice order.');
                     }
                     break;
+                }
+            }
+        }
+        if (($game->pendingChoice['type'] ?? null) === 'fabricate') {
+            $choice = $game->pendingChoice;
+            $resume = $choice['resume'] ?? null;
+            $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
+            if ($version < 7 || $game->stage !== self::PLAYING || $source === null ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
+                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) || ! is_int($choice['count'] ?? null) || $choice['count'] < 0 ||
+                ! is_int($choice['incarnation'] ?? null) || $source->incarnation !== $choice['incarnation'] || $source->zone !== GameObject::BATTLEFIELD ||
+                ($choice['options'] ?? null) !== ['counters', 'servos'] || ($choice['label'] ?? null) !== $source->name() ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
+                ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
+                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
+                ($resume['self'] ?? null) !== [$source->id, $choice['incarnation']] || ! is_array($resume['followed'] ?? null)) {
+                throw new GameException('Invalid saved Fabricate choice.');
+            }
+            foreach ($resume['steps'] as $step) {
+                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
+                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                    throw new GameException('Invalid saved Fabricate continuation.');
+                }
+            }
+            foreach ($resume['followed'] as $from => $to) {
+                if (! is_string($from) || ! is_string($to)) {
+                    throw new GameException('Invalid saved Fabricate continuation.');
                 }
             }
         }

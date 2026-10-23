@@ -170,7 +170,7 @@ final class DepartedSourceStatisticsTest extends GameTestCase
         }
         unset($object);
         $loaded = Game::fromArray($saved);
-        $this->assertSame(6, $loaded->toArray()['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $loaded->toArray()['schemaVersion']);
         foreach ($loaded->objects as $object) {
             $this->assertSame([], $object->lastKnownStatistics);
         }

@@ -359,6 +359,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'scry', 'surveil' => $game->decision($seat),
                 'look' => 'choose from the top of their library',
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
+                'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
                 'sacrifice' => 'choose creatures to sacrifice',
                 'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
@@ -684,6 +685,16 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'fabricate':
+                $fabricate = $game->choiceAwaiting();
+                $row = ActionRow::new();
+                foreach ($fabricate['options'] as $option) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('fabricate', (string) $fabricate['id'], $option))
+                        ->setLabel($option === 'counters' ? "Put {$fabricate['count']} +1/+1 counters" : "Create {$fabricate['count']} Servos"));
+                }
+                $message->addComponent($row);
+                break;
+
             case 'entry_life':
                 $entry = $game->choiceAwaiting();
                 $row = ActionRow::new();
@@ -838,6 +849,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
         return match ($decision) {
             'sacrifice' => self::sacrificePrompt($game, $choice),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
+            'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
             'mulligan' => $player->mulligans === 0
                 ? 'Keep this hand, or shuffle it away and draw a new seven?'
                 : "Mulligan {$player->mulligans}: if you keep, you put {$player->mulligans} card".($player->mulligans === 1 ? '' : 's').' on the bottom.',
