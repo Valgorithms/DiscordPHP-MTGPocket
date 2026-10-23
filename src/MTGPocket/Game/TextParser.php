@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Exact temporary source boost; existing self/incarnation and cleanup rules own it.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, CARDNAME gets +2/+0 until end of turn.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'pump', 'power' => 2, 'toughness' => 0, 'keywords' => [], 'self' => true]]];
+
+            return true;
+        }
         // Narrow optional/all-player burial family; only the life-loss wording targets.
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may gain 5 life.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
