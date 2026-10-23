@@ -11,10 +11,10 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "b913c7c2f256ee85966753b9668bd9af45f787b1",
   "validation": {
-    "evidenceMeaning": "Focused uncommitted-source tests passed with the bytes now committed; full exact-head offline suite and CI pending. No reuse of an older engine's full-suite claim.",
-    "local": "ArtifactGraveyardObserverTest: 30 tests, 365 assertions; adjacent 250 tests, 3311 assertions; three-file Pint passed.",
-    "source": "b913c7c2f256ee85966753b9668bd9af45f787b1",
-    "ci": "pending"
+    "evidenceMeaning": "Exact-head full offline suite with identical pinned engine/test/companion bytes. Metadata-only successors reuse local runtime results and require their own exact-head CI.",
+    "local": "982 tests, 34982 assertions, 2 expected imported-data skips; exit 0 in 66.643 seconds with 512MiB, Xdebug off, empty data and 120-second process-tree cap. Default128MiB attempt exhausted memory; it is not a pass.",
+    "source": "078f9c11c027d73b0f1734fac1e75054f8f95f65",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40010412874"
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
