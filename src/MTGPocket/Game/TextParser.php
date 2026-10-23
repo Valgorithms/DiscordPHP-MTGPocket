@@ -4326,6 +4326,10 @@ final class TextParser
         if (preg_match("/^CARDNAME deals (\\w+) damage to ({$targets})$/i", $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])]];
         }
+        // Serendib Efreet: "you" is the spell or ability's controller, without targeting them.
+        if (preg_match('/^CARDNAME deals (\w+) damage to you$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
+            return ['type' => 'damage', 'amount' => $n, 'you' => true];
+        }
         // Explore (the sorcery): `You may play an additional land this turn.`
         if (preg_match('/^you may play an additional land this turn$/i', $s)) {
             return ['type' => 'extra_land'];
