@@ -238,6 +238,18 @@ final class EdictChoiceTest extends GameTestCase
             case 'new incarnation':
                 $saved['objects'][$cards[0][0]]['incarnation']++;
                 break;
+            case 'missing count':
+                unset($saved['pendingChoice']['count'], $saved['pendingChoice']['groups'][0]['count']);
+                break;
+            case 'empty item':
+                $saved['pendingChoice']['resume']['item'] = [];
+                break;
+            case 'invalid step':
+                $saved['pendingChoice']['resume']['steps'] = ['not a resolution instruction'];
+                break;
+            case 'scalar self':
+                $saved['pendingChoice']['resume']['self'] = 'invalid';
+                break;
         }
         $this->expectException(GameException::class);
         Game::fromArray($saved);
@@ -245,7 +257,7 @@ final class EdictChoiceTest extends GameTestCase
 
     public static function invalidSavedChoices(): array
     {
-        return array_map(fn (string $fault) => [$fault], ['identity', 'seat', 'count', 'duplicate seat', 'skipped player', 'duplicate selection', 'foreign selection', 'missing resume', 'scalar resume', 'scalar followed', 'new incarnation']);
+        return array_map(fn (string $fault) => [$fault], ['identity', 'seat', 'count', 'duplicate seat', 'skipped player', 'duplicate selection', 'foreign selection', 'missing resume', 'scalar resume', 'scalar followed', 'new incarnation', 'missing count', 'empty item', 'invalid step', 'scalar self']);
     }
 
     /** @dataProvider forcedPlayers */
@@ -282,5 +294,33 @@ final class EdictChoiceTest extends GameTestCase
     public static function forcedPlayers(): array
     {
         return [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2]];
+    }
+
+    public function testAnEntryAbilityResumesAfterItsOwnSourceIsSacrificed(): void
+    {
+        $this->newGame();
+        $this->lands(0, 'Swamp', 4);
+        $cards = [];
+        foreach ([0 => 2, 1 => 3] as $seat => $count) {
+            for ($i = 0; $i < $count; $i++) {
+                $cards[$seat][] = $this->battlefield($seat, 'Grizzly Bears');
+            }
+        }
+        $source = $this->game->addCard(0, ['name' => 'Entry edict continuation fixture', 'type' => 'Creature — Human', 'manaCost' => '{2}{B}{B}', 'power' => '3', 'toughness' => '3',
+            'text' => 'When this creature enters, each player sacrifices two creatures of their choice. Draw a card.'], GameObject::HAND)->id;
+        $this->assertSame([], $this->game->objects[$source]->definition()->unsupported);
+        $this->game->cast(0, $source);
+        $this->resolveOne();
+        $this->resolveOne();
+        $first = $this->game->choiceAwaiting();
+        $this->assertSame('sacrifice', $first['type']);
+        $this->game = Game::fromArray($this->saved());
+        $this->game->chooseSacrifice(0, $first['id'], [$source, $cards[0][0]]);
+        $second = $this->game->choiceAwaiting();
+        $this->game = Game::fromArray($this->saved());
+        $this->game->chooseSacrifice(1, $second['id'], [$cards[1][0], $cards[1][1]]);
+        $this->assertNull($this->game->choiceAwaiting());
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
+        $this->assertCount(1, $this->game->players[0]->hand, 'The independent triggered ability finishes after its source leaves.');
     }
 }

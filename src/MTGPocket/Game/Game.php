@@ -10807,13 +10807,22 @@ final class Game
             $group = is_array($groups) && is_int($index) ? ($groups[$index] ?? null) : null;
             $resume = $choice['resume'] ?? null;
             if ($version < 5 || $game->stage !== self::PLAYING || ! is_array($group) || ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id'] ||
+                ! is_int($choice['count'] ?? null) || $choice['count'] < 1 ||
                 ! array_key_exists('selected', $group) || $group['selected'] !== null || ($choice['seat'] ?? null) !== ($group['seat'] ?? null) ||
                 ($choice['cards'] ?? null) !== ($group['cards'] ?? null) || ($choice['count'] ?? null) !== ($group['count'] ?? null) ||
                 ($choice['min'] ?? null) !== $choice['count'] || ($choice['max'] ?? null) !== $choice['count'] ||
-                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_key_exists('self', $resume) ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) || ! array_key_exists('self', $resume) ||
+                ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
+                ! is_int($resume['item']['controller'] ?? null) || ! isset($game->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null) ||
                 ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
                     ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1]))) || ! is_array($resume['followed'] ?? null)) {
                 throw new GameException('Invalid saved sacrifice choice.');
+            }
+            foreach ($resume['steps'] as $step) {
+                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
+                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                    throw new GameException('Invalid saved sacrifice continuation.');
+                }
             }
             $game->validateEdictGroups($groups);
             foreach ($groups as $previous => $candidate) {
