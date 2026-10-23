@@ -1,0 +1,123 @@
+{
+  "corpusSha256": "5583556fcc237fcaa5ebbf03c598644c4657773bd3bd415acb176ef779ed9fe1",
+  "cards": {
+    "Zulaport Cutthroat": {
+      "setCode": "A25",
+      "card": {
+        "uuid": "07c28e35-2175-5aa1-8e10-53163c57252d",
+        "name": "Zulaport Cutthroat",
+        "number": "117",
+        "rarity": "uncommon",
+        "colors": [
+          "B"
+        ],
+        "manaValue": 2,
+        "type": "Creature — Human Rogue Ally",
+        "scryfallId": "b43a15b7-e013-4353-8643-cbcc8263714e",
+        "manaCost": "{1}{B}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Rogue",
+          "Ally"
+        ],
+        "power": "1",
+        "toughness": "1",
+        "text": "Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life.",
+        "layout": "normal",
+        "colorIdentity": [
+          "B"
+        ]
+      }
+    },
+    "Grim Haruspex": {
+      "setCode": "PLST",
+      "card": {
+        "uuid": "4e72889d-2d6a-5355-a179-17faaca54210",
+        "name": "Grim Haruspex",
+        "number": "UGIN-73",
+        "rarity": "rare",
+        "colors": [
+          "B"
+        ],
+        "manaValue": 3,
+        "type": "Creature — Human Wizard",
+        "scryfallId": "8de4e059-5d42-42b4-aa28-91a8d80fa6e8",
+        "manaCost": "{2}{B}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Wizard"
+        ],
+        "power": "3",
+        "toughness": "2",
+        "text": "Morph {B} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhenever another nontoken creature you control dies, draw a card.",
+        "keywords": [
+          "Morph"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "B"
+        ]
+      }
+    },
+    "Pyroclasm": {
+      "setCode": "DSK",
+      "card": {
+        "uuid": "aa3cdc04-b8f4-52a6-867c-81478d8accd4",
+        "name": "Pyroclasm",
+        "number": "149",
+        "rarity": "uncommon",
+        "colors": [
+          "R"
+        ],
+        "manaValue": 2,
+        "type": "Sorcery",
+        "scryfallId": "4391b0af-2f26-4a45-9e2a-5bd8e9838107",
+        "manaCost": "{1}{R}",
+        "types": [
+          "Sorcery"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "Pyroclasm deals 2 damage to each creature.",
+        "layout": "normal",
+        "colorIdentity": [
+          "R"
+        ]
+      }
+    },
+    "Infest": {
+      "setCode": "CLU",
+      "card": {
+        "uuid": "a4683dd0-caf1-50aa-926c-8d09b1d0bded",
+        "name": "Infest",
+        "number": "114",
+        "rarity": "uncommon",
+        "colors": [
+          "B"
+        ],
+        "manaValue": 3,
+        "type": "Sorcery",
+        "scryfallId": "332cd61d-b9b9-4214-bb2d-3073e12911fc",
+        "manaCost": "{1}{B}{B}",
+        "types": [
+          "Sorcery"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "All creatures get -2/-2 until end of turn.",
+        "layout": "normal",
+        "colorIdentity": [
+          "B"
+        ]
+      }
+    }
+  }
+}

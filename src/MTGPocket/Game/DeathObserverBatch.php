@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace MTGPocket\Game;
 
 /**
- * A destroy-all effect's pre-event observer registry and actual death records.
- * Planned destruction can be prevented/replaced, so only actual deaths notify.
+ * One selected group's pre-event observer registry and actual death records.
+ * Planned movement can be prevented/replaced, so only actual deaths notify.
  * This is a synchronous notification boundary, not a saved game or a complete
  * replacement/continuous-effect/intervening-condition model.
  */
