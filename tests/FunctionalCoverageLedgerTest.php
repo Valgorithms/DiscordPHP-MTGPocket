@@ -51,7 +51,7 @@ final class FunctionalCoverageLedgerTest extends StorageTestCase
                 ['id' => 'known-gap', 'scope' => 'Known interaction gap', 'cards' => ['Known']],
                 ['id' => 'unread-gap', 'scope' => 'Unknown mechanic', 'cards' => ['Unread']],
             ],
-            'nextFamily' => ['cards' => ['Known'], 'acceptance' => ['Two-controller positive and negative controls']],
+            'nextFamily' => ['cards' => ['Known'], 'measuredCandidateCount' => 1, 'acceptance' => ['Two-controller positive and negative controls']],
         ];
 
         return [$selected, $recognition, $manifest];
@@ -123,6 +123,9 @@ final class FunctionalCoverageLedgerTest extends StorageTestCase
             case 'unknown-next-family':
                 $manifest['nextFamily']['cards'] = ['Missing'];
                 break;
+            case 'inflated-next-family':
+                $manifest['nextFamily']['measuredCandidateCount'] = 2;
+                break;
         }
         $this->expectException(\InvalidArgumentException::class);
         FunctionalCoverageLedger::report($selection, $recognition, $manifest);
@@ -130,7 +133,7 @@ final class FunctionalCoverageLedgerTest extends StorageTestCase
 
     public static function invalidCases(): array
     {
-        return array_map(fn (string $case) => [$case], ['corpus', 'count', 'unknown-recognized', 'duplicate-recognized', 'unknown-evidence', 'duplicate-id', 'unpinned-test', 'missing-limits', 'certificate', 'unknown-next-family']);
+        return array_map(fn (string $case) => [$case], ['corpus', 'count', 'unknown-recognized', 'duplicate-recognized', 'unknown-evidence', 'duplicate-id', 'unpinned-test', 'missing-limits', 'certificate', 'unknown-next-family', 'inflated-next-family']);
     }
 
     /** @dataProvider inputDrift */

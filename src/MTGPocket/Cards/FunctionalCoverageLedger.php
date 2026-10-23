@@ -145,7 +145,8 @@ final class FunctionalCoverageLedger
             $withGap += (int) ($row['explicitUnsupported'] !== []);
             $overlap += (int) ($row['scopedEvidence'] !== [] && $row['explicitUnsupported'] !== []);
         }
-        if (empty($manifest['nextFamily']['cards']) || empty($manifest['nextFamily']['acceptance'])) {
+        if (empty($manifest['nextFamily']['cards']) || empty($manifest['nextFamily']['acceptance'])
+            || count(array_unique($manifest['nextFamily']['cards'])) !== ($manifest['nextFamily']['measuredCandidateCount'] ?? null)) {
             throw new \InvalidArgumentException('Next family needs corpus names and measurable acceptance.');
         }
         foreach ($manifest['nextFamily']['cards'] as $name) {
