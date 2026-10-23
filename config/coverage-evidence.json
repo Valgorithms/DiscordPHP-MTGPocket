@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "b913c7c2f256ee85966753b9668bd9af45f787b1",
+  "engineSource": "3e381906cb360cde724b01a7621fd68746fa2482",
   "validation": {
-    "evidenceMeaning": "Exact-head full offline suite with identical pinned engine/test/companion bytes. Metadata-only successors reuse local runtime results and require their own exact-head CI.",
-    "local": "982 tests, 34982 assertions, 2 expected imported-data skips; exit 0 in 66.643 seconds with 512MiB, Xdebug off, empty data and 120-second process-tree cap. Default128MiB attempt exhausted memory; it is not a pass.",
-    "source": "078f9c11c027d73b0f1734fac1e75054f8f95f65",
-    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40010412874"
+    "evidenceMeaning": "Focused new source statistics tests and adjacent tests passed; full exact-head offline suite and CI pending. Previous engine full-suite results are not reused.",
+    "local": "34 focused tests,289 assertions;306 adjacent tests,3725 assertions;five-filePint passed.",
+    "source": "3e381906cb360cde724b01a7621fd68746fa2482",
+    "ci": "pending"
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
-    "src/MTGPocket/Game/Game.php": "1b2d03ca180dcbb4b60fa14ae6abdd962b504ab9396166d95af2d9f5de7fefe1",
+    "src/MTGPocket/Game/Game.php": "eea37821cee4282e0892117216797ed2967357fda5e87b20e011d1342c8e722d",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -28,9 +28,9 @@
     "src/MTGPocket/Game/Mana/ManaCost.php": "bee132afe78bcce2f8eea54e0a98f05424cec0260ceea3d1085ee1135ae39f15",
     "src/MTGPocket/Game/GameRecord.php": "38d05c870a583a027d0a79daed6f88c97ee296c5de009c9e92913aa0837cab9a",
     "src/MTGPocket/Game/GamePlayer.php": "1bf496c79456d2b9d582e8001d93782ccb8d847805e428f52d65c3d747645b48",
-    "src/MTGPocket/Game/GameObject.php": "961bb1bf7b9bf58b4b33011f3664d66aff1c81b6c5e7887db5c5170e88b87d73",
+    "src/MTGPocket/Game/GameObject.php": "d0b646e52c8c0f8b3d0a610777b2ffe268aa973942227a4988f79f2351dc0c5a",
     "src/MTGPocket/Game/GameException.php": "76d8c70a4b8cfd9fb7818976e4c9faa8b9865a295d9ffc478ce852f7e50a0158",
-    "src/MTGPocket/Game/DepartureCharacteristics.php": "931c00cef5ad2d175ffc1b04ba8dc46481200e09c50ce528b1b531a3e706ead5",
+    "src/MTGPocket/Game/DepartureCharacteristics.php": "b7747b1b004e582e42e59c60c7cf3bade6d438a352df6b6f7f172a929ce73d2d",
     "src/MTGPocket/Game/CreatureDeath.php": "4d39c10adce98d8e515b25ebcce712681d09dd7c89c8b2f42efa0778242c978f",
     "src/MTGPocket/Game/DeathObserverBatch.php": "6d12b9961b06e1b5c23edec123e3405ae9799eff85f46277e0b75d49eae06c04",
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
@@ -39,11 +39,12 @@
     "src/MTGPocket/Builders/MatchMessageBuilder.php": "e1b43a38838219ccc99e658dcd256801cb9575a51f957ed20f1a3ed6e636007a",
     "src/MTGPocket/Matches/PanelActions.php": "a10d145c96c5a82179096e644732dac42b5141d1bdc4e1267740e3facb54a338",
     "src/MTGPocket/Tutorial/PracticeBot.php": "f3e9e3f9a6f2a167e85bf0a9e87603a37bd24947920fe005e2dedbb7c8eb22fe",
-    "tests/Game/EdictChoiceTest.php": "127408fc3a0e9f9c355304d5ac7217d355a91faf696b32d2d5a9410d0509dcfd",
+    "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
     "tests/MatchesTest.php": "a0b1f8d53f6570b29f00a1b760dea0cb72beb2b24d5e334f9f6a95a336006e41",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
-    "tests/Game/ArtifactGraveyardObserverTest.php": "f01f04540ec2d866af6e8b8706e6d2a46921e44178721bcb73c737bcbea43c97"
+    "tests/Game/ArtifactGraveyardObserverTest.php": "f01f04540ec2d866af6e8b8706e6d2a46921e44178721bcb73c737bcbea43c97",
+    "tests/Game/DepartedSourceStatisticsTest.php": "a287c1b3f2ba1b7878841887ed6e12f3e9440d62488280b9d88655097bc611d2"
   },
   "scopedEvidence": [
     {
@@ -176,6 +177,25 @@
       ],
       "scope": "Exact complete KLD Marionette Master at printed power, paid Damnation with both active seats/controllers/insertion orders, own/opponent artifacts and JSON replay. Synthetic burial filters, once-per-turn, token disappearance, transformed/face-down sources, exile replacements, single-source old incarnation and discard controls.",
       "limits": "Printed-power selected-group burial callbacks only. Fabricate entry decisions are bypassed. No modified or departed-source last-known power certificate, continuous effects, general replacement/APNAP ordering, optional/all-player callbacks or whole-card/newest-printing certificate."
+    },
+    {
+      "id": "departed-source-statistics",
+      "cards": [
+        "Marionette Master"
+      ],
+      "tests": [
+        "tests/Game/DepartedSourceStatisticsTest.php::testSimultaneousBurialRetainsModifiedPower",
+        "tests/Game/DepartedSourceStatisticsTest.php::testSurvivingOriginalSourceUsesItsPowerAtResolution",
+        "tests/Game/DepartedSourceStatisticsTest.php::testReturningIncarnationCannotReplaceEarlierSourcePower",
+        "tests/Game/DepartedSourceStatisticsTest.php::testDepartureAfterTriggerUsesTheLaterPower",
+        "tests/Game/DepartedSourceStatisticsTest.php::testTargetSelectionRetainsDepartedSourceInformation",
+        "tests/Game/DepartedSourceStatisticsTest.php::testOwnDeathUsesLastKnownPowerOrToughness",
+        "tests/Game/DepartedSourceStatisticsTest.php::testVersionFiveMigratesWithoutInventingDepartureStatistics",
+        "tests/Game/DepartedSourceStatisticsTest.php::testVersionSixCannotLoseItsSourceStatisticsField",
+        "tests/Game/DepartedSourceStatisticsTest.php::testMalformedStatisticsAreRejected"
+      ],
+      "scope": "Same complete pinned KLD fixture with paid Damnation, counters/temporary power, both active seats/controllers/insertion orders and JSON. Surviving original source uses current power; departure/return/second departure retain original identity. Synthetic own-death statistics and waiting-target controls. Schema6 persists per-incarnation statistics and validates malformed fields.",
+      "limits": "Fabricate entry decisions bypassed; injected later zone transitions are unit controls. No other corpus-card certification. Legacy unresolved abilities without recorded statistics retain prior printed fallback. No complete continuous-effect, replacement, condition, APNAP or whole-card certificate."
     }
   ],
   "explicitUnsupported": [
@@ -195,22 +215,21 @@
     }
   ],
   "nextFamily": {
-    "id": "departed-source-power-lookback",
+    "id": "optional-all-player-artifact-burial",
     "cards": [
-      "Marionette Master"
+      "Disciple of the Vault"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Source-backed one-card seed: self_power falls back to printed power after departure. Explicitly reproduce counters/modified power and incarnation behavior before claiming support; no measured additional affected-card count.",
+    "scope": "The complete pinned2XM ability remains unread. Implement its all-player artifact burial event and optional target-opponent resolution without converting may into mandatory life loss. This is one measured unread candidate, not a projected whole-card increase.",
     "acceptance": [
-      "Paid Damnation with modified source power, both observer/artifact insertion orders and former controllers.",
-      "Retain departed source power across JSON queue and resolution; returning new incarnations must not replace old source information.",
-      "A surviving original incarnation must use its current power at resolution.",
-      "Keep Fabricate, general continuous snapshots, optional/all-player callbacks and whole-card claims separate."
+      "Retain the full pinned wording and prove parser delta on that exact fixture.",
+      "Observe both controllers artifacts in selected groups with departing source before/after artifacts; nonartifact/exile/discard negative controls.",
+      "Choose a legal target opponent for the trigger, then preserve acceptance/decline at resolution and JSON waiting states.",
+      "Keep UI/practice routing consistent if a new choice is required; preserve original source controller/incarnation and shared observers."
     ],
     "deferred": [
-      "General replacement and APNAP ordering",
-      "Optional/all-player artifact-graveyard decisions",
-      "Whole-card certification"
+      "Whole-card certification and latest-printing review",
+      "General replacement/continuous/condition/APNAP models"
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad"
