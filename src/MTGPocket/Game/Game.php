@@ -250,6 +250,9 @@ final class Game
     /** Inside a `create N tokens` effect: `Whenever you create one or more tokens, …` waits for the whole batch. */
     private bool $creatingTokens = false;
 
+    /** Synchronous destroy-all notification scope; never crosses a saved decision. */
+    private ?DeathObserverBatch $deathObserverBatch = null;
+
     /** The cards the last mill put into a graveyard, for `You may put a land card from among them into your hand.` */
     private array $lastMilled = [];
 
@@ -4560,11 +4563,11 @@ final class Game
             case 'exile':
                 if (isset($effect['all'])) {
                     $doomed = $this->allMatching($effect['all'], $source, $controller);
-                    foreach ($doomed as $object) {
-                        if ($effect['type'] === 'exile') {
+                    if ($effect['type'] === 'destroy') {
+                        $this->destroyTogether($doomed, ! ($effect['noRegen'] ?? false));
+                    } else {
+                        foreach ($doomed as $object) {
                             $this->moveTo($object, GameObject::EXILE);
-                        } else {
-                            $this->destroy($object, ! ($effect['noRegen'] ?? false));
                         }
                     }
                     break;
@@ -8661,6 +8664,57 @@ final class Game
         }
     }
 
+    /**
+     * Retain pre-event observers, apply destruction, then notify actual deaths.
+     * Replacement/prevention behavior stays in destroy()/moveTo().
+     *
+     * @param GameObject[] $doomed
+     */
+    private function destroyTogether(array $doomed, bool $regenerates): void
+    {
+        $batch = new DeathObserverBatch($this->permanents(), $doomed);
+        $previous = $this->deathObserverBatch;
+        $this->deathObserverBatch = $batch;
+        try {
+            foreach ($doomed as $object) {
+                $this->destroy($object, $regenerates);
+            }
+        } finally {
+            $this->deathObserverBatch = $previous;
+        }
+        foreach ($batch->deaths as $death) {
+            $this->notifyCreatureDeath($death, $batch->observers);
+        }
+    }
+
+    /**
+     * Dispatch one death against the chosen observer registry. Each event keeps
+     * its own power/counter facts even after later deaths overwrite the globals.
+     *
+     * @param GameObject[] $observers
+     */
+    private function notifyCreatureDeath(CreatureDeath $death, array $observers): void
+    {
+        [$power, $counter] = [$this->diedPower, $this->diedWithCounter];
+        [$this->diedPower, $this->diedWithCounter] = [$death->power, $death->hadPlusCounter];
+        try {
+            foreach ($observers as $observer) {
+                if ($observer->id === $death->id) {
+                    continue; // Its own dies ability was queued separately.
+                }
+                $actual = $this->objects[$observer->id];
+                // Share once-per-turn marks with own dies triggers and surviving sources.
+                $observer->used = array_replace($observer->used, $actual->used);
+                $this->trigger($observer, $observer->controller === $death->controller ? 'creature_dies_other' : 'creature_dies_any', $observer->controller, $observer->incarnation, $death->id, $death->characteristics, $observer->definition());
+                if ($actual->zone === GameObject::BATTLEFIELD && $actual->incarnation === $observer->incarnation) {
+                    $actual->used = array_replace($actual->used, $observer->used);
+                }
+            }
+        } finally {
+            [$this->diedPower, $this->diedWithCounter] = [$power, $counter];
+        }
+    }
+
     private function destroy(?GameObject $object, bool $regenerates = true): void
     {
         if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $this->hasKeyword($object, 'indestructible')) {
@@ -9265,8 +9319,9 @@ final class Game
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters, sourceDefinition: $departingDefinition);
             // `Whenever another creature (you control) dies, …`
             // $dies captured creature status before the move; animation is gone in the graveyard.
-            foreach ($this->permanents() as $permanent) {
-                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id, $departingCharacteristics);
+            $death = new CreatureDeath($object->id, $incarnation, $controller, $departingCharacteristics, $diedPower, $plusCounters > 0);
+            if (! ($this->deathObserverBatch?->record($death) ?? false)) {
+                $this->notifyCreatureDeath($death, $this->permanents());
             }
             // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
             foreach ($owner->graveyard as $other) {
