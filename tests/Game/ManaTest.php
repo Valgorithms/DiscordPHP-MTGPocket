@@ -87,6 +87,23 @@ final class ManaTest extends TestCase
         $this->assertSame([5], $plan['tap']);
     }
 
+    public function testSpendCountIncludesFloatingManaAndExcludesConvoke(): void
+    {
+        $payment = ['mana' => ['generic' => 3], 'life' => 0];
+        $pool = new ManaPool(['G' => 1]);
+        $sources = [5 => ['count' => 1, 'colors' => ['C']], 6 => ['count' => 1, 'colors' => ['G'], 'convoke' => true]];
+
+        $plan = ManaPayer::plan($payment, $pool, $sources);
+        $this->assertNotNull($plan);
+        $this->assertSame(2, $plan['count'], 'Floating and produced mana count, but a convoking creature does not.');
+        $this->assertSame(['G' => 1], $plan['pool']);
+        $this->assertEqualsCanonicalizing([5, 6], $plan['tap']);
+
+        $sources[6]['convoke'] = false;
+        $this->assertSame(3, ManaPayer::plan($payment, $pool, $sources)['count']);
+        $this->assertSame(1, ManaPayer::plan(['mana' => ['G' => 1], 'life' => 0], $pool, [])['count']);
+    }
+
     public function testPool(): void
     {
         $pool = new ManaPool(['G' => 2, 'C' => 1]);
