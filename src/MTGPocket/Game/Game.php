@@ -9207,8 +9207,8 @@ final class Game
         }
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
-        // Death observers look at the battlefield face, before movement clears transform/morph state.
-        $diedDefinition = $dies ? $object->definition() : null;
+        // Departure abilities look at the battlefield face, before movement clears transform/morph state.
+        $departingDefinition = $leaves ? $object->definition() : null;
         $plusCounters = $object->counter('+1/+1');
         $diedPower = $dies ? $this->power($object) : 0;
         $damagedBy = $object->damagedBy;
@@ -9258,11 +9258,11 @@ final class Game
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->diedPower = $diedPower;
             $this->diedWithCounter = $plusCounters > 0;
-            $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters, sourceDefinition: $diedDefinition);
+            $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters, sourceDefinition: $departingDefinition);
             // `Whenever another creature (you control) dies, …`
             // $dies captured creature status before the move; animation is gone in the graveyard.
             foreach ($this->permanents() as $permanent) {
-                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id, $diedDefinition);
+                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id, $departingDefinition);
             }
             // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
             foreach ($owner->graveyard as $other) {
@@ -9295,7 +9295,7 @@ final class Game
             $this->draw($controller, 1);
         }
         if ($toGraveyard) {
-            $this->trigger($object, 'to_graveyard', $controller, $incarnation);
+            $this->trigger($object, 'to_graveyard', $controller, $incarnation, sourceDefinition: $departingDefinition);
             // `Whenever an artifact you control is put into a graveyard from the battlefield, …`: itself included.
             if ($object->definition()->is('Artifact')) {
                 foreach ([$object, ...$this->permanents($controller)] as $permanent) {
@@ -9309,7 +9309,7 @@ final class Game
         }
         // `When CARDNAME leaves the battlefield, …`
         if ($leaves) {
-            $this->trigger($object, 'leaves', $controller, $incarnation);
+            $this->trigger($object, 'leaves', $controller, $incarnation, sourceDefinition: $departingDefinition);
             // `Whenever a creature you control leaves the battlefield, …`: itself included.
             foreach ([$object, ...$this->permanents($controller)] as $permanent) {
                 $this->trigger($permanent, 'permanent_leaves_yours', $controller, null, $object->id);
