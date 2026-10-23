@@ -41,7 +41,7 @@ Provenance:
 - Recognition source: `65134ebb3a748e9ee23ae3c188b1411a52023440`. `TextParser.php` and `CardDefinition.php` Git blobs are unchanged through merged engine source `e40c470d74c7f9da5f798e9d3f6635d1b6f6bad4`.
 - Historical behavior evidence: exact PR339 head `9f2f5670b533283130ab29f8a94492964eaf7dd1`, [CI 39970148365](https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/39970148365), PHP 8.3/8.4/8.5. Local full suite: 777 tests, 32,292 assertions, two expected imported-data skips, exit 0. Ledger generation does not rerun these behaviors.
 
-Updating an engine or evidence source intentionally invalidates its pin. Review affected claims, rerun meaningful checks and update provenance before accepting new pins; never refresh hashes solely to silence a failing test. This milestone introduces no environment variables or runtime configuration, so `env.example` has no new entries.
+The source pins cover all twelve current files in the Game namespace, including the departure snapshot, plus the two cited regression test files. Updating a pinned engine or evidence source intentionally invalidates its pin. Review affected claims, rerun meaningful checks and update provenance before accepting new pins; never refresh hashes solely to silence a failing test. This milestone introduces no environment variables or runtime configuration, so `env.example` has no new entries.
 
 ## Next measured family
 

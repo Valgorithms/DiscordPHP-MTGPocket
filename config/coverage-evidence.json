@@ -21,7 +21,16 @@
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
     "src/MTGPocket/Game/Game.php": "128de82a7c421c7faba50075eabad9f05d6a9d01376ff054a519f4479c67c438",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
-    "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b"
+    "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
+    "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
+    "src/MTGPocket/Game/Mana/ManaPool.php": "ee125eeed79d273c71f91efe618a34a6f9e07b90805303564d3bddd57c3b4453",
+    "src/MTGPocket/Game/Mana/ManaPayer.php": "87cec76d245f1418ee66cb3c7212f83c9baf9982f50632365e0d8ef9cab41c68",
+    "src/MTGPocket/Game/Mana/ManaCost.php": "bee132afe78bcce2f8eea54e0a98f05424cec0260ceea3d1085ee1135ae39f15",
+    "src/MTGPocket/Game/GameRecord.php": "38d05c870a583a027d0a79daed6f88c97ee296c5de009c9e92913aa0837cab9a",
+    "src/MTGPocket/Game/GamePlayer.php": "1bf496c79456d2b9d582e8001d93782ccb8d847805e428f52d65c3d747645b48",
+    "src/MTGPocket/Game/GameObject.php": "961bb1bf7b9bf58b4b33011f3664d66aff1c81b6c5e7887db5c5170e88b87d73",
+    "src/MTGPocket/Game/GameException.php": "76d8c70a4b8cfd9fb7818976e4c9faa8b9865a295d9ffc478ce852f7e50a0158",
+    "src/MTGPocket/Game/DepartureCharacteristics.php": "931c00cef5ad2d175ffc1b04ba8dc46481200e09c50ce528b1b531a3e706ead5"
   },
   "scopedEvidence": [
     {
