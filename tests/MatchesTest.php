@@ -505,6 +505,114 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame(18, $this->pocket->matches->find($match->id)->game->players[$seat]->life);
     }
 
+    public function testSacrificePanelKeepsPagedSelectionsAndRejectsStaleOrIllegalAnswers(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $otherSeat = 1 - $seat;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[$otherSeat]->id;
+        $cards = [];
+        $spell = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, $otherSeat, &$cards, &$spell): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($i = 0; $i < 4; $i++) {
+                $game->addCard($seat, ['name' => 'Swamp', 'type' => 'Basic Land — Swamp'], GameObject::BATTLEFIELD);
+            }
+            foreach ([$seat => 27, $otherSeat => 3] as $controller => $count) {
+                for ($i = 0; $i < $count; $i++) {
+                    $cards[$controller][] = $game->addCard($controller, ['name' => 'Panel Bear '.$i, 'type' => 'Creature — Bear', 'power' => '2', 'toughness' => '2'], GameObject::BATTLEFIELD)->id;
+                }
+            }
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/simultaneous-sacrifices.json'), true, flags: JSON_THROW_ON_ERROR);
+            $spell = $game->addCard($seat, $fixture['cards']['Barter in Blood']['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $spell]);
+        for ($i = 0; $i < 2; $i++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $id = (string) $match->game->choiceAwaiting()['id'];
+        $menu = $this->sacrificeComponent($match, $player, 'sacpick:'.$id.':0');
+        $this->assertCount(25, $menu['options']);
+        $this->assertSame([0, 2], [$menu['min_values'], $menu['max_values']]);
+        $this->assertTrue($this->sacrificeComponent($match, $player, 'sacgo:'.$id)['disabled']);
+        $this->assertStringNotContainsString('sacpick:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $gameBefore = $match->game->toArray();
+        $reject = function (string $who, string $action, array $args, array $values, string $message) use ($panel, &$match): void {
+            $before = json_encode($this->pocket->matches->find($match->id)->toArray());
+            $this->assertException(fn () => $panel->run($match->id, $who, $action, $args, $values), $message);
+            $this->assertSame($before, json_encode($this->pocket->matches->find($match->id)->toArray()));
+        };
+        $reject($other, 'sacpage', [$id, '0'], [], 'no longer available');
+        $reject($player, 'sacpage', [(string) ((int) $id + 1), '0'], [], 'no longer available');
+        $reject($player, 'sacpage', [$id, '99'], [], 'page is unavailable');
+        $reject($player, 'sacpick', [$id, '0'], [(string) $cards[$seat][26]], 'only creatures on this');
+        $reject($player, 'sacgo', [$id], [], 'exactly 2 distinct');
+        [$match, $changed] = $panel->run($match->id, $player, 'sacpage', [$id, '1']);
+        $this->assertFalse($changed);
+        $menu = $this->sacrificeComponent($match, $player, 'sacpick:'.$id.':1');
+        $this->assertSame(array_map('strval', array_slice($cards[$seat], 25)), array_column($menu['options'], 'value'));
+        [$match] = $panel->run($match->id, $player, 'sacpick', [$id, '1'], [(string) $cards[$seat][26]]);
+        [$match] = $panel->run($match->id, $player, 'sacpick', [$id, '0'], [(string) $cards[$seat][0]]);
+        $this->assertSame([$cards[$seat][26], $cards[$seat][0]], $match->choice($player)['sacrifice']['selected']);
+        $reject($player, 'sacpick', [$id, '0'], [(string) $cards[$seat][0], (string) $cards[$seat][1]], '2 creatures in total');
+        $reject($player, 'sacpick', [$id, '0'], [(string) $cards[$seat][0], (string) $cards[$seat][0]], 'only creatures on this');
+        $menu = $this->sacrificeComponent($match, $player, 'sacpick:'.$id.':0');
+        $this->assertTrue($menu['options'][0]['default']);
+        $this->assertFalse($this->sacrificeComponent($match, $player, 'sacgo:'.$id)['disabled']);
+        $this->assertSame($gameBefore, $match->game->toArray(), 'Staging does not move a creature or advance the game.');
+        [$match] = $panel->run($match->id, $player, 'sacreset', [$id]);
+        $this->assertSame([], $match->choice($player)['sacrifice']['selected']);
+        $this->assertTrue($this->sacrificeComponent($match, $player, 'sacgo:'.$id)['disabled']);
+        [$match] = $panel->run($match->id, $player, 'sacpick', [$id, '1'], [(string) $cards[$seat][26]]);
+        [$match] = $panel->run($match->id, $player, 'sacpick', [$id, '0'], [(string) $cards[$seat][0]]);
+        [$match, $changed] = $panel->run($match->id, $player, 'sacgo', [$id]);
+        $this->assertTrue($changed);
+        $this->assertSame([], $match->choice($player));
+        $next = (string) $match->game->choiceAwaiting()['id'];
+        $this->assertNotSame($id, $next);
+        $nextPanel = json_encode(MatchMessageBuilder::actions($match, $other));
+        $this->assertStringContainsString('Already chosen by '.$match->game->players[$seat]->name, $nextPanel);
+        $this->assertStringContainsString('Panel Bear 26', $nextPanel, 'The next player sees the earlier public battlefield choices.');
+        foreach (array_merge(...array_values($cards)) as $object) {
+            $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$object]->zone);
+        }
+        $reject($player, 'sacgo', [$id], [], 'no longer available');
+        $reject($other, 'sacpick', [$id, '0'], [(string) $cards[$otherSeat][0]], 'no longer available');
+        [$match] = $panel->run($match->id, $other, 'sacpick', [$next, '0'], array_map('strval', array_slice($cards[$otherSeat], 0, 2)));
+        [$match] = $panel->run($match->id, $other, 'sacgo', [$next]);
+        foreach ([$cards[$seat][26], $cards[$seat][0], $cards[$otherSeat][0], $cards[$otherSeat][1]] as $object) {
+            $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$object]->zone);
+        }
+        $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$cards[$seat][1]]->zone);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $reject($other, 'sacgo', [$next], [], 'no longer available');
+    }
+
+    private function sacrificeComponent(MatchRecord $match, string $player, string $suffix): array
+    {
+        $find = function (array $node) use (&$find, $suffix): ?array {
+            if (isset($node['custom_id']) && str_ends_with($node['custom_id'], ':'.$suffix)) {
+                return $node;
+            }
+            foreach ($node as $child) {
+                if (is_array($child) && ($found = $find($child)) !== null) {
+                    return $found;
+                }
+            }
+
+            return null;
+        };
+        $component = $find(json_decode(json_encode(MatchMessageBuilder::actions($match, $player)), true));
+        $this->assertNotNull($component, 'Missing sacrifice control '.$suffix);
+
+        return $component;
+    }
+
     private function modifyGame(MatchRecord $match, callable $change): MatchRecord
     {
         $repository = new \MTGPocket\Repository\MatchRepository($this->pocket->store);

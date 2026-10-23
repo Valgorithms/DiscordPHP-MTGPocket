@@ -60,6 +60,8 @@ Use descriptive branches and open PRs, preserve unrelated local files, and disti
 
 ## Current coverage continuation
 
+The [resumable creature-sacrifice milestone](resumable-edict-choices.md) adds validated, persisted each-player choices and Discord/practice companions. New saves now use schema version 5; the earlier version-2 and version-3 notes below retain their historical migration context.
+
 The [functional coverage ledger](functional-coverage-ledger.md) pins the October 22 corpus at 28,729 names and separates recognition, explicit gaps, scoped behavior evidence and whole-card review backlog. It supplies the measurable continuation baseline; historical recognition tables below retain their original dates and scopes.
 
 The [2026-10-20 coverage checkpoint](card-coverage-progress.md) records a fresh, hashed public corpus, the current recognition baseline, tested graveyard-cast behavior, and remaining scope. It also refreshes the older ownership status above: #124 is merged, while #327 covers enchanted/equipped conditional bonuses and keywords. Recognition percentages remain separate from gameplay support.

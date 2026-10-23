@@ -24,7 +24,8 @@ use MTGPocket\Game\GameException;
  * the same way (pick the ability, then each target), and so are targets
  * picked for a triggered ability. Attackers and blockers are picked first
  * and declared with a button. Land-entry life payments use the saved choice ID
- * so repeated or stale controls cannot pay twice.
+ * so repeated or stale controls cannot pay twice. Sacrifice selections are
+ * staged across pages and submitted through the engine's saved choice ID.
  *
  * Kept apart from Discord so the flow can be tested without it.
  *
@@ -41,7 +42,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
@@ -70,6 +71,12 @@ final class PanelActions
             'take' => $act(fn (Game $game, int $seat) => $game->take($seat, $ints)),
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
+            'sacgo' => $act(function (Game $game, int $seat, MatchRecord $match) use ($playerId, $args): void {
+                $choiceId = (int) ($args[0] ?? 0);
+                $picks = $match->choice($playerId)['sacrifice'] ?? [];
+                $game->chooseSacrifice($seat, $choiceId, ($picks['id'] ?? null) === $choiceId ? $picks['selected'] : []);
+            }),
+            'sacpick', 'sacpage', 'sacreset' => $this->sacrificePanel($matchId, $playerId, $action, (int) ($args[0] ?? 0), (int) ($args[1] ?? 0), $ints),
             'mode' => $act(fn (Game $game, int $seat) => $game->chooseMode($seat, (int) ($values[0] ?? 0))),
             'pass' => $act(fn (Game $game, int $seat) => $game->pass($seat)),
             'auto' => [$this->matches->act($matchId, $playerId, fn (Game $game, int $seat) => $game->setAutoPass($seat, ! ($game->autoPass[$seat] ?? true))), false],
@@ -93,6 +100,36 @@ final class PanelActions
             'noblk' => $act(fn (Game $game, int $seat) => $game->declareBlockers($seat, [])),
             default => throw new \InvalidArgumentException('That button does nothing any more.'),
         };
+    }
+
+    /** Stages paged selections; only sacgo submits the complete engine choice. */
+    private function sacrificePanel(string $matchId, string $playerId, string $action, int $choiceId, int $page, array $ids): array
+    {
+        return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($playerId, $action, $choiceId, $page, $ids): void {
+            $choice = $game->choiceAwaiting();
+            if ($game->decision($seat) !== 'sacrifice' || ($choice['id'] ?? null) !== $choiceId) {
+                throw new GameException('That sacrifice choice is no longer available to you.');
+            }
+            if ($page < 0 || $page > intdiv(count($choice['cards']) - 1, 25)) {
+                throw new GameException('That sacrifice page is unavailable.');
+            }
+            $picks = $match->choice($playerId)['sacrifice'] ?? [];
+            $selected = ($picks['id'] ?? null) === $choiceId ? $picks['selected'] : [];
+            if ($action === 'sacpick') {
+                $visible = array_slice($choice['cards'], $page * 25, 25);
+                if (count(array_unique($ids)) !== count($ids) || array_diff($ids, $visible) !== []) {
+                    throw new GameException('Choose only creatures on this sacrifice page.');
+                }
+                $selected = array_values(array_merge(array_diff($selected, $visible), $ids));
+                if (count($selected) > $choice['count']) {
+                    throw new GameException("Choose exactly {$choice['count']} creatures in total.");
+                }
+            } elseif ($action === 'sacreset') {
+                $selected = [];
+                $page = 0;
+            }
+            $match->choices[$playerId]['sacrifice'] = ['id' => $choiceId, 'page' => $page, 'selected' => $selected];
+        }), false];
     }
 
     /**

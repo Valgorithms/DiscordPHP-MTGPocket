@@ -99,6 +99,13 @@ final class PracticeBot
                 $game->chooseTriggerTargets($seat, self::targets($game, $seat, $trigger['kinds'], $trigger['effects'], $trigger['source'], true) ?? []);
 
                 return true;
+            case 'sacrifice':
+                $choice = $game->choiceAwaiting();
+                $cards = $choice['cards'];
+                usort($cards, fn (int $a, int $b) => [! $game->objects[$a]->definition()->isToken(), $game->power($game->objects[$a]) + $game->toughness($game->objects[$a])] <=> [! $game->objects[$b]->definition()->isToken(), $game->power($game->objects[$b]) + $game->toughness($game->objects[$b])]);
+                $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
+
+                return true;
             case 'entry_life':
                 $choice = $game->choiceAwaiting();
                 $pay = in_array('pay', $choice['options'], true) && ! $choice['tapped'] && $game->players[$seat]->life > 10;
