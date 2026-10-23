@@ -6218,12 +6218,14 @@ final class Game
      * @param int|null            $incarnation       The source's, if it has since changed zones.
      * @param int                 $context           For modular, the +1/+1 counters it died with; for graft, the creature that entered.
      * @param CardDefinition|null $contextDefinition The dying creature's battlefield face for subtype observers.
+     * @param CardDefinition|null $sourceDefinition  The departing source's battlefield face for its own death abilities.
      *
      * @return void
      */
-    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0, ?CardDefinition $contextDefinition = null): void
+    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0, ?CardDefinition $contextDefinition = null, ?CardDefinition $sourceDefinition = null): void
     {
-        foreach ($source->definition()->triggersOn($event) as $ability) {
+        $definition = $sourceDefinition ?? $source->definition();
+        foreach ($definition->triggersOn($event) as $ability) {
             // Modular: the +1/+1 counters it had as it died. Graft: the creature that entered. Mentor: lesser power than it has now.
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
                 // `Whenever another creature you control enters, put a +1/+1 counter on it.`: the creature that entered.
@@ -6305,7 +6307,7 @@ final class Game
             }
             // `Whenever one or more other creatures you control die, …`: once for those dying together, while it waits to go on the stack.
             if (($ability['batch'] ?? false) && array_filter($this->pendingTriggers, fn (array $pending) => $pending['source'] === $source->id
-                && $pending['text'] === str_replace('CARDNAME', $source->name(), $ability['text'])) !== []) {
+                && $pending['text'] === str_replace('CARDNAME', $definition->name, $ability['text'])) !== []) {
                 continue;
             }
             $this->pendingTriggers[] = [
@@ -6314,8 +6316,8 @@ final class Game
                 'controller' => $controller,
                 'effects' => $ability['effects'],
                 'kinds' => self::targetKindsOf($ability['effects']),
-                'label' => "{$source->name()}'s ability",
-                'text' => str_replace('CARDNAME', $source->name(), $ability['text']),
+                'label' => "{$definition->name}'s ability",
+                'text' => str_replace('CARDNAME', $definition->name, $ability['text']),
             ] + (isset($ability['modes']) ? ['modes' => $ability['modes'], 'choose' => $ability['choose']] : []);
         }
     }
@@ -9256,7 +9258,7 @@ final class Game
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];
             $this->diedPower = $diedPower;
             $this->diedWithCounter = $plusCounters > 0;
-            $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
+            $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters, sourceDefinition: $diedDefinition);
             // `Whenever another creature (you control) dies, …`
             // $dies captured creature status before the move; animation is gone in the graveyard.
             foreach ($this->permanents() as $permanent) {
