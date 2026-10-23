@@ -360,6 +360,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'look' => 'choose from the top of their library',
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
+                'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
                 'optional_source_counter' => 'choose whether to put a +1/+1 counter on '.$game->choiceAwaiting()['label'],
                 'optional_life_gain' => 'choose whether to gain 5 life',
                 'optional_life_loss' => 'choose whether the targeted opponent loses 1 life',
@@ -688,6 +689,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'optional_source_untap':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mayuntap', (string) $optional['id'], 'accept'))->setLabel('Untap'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mayuntap', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
             case 'optional_source_counter':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
@@ -874,6 +882,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'sacrifice' => self::sacrificePrompt($game, $choice),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
+            'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
             'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a +1/+1 counter on this creature. Only the original battlefield incarnation can receive it; this does not target.',
             'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',
             'optional_life_loss' => '**'.$game->choiceAwaiting()['label'].'**: you may have **'.$game->players[(int) substr($game->choiceAwaiting()['target'], 2)]->name.'** lose 1 life.',

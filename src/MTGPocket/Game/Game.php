@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 10 adds optional source counters; version 9 added untargeted life gain.
+     * Version 11 adds optional source untap; version 10 added optional source counters.
      */
-    public const int STATE_VERSION = 10;
+    public const int STATE_VERSION = 11;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4646,6 +4646,15 @@ final class Game
                 }
                 break;
 
+            case 'optional_source_untap':
+                $this->pendingChoice = [
+                    'type' => 'optional_source_untap', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'label' => $source->name(), 'options' => ['accept', 'decline'],
+                ];
+
+                return true;
+
             case 'optional_source_counter':
                 $this->pendingChoice = [
                     'type' => 'optional_source_counter', 'id' => $this->nextChoiceId++, 'seat' => $controller,
@@ -4955,7 +4964,12 @@ final class Game
                     break;
                 }
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
-                    $affected->tapped = $effect['type'] === 'tap';
+                    if ($effect['type'] === 'untap' && $affected->tapped && $affected->counter('stun') > 0) {
+                        // Like an untap step, an untap effect consumes one stun counter instead.
+                        $affected->addCounters('stun', -1);
+                    } else {
+                        $affected->tapped = $effect['type'] === 'tap';
+                    }
                     $affected->frozen = $affected->frozen || ($effect['freeze'] ?? false);
                     $affected->addCounters('stun', (int) ($effect['stun'] ?? 0));
                 }
@@ -9302,6 +9316,36 @@ final class Game
     }
 
     /**
+     * Answers the exact optional source-untap decision at resolution.
+     * The original trigger controller answers; only the same battlefield
+     * incarnation can be untapped. A departed source does not stop
+     * the rest of the ability from resolving.
+     *
+     * @param int    $seat
+     * @param int    $choiceId Identity from choiceAwaiting().
+     * @param string $option `accept` or `decline`.
+     *
+     * @return void
+     */
+    public function chooseOptionalSourceUntap(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_source_untap' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That optional source-untap choice is no longer available to you.');
+        }
+        $resume = $choice['resume'];
+        $this->followed = $resume['followed'];
+        $this->pendingChoice = null;
+        $source = $this->objects[$choice['object']];
+        if ($option === 'accept' && $source->zone === GameObject::BATTLEFIELD && $source->incarnation === $choice['incarnation']) {
+            $this->applyEffect(['type' => 'untap', 'self' => true], $source, $source, $seat, 0, null, $choice['incarnation']);
+        }
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+    /**
      * Answers the exact optional +1/+1 source-counter decision at resolution.
      * The original trigger controller answers; only the same battlefield
      * incarnation can receive a counter. A departed source does not stop
@@ -11067,13 +11111,15 @@ final class Game
                 }
             }
         }
-        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter'], true)) {
+        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap'], true)) {
             $choice = $game->pendingChoice;
             $counter = $choice['type'] === 'optional_source_counter';
+            $untap = $choice['type'] === 'optional_source_untap';
+            $choiceKind = $untap ? 'source-untap' : ($counter ? 'source-counter' : 'life');
             $untargeted = $choice['type'] !== 'optional_life_loss';
             $resume = $choice['resume'] ?? null;
             $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < ($counter ? 10 : ($untargeted ? 9 : 8)) || $game->stage !== self::PLAYING || $source === null ||
+            if ($version < ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8))) || $game->stage !== self::PLAYING || $source === null ||
                 ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
                 ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
                 ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
@@ -11084,17 +11130,17 @@ final class Game
                 ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
                 ($resume['item']['targets'] ?? null) !== ($untargeted ? [] : [$choice['target']]) ||
                 ! array_key_exists('self', $resume) || ($resume['self'] !== null && $resume['self'] !== [$source->id, $choice['incarnation']]) || ! is_array($resume['followed'] ?? null)) {
-                throw new GameException('Invalid saved optional '.($counter ? 'source-counter' : 'life').' choice.');
+                throw new GameException('Invalid saved optional '.$choiceKind.' choice.');
             }
             foreach ($resume['steps'] as $step) {
                 if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
                     ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved optional '.($counter ? 'source-counter' : 'life').' continuation.');
+                    throw new GameException('Invalid saved optional '.$choiceKind.' continuation.');
                 }
             }
             foreach ($resume['followed'] as $from => $to) {
                 if (! is_string($from) || ! is_string($to)) {
-                    throw new GameException('Invalid saved optional '.($counter ? 'source-counter' : 'life').' continuation.');
+                    throw new GameException('Invalid saved optional '.$choiceKind.' continuation.');
                 }
             }
         }
