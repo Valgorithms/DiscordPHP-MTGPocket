@@ -11,10 +11,10 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "3e381906cb360cde724b01a7621fd68746fa2482",
   "validation": {
-    "evidenceMeaning": "Focused new source statistics tests and adjacent tests passed; full exact-head offline suite and CI pending. Previous engine full-suite results are not reused.",
-    "local": "34 focused tests,289 assertions;306 adjacent tests,3725 assertions;five-filePint passed.",
-    "source": "3e381906cb360cde724b01a7621fd68746fa2482",
-    "ci": "pending"
+    "evidenceMeaning": "Exact-head full offline suite with identical pinned engine/test/companion bytes. Metadata-only successors reuse local results and require their own exact-head CI.",
+    "local": "1016 tests,35271 assertions,2 expected imported-data skips;exit0 in61.090seconds with512MiB/Xdebugoff/emptydata/120-second process-treecap.",
+    "source": "75c6bacc44b633124738048ee05a4be67a5f9bc3",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40011777258"
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
