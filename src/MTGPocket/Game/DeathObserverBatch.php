@@ -30,16 +30,27 @@ final class DeathObserverBatch
     /** @var array<int, int> Planned object incarnations. */
     private array $planned = [];
 
+    /** @var array<int, DepartureCharacteristics> Pre-event characteristics of the selected objects. */
+    private readonly array $characteristics;
+
     /**
      * @param GameObject[] $observers
      * @param GameObject[] $doomed
+     * @param array<int, DepartureCharacteristics> $characteristics
      */
-    public function __construct(array $observers, array $doomed)
+    public function __construct(array $observers, array $doomed, array $characteristics)
     {
         $this->observers = array_map(fn (GameObject $object) => clone $object, $observers);
+        $this->characteristics = $characteristics;
         foreach ($doomed as $object) {
             $this->planned[$object->id] = $object->incarnation;
         }
+    }
+
+    /** Only a selected, not-yet-moved incarnation shares this event's snapshot. */
+    public function characteristicsOf(GameObject $object): ?DepartureCharacteristics
+    {
+        return ($this->planned[$object->id] ?? null) === $object->incarnation ? $this->characteristics[$object->id] : null;
     }
 
     /** Only this effect's original object incarnations belong to its event. */

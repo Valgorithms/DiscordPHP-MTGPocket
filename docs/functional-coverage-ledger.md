@@ -10,7 +10,7 @@ This ledger makes the existing 100% functionality goal measurable against the pi
 | Recognized whole | 11,282 | No unread parser clauses in the saved recognition audit |
 | Has unread text | 17,447 | Complement of recognized names, not a gameplay verdict |
 | Recognized without a whole-card certificate | 11,282 | Recognition does not clear the functional review |
-| Named cards with scoped regression evidence | 6 | Three departure exemplars, two exact-printing death observers and explicit Barter in Blood player choices |
+| Named cards with scoped regression evidence | 7 | Three departure exemplars, two exact-printing death observers, explicit Barter in Blood player choices, and Mayhem Devil sacrifice callbacks |
 | Named cards with an explicit unsupported gap | 1 | One unread Partner exemplar; the specific Barter player-choice gap is closed |
 | Intersection of the previous two rows | 0 | Closing one specific observer gap does not certify its other interactions |
 | Recorded whole-card certificates | 0 | No whole-card reviews have been issued |
