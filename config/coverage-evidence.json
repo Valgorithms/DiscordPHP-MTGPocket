@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "corpus": {
+    "pools": 181,
+    "mtgjsonVersions": [
+      "5.3.0+20261022"
+    ],
+    "selectedCardsSha256": "5583556fcc237fcaa5ebbf03c598644c4657773bd3bd415acb176ef779ed9fe1"
+  },
+  "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
+  "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
+  "engineSource": "e40c470d74c7f9da5f798e9d3f6635d1b6f6bad4",
+  "validation": {
+    "evidenceMeaning": "Historical exact-head full suite; ledger generation does not rerun behavior tests.",
+    "local": "777 tests, 32292 assertions, 2 expected imported-data skips; exit 0",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/39970148365",
+    "source": "9f2f5670b533283130ab29f8a94492964eaf7dd1"
+  },
+  "sourcePins": {
+    "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
+    "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
+    "src/MTGPocket/Game/Game.php": "128de82a7c421c7faba50075eabad9f05d6a9d01376ff054a519f4479c67c438",
+    "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
+    "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b"
+  },
+  "scopedEvidence": [
+    {
+      "limits": "Fixture uses card-name wording; pinned printing uses this creature. No whole-card, per-printing, simultaneous-event or general interaction certification.",
+      "cards": [
+        "Thragtusk"
+      ],
+      "id": "thragtusk-leave",
+      "tests": [
+        "tests/Game/DepartingPermanentAbilityTest.php::testThragtuskLeavesIntoHandAndCreatesABeast"
+      ],
+      "scope": "Own leave trigger creates a Beast after paid Unsummon; not an enters-ability certificate."
+    },
+    {
+      "limits": "Fixture uses card-name wording; pinned printing uses this enchantment. Other interactions unverified.",
+      "cards": [
+        "Hatching Plans"
+      ],
+      "id": "hatching-plans-graveyard",
+      "tests": [
+        "tests/Game/DepartingPermanentAbilityTest.php::testHatchingPlansOnlyDrawsFromTheBattlefield"
+      ],
+      "scope": "Battlefield-to-graveyard draws three; mill from library is a negative control."
+    },
+    {
+      "limits": "One bestow path with abbreviated reminder text. No lifelink/combat/attachment lifecycle or whole-card certificate.",
+      "cards": [
+        "Hopeful Eidolon"
+      ],
+      "id": "bestow-noncreature-departure",
+      "tests": [
+        "tests/Game/DepartureCreatureStatusTest.php::testPrintedCreatureThatIsNotCurrentlyACreatureDoesNotNotifyObserver"
+      ],
+      "scope": "Paid bestow into Aura, followed by exile, does not notify a creature departure observer; JSON replay agrees."
+    }
+  ],
+  "explicitUnsupported": [
+    {
+      "cards": [
+        "Akroma, Vision of Ixidor"
+      ],
+      "id": "partner-unread",
+      "scope": "Partner is an unread clause in the pinned report; no claim about its other abilities."
+    },
+    {
+      "cards": [
+        "Zulaport Cutthroat",
+        "Grim Haruspex"
+      ],
+      "id": "simultaneous-observer-gap",
+      "scope": "Known sequential moveTo dispatch cannot preserve all departing observers across simultaneous mass removal. Candidate cards are recognized but this interaction is unsupported."
+    }
+  ],
+  "nextFamily": {
+    "deferred": [
+      "General replacement effects and APNAP player ordering",
+      "Complete MTG rules and every whole-card interaction"
+    ],
+    "id": "simultaneous-departing-observers",
+    "acceptance": [
+      "Reproduce with exact pinned wording and a paid mass-removal spell; both insertion orders must agree.",
+      "Retain pre-event observers and count each qualifying death once, including controller and nontoken restrictions.",
+      "Include wrong-controller/token/non-death negatives and JSON pending-stack replay.",
+      "Do not increase whole-card certification counts from these partial tests."
+    ],
+    "scope": "Two explicitly named pinned-corpus candidates, not an exhaustive feature count.",
+    "measuredCandidateCount": 2,
+    "cards": [
+      "Zulaport Cutthroat",
+      "Grim Haruspex"
+    ]
+  },
+  "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad"
+}
