@@ -6,7 +6,7 @@ This unpublished batch is based independently on main `710a47cde58525c24d59fb591
 
 The parser maps exact `destroy/exile each creature` wording to the existing `all creatures` selection contract, retaining supported qualifiers. It also recognizes `all artifacts, creatures, and lands`; the engine selects the union once per permanent. The existing trailing `They can't be regenerated` handler supplies the regeneration prohibition. Unknown qualifiers are not discarded.
 
-Eight focused tests / 70 assertions pass in 0.095 seconds. They cover Consume the Meek, Jokulhaups, Obliterate, mana-value boundaries (including zero, three, and four), both controllers, artifact/creature overlap, regeneration with and without prohibition, indestructibility, ordinary countering versus Obliterate, payment and extra-target rejection without mutation, exile versus destruction, deterministic replay, and saved-stack resume. Earlier changed-file Pint and syntax checks passed; whitespace checks pass. Broad regressions have not run for this batch.
+At preparation commit `3109819dd69afbe175890fdc42af29f9f88fe761`, eight focused tests / 70 assertions passed in 0.095 seconds. They cover Consume the Meek, Jokulhaups, Obliterate, mana-value boundaries (including zero, three, and four), both controllers, artifact/creature overlap, regeneration with and without prohibition, indestructibility, ordinary countering versus Obliterate, payment and extra-target rejection without mutation, exile versus destruction, deterministic replay, and saved-stack resume. Earlier changed-file Pint and syntax checks passed. Those results precede the proposed compatibility version gate; its tests remain unrun under the source-only restriction. Broad regressions have not run for this batch.
 
 ## Completed recognition measurement
 
@@ -25,7 +25,7 @@ The Modern scan was interrupted at the parent's resource-priority update before 
 ## Publication gates still pending
 
 - Resume Modern measurement and focused adjacent mass-removal/regeneration regressions once the priority runtime cycle has a confirmed healthy startup. Do not rerun broad workloads during that cycle.
-- Resolve backward saved-state compatibility before publication: new saves currently retain schema version 3, while an older version-3 engine does not know the new union selector. Its `allMatching()` fallback treats an unknown selector as nonland permanents, so it can misinterpret a saved pending union effect. A version gate or a deliberately compatible representation needs implementation and legacy/future-version tests. Same-build save/resume already passes; that does not establish older-build compatibility.
+- Verify the [proposed schema-4 rejection contract](selector-state-compatibility.md) before publication. The source now bumps `STATE_VERSION` to 4 and retains the existing loader gate/migrations. Actual historical-reader rejection, legacy migration, and new same-build round trips still need execution; no compatibility pass is claimed yet.
 - Review simultaneous death/leave triggers separately. Existing mass removal moves objects sequentially through `moveTo()`; its death observers are drawn from remaining permanents. This selector change does not certify simultaneous-event handling, general last-known information, or every interaction of the newly recognized cards.
 - Add final exact-head evidence and publish as a draft after the above checks. No draft exists for this branch yet. Parent retains merge decisions.
 

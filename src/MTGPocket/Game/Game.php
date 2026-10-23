@@ -84,8 +84,11 @@ final class Game
      */
     public ?array $pendingChoice = null;
 
-    /** Persisted rules-state format; unversioned records are version 1. */
-    public const int STATE_VERSION = 3;
+    /**
+     * Persisted rules-state format; unversioned records are version 1.
+     * Version 4 prevents older readers from misinterpreting new mass-removal selectors.
+     */
+    public const int STATE_VERSION = 4;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
