@@ -106,6 +106,12 @@ final class PracticeBot
                 $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
 
                 return true;
+            case 'fabricate':
+                $choice = $game->choiceAwaiting();
+                // Deliberate simple practice policy; humans choose either outcome.
+                $game->chooseFabricate($seat, $choice['id'], 'counters');
+
+                return true;
             case 'entry_life':
                 $choice = $game->choiceAwaiting();
                 $pay = in_array('pay', $choice['options'], true) && ! $choice['tapped'] && $game->players[$seat]->life > 10;

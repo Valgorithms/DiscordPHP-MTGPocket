@@ -71,6 +71,7 @@ final class PanelActions
             'take' => $act(fn (Game $game, int $seat) => $game->take($seat, $ints)),
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
+            'fabricate' => $act(fn (Game $game, int $seat) => $game->chooseFabricate($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'sacgo' => $act(function (Game $game, int $seat, MatchRecord $match) use ($playerId, $args): void {
                 $choiceId = (int) ($args[0] ?? 0);
                 $picks = $match->choice($playerId)['sacrifice'] ?? [];

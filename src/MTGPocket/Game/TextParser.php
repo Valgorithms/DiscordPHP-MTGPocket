@@ -1289,8 +1289,8 @@ final class TextParser
                 // Hideaway (rule 702.75): one of the top N exiled face down for later; see Game::hideaway().
                 $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'hideaway', 'amount' => (int) $m[1], 'self' => true]]];
             } elseif (preg_match('/^fabricate (\d+)$/i', $part, $m) && ! $spell) {
-                // Fabricate (rule 702.123): always the counters, not the Servos.
-                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'counters', 'amount' => (int) $m[1], 'self' => true]]];
+                // Fabricate (rule 702.123): choose counters or Servos as the ability resolves.
+                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'fabricate', 'amount' => (int) $m[1], 'self' => true]]];
             } elseif (preg_match('/^renown (\d+)$/i', $part, $m) && ! $spell) {
                 // Renown (rule 702.112): the first time it deals combat damage to a player.
                 $found['triggered'][] = ['text' => $part, 'event' => 'combat_damage', 'effects' => [['type' => 'renown', 'amount' => (int) $m[1], 'self' => true]]];

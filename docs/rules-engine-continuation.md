@@ -60,7 +60,7 @@ Use descriptive branches and open PRs, preserve unrelated local files, and disti
 
 ## Current coverage continuation
 
-The [resumable creature-sacrifice milestone](resumable-edict-choices.md) adds validated, persisted each-player choices and Discord/practice companions. New saves now use schema version 6 after the [departed-source statistics milestone](departed-source-statistics.md); the earlier version-2 and version-3 notes below retain their historical migration context.
+The [resumable creature-sacrifice milestone](resumable-edict-choices.md) adds validated, persisted each-player choices and Discord/practice companions. New saves now use schema version 7 after the [Fabricate choice milestone](fabricate-resolution-choices.md); earlier version notes retain their historical migration context.
 
 The [functional coverage ledger](functional-coverage-ledger.md) pins the October 22 corpus at 28,729 names and separates recognition, explicit gaps, scoped behavior evidence and whole-card review backlog. It supplies the measurable continuation baseline; historical recognition tables below retain their original dates and scopes.
 
@@ -75,3 +75,5 @@ The [Mayhem Devil milestone](sacrifice-observer-lookback.md) now preserves selec
 The [artifact-graveyard observer milestone](artifact-graveyard-observer-lookback.md) extends selected-group lookback to same-controller artifact/permanent burial callbacks, with exact Marionette Master tests at printed power. The complete Disciple ability remains unread and is tracked separately. Next, explicitly test modified source power after departure and reincarnation; the printed-power fallback is not a last-known-power certificate. Fabricate decisions, all-player optional callbacks and whole-card certification remain outside this slice.
 
 The [departed-source statistics milestone](departed-source-statistics.md) now reproduces and fixes modified Marionette power, per-incarnation last-known statistics and surviving-source current power. Legacy saves cannot reconstruct missing departed statistics; this remains explicit. Next, implement the separately unread Disciple optional/all-player artifact ability with real resolution choices and negative controls, without changing recognition claims before measurement.
+
+The [Fabricate choice milestone](fabricate-resolution-choices.md) follows the same exact Marionette through paid entry, counters/Servos, departed-source fallback, persisted resolution and Discord/practice decisions. Admission is unchanged; earlier automatic-counter saves retain their encoded effects. Disciple remains a separate unread candidate; scoped Marionette evidence does not certify its newest printing or every interaction.

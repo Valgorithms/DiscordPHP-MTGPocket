@@ -468,6 +468,57 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame([], $match->game->choiceAwaiting() ?? []);
     }
 
+    /** @dataProvider fabricateOptions */
+    public function testFabricatePanelPersistsAndRejectsWrongOrRepeatedAnswers(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 6; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Swamp'), GameObject::BATTLEFIELD);
+            }
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/artifact-observer-marionette-master.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('fabricate', $choice['type']);
+        $this->assertStringContainsString('choose counters or Servos', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Put 3 +1/+1 counters', $json);
+        $this->assertStringContainsString('Create 3 Servos', $json);
+        $this->assertStringContainsString('fabricate:'.$choice['id'].':servos', $json);
+        $this->assertStringNotContainsString('fabricate:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, (string) $choice['id'], $option], [$player, (string) ($choice['id'] + 1), $option], [$player, (string) $choice['id'], 'both']] as [$actor, $choiceId, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'fabricate', [$choiceId, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'fabricate', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $this->assertSame($option === 'counters' ? 3 : 0, $match->game->objects[$source]->counter('+1/+1'));
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'fabricate', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    public static function fabricateOptions(): array
+    {
+        return [['counters'], ['servos']];
+    }
+
     public function testEntryLifePanelPersistsItsChoiceAndRejectsWrongOrRepeatedAnswers(): void
     {
         $match = $this->startMatch();

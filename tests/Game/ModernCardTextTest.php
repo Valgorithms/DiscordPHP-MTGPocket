@@ -2801,6 +2801,7 @@ final class ModernCardTextTest extends GameTestCase
         $game->cast(0, $artisan, 0, []);
         $this->resolve();
         $this->resolve();
+        $game->chooseFabricate(0, $game->choiceAwaiting()['id'], 'counters');
         $this->assertSame(3, $game->power($game->objects[$artisan]));
         $husk = $this->put(0, 'Flayer Husk', GameObject::HAND);
         $game->cast(0, $husk, 0, []);

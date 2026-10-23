@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [Fabricate milestone](fabricate-resolution-choices.md) adds scoped entry decisions for the already recorded Marionette Master using its complete KLD fixture. Recognition admission is unchanged; the historical report is not a fresh parser audit. Whole-card certificates remain zero and Disciple remains explicitly unread.
+
 This ledger makes the existing 100% functionality goal measurable against the pinned **28,729 newest-printing card names** in 181 imported pools, MTGJSON `5.3.0+20261022`. It does not redefine the goal as parser recognition or a smaller supported deck. A card name is the unit; all selected card data, including extra faces, contribute to the corpus fingerprint. It is not the complete MTGJSON database or a fresh Modern measurement.
 
 ## Baseline and acceptance
