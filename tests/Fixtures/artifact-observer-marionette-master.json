@@ -1,0 +1,37 @@
+{
+  "setCode": "KLD",
+  "releaseDate": "2016-09-30",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "source": "existing read-only imported pool",
+  "card": {
+    "uuid": "fb6344e8-3412-57c9-8bca-e9a02708ac15",
+    "name": "Marionette Master",
+    "number": "90",
+    "rarity": "rare",
+    "colors": [
+      "B"
+    ],
+    "manaValue": 6,
+    "type": "Creature — Human Artificer",
+    "scryfallId": "358a87a3-c76e-4c7d-ac84-464894ed9a31",
+    "manaCost": "{4}{B}{B}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Human",
+      "Artificer"
+    ],
+    "power": "1",
+    "toughness": "3",
+    "text": "Fabricate 3 (When this creature enters, put three +1/+1 counters on it or create three 1/1 colorless Servo artifact creature tokens.)\nWhenever an artifact you control is put into a graveyard from the battlefield, target opponent loses life equal to this creature's power.",
+    "keywords": [
+      "Fabricate"
+    ],
+    "layout": "normal",
+    "colorIdentity": [
+      "B"
+    ]
+  }
+}

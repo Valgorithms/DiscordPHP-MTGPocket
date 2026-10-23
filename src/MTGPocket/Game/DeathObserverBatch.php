@@ -15,7 +15,8 @@ namespace MTGPocket\Game;
 
 /**
  * One selected group's pre-event observer registry and actual death records.
- * Planned movement can be prevented/replaced, so only actual deaths notify.
+ * Sacrifice and battlefield-burial dispatch can reuse the registry; actual
+ * creature deaths are recorded separately when movement was not replaced.
  * This is a synchronous notification boundary, not a saved game or a complete
  * replacement/continuous-effect/intervening-condition model.
  */
