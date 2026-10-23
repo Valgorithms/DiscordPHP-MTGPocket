@@ -12,9 +12,9 @@
   "engineSource": "1742cb32485a3bcc7362e651c73853d5148bd1db",
   "validation": {
     "source": "1742cb32485a3bcc7362e651c73853d5148bd1db",
-    "evidenceMeaning": "Scoped Moriok Rigger exact parser/optional counter/incarnation/save/Discord/practice evidence. Overall recognition remains historical; no aggregate parser audit, newest-printing or whole-card certificate. Full suite and exact CI pending.",
-    "local": "8 regression-first failures/40 assertions; final focused64tests/1309assertions, adjacent467/7845 in6.835sec, nine-file Pint and diff-check passed. Targeted181-pool scan0.772sec reparses8names: Moriok newly readable, Disciple/Fangren/Molder unchanged, four remain unread. Full suite and ledger pending.",
-    "ci": "Pending exact-head CI."
+    "evidenceMeaning": "Scoped Moriok Rigger exact parser/optional counter/incarnation/save/Discord/practice evidence. Overall recognition remains historical; no aggregate parser audit, newest-printing or whole-card certificate. Full suite passed at 567f7c3; final documentation-only head retains identical runtime/test pins and requires its own exact CI.",
+    "local": "8 regression-first failures/40 assertions; final focused64tests/1309assertions, adjacent467/7845 in6.835sec, nine-file Pint and diff-check passed. Targeted181-pool scan0.772sec reparses8names: Moriok newly readable, Disciple/Fangren/Molder unchanged, four remain unread. Ledger18tests/37assertions passed;181pool inventory0.884sec:12scopednames/1gap/0wholecertificates. Full567f7c33fa1885cea945e0171d81af317d2b6aeb passed1253tests/40263assertions/2expected imported-data skips in75.466sec,120sec process-treecap/512MiB/Xdebugoff/emptydata/task-local sys_temp_dir. Focused legacy schema assertion corrected before final successful adjacent/full runs.",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40034640541; exact567f7c33fa1885cea945e0171d81af317d2b6aeb allPHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final documentation-only head requires separate exact CI."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "4617693b5aadea84409fed2e6025452331b3d627a02c47ff48f7a10ffc64de3d",
