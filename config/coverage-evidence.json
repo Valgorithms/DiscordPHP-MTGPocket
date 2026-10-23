@@ -12,9 +12,9 @@
   "engineSource": "880c354c3156cdf158b9ad8b5b113e459a4912cf",
   "validation": {
     "source": "880c354c3156cdf158b9ad8b5b113e459a4912cf",
-    "evidenceMeaning": "Scoped Disciple parser/engine tests and targeted candidate superset only. Historical recognition report remains pinned to its original source; no fresh full parser walk or aggregate recognition claim. Final CI/full suite pending.",
-    "local": "8 baseline recognition failures;46focused plus298adjacent4191assertions;2panelroutes36assertions;2candidate CLI tests12assertions;10-filePint. Targeted181-pool candidate scan0.689sec, eight names, one newly readable complete fixture.",
-    "ci": "pending"
+    "evidenceMeaning": "Scoped Disciple parser/engine tests and targeted candidate superset. Historical recognition report remains pinned to its original source; no fresh full parser walk or aggregate recognition claim. Full offline suite passed at 340cbf1; final documentation-only head gets separate exact CI.",
+    "local": "8 baseline recognition failures;298 adjacent tests4191assertions;2panelroutes36assertions;2candidate CLI tests12assertions;10-filePint. Full offline340cbf1:1105tests36723assertions2expectedimported-data skips,81.487sec/120sec process-tree cap,512MiB/Xdebugoff/emptydata. Targeted181-pool candidate scan0.689sec,eight names,one newly readable complete fixture.",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40020877584; exact340cbf1 PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final documentation-only head requires its own CI."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "8f568c8390dda79782ad02b21351352b7e8512a45e04e38cafb99677a9168bd3",
