@@ -6212,15 +6212,16 @@ final class Game
     /**
      * Queues a permanent's abilities that trigger on an event (rule 603.2).
      *
-     * @param GameObject $source
-     * @param string     $event       See {@see CardDefinition::triggersOn()}.
-     * @param int        $controller  Who controlled the source when the event happened.
-     * @param int|null   $incarnation The source's, if it has since changed zones.
-     * @param int        $context     For modular, the +1/+1 counters it died with; for graft, the creature that entered.
+     * @param GameObject          $source
+     * @param string              $event             See {@see CardDefinition::triggersOn()}.
+     * @param int                 $controller        Who controlled the source when the event happened.
+     * @param int|null            $incarnation       The source's, if it has since changed zones.
+     * @param int                 $context           For modular, the +1/+1 counters it died with; for graft, the creature that entered.
+     * @param CardDefinition|null $contextDefinition The dying creature's battlefield face for subtype observers.
      *
      * @return void
      */
-    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0): void
+    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0, ?CardDefinition $contextDefinition = null): void
     {
         foreach ($source->definition()->triggersOn($event) as $ability) {
             // Modular: the +1/+1 counters it had as it died. Graft: the creature that entered. Mentor: lesser power than it has now.
@@ -6250,7 +6251,7 @@ final class Game
                 default => $effect,
             }, $ability['effects']);
             if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
-                || ! in_array($ability['subtype'], ($this->objects[$context] ?? null)?->definition()->subtypes ?? [], true))) {
+                || ! in_array($ability['subtype'], ($contextDefinition ?? ($this->objects[$context] ?? null)?->definition())?->subtypes ?? [], true))) {
                 continue;
             }
             // `Whenever you sacrifice another creature, …`: the permanent sacrificed (see Game::sacrifice()).
@@ -9204,6 +9205,8 @@ final class Game
         }
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
+        // Death observers look at the battlefield face, before movement clears transform/morph state.
+        $diedDefinition = $dies ? $object->definition() : null;
         $plusCounters = $object->counter('+1/+1');
         $diedPower = $dies ? $this->power($object) : 0;
         $damagedBy = $object->damagedBy;
@@ -9257,7 +9260,7 @@ final class Game
             // `Whenever another creature (you control) dies, …`
             // $dies captured creature status before the move; animation is gone in the graveyard.
             foreach ($this->permanents() as $permanent) {
-                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id);
+                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id, $diedDefinition);
             }
             // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
             foreach ($owner->graveyard as $other) {
