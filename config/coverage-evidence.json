@@ -12,9 +12,9 @@
   "engineSource": "ea49caf9dba036c0a1e314ff638f204b1577ee30",
   "validation": {
     "source": "ea49caf9dba036c0a1e314ff638f204b1577ee30",
-    "evidenceMeaning": "Scoped selected complete CMR Ich-Tekik paid entry/token and burial counters. Partner remains explicitly unread; no whole-card/newest-printing certificate or updated aggregate recognition. Shared subtype-counter Kindred fix has positive and negative controls. Full offline and exact-head CI pending.",
-    "local": "Baseline8failures/40assertions. Kindred exclusion reproduced1failure/23assertions. Final40focused/1067assertions in0.421sec;1054adjacent/18416 in21.913sec;4filePint/diffcheck passed. Targeted8records/181pools scan complete;6fullyreadable2stillunread, Ich-Tekik now retains only Partner. Ledger/full pending.",
-    "ci": "Pending required exact-head PHP8.3/8.4/8.5 fullPint/PHPUnit."
+    "evidenceMeaning": "Scoped selected complete CMR Ich-Tekik paid entry/token and burial counters. Partner explicitly unread; no whole-card/newest-printing certificate or updated aggregate recognition. Shared subtype-counter Kindred fix has positive and negative controls. Full offline and tested-head CI passed; final metadata-head CI checked separately before merge.",
+    "local": "Baseline8failures/40assertions. Kindred exclusion reproduced1failure/23assertions. Final40focused/1067assertions in0.421sec;1054adjacent/18416 in21.913sec;4filePint/diffcheck passed. Targeted8records/181pools scan0.802sec wall:6fullyreadable2stillunread, Ich-Tekik retains only Partner. Ledger18/37;inventory15scoped/2Partnergaps/1overlap/0wholecertificates. Full offline at bc163263c59cb62437d1bad106362f46874560b6:1445tests/45471assertions/2expected imported-data skips in74.922sec190MiB,120sec treecap512MiB/Xdebugoff/emptydata/tasklocaltemp afterfresh10.57GiB.",
+    "ci": "Tested-head CI40039440028 at bc163263c59cb62437d1bad106362f46874560b6:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head checks verified separately before merge;all38runtime/testpins unchanged."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "c77e6083a37ec55ccd75e6b3f26ece5ce2ad32ecab7dbd4ca4696ccd1533178c",
