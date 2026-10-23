@@ -32,4 +32,17 @@ PR #331 stays independent at `3f309578ebc35f17ae9321f969a67fe4e14db4ab`, with it
 4. In separate offline PHP processes, exercise the actual immutable reader sources from main `710a47cde58525c24d59fb591ef81b6d63ee945d` and PR #331 `3f309578ebc35f17ae9321f969a67fe4e14db4ab`. Extract byte-exact `Game.php` and `TextParser.php` snapshots using Git and record their blob hashes. Each historical process must load a newly generated version-4 pending-union fixture and throw `GameException` with the schema-version rejection before interpreting effects. Use the repository's existing offline dependencies; do not substitute a copied guard or a mock reader. Never load two `Game` class definitions into the same process.
 5. Record commands, exact source commit and reader blob hashes, pass/fail/skip counts, and rejection output. Run Pint/whitespace checks. Resume Modern corpus measurement and adjacent removal/regeneration regressions only after the parent's startup resource hold is lifted.
 
+## Historical source preparation
+
+Byte-exact reader snapshots have been extracted from the existing local Git objects, without a network fetch or PHP execution. Source identity is verified; runtime compatibility is still pending.
+
+| Reader | File | Git blob | SHA-256 |
+| --- | --- | --- | --- |
+| Main `710a47c` | `Game.php` | `a90195117e65f781ae84ee37e731e5d7803ec3c1` | `b4cd302f8754c99145f75f411d523b59d96aef0749ffcb808625ca559ccc95a1` |
+| Main `710a47c` | `TextParser.php` | `47a86286564668728df93ebac257ed8209b8f7bb` | `90b5a88c1c4efd6d3e4f0721a3833cef9daf56132f0ed00400871860b5edf28e` |
+| PR #331 `3f30957` | `Game.php` | `aaae2f3795c30235fc28805cf2e858c842c57140` | `276a4b5358b5be9bacb8571f397371c5ee4c89603626980d445c772a962c6cd6` |
+| PR #331 `3f30957` | `TextParser.php` | `4af5ddf1737f300c63d6c00accfc3ac179ea4e1a` | `c97fb9cad705da177e419d1a3c1292d0221ab8f229d4662f2f457dcd5eb47ba7` |
+
+The task-local offline probes are prepared to generate a pending union-ability fixture with the new writer, verify both old readers reject it, then generate actual version-3 fixtures with each historical writer. Those historical fixtures include a pending ordinary damage ability and a delayed draw. The new reader must preserve their state except for the schema label, deal the damage once, and draw once at the next upkeep. These complement the synthetic version-3 unit case; neither direction has been executed under the source-only hold.
+
 No selector PR should be published while these compatibility checks are unverified. General simultaneous death/leave handling remains an inherited limitation requiring separate review; this version gate only prevents older builds from silently interpreting new saved semantics.

@@ -23,6 +23,7 @@ final class MassRemovalSelectorTest extends GameTestCase
 {
     private const array MORE = [
         'Consume the Meek' => ['manaCost' => '{3}{B}{B}', 'type' => 'Instant', 'text' => "Destroy each creature with mana value 3 or less. They can't be regenerated.", 'colors' => ['B']],
+        'Culling Sun' => ['manaCost' => '{2}{W}{B}{B}', 'type' => 'Sorcery', 'text' => 'Destroy each creature with mana value 3 or less.', 'colors' => ['W', 'B']],
         'Jokulhaups' => ['manaCost' => '{4}{R}{R}', 'type' => 'Sorcery', 'text' => "Destroy all artifacts, creatures, and lands. They can't be regenerated.", 'colors' => ['R']],
         'Obliterate' => ['manaCost' => '{6}{R}{R}', 'type' => 'Sorcery', 'text' => "This spell can't be countered.\nDestroy all artifacts, creatures, and lands. They can't be regenerated.", 'colors' => ['R']],
         'Regenerable Fixture' => ['manaCost' => '{R}', 'type' => 'Sorcery', 'text' => 'Destroy all artifacts, creatures, and lands.', 'colors' => ['R']],
@@ -112,6 +113,33 @@ final class MassRemovalSelectorTest extends GameTestCase
         foreach ([$ingot, $anthem, $walker, $indestructible] as $id) {
             $this->assertSame(GameObject::BATTLEFIELD, $this->zone($id));
         }
+    }
+
+    public function testCullingSunKeepsRegenerationAndOnlyDestroysCreaturesWithinItsManaValueLimit(): void
+    {
+        $game = $this->newGame();
+        $lands = [...$this->lands(0, 'Swamp', 4), ...$this->lands(0, 'Plains', 1)];
+        $bear = $this->battlefield(0, 'Grizzly Bears');
+        $elf = $this->battlefield(1, 'Llanowar Elves');
+        $artifactCreature = $this->battlefield(1, 'Ornithopter');
+        $pyromancer = $this->battlefield(1, 'Prodigal Pyromancer');
+        $giant = $this->battlefield(0, 'Hill Giant');
+        $equipment = $this->battlefield(1, 'Bonesplitter');
+        $game->objects[$bear]->shields = 1;
+        $game->objects[$artifactCreature]->shields = 2;
+        $game->cast(0, $this->put(0, 'Culling Sun'));
+        $this->reload();
+        $this->resolve();
+        foreach ([$elf, $pyromancer] as $id) {
+            $this->assertSame(GameObject::GRAVEYARD, $this->zone($id));
+        }
+        foreach ([$bear, $artifactCreature, $giant, $equipment, ...$lands] as $id) {
+            $this->assertSame(GameObject::BATTLEFIELD, $this->zone($id));
+        }
+        $this->assertSame(0, $this->game->objects[$bear]->shields);
+        $this->assertSame(1, $this->game->objects[$artifactCreature]->shields);
+        $this->assertTrue($this->game->objects[$bear]->tapped);
+        $this->assertTrue($this->game->objects[$artifactCreature]->tapped);
     }
 
     public function testRegenerationStillWorksWhenTheProhibitionIsAbsent(): void

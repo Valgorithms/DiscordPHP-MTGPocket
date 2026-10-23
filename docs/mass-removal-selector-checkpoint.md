@@ -18,7 +18,7 @@ The all-pools report uses the preserved 181-pool MTGJSON `5.3.0+20261022` corpus
 | Names with unread text | 17,451 | 17,447 |
 | Unread clauses | 23,292 | 23,284 |
 
-The four newly recognized names are Consume the Meek, Culling Sun, Jokulhaups, and Obliterate. No previously recognized name was lost. Recognition is not a whole-card gameplay certification. Culling Sun's individual gameplay has not yet been exercised with its actual card fixture.
+The four newly recognized names are Consume the Meek, Culling Sun, Jokulhaups, and Obliterate. No previously recognized name was lost. Recognition is not a whole-card gameplay certification. A Culling Sun source test now covers actual wording, both players, the mana-value boundary, creature-only selection, regeneration, and saved-stack resolution. It remains unrun under the source-only hold; the earlier 8-test result does not cover it.
 
 The Modern scan was interrupted at the parent's resource-priority update before producing a report. No Modern delta is claimed. The all-pools result and its input fingerprint are preserved in task-local `coverage-current-all.json`.
 
