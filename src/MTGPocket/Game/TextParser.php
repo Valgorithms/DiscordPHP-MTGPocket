@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Narrow optional/all-player burial family; keep the target mandatory on the stack.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may have target opponent lose 1 life.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_life_loss', 'amount' => 1, 'target' => 'opponent']]];
+
+            return true;
+        }
         // Valiant: `Whenever CARDNAME becomes the target of a spell or ability you control for the first time each turn, …`: see Game::trigger().
         // `Whenever …, draw a card. This ability triggers only once each turn.`: the same record.
         if (preg_match('/^(Whenever .+?) for the first time each turn, (.+)$/', $line, $once) || preg_match('/^(Whenever [^.]+?), (.+\.) This ability triggers only once each turn\.$/', $line, $once)) {
