@@ -72,3 +72,7 @@ The [Station milestone](summoning-station-optional-untap.md) adds explicit untap
 ## Krenko optional red payment (2026-10-23)
 
 The [Krenko milestone](krenko-optional-red-goblin.md) adds original-controller pay/decline, ordinary mana legality, one red Goblin with temporary haste, schema 12 and Discord/practice controls. Paid cast, printed activation, Smelt and simultaneous Damnation tests remain scoped evidence. Fourteen scoped names, one explicit gap and zero whole-card certificates remain separate from historical aggregate recognition. Six of the targeted eight records are readable; Ich-Tekik and Joven and Chandler retain unread clauses. Ich-Tekik source/Golem counters are the next bounded seed; its Partner clause stays separate.
+
+## Ich-Tekik source/Golem counters (2026-10-23)
+
+The [Ich-Tekik milestone](ich-tekik-artifact-burial-counters.md) adds paid entry/token and source/Golem counter evidence, source/controller/departure/save/cleanup controls and a reproduced shared Kindred-counter fix. Partner remains unread in the complete fixture. Fifteen scoped names, two explicit Partner gaps and one overlap still confer zero whole-card certificates; aggregate recognition remains historical. Joven and Chandler mana-value counters are the next bounded seed, keeping its temporary-control activation separate.
