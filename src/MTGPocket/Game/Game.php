@@ -9244,6 +9244,12 @@ final class Game
      * Answers Fabricate at resolution. The trigger controller chooses even if
      * another player now controls the original permanent. Stale/illegal answers
      * change nothing; a returned incarnation cannot receive these counters.
+     *
+     * @param int    $seat
+     * @param int    $choiceId
+     * @param string $option `counters` or `servos`, from choiceAwaiting()['options'].
+     *
+     * @return void
      */
     public function chooseFabricate(int $seat, int $choiceId, string $option): void
     {

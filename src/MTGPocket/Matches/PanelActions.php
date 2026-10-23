@@ -42,7 +42,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
