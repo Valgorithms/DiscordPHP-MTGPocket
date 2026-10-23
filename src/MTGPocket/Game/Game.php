@@ -4361,7 +4361,7 @@ final class Game
                     // `… deals 1 damage to that creature.`: the creature it blocked or was blocked by.
                     'that' => ($that = $this->objects[(int) ($effect['that'] ?? -1)] ?? null) !== null && $that->zone === GameObject::BATTLEFIELD ? ["o:{$that->id}"] : [],
                     // `… deals 3 damage to that creature's controller.`
-                    default => isset($effect['toController']) ? ($affected === null ? [] : ["p:{$affected->controller}"]) : [$target],
+                    default => isset($effect['you']) ? ["p:{$controller}"] : (isset($effect['toController']) ? ($affected === null ? [] : ["p:{$affected->controller}"]) : [$target]),
                 };
                 foreach ($hits as $hit) {
                     // `It can't be regenerated.`: its regeneration shields are gone.

@@ -1,0 +1,295 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "baselineCommit": "710a47cde58525c24d59fb591ef81b6d63ee945d",
+  "database": {
+    "sha256": "5d03b173be65dc60e2d51f29c8cb2a9725449770e956f4db374435968f0f23de",
+    "meta": [
+      {
+        "date": "2026-10-22",
+        "version": "5.3.0+20261022"
+      }
+    ]
+  },
+  "corpus": {
+    "all": {
+      "pools": 181,
+      "mtgjsonVersions": [
+        "5.3.0+20261022"
+      ],
+      "selectedCardsSha256": "5583556fcc237fcaa5ebbf03c598644c4657773bd3bd415acb176ef779ed9fe1"
+    },
+    "modern": {
+      "pools": 181,
+      "mtgjsonVersions": [
+        "5.3.0+20261022"
+      ],
+      "selectedCardsSha256": "9ee46f974692dd3e5a60066eea49c926966ba6b551851a147aaeb28c480375f1"
+    }
+  },
+  "candidateCodeSha256": {
+    "Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
+    "Game/TextParser.php": "c97fb9cad705da177e419d1a3c1292d0221ab8f229d4662f2f457dcd5eb47ba7",
+    "Game/Game.php": "276a4b5358b5be9bacb8571f397371c5ee4c89603626980d445c772a962c6cd6",
+    "Cards/CardPoolImporter.php": "316051cd47459f2ae846086de4867df5ef89cbe07e6e0c7442b690228fdd3a0d",
+    "Cards/CoverageAudit.php": "2a0450e58598e25ecc37dc3c1bb2bf5f4845c7d0f45fbd0b11e33ca8d90d8b9e"
+  },
+  "recognition": {
+    "all": {
+      "before": {
+        "total": 28729,
+        "whole": 11278,
+        "withUnreadText": 17451,
+        "unreadClauses": 23292
+      },
+      "after": {
+        "total": 28729,
+        "whole": 11298,
+        "withUnreadText": 17431,
+        "unreadClauses": 23261
+      }
+    },
+    "modern": {
+      "before": {
+        "total": 22399,
+        "whole": 9520,
+        "withUnreadText": 12879,
+        "unreadClauses": 17026
+      },
+      "after": {
+        "total": 22399,
+        "whole": 9533,
+        "withUnreadText": 12866,
+        "unreadClauses": 17007
+      }
+    }
+  },
+  "newlyRecognized": [
+    "Ancient Tomb",
+    "Black Market Tycoon",
+    "Blade Juggler",
+    "Callous Inspector",
+    "City of Brass",
+    "Dark Bargain",
+    "Fledgling Djinn",
+    "Graf Reaver",
+    "Jackal Pup",
+    "Juzám Djinn",
+    "Lava Hounds",
+    "Mana Vault",
+    "Midnight Reaper",
+    "Nettletooth Djinn",
+    "Notion Rain",
+    "Ravenous Giant",
+    "Sell-Sword Brute",
+    "Serendib Efreet",
+    "Shinka Gatekeeper",
+    "Smoldering Efreet"
+  ],
+  "separateOpenFadingPR": {
+    "number": 330,
+    "head": "75e2ab6f6a99236460632b8f00c9e0efb96c6195",
+    "recognition": {
+      "total": 28729,
+      "whole": 11287,
+      "withUnreadText": 17442,
+      "unreadClauses": 23275
+    },
+    "overlapWithThisBatch": []
+  },
+  "implementedRules": {
+    "count": null,
+    "reason": "Requires reviewed parser/engine contracts; recognition is not implementation evidence."
+  },
+  "supportedWholeCards": {
+    "count": null,
+    "reason": "Requires a card-by-card certification against a declared rules/mode scope."
+  },
+  "gameplayTestedWholeCards": {
+    "count": null,
+    "reason": "Mechanic tests and games reaching an end do not certify every ability or interaction of a whole card."
+  },
+  "uniqueUnreadPatterns": 20341,
+  "topUnreadPatterns": [
+    {
+      "text": "Partner",
+      "cards": 40,
+      "examples": [
+        "Akroma, Vision of Ixidor",
+        "Alena, Kessig Trapper",
+        "Alharu, Solemn Ritualist"
+      ]
+    },
+    {
+      "text": "Choose a Background",
+      "cards": 27,
+      "examples": [
+        "Abdel Adrian, Gorion's Ward",
+        "Alora, Merry Thief",
+        "Amber Gristle O'Maul"
+      ]
+    },
+    {
+      "text": "When CARDNAME enters, you become the monarch.",
+      "cards": 26,
+      "examples": [
+        "Archon of Coronation",
+        "Azure Fleet Admiral",
+        "Canal Courier"
+      ]
+    },
+    {
+      "text": "CARDNAME can be your commander.",
+      "cards": 23,
+      "examples": [
+        "Aminatou, the Fateshifter",
+        "Arzakon",
+        "Ashaya's Enduring Bond"
+      ]
+    },
+    {
+      "text": "Look at the top N cards of your library.",
+      "cards": 20,
+      "examples": [
+        "Advice from the Fae",
+        "Blex, Vexing Pest // Search for Blex",
+        "Board the Weatherlight"
+      ]
+    },
+    {
+      "text": "Fading N",
+      "cards": 17,
+      "examples": [
+        "Ancient Hydra",
+        "Blastoderm",
+        "Cloudskate"
+      ]
+    },
+    {
+      "text": "When CARDNAME enters, you take the initiative.",
+      "cards": 17,
+      "examples": [
+        "Aarakocra Sneak",
+        "Avenging Hunter",
+        "Bloodboil Sorcerer"
+      ]
+    },
+    {
+      "text": "Then shuffle.",
+      "cards": 16,
+      "examples": [
+        "Final Parting",
+        "Firemind's Foresight",
+        "Fork in the Road"
+      ]
+    },
+    {
+      "text": "Then that player shuffles.",
+      "cards": 16,
+      "examples": [
+        "Bitter Ordeal",
+        "Denying Wind",
+        "Eternal Dominion"
+      ]
+    },
+    {
+      "text": "You may choose new targets for the copy.",
+      "cards": 16,
+      "examples": [
+        "Doublecast",
+        "Dual Strike",
+        "Expansion // Explosion"
+      ]
+    },
+    {
+      "text": "Choose N.",
+      "cards": 15,
+      "examples": [
+        "Akroma's Will",
+        "Common Black Removal",
+        "Flame of Anor"
+      ]
+    },
+    {
+      "text": "Reveal the top N cards of your library.",
+      "cards": 15,
+      "examples": [
+        "Aethermage's Touch",
+        "Allure of the Unknown",
+        "Animal Magnetism"
+      ]
+    },
+    {
+      "text": "Banding",
+      "cards": 14,
+      "examples": [
+        "Ayesha Tanaka",
+        "Benalish Hero",
+        "Benalish Infantry"
+      ]
+    },
+    {
+      "text": "Hidden agenda",
+      "cards": 14,
+      "examples": [
+        "Adriana's Valor",
+        "Assemble the Rank and Vile",
+        "Brago's Favor"
+      ]
+    },
+    {
+      "text": "They can't be regenerated.",
+      "cards": 14,
+      "examples": [
+        "Consume the Meek",
+        "Dead Ringers",
+        "Do or Die"
+      ]
+    },
+    {
+      "text": "Choose target creature.",
+      "cards": 13,
+      "examples": [
+        "Arcbond",
+        "Attempted Murder",
+        "Die Young"
+      ]
+    },
+    {
+      "text": "Draft CARDNAME face up.",
+      "cards": 13,
+      "examples": [
+        "Agent of Acquisitions",
+        "Animus of Predation",
+        "Archdemon of Paliano"
+      ]
+    },
+    {
+      "text": "When you control no Islands, sacrifice CARDNAME.",
+      "cards": 13,
+      "examples": [
+        "Dandân",
+        "Giant Shark",
+        "Island Fish Jasconius"
+      ]
+    },
+    {
+      "text": "Phasing",
+      "cards": 12,
+      "examples": [
+        "Breezekeeper",
+        "Ertai's Familiar",
+        "Katabatic Winds"
+      ]
+    },
+    {
+      "text": "CARDNAME enters prepared.",
+      "cards": 11,
+      "examples": [
+        "Carnivorous Cultivator // Enroot",
+        "Heartwood Crafter // Soul Tether",
+        "Infirmary Healer // Stream of Life"
+      ]
+    }
+  ]
+}
