@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "233e256fd11945c213057331afb1c9a534bc0dda",
+  "engineSource": "1742cb32485a3bcc7362e651c73853d5148bd1db",
   "validation": {
-    "source": "233e256fd11945c213057331afb1c9a534bc0dda",
-    "evidenceMeaning": "Scoped Molder Beast exact parser/engine/incarnation/cleanup/save/display evidence and targeted eight-name superset. Overall recognition stays pinned to its historical source; no fresh aggregate parser audit or newest-printing/whole-card certificate. Full offline suite passed at ead5a10; final documentation-only head needs its own exact CI.",
-    "local": "8 regression-first failures/40 assertions;31 Molder cases/980 assertions;404 adjacent tests/6540 assertions in6.611sec;three-file Pint and diff-check passed.181-pool targetscan0.859sec:eight names,Molder newly readable,Disciple/Fangren unchanged,five remain unread. Ledger18/37,181pool0.956sec. Full ead5a10b40c3bc4f40755a6b22c20a7ac08f3800 passed1190tests/38958assertions/2expectedimported-data skips in77.684sec with120sec treecap/512MiB/Xdebugoff/emptydata and isolated task-local sys_temp_dir. First full used user-temp and had2 unrelated DraftsTest JsonStore rename errors (1190/38935,79.600sec); focused reproduced1 error, both passed2/23 after isolating temp. No storage fix or root-cause claim.",
-    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40033146349; exact ead5a10b40c3bc4f40755a6b22c20a7ac08f3800 allPHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final documentation-only head requires separate exact CI."
+    "source": "1742cb32485a3bcc7362e651c73853d5148bd1db",
+    "evidenceMeaning": "Scoped Moriok Rigger exact parser/optional counter/incarnation/save/Discord/practice evidence. Overall recognition remains historical; no aggregate parser audit, newest-printing or whole-card certificate. Full suite passed at 567f7c3; final documentation-only head retains identical runtime/test pins and requires its own exact CI.",
+    "local": "8 regression-first failures/40 assertions; final focused64tests/1309assertions, adjacent467/7845 in6.835sec, nine-file Pint and diff-check passed. Targeted181-pool scan0.772sec reparses8names: Moriok newly readable, Disciple/Fangren/Molder unchanged, four remain unread. Ledger18tests/37assertions passed;181pool inventory0.884sec:12scopednames/1gap/0wholecertificates. Full567f7c33fa1885cea945e0171d81af317d2b6aeb passed1253tests/40263assertions/2expected imported-data skips in75.466sec,120sec process-treecap/512MiB/Xdebugoff/emptydata/task-local sys_temp_dir. Focused legacy schema assertion corrected before final successful adjacent/full runs.",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40034640541; exact567f7c33fa1885cea945e0171d81af317d2b6aeb allPHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final documentation-only head requires separate exact CI."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "7b109e72979f6a511340f96dab6612886e27ab72e13f6e960c3d32d4b35df81f",
+    "src/MTGPocket/Game/TextParser.php": "4617693b5aadea84409fed2e6025452331b3d627a02c47ff48f7a10ffc64de3d",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
-    "src/MTGPocket/Game/Game.php": "3207caa3098a00cbb8704491bd1eb669c864987528b117341415eddb76de85ff",
+    "src/MTGPocket/Game/Game.php": "03b0498b30998df9490b9ae06c7d19eed7832da452e37e148da341fcfcd9effe",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -36,21 +36,22 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "e798e08836d4f71c3fe171c7e5cba7bf6a0241fe3a9682636651550c25aeadca",
-    "src/MTGPocket/Matches/PanelActions.php": "9464dfaa68cfbed95ae8bd82b890ac7ff66a971da33a9cbb35c55efb4378b7dd",
-    "src/MTGPocket/Tutorial/PracticeBot.php": "6fe57e936d6b147f94f79c101f3efd08508e7daeb8f761eec9982b97ab8e0a80",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "28515877293067a11e5fb507dfab3acc8043cc50da2fe788ebe53980545fc316",
+    "src/MTGPocket/Matches/PanelActions.php": "550d8d5e8724774e9b6d0a082d35c8ec0e97624a53e8208c96fbf2519f8564a3",
+    "src/MTGPocket/Tutorial/PracticeBot.php": "9797bde80f5a839d64cd7f9f8d8fc343187bfdf887766bd668e0093d00110518",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "c1bbb5879f84eb73d7a98a1026553f4637a2c23036bde9bee7cc813785c60823",
+    "tests/MatchesTest.php": "4713cd2b6b5f39e4ff9a7dc278082d9074458be1a3c4fd65ef2d3f54baf9a0da",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
     "tests/Game/ModernCardTextTest.php": "29c05c412aeec29e46a3177a9a212bb329fa26e4e51e6bb6347ca73eb232370d",
-    "tests/Game/DiscipleBurialChoiceTest.php": "93defab8e01ec3295bed2f6207743c404ba2131ba658dbed95b8dfac5a7f10a0",
+    "tests/Game/DiscipleBurialChoiceTest.php": "81b40810e3c0e86d7011cc5766334c6778abb9d094efe84b9545acb7cff280e2",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
-    "tests/Game/FangrenBurialChoiceTest.php": "e20d38127b19b1f2099c0fb8090b094d8c71fdc0228d2ce79abbed4c817e415e",
-    "tests/Game/MolderBurialBuffTest.php": "a83dc108bc903b1f77c41a43ab5623bf8deb953d574d3d7ca266889bd6136493"
+    "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
+    "tests/Game/MolderBurialBuffTest.php": "a83dc108bc903b1f77c41a43ab5623bf8deb953d574d3d7ca266889bd6136493",
+    "tests/Game/MoriokBurialChoiceTest.php": "321e47036e13dcccca2664f5109d17103367c07e714f405e255a290ef9fc262c"
   },
   "scopedEvidence": [
     {
@@ -271,6 +272,28 @@
       ],
       "scope": "Complete pinned CMR Molder Beast and PLST Shatterstorm paid casts, both active/source/artifact controllers, two +2/+0 triggers, unchanged toughness/trample, original controller and untargeted ability, JSON before burial/queued/between boosts, rendered stats and cleanup expiry. Paid Damnation selected simultaneous departure in both orders; old trigger cannot affect a returned incarnation. Isolated movement/control-change probes distinguish actual burial and current source identity.",
       "limits": "Only selected exact wording and existing temporary self-pump semantics. Shatterstorm and synthetic movement controls are supporting fixtures, not additional certified cards. No generic optional counter, continuous/replacement/conditions/APNAP, newest-printing, whole-card or live-service certification. Aggregate recognition remains historical."
+    },
+    {
+      "id": "all-player-artifact-burial-optional-source-counter",
+      "cards": [
+        "Moriok Rigger"
+      ],
+      "tests": [
+        "tests/Game/MoriokBurialChoiceTest.php::testPaidRiggerAndStolenArtifactsOfferIndependentCountersWithJsonAndCleanup",
+        "tests/Game/MoriokBurialChoiceTest.php::testSuccessiveAcceptedBurialsAccumulatePermanentCounters",
+        "tests/Game/MoriokBurialChoiceTest.php::testWrongStaleInvalidCrossEffectAndRepeatedAnswersPreserveState",
+        "tests/Game/MoriokBurialChoiceTest.php::testDepartedAndReturnedIncarnationsNeverReceiveAnOldCounter",
+        "tests/Game/MoriokBurialChoiceTest.php::testOriginalControllerAnswersAfterSamePermanentChangesControl",
+        "tests/Game/MoriokBurialChoiceTest.php::testOnlyActualArtifactBurialOffersACounter",
+        "tests/Game/MoriokBurialChoiceTest.php::testPracticePolicyUsesTheSamePersistedDecision",
+        "tests/Game/MoriokBurialChoiceTest.php::testLaterEffectsWaitAndResumeExactlyOnceEvenWhenSourceIsGone",
+        "tests/Game/MoriokBurialChoiceTest.php::testMalformedSavedDecisionsAreRejected",
+        "tests/Game/MoriokBurialChoiceTest.php::testVersionNinePendingLifeGainStillResumes",
+        "tests/Game/MoriokBurialChoiceTest.php::testSimultaneouslyBuriedSourceRetainsChoiceWithoutCounteringItsReturn",
+        "tests/MatchesTest.php::testOptionalSourceCounterPanelPersistsAndRejectsWrongOrRepeatedAnswers"
+      ],
+      "scope": "Complete pinned 5DN Moriok and PLST Shatterstorm paid casts; both active/source/artifact controllers and orders, independent original-controller accept/decline without targets, accumulated permanent counters and rendered stats/cleanup. Paid Damnation simultaneous source departure, old incarnation isolation, control change, movement controls, JSON before/queued/pending, schema10 malformed decisions and version9 life gain/version8 life loss, invalid/stale/repeated/cross-effect answers, practice and temporary persisted Discord panels.",
+      "limits": "Selected exact optional source-counter wording only. Synthetic movement/control/continuation probes and supporting spells do not certify other cards or generic continuous/replacement/conditions/APNAP rules. Aggregate recognition remains historical; no newest-printing, whole-card or live-service certificate."
     }
   ],
   "explicitUnsupported": [
@@ -283,16 +306,16 @@
     }
   ],
   "nextFamily": {
-    "id": "all-player-artifact-burial-optional-source-counter",
+    "id": "all-player-artifact-burial-optional-source-untap",
     "cards": [
-      "Moriok Rigger"
+      "Summoning Station"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Complete selected 5DN Moriok Rigger in the same pinned eight-name corpus remains unread: each actual artifact burial may put a +1/+1 counter on this creature. Optional resolution and source-incarnation semantics require separate implementation and evidence.",
+    "scope": "Complete selected 5DN Summoning Station in the same pinned eight-name corpus remains unread only at its optional all-player artifact-burial untap clause. Existing tap token activation is recognized, not yet verified as part of this complete record.",
     "acceptance": [
-      "Pin complete record and reproduce unread wording before implementation.",
-      "Paid cast and both artifact controllers; independent accept/decline decisions by original trigger controller, multiple triggers, departed/returned incarnation, JSON and invalid/stale/repeated answers.",
-      "Verify Discord controls/practice policy and permanent counters without end-of-turn expiry; retain existing life choices and temporary Molder boost, measure only targeted candidates."
+      "Reproduce complete-record unread clause and pin fixture before implementation.",
+      "Paid cast and tap activation; independent original-controller accept/decline untap decisions, both artifact controllers, multiple triggers, tapped/already-untapped and departed/returned source identity.",
+      "Persist choices/continuations; reject invalid/stale/repeated answers; verify Discord/practice controls and targeted candidate accounting without changing aggregate recognition claims."
     ],
     "deferred": [
       "Newest-printing and whole-card certification",
