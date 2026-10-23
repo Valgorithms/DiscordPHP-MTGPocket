@@ -5104,6 +5104,7 @@ final class Game
                     'permanent' => true,
                     default => $o->definition()->is(ucfirst($effect['kind'])),
                 };
+                $victims = [];
                 foreach ($seats as $seat) {
                     $fitting = $fits;
                     // `… the creature with the greatest power among creatures they control.`: a tie goes to the weakest of them.
@@ -5115,11 +5116,15 @@ final class Game
                             $fitting = fn (GameObject $o) => $fits($o) && $measure($o) === $best;
                         }
                     }
-                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, $fitting)) !== null; $i++) {
-                        $this->log("{$this->players[$seat]->name} sacrifices {$victim->name()}.");
-                        $this->sacrifice($victim);
+                    for ($i = 0; $i < $amount && ($victim = $this->weakest($seat, fn (GameObject $o) => $fitting($o) && ! isset($victims[$o->id]))) !== null; $i++) {
+                        $victims[$victim->id] = $victim;
                     }
                 }
+                // All players' selections belong to one event, even when an observer is among them.
+                $this->withDeathObservers(array_values($victims), function (GameObject $victim): void {
+                    $this->log("{$this->players[$victim->controller]->name} sacrifices {$victim->name()}.");
+                    $this->sacrifice($victim);
+                });
                 break;
 
             case 'cascade':
