@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "aeacce90de6b6eaaf7a988ed136e0a9127212cef",
+  "engineSource": "309565eb6209f976b8a195c16da01f4079b3a055",
   "validation": {
-    "evidenceMeaning": "Focused offline runtime checks passed. Full local suite and exact-head CI are pending for this successor; ledger generation does not rerun behavior tests.",
-    "local": "146 focused/adjacent tests, 1748 assertions; exit 0; seven-file Pint passed",
-    "source": "aeacce90de6b6eaaf7a988ed136e0a9127212cef",
-    "ci": "Pending exact-head PR verification"
+    "evidenceMeaning": "Focused offline checks passed after saved-continuation review. A preceding runtime passed the full suite/CI, but the final full suite and exact-head CI must be refreshed for this runtime. Ledger generation does not rerun behavior tests.",
+    "local": "151 focused/adjacent tests, 1790 assertions; exit 0; all changed PHP files pass Pint",
+    "source": "309565eb6209f976b8a195c16da01f4079b3a055",
+    "ci": "Pending exact-head PR verification after continuation review"
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
-    "src/MTGPocket/Game/Game.php": "0c970087d5f9b6f3630c9e511ead85db0f7786da318f3d6c91a602d645d26c43",
+    "src/MTGPocket/Game/Game.php": "9f3de43c5a641d05926cadceaa9633927e35a81751a35d25e08a8d69b5b5ff6f",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -39,7 +39,7 @@
     "src/MTGPocket/Builders/MatchMessageBuilder.php": "e1b43a38838219ccc99e658dcd256801cb9575a51f957ed20f1a3ed6e636007a",
     "src/MTGPocket/Matches/PanelActions.php": "a10d145c96c5a82179096e644732dac42b5141d1bdc4e1267740e3facb54a338",
     "src/MTGPocket/Tutorial/PracticeBot.php": "f3e9e3f9a6f2a167e85bf0a9e87603a37bd24947920fe005e2dedbb7c8eb22fe",
-    "tests/Game/EdictChoiceTest.php": "5794175bd0a8d3330f8a8ae9a4c540d82877927377e8783964041246dbfedb7f",
+    "tests/Game/EdictChoiceTest.php": "127408fc3a0e9f9c355304d5ac7217d355a91faf696b32d2d5a9410d0509dcfd",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
     "tests/MatchesTest.php": "a0b1f8d53f6570b29f00a1b760dea0cb72beb2b24d5e334f9f6a95a336006e41"
   },
@@ -134,9 +134,10 @@
         "tests/Game/EdictChoiceTest.php::testVersionFourLoadsAndNewChoicesRequireVersionFive",
         "tests/Game/EdictChoiceTest.php::testMalformedSavedChoicesAreRejected",
         "tests/Game/EdictChoiceTest.php::testOnlyThePlayerWithExtraCreaturesMustChoose",
-        "tests/MatchesTest.php::testSacrificePanelKeepsPagedSelectionsAndRejectsStaleOrIllegalAnswers"
+        "tests/MatchesTest.php::testSacrificePanelKeepsPagedSelectionsAndRejectsStaleOrIllegalAnswers",
+        "tests/Game/EdictChoiceTest.php::testAnEntryAbilityResumesAfterItsOwnSourceIsSacrificed"
       ],
-      "scope": "Exact pinned paid Barter with extra creatures, both active seats, explicit selections collected before any moves, retained Zulaport/Grim death triggers, invalid/stale/no-partial-mutation controls, JSON replay at both choices, forced zero/fewer/exact counts, practice policy and persisted 27-creature Discord pagination. Saved-state version 5 with version-4 migration and malformed-choice rejection.",
+      "scope": "Exact pinned paid Barter with extra creatures, both active seats, explicit selections collected before any moves, retained Zulaport/Grim death triggers, invalid/stale/no-partial-mutation controls, JSON replay at both choices, forced zero/fewer/exact counts, practice policy and persisted 27-creature Discord pagination. Saved-state version 5 with version-4 migration and malformed-choice rejection. Synthetic entry-trigger continuation survives its own source being sacrificed; malformed resume instruction controls.",
       "limits": "Selected each-player creature-edict decisions only. Targeted/opponent/greatest-power edicts keep their previous policies. No sacrifice-cost, sacrifice-specific observer, general replacement/continuous snapshot, general APNAP trigger-order decision, live Discord or whole-card certification. Synthetic supporting fixtures certify no additional corpus names."
     }
   ],
