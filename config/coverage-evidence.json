@@ -12,9 +12,9 @@
   "engineSource": "a2d07ed6cd726aacdd156710293839ffa679c97d",
   "validation": {
     "source": "a2d07ed6cd726aacdd156710293839ffa679c97d",
-    "evidenceMeaning": "Scoped Fangren parser/engine/save/UI tests and targeted eight-name superset. Historical aggregate recognition remains pinned to its original source; no full parser audit, newest-printing or whole-card certificate. Full suite and exact final CI pending.",
-    "local": "8 baseline failures/40assertions. 52Fangren cases;100focused2060assertions with Disciple/UI;351adjacent5440assertions before final legacy/cross-choice probes, subsequently focused-tested.2finalDiscordroutes40assertions;8-filePint plus final new-test Pint.181pool targetscan2.222sec,eightnames,Fangren now readable,Disciple unchanged,six others unread.",
-    "ci": "pending"
+    "evidenceMeaning": "Scoped Fangren parser/engine/save/UI tests and targeted eight-name superset. Historical aggregate recognition remains pinned to its original source; no full parser audit, newest-printing or whole-card certificate. Full offline suite passed at2966271; final documentation-only commit requires separate exact CI.",
+    "local": "8 baseline failures/40assertions. 52Fangren cases;100focused2060assertions with Disciple/UI;351adjacent5440assertions before final legacy/cross-choice probes, subsequently focused-tested.2finalDiscordroutes40assertions;8-filePint plus final new-test Pint.181pool targetscan2.222sec,eightnames,Fangren now readable,Disciple unchanged,six others unread. Full29662711371030e8867cd5feb947526f9bd88dcb:1159tests37979assertions2expectedimported-data skips,76.638sec/120sectreecap/512MiB/Xdebugoff/emptydata; ledger18tests37assertions/181pool0.939sec.",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40027019706; exact29662711371030e8867cd5feb947526f9bd88dcb allPHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final documentation-only head requires separate CI."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "6478a5028b5313758b43d38f47933371f1df6d61e77ded615663c1f530a00136",
