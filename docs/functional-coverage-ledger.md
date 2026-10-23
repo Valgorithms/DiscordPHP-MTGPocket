@@ -52,3 +52,5 @@ The [resumable edict milestone](resumable-edict-choices.md) closes the exact Bar
 ## Verification
 
 `FunctionalCoverageLedgerTest` covers stable newest-printing selection and back-face hashing, report/source/corpus drift, duplicate/unknown recognition, overlapping evidence/gaps, absent test pins, missing limitations, attempted certificate inflation and explicit-path CLI success/failure with temporary storage. The pinned index and source hashes are also checked in ordinary offline CI. The real 181-pool ledger regenerated in 0.832 seconds under a 30-second process-tree cap and 512 MiB PHP limit; all counts and the selected fingerprint above matched. This is inventory validation, not a fresh parser audit or gameplay simulation.
+
+The [departed-source statistics milestone](departed-source-statistics.md) adds scoped counter/temporary-power and per-incarnation evidence for the existing Marionette Master exemplar; it adds no new corpus names or certificates. Next is the separately unread complete Disciple optional/all-player ability, retaining real targeting and resolution choices. Recognition remains unchanged until measured parser changes.

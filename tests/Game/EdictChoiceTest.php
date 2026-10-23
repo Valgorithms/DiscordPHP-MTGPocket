@@ -178,7 +178,7 @@ final class EdictChoiceTest extends GameTestCase
     {
         [$cards] = $this->begin();
         $saved = $this->saved();
-        $this->assertSame(5, $saved['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $saved['schemaVersion']);
         foreach ([4, 5] as $version) {
             $bad = $saved;
             $bad['schemaVersion'] = $version;
@@ -194,7 +194,7 @@ final class EdictChoiceTest extends GameTestCase
         }
         $legacy = $this->newGame()->toArray();
         $legacy['schemaVersion'] = 4;
-        $this->assertSame(5, Game::fromArray($legacy)->toArray()['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, Game::fromArray($legacy)->toArray()['schemaVersion']);
     }
 
     /** @dataProvider invalidSavedChoices */

@@ -14,15 +14,18 @@ declare(strict_types=1);
 namespace MTGPocket\Game;
 
 /**
- * The static definition and current creature status before a permanent
- * leaves the battlefield. This is not a complete last-known-state model.
- * Only event dispatch/filtering uses it; saved triggers contain effects.
+ * The battlefield definition, creature status and optional pre-group statistics.
+ * Event filters use the definition/status; selected departures can retain the
+ * statistics before earlier movements change the battlefield. This is not a
+ * complete continuous-effect or replacement model.
  */
 final class DepartureCharacteristics
 {
     public function __construct(
         public readonly CardDefinition $definition,
         public readonly bool $isCreature,
+        public readonly ?int $power = null,
+        public readonly ?int $toughness = null,
     ) {
     }
 }
