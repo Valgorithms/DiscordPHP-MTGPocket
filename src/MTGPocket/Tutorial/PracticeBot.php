@@ -106,6 +106,12 @@ final class PracticeBot
                 $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
 
                 return true;
+            case 'optional_source_untap':
+                // Explicit policy, including a harmless accept if the old source is gone.
+                $game->chooseOptionalSourceUntap($seat, $game->choiceAwaiting()['id'], 'accept');
+
+                return true;
+
             case 'optional_source_counter':
                 // Explicit policy, including a harmless accept if the old source is gone.
                 $game->chooseOptionalSourceCounter($seat, $game->choiceAwaiting()['id'], 'accept');

@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Exact optional source untap; the original controller makes the decision.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may untap CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_source_untap']]];
+
+            return true;
+        }
         // Exact optional source-counter wording; keep its decision separate from life choices.
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may put a +1/+1 counter on CARDNAME.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',

@@ -1,0 +1,27 @@
+{
+  "setCode": "M13",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "bf9f48d0-70bb-59e6-9bb7-116a924204a4",
+    "name": "Smelt",
+    "number": "149",
+    "rarity": "common",
+    "colors": [
+      "R"
+    ],
+    "manaValue": 1,
+    "type": "Instant",
+    "scryfallId": "723cb7e3-3f48-41fa-aa08-bdc59225e44f",
+    "manaCost": "{R}",
+    "types": [
+      "Instant"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Destroy target artifact.",
+    "layout": "normal",
+    "colorIdentity": [
+      "R"
+    ]
+  }
+}
