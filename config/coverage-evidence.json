@@ -11,10 +11,10 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "309565eb6209f976b8a195c16da01f4079b3a055",
   "validation": {
-    "evidenceMeaning": "Focused offline checks passed after saved-continuation review. A preceding runtime passed the full suite/CI, but the final full suite and exact-head CI must be refreshed for this runtime. Ledger generation does not rerun behavior tests.",
-    "local": "151 focused/adjacent tests, 1790 assertions; exit 0; all changed PHP files pass Pint",
-    "source": "309565eb6209f976b8a195c16da01f4079b3a055",
-    "ci": "Pending exact-head PR verification after continuation review"
+    "evidenceMeaning": "Exact-head historical full offline suite with identical pinned engine/test/companion bytes; ledger generation does not rerun behavior tests. Metadata-only successors reuse local runtime results and require their own exact-head CI.",
+    "local": "912 tests, 33813 assertions, 2 expected imported-data skips; exit 0 in 69.332 seconds",
+    "source": "537f15bcfdd919ad430b443cef9492f4024da47a",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/39995751417"
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
