@@ -4,7 +4,7 @@ Artifact, enchantment, land and subtype departure observers now check the depart
 
 `Game::moveTo()` passes its existing captured definition to the three typed departure observer families. The artifact-event gate uses that same definition. A departing observer included in its own event also selects abilities from that definition; surviving observers retain their own current definitions. `trigger()` passes the existing context definition through the optional static-definition argument of `objectFits()`. Other object-fit callers retain their current behavior, including recursive compound filters.
 
-This is bounded static type/subtype look-back under [Comprehensive Rules 603.10 and 603.10a](https://media.wizards.com/2026/downloads/MagicCompRules%2020260619.pdf), not general last-known state. Animation, devotion/bestow and other effects changing creature status, continuous subtype changes, gained/lost abilities, reset-state trigger conditions and simultaneous departing observers need separate handling. No additional trigger arguments, persisted fields, parser matches or configuration are introduced.
+This milestone adds bounded static type/subtype look-back under [Comprehensive Rules 603.10 and 603.10a](https://media.wizards.com/2026/downloads/MagicCompRules%2020260619.pdf). The subsequent [creature-status snapshot](departure-creature-status.md) also captures the engine's current creature flag. General last-known state, continuous subtype changes, gained/lost abilities, reset-state trigger conditions and simultaneous departing observers still need separate handling. No additional trigger arguments, persisted fields, parser matches or configuration are introduced.
 
 ## Evidence
 
