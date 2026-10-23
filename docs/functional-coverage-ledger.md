@@ -68,3 +68,7 @@ The [Moriok milestone](moriok-rigger-optional-counter.md) adds explicit accept/d
 ## Summoning Station optional source untap (2026-10-23)
 
 The [Station milestone](summoning-station-optional-untap.md) adds explicit untap/decline, paid tap-token activation and repeated activation, original-incarnation isolation, schema11 and Discord/practice controls. It also reproduces and fixes stun replacement in the shared single-permanent untap effect. Thirteen scoped names/one gap/zero whole-card certificates remain separate from the historical aggregate recognition. The eight-name targeted scan has five readable records and three unread; Krenko's optional red-payment token is the next measured seed.
+
+## Krenko optional red payment (2026-10-23)
+
+The [Krenko milestone](krenko-optional-red-goblin.md) adds original-controller pay/decline, ordinary mana legality, one red Goblin with temporary haste, schema 12 and Discord/practice controls. Paid cast, printed activation, Smelt and simultaneous Damnation tests remain scoped evidence. Fourteen scoped names, one explicit gap and zero whole-card certificates remain separate from historical aggregate recognition. Six of the targeted eight records are readable; Ich-Tekik and Joven and Chandler retain unread clauses. Ich-Tekik source/Golem counters are the next bounded seed; its Partner clause stays separate.
