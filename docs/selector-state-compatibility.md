@@ -1,6 +1,8 @@
 # Proposed selector saved-state contract
 
-This is a local, unpublished source proposal for parent review. No tests, builds, corpus scans, or historical-reader probes were run for this compatibility delta while source-only work was requested. The previous 8-test / 70-assertion result applies to selector preparation commit `3109819dd69afbe175890fdc42af29f9f88fe761`, before this version change.
+This is a local, unpublished proposal. Recovery resumed on 2026-10-23 in the existing DiscordPHP coordinator after the original task stopped accepting turns. The Projects coordinator took ownership of the unreachable parent's resource deferral and cleared one serial offline PHP slice with a hard 30-second process-tree timeout. Broad tests, corpus scans and long games remain subject to separate resource reconciliation.
+
+The first cleared run at `5e69c4b` executed `SelectorStateCompatibilityTest` on PHP 8.5.12: 5 tests, 18 assertions, 1 failure in 0.957 seconds. The strict saved-array assertion compared pre-JSON `manaValue: 0.0` with decoded `0`. The test now compares the actual JSON-decoded persisted record without weakening strict equality; its rerun is pending. No compatibility pass is claimed. The previous 8-test / 70-assertion result applies to selector preparation commit `3109819dd69afbe175890fdc42af29f9f88fe761`, before this version change.
 
 ## Narrow runtime delta
 
@@ -46,3 +48,7 @@ Byte-exact reader snapshots have been extracted from the existing local Git obje
 The task-local offline probes are prepared to generate a pending union-ability fixture with the new writer, verify both old readers reject it, then generate actual version-3 fixtures with each historical writer. Those historical fixtures include a pending ordinary damage ability and a delayed draw. The new reader must preserve their state except for the schema label, deal the damage once, and draw once at the next upkeep. These complement the synthetic version-3 unit case; neither direction has been executed under the source-only hold.
 
 No selector PR should be published while these compatibility checks are unverified. General simultaneous death/leave handling remains an inherited limitation requiring separate review; this version gate only prevents older builds from silently interpreting new saved semantics.
+
+## Reusable checks
+
+The prepared probes are now versioned under [bin/selector-compatibility](../bin/selector-compatibility/README.md). They use ignored `var/selector-compatibility` for extracted sources and fixtures, so continuation does not depend on a particular chat directory. Historical writers and readers check the extracted source hashes. Their execution remains pending; the original task-local scripts and evidence are preserved unchanged.

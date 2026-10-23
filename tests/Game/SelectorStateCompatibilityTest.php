@@ -43,11 +43,12 @@ final class SelectorStateCompatibilityTest extends GameTestCase
         $enchantment = $game->addCard(1, ['name' => 'Enchantment Fixture', 'type' => 'Enchantment'], GameObject::BATTLEFIELD)->id;
         $walker = $this->battlefield(1, 'Chandra, Pyrogenius');
         $game->activate(0, $device, 0);
-        $saved = $game->toArray();
+        // Compare the persisted JSON contract, including JSON's numeric normalization.
+        $saved = json_decode(json_encode($game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame(4, $saved['schemaVersion']);
         $this->assertSame('all artifacts, creatures, and lands', $saved['stack'][0]['effects'][0]['all']);
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($device));
-        $this->game = Game::fromArray(json_decode(json_encode($saved, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
+        $this->game = Game::fromArray($saved);
         $this->assertSame($saved, $this->game->toArray());
         $this->resolve();
         foreach ([$land, $bear] as $id) {
