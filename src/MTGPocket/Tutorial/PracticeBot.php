@@ -106,6 +106,12 @@ final class PracticeBot
                 $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
 
                 return true;
+            case 'optional_red_goblin':
+                // Explicit policy: buy the Goblin when the normal mana planner can pay.
+                $game->chooseOptionalRedGoblin($seat, $game->choiceAwaiting()['id'], $game->canPayOptionalRedGoblin($seat) ? 'accept' : 'decline');
+
+                return true;
+
             case 'optional_source_untap':
                 // Explicit policy, including a harmless accept if the old source is gone.
                 $game->chooseOptionalSourceUntap($seat, $game->choiceAwaiting()['id'], 'accept');
