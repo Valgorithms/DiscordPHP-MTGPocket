@@ -6212,17 +6212,17 @@ final class Game
     /**
      * Queues a permanent's abilities that trigger on an event (rule 603.2).
      *
-     * @param GameObject          $source
-     * @param string              $event             See {@see CardDefinition::triggersOn()}.
-     * @param int                 $controller        Who controlled the source when the event happened.
-     * @param int|null            $incarnation       The source's, if it has since changed zones.
-     * @param int                 $context           For modular, the +1/+1 counters it died with; for graft, the creature that entered.
-     * @param CardDefinition|null $contextDefinition The departing permanent's static battlefield face for type/subtype observers.
-     * @param CardDefinition|null $sourceDefinition  The departing source's battlefield face for its own departure abilities.
+     * @param GameObject                    $source
+     * @param string                        $event                  See {@see CardDefinition::triggersOn()}.
+     * @param int                           $controller             Who controlled the source when the event happened.
+     * @param int|null                      $incarnation            The source's, if it has since changed zones.
+     * @param int                           $context                For modular, the +1/+1 counters it died with; for graft, the creature that entered.
+     * @param DepartureCharacteristics|null $contextCharacteristics The departing permanent's battlefield definition and current creature status.
+     * @param CardDefinition|null           $sourceDefinition       The departing source's battlefield face for its own departure abilities.
      *
      * @return void
      */
-    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0, ?CardDefinition $contextDefinition = null, ?CardDefinition $sourceDefinition = null): void
+    private function trigger(GameObject $source, string $event, int $controller, ?int $incarnation = null, int $context = 0, ?DepartureCharacteristics $contextCharacteristics = null, ?CardDefinition $sourceDefinition = null): void
     {
         $definition = $sourceDefinition ?? $source->definition();
         foreach ($definition->triggersOn($event) as $ability) {
@@ -6253,11 +6253,11 @@ final class Game
                 default => $effect,
             }, $ability['effects']);
             if (isset($ability['subtype']) && (($ability['other'] ?? false) && $context === $source->id
-                || ! in_array($ability['subtype'], ($contextDefinition ?? ($this->objects[$context] ?? null)?->definition())?->subtypes ?? [], true))) {
+                || ! in_array($ability['subtype'], ($contextCharacteristics?->definition ?? ($this->objects[$context] ?? null)?->definition())?->subtypes ?? [], true))) {
                 continue;
             }
             // `Whenever you sacrifice another creature, …`: the permanent sacrificed (see Game::sacrifice()).
-            if (isset($ability['objectKind']) && (($ability['other'] ?? false) && $context === $source->id || ! $this->objectFits($this->objects[$context], $ability['objectKind'], $contextDefinition))) {
+            if (isset($ability['objectKind']) && (($ability['other'] ?? false) && $context === $source->id || ! $this->objectFits($this->objects[$context], $ability['objectKind'], $contextCharacteristics))) {
                 continue;
             }
             // `Whenever a nontoken creature you control dies, …`: the creature that died, or this one (whose context is its +1/+1 counters).
@@ -6833,16 +6833,17 @@ final class Game
      *
      * @param GameObject $object
      * @param string     $kind   `permanent`, `creature`, `noncreature`, `token`, `nontoken creature`, `instant or sorcery`, `multicolored`, `mana value N or greater` (or less), a card type or a subtype.
-     * @param CardDefinition|null $definition Static battlefield definition for departure type/subtype observers.
+     * @param DepartureCharacteristics|null $characteristics Battlefield definition/status for departure type/subtype observers; other filters still use current object state.
      *
      * @return bool
      */
-    private function objectFits(GameObject $object, string $kind, ?CardDefinition $definition = null): bool
+    private function objectFits(GameObject $object, string $kind, ?DepartureCharacteristics $characteristics = null): bool
     {
-        $card = $definition ?? $object->definition();
+        $card = $characteristics?->definition ?? $object->definition();
+        $isCreature = $characteristics?->isCreature ?? $card->is('Creature');
         // `a creature spell with mana value 5 or greater`: both.
         if (preg_match('/^(creature|noncreature|artifact|enchantment) with (mana value \d+ or (?:greater|less))$/', $kind, $match)) {
-            return $this->objectFits($object, $match[1], $definition) && $this->objectFits($object, $match[2], $definition);
+            return $this->objectFits($object, $match[1], $characteristics) && $this->objectFits($object, $match[2], $characteristics);
         }
         // `a spell with mana value 5 or greater`: X counts on the stack (rule 202.3e).
         if (preg_match('/^mana value (\d+) or (greater|less)$/', $kind, $match)) {
@@ -6858,26 +6859,27 @@ final class Game
         }
         // `a creature you control with flying`: as it is now.
         if (preg_match('/^creature with ([a-z ]+)$/', $kind, $match) && ! str_contains($kind, 'or greater')) {
-            return $card->is('Creature') && $this->hasKeyword($object, $match[1]);
+            return $isCreature && $this->hasKeyword($object, $match[1]);
         }
         // `a creature spell with power 4 or greater`: as printed, or as it is on the battlefield.
         if (preg_match('/^creature with (power|toughness) (\d+) or greater$/', $kind, $match)) {
             $onField = $object->zone === GameObject::BATTLEFIELD;
             $value = $match[1] === 'power' ? ($onField ? $this->power($object) : (int) $card->power) : ($onField ? $this->toughness($object) : (int) $card->toughness);
 
-            return $card->is('Creature') && $value >= (int) $match[2];
+            return $isCreature && $value >= (int) $match[2];
         }
 
         return match ($kind) {
             'permanent' => true,
             'token' => $card->isToken(),
-            'nontoken creature' => ! $card->isToken() && $card->is('Creature'),
+            'nontoken creature' => ! $card->isToken() && $isCreature,
             'nontoken artifact' => ! $card->isToken() && $card->is('Artifact'),
-            'creature token' => $card->isToken() && $card->is('Creature'),
-            'artifact creature' => $card->is('Artifact') && $card->is('Creature'),
+            'creature token' => $card->isToken() && $isCreature,
+            'artifact creature' => $card->is('Artifact') && $isCreature,
             'nontoken permanent' => ! $card->isToken(),
-            'creature', 'artifact', 'enchantment', 'land' => $card->is(ucfirst($kind)),
-            'noncreature', 'noncreature permanent' => ! $card->is('Creature'),
+            'creature' => $isCreature,
+            'artifact', 'enchantment', 'land' => $card->is(ucfirst($kind)),
+            'noncreature', 'noncreature permanent' => ! $isCreature,
             'instant or sorcery' => $card->is('Instant') || $card->is('Sorcery'),
             'historic' => $card->is('Artifact') || in_array('Legendary', $card->supertypes, true) || in_array('Saga', $card->subtypes, true),
             'multicolored' => count($card->colors) > 1,
@@ -9207,9 +9209,10 @@ final class Game
             $this->nonlandLeftTurn = $this->turn;
         }
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
-        $dies = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD && $this->isCreature($object);
-        // Departure abilities look at the battlefield face, before movement clears transform/morph state.
-        $departingDefinition = $leaves ? $object->definition() : null;
+        // Capture before movement clears animation, counters, attachments and transform/morph state.
+        $departingCharacteristics = $leaves ? new DepartureCharacteristics($object->definition(), $this->isCreature($object)) : null;
+        $departingDefinition = $departingCharacteristics?->definition;
+        $dies = $toGraveyard && $departingCharacteristics->isCreature;
         $plusCounters = $object->counter('+1/+1');
         $diedPower = $dies ? $this->power($object) : 0;
         $damagedBy = $object->damagedBy;
@@ -9263,7 +9266,7 @@ final class Game
             // `Whenever another creature (you control) dies, …`
             // $dies captured creature status before the move; animation is gone in the graveyard.
             foreach ($this->permanents() as $permanent) {
-                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id, $departingDefinition);
+                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id, $departingCharacteristics);
             }
             // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
             foreach ($owner->graveyard as $other) {
@@ -9300,12 +9303,12 @@ final class Game
             // `Whenever an artifact you control is put into a graveyard from the battlefield, …`: itself included.
             if ($departingDefinition?->is('Artifact')) {
                 foreach ([$object, ...$this->permanents($controller)] as $permanent) {
-                    $this->trigger($permanent, 'artifact_to_graveyard', $controller, null, $object->id, $departingDefinition, $permanent === $object ? $departingDefinition : null);
+                    $this->trigger($permanent, 'artifact_to_graveyard', $controller, null, $object->id, $departingCharacteristics, $permanent === $object ? $departingDefinition : null);
                 }
             }
             // `Whenever a land (an enchantment, a Treasure) you control is put into a graveyard from the battlefield, …`
             foreach ([$object, ...$this->permanents($controller)] as $permanent) {
-                $this->trigger($permanent, 'permanent_to_graveyard_yours', $controller, null, $object->id, $departingDefinition, $permanent === $object ? $departingDefinition : null);
+                $this->trigger($permanent, 'permanent_to_graveyard_yours', $controller, null, $object->id, $departingCharacteristics, $permanent === $object ? $departingDefinition : null);
             }
         }
         // `When CARDNAME leaves the battlefield, …`
@@ -9313,7 +9316,7 @@ final class Game
             $this->trigger($object, 'leaves', $controller, $incarnation, sourceDefinition: $departingDefinition);
             // `Whenever a creature you control leaves the battlefield, …`: itself included.
             foreach ([$object, ...$this->permanents($controller)] as $permanent) {
-                $this->trigger($permanent, 'permanent_leaves_yours', $controller, null, $object->id, $departingDefinition, $permanent === $object ? $departingDefinition : null);
+                $this->trigger($permanent, 'permanent_leaves_yours', $controller, null, $object->id, $departingCharacteristics, $permanent === $object ? $departingDefinition : null);
             }
         }
         // `When CARDNAME is put into a graveyard from anywhere, shuffle it into its owner's library.`: the card in the graveyard.
