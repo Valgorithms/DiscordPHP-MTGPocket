@@ -1,0 +1,267 @@
+{
+  "source": "Existing read-only pools; literal fragment candidate extraction, no full parser audit",
+  "corpus": {
+    "pools": 181,
+    "mtgjsonVersions": [
+      "5.3.0+20261022"
+    ],
+    "selectedCardsSha256": "5583556fcc237fcaa5ebbf03c598644c4657773bd3bd415acb176ef779ed9fe1"
+  },
+  "fragment": "an artifact is put into a graveyard from the battlefield",
+  "selectedNames": 28729,
+  "candidates": [
+    {
+      "setCode": "2XM",
+      "card": {
+        "uuid": "23ab39a0-1531-586d-b0e6-d47e23a2ba7e",
+        "name": "Disciple of the Vault",
+        "number": "86",
+        "rarity": "uncommon",
+        "colors": [
+          "B"
+        ],
+        "manaValue": 1,
+        "type": "Creature — Human Cleric",
+        "scryfallId": "4c539843-4e3f-47a7-92e1-412eaaa2d9c5",
+        "manaCost": "{B}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Cleric"
+        ],
+        "power": "1",
+        "toughness": "1",
+        "text": "Whenever an artifact is put into a graveyard from the battlefield, you may have target opponent lose 1 life.",
+        "layout": "normal",
+        "colorIdentity": [
+          "B"
+        ]
+      }
+    },
+    {
+      "setCode": "PLST",
+      "card": {
+        "uuid": "4eb39ba0-12a9-5050-a83a-ca18a2b37b1f",
+        "name": "Fangren Marauder",
+        "number": "MBS-79",
+        "rarity": "common",
+        "colors": [
+          "G"
+        ],
+        "manaValue": 6,
+        "type": "Creature — Beast",
+        "scryfallId": "5315d3d0-72b4-4006-840c-1ec2a1e743fd",
+        "manaCost": "{5}{G}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Beast"
+        ],
+        "power": "5",
+        "toughness": "5",
+        "text": "Whenever an artifact is put into a graveyard from the battlefield, you may gain 5 life.",
+        "layout": "normal",
+        "colorIdentity": [
+          "G"
+        ]
+      }
+    },
+    {
+      "setCode": "CMR",
+      "card": {
+        "uuid": "9767c0a3-2584-5383-8eeb-6873f4f20ba6",
+        "name": "Ich-Tekik, Salvage Splicer",
+        "number": "233",
+        "rarity": "uncommon",
+        "colors": [
+          "G"
+        ],
+        "manaValue": 5,
+        "type": "Legendary Creature — Phyrexian Human Artificer",
+        "scryfallId": "0409a15a-7cf6-43e5-958c-d23da4304f29",
+        "manaCost": "{4}{G}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [
+          "Legendary"
+        ],
+        "subtypes": [
+          "Phyrexian",
+          "Human",
+          "Artificer"
+        ],
+        "power": "1",
+        "toughness": "1",
+        "text": "When Ich-Tekik enters, create a 3/3 colorless Phyrexian Golem artifact creature token.\nWhenever an artifact is put into a graveyard from the battlefield, put a +1/+1 counter on Ich-Tekik and a +1/+1 counter on each Golem you control.\nPartner (You can have two commanders if both have partner.)",
+        "keywords": [
+          "Partner"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "G"
+        ]
+      }
+    },
+    {
+      "setCode": "MBC",
+      "card": {
+        "uuid": "6e88e450-3e9c-575e-96b2-6b0ac6a9434d",
+        "name": "Joven and Chandler",
+        "number": "24",
+        "rarity": "rare",
+        "colors": [
+          "R"
+        ],
+        "manaValue": 5,
+        "type": "Legendary Creature — Human Rogue",
+        "scryfallId": "3555172f-2015-450e-bcc1-94c4a2cff194",
+        "manaCost": "{2}{R}{R}{R}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [
+          "Legendary"
+        ],
+        "subtypes": [
+          "Human",
+          "Rogue"
+        ],
+        "power": "3",
+        "toughness": "3",
+        "text": "Whenever an artifact is put into a graveyard from the battlefield, put a number of +1/+1 counters equal to that artifact's mana value on Joven and Chandler.\n{R}{R}{R}, {T}: Gain control of target artifact until end of turn. Untap it. It gains haste until end of turn.",
+        "layout": "normal",
+        "colorIdentity": [
+          "R"
+        ]
+      }
+    },
+    {
+      "setCode": "MKM",
+      "card": {
+        "uuid": "026a8fcb-c5db-50c9-9c9c-13db04701f21",
+        "name": "Krenko, Baron of Tin Street",
+        "number": "135",
+        "rarity": "rare",
+        "colors": [
+          "R"
+        ],
+        "manaValue": 3,
+        "type": "Legendary Creature — Goblin",
+        "scryfallId": "5524b712-c67d-4d2e-9344-9e85a6ce3227",
+        "manaCost": "{2}{R}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [
+          "Legendary"
+        ],
+        "subtypes": [
+          "Goblin"
+        ],
+        "power": "3",
+        "toughness": "3",
+        "text": "Haste\n{T}, Sacrifice an artifact: Put a +1/+1 counter on each Goblin you control.\nWhenever an artifact is put into a graveyard from the battlefield, you may pay {R}. If you do, create a 1/1 red Goblin creature token. It gains haste until end of turn.",
+        "keywords": [
+          "Haste"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "R"
+        ]
+      }
+    },
+    {
+      "setCode": "CMR",
+      "card": {
+        "uuid": "28682398-1b11-5f20-b87c-d2d57835060e",
+        "name": "Molder Beast",
+        "number": "243",
+        "rarity": "common",
+        "colors": [
+          "G"
+        ],
+        "manaValue": 5,
+        "type": "Creature — Beast",
+        "scryfallId": "1636f571-43ed-4b60-b5d9-129ff94dd0fa",
+        "manaCost": "{4}{G}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Beast"
+        ],
+        "power": "5",
+        "toughness": "3",
+        "text": "Trample\nWhenever an artifact is put into a graveyard from the battlefield, this creature gets +2/+0 until end of turn.",
+        "keywords": [
+          "Trample"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "G"
+        ]
+      }
+    },
+    {
+      "setCode": "5DN",
+      "card": {
+        "uuid": "0bb7d751-e71c-5e5e-8a39-1de6aca509ca",
+        "name": "Moriok Rigger",
+        "number": "54",
+        "rarity": "rare",
+        "colors": [
+          "B"
+        ],
+        "manaValue": 3,
+        "type": "Creature — Human Rogue Rigger",
+        "scryfallId": "47ffdeb8-52d2-4059-b9c6-0ad71b96516a",
+        "manaCost": "{2}{B}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Rogue",
+          "Rigger"
+        ],
+        "power": "2",
+        "toughness": "2",
+        "text": "Whenever an artifact is put into a graveyard from the battlefield, you may put a +1/+1 counter on this creature.",
+        "layout": "normal",
+        "colorIdentity": [
+          "B"
+        ]
+      }
+    },
+    {
+      "setCode": "5DN",
+      "card": {
+        "uuid": "972dafe2-254f-520f-be72-cb21ac19a5c4",
+        "name": "Summoning Station",
+        "number": "158",
+        "rarity": "rare",
+        "colors": [],
+        "manaValue": 7,
+        "type": "Artifact",
+        "scryfallId": "c8072944-268a-41e0-a1d8-9fe33e964bff",
+        "manaCost": "{7}",
+        "types": [
+          "Artifact"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "{T}: Create a 2/2 colorless Pincher creature token.\nWhenever an artifact is put into a graveyard from the battlefield, you may untap this artifact.",
+        "layout": "normal",
+        "colorIdentity": []
+      }
+    }
+  ]
+}

@@ -106,6 +106,12 @@ final class PracticeBot
                 $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
 
                 return true;
+            case 'optional_life_loss':
+                $choice = $game->choiceAwaiting();
+                // Explicit simple policy: accept this targeted opponent's life loss.
+                $game->chooseOptionalLifeLoss($seat, $choice['id'], 'accept');
+
+                return true;
             case 'fabricate':
                 $choice = $game->choiceAwaiting();
                 // Deliberate simple practice policy; humans choose either outcome.

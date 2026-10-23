@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 7 adds resumable Fabricate choices; version 6 added departure statistics.
+     * Version 8 adds optional targeted life-loss choices; version 7 added Fabricate.
      */
-    public const int STATE_VERSION = 7;
+    public const int STATE_VERSION = 8;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4645,6 +4645,15 @@ final class Game
                     $this->log("{$this->players[$controller]->name} extorts.");
                 }
                 break;
+
+            case 'optional_life_loss':
+                $this->pendingChoice = [
+                    'type' => 'optional_life_loss', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'target' => $target, 'label' => $source->name(), 'options' => ['accept', 'decline'],
+                ];
+
+                return true;
 
             case 'lose_life':
                 $seats = match (true) {
@@ -9274,6 +9283,33 @@ final class Game
         $this->settle();
     }
 
+    /**
+     * Answers the optional targeted one-life loss when the ability resolves.
+     * Its controller and target remain those chosen for the original trigger.
+     *
+     * @param int    $seat
+     * @param int    $choiceId Identity from choiceAwaiting().
+     * @param string $option `accept` or `decline`.
+     *
+     * @return void
+     */
+    public function chooseOptionalLifeLoss(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_life_loss' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That optional life-loss choice is no longer available to you.');
+        }
+        $resume = $choice['resume'];
+        $this->followed = $resume['followed'];
+        $this->pendingChoice = null;
+        if ($option === 'accept') {
+            $this->applyEffect(['type' => 'lose_life', 'amount' => 1], $this->objects[$choice['object']], null, $seat, 0, $choice['target'], $choice['incarnation']);
+        }
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
     /** Reuse ordinary token batching and its entry/creation observers. */
     private function fabricateServos(GameObject $source, int $controller, int $count): void
     {
@@ -9558,12 +9594,13 @@ final class Game
         }
         if ($toGraveyard) {
             $this->trigger($object, 'to_graveyard', $controller, $incarnation, sourceDefinition: $departingDefinition);
-            // Same-controller artifact/permanent burial observers, including a departing source.
-            $observers = $departureObservers ?? [$object, ...$this->permanents($controller)];
-            $events = $departingDefinition?->is('Artifact') ? ['artifact_to_graveyard', 'permanent_to_graveyard_yours'] : ['permanent_to_graveyard_yours'];
+            // Preserve existing family order; all-player observers use their own controller.
+            $observers = $departureObservers ?? [$object, ...$this->permanents()];
+            $events = $departingDefinition?->is('Artifact') ? ['artifact_to_graveyard', 'permanent_to_graveyard_yours', 'artifact_to_graveyard_any'] : ['permanent_to_graveyard_yours'];
             foreach ($events as $event) {
                 foreach ($observers as $permanent) {
-                    if ($departureObservers !== null && $permanent->controller !== $controller) {
+                    $observerController = $departureObservers === null && $permanent === $object ? $controller : $permanent->controller;
+                    if ($event !== 'artifact_to_graveyard_any' && $observerController !== $controller) {
                         continue;
                     }
                     $definition = $departureObservers !== null ? $permanent->definition() : ($permanent === $object ? $departingDefinition : null);
@@ -9573,7 +9610,7 @@ final class Game
                     if ($departureObservers !== null) {
                         $permanent->used = array_replace($permanent->used, $actual->used);
                     }
-                    $this->trigger($permanent, $event, $controller, $sourceIncarnation, $object->id, $context, $definition);
+                    $this->trigger($permanent, $event, $observerController, $sourceIncarnation, $object->id, $context, $definition);
                     if ($departureObservers !== null && $actual->zone === GameObject::BATTLEFIELD && $actual->incarnation === $permanent->incarnation) {
                         $actual->used = array_replace($actual->used, $permanent->used);
                     }
@@ -10952,6 +10989,35 @@ final class Game
             foreach ($resume['followed'] as $from => $to) {
                 if (! is_string($from) || ! is_string($to)) {
                     throw new GameException('Invalid saved Fabricate continuation.');
+                }
+            }
+        }
+        if (($game->pendingChoice['type'] ?? null) === 'optional_life_loss') {
+            $choice = $game->pendingChoice;
+            $resume = $choice['resume'] ?? null;
+            $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
+            if ($version < 8 || $game->stage !== self::PLAYING || $source === null ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
+                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
+                ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
+                ! is_string($choice['target'] ?? null) || ! in_array($choice['target'], array_map(fn (int $seat) => "p:{$seat}", array_diff(array_keys($game->players), [$choice['seat']])), true) ||
+                ($choice['options'] ?? null) !== ['accept', 'decline'] || ($choice['label'] ?? null) !== $source->name() ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
+                ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
+                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
+                ($resume['item']['targets'] ?? null) !== [$choice['target']] ||
+                ! array_key_exists('self', $resume) || ($resume['self'] !== null && $resume['self'] !== [$source->id, $choice['incarnation']]) || ! is_array($resume['followed'] ?? null)) {
+                throw new GameException('Invalid saved optional life-loss choice.');
+            }
+            foreach ($resume['steps'] as $step) {
+                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
+                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                    throw new GameException('Invalid saved optional life-loss continuation.');
+                }
+            }
+            foreach ($resume['followed'] as $from => $to) {
+                if (! is_string($from) || ! is_string($to)) {
+                    throw new GameException('Invalid saved optional life-loss continuation.');
                 }
             }
         }

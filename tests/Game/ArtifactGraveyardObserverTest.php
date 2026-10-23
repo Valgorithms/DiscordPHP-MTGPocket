@@ -55,12 +55,14 @@ final class ArtifactGraveyardObserverTest extends GameTestCase
         $this->assertSame('7f7ce7cdddcd200976510eebe22ccead17a0e7eea68ff7c179e990f02f05b335', hash('sha256', $bytes));
     }
 
-    public function testAllPlayerOptionalDiscipleWordingIsAnExplicitRecognitionGap(): void
+    public function testCompleteDiscipleWordingIsRecognizedWithoutDroppingItsOptionalTarget(): void
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/artifact-observer-disciple-of-the-vault.json'));
         $this->assertSame('b33eed918ceedab68166974331934d0653d67a4764ae58e672b2b5d34acc0913', hash('sha256', $bytes));
         $fixture = json_decode($bytes, true, flags: JSON_THROW_ON_ERROR);
-        $this->assertSame([$fixture['card']['text']], (new CardDefinition($fixture['card']))->unsupported, 'The narrower same-controller callback fix must not imply support for all-player optional wording.');
+        $definition = new CardDefinition($fixture['card']);
+        $this->assertSame([], $definition->unsupported);
+        $this->assertSame([['type' => 'optional_life_loss', 'amount' => 1, 'target' => 'opponent']], $definition->triggersOn('artifact_to_graveyard_any')[0]['effects']);
     }
 
     /** @dataProvider orders */
