@@ -517,6 +517,58 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
     }
 
+    /** @dataProvider optionalLifeOptions */
+    public function testOptionalLifeGainPanelPersistsAndRejectsWrongOrRepeatedAnswers(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 5; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Swamp'), GameObject::BATTLEFIELD);
+            }
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/all-player-artifact-burial-candidates.json'), true, flags: JSON_THROW_ON_ERROR);
+            $entry = array_values(array_filter($fixture['candidates'], fn (array $entry) => $entry['card']['name'] === 'Fangren Marauder'))[0];
+            $game->addCard($seat, $entry['card'], GameObject::BATTLEFIELD);
+            $game->addCard(1 - $seat, ['name' => 'Artifact Route Unit Fixture', 'type' => 'Artifact Creature', 'power' => '2', 'toughness' => '2', 'text' => null], GameObject::BATTLEFIELD);
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/simultaneous-deaths.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['cards']['Damnation']['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_life_gain', $choice['type']);
+        $this->assertStringContainsString('choose whether to gain 5 life', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Gain 5 life', $json);
+        $this->assertStringContainsString('This does not target a player.', $json);
+        $this->assertStringContainsString('Decline', $json);
+        $this->assertStringContainsString('maygain:'.$choice['id'].':accept', $json);
+        $this->assertStringNotContainsString('maygain:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, (string) $choice['id'], $option], [$player, (string) ($choice['id'] + 1), $option], [$player, (string) $choice['id'], 'both']] as [$actor, $choiceId, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'maygain', [$choiceId, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'maygain', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $this->assertSame($option === 'accept' ? 25 : 20, $match->game->players[$seat]->life);
+        $this->assertSame(20, $match->game->players[1 - $seat]->life);
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'maygain', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
     public static function optionalLifeOptions(): array
     {
         return [['accept'], ['decline']];
