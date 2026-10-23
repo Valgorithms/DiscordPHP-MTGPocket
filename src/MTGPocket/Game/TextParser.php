@@ -2481,7 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
-        // Narrow optional/all-player burial family; keep the target mandatory on the stack.
+        // Narrow optional/all-player burial family; only the life-loss wording targets.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may gain 5 life.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_life_gain', 'amount' => 5]]];
+
+            return true;
+        }
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may have target opponent lose 1 life.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
                 'effects' => [['type' => 'optional_life_loss', 'amount' => 1, 'target' => 'opponent']]];
