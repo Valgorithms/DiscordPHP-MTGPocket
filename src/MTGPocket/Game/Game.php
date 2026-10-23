@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 9 adds optional untargeted life gain; version 8 added targeted life loss.
+     * Version 10 adds optional source counters; version 9 added untargeted life gain.
      */
-    public const int STATE_VERSION = 9;
+    public const int STATE_VERSION = 10;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4645,6 +4645,15 @@ final class Game
                     $this->log("{$this->players[$controller]->name} extorts.");
                 }
                 break;
+
+            case 'optional_source_counter':
+                $this->pendingChoice = [
+                    'type' => 'optional_source_counter', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'label' => $source->name(), 'options' => ['accept', 'decline'],
+                ];
+
+                return true;
 
             case 'optional_life_gain':
                 $this->pendingChoice = [
@@ -9293,6 +9302,36 @@ final class Game
     }
 
     /**
+     * Answers the exact optional +1/+1 source-counter decision at resolution.
+     * The original trigger controller answers; only the same battlefield
+     * incarnation can receive a counter. A departed source does not stop
+     * the rest of the ability from resolving.
+     *
+     * @param int    $seat
+     * @param int    $choiceId Identity from choiceAwaiting().
+     * @param string $option `accept` or `decline`.
+     *
+     * @return void
+     */
+    public function chooseOptionalSourceCounter(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_source_counter' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That optional source-counter choice is no longer available to you.');
+        }
+        $resume = $choice['resume'];
+        $this->followed = $resume['followed'];
+        $this->pendingChoice = null;
+        $source = $this->objects[$choice['object']];
+        if ($option === 'accept' && $source->zone === GameObject::BATTLEFIELD && $source->incarnation === $choice['incarnation']) {
+            $this->applyEffect(['type' => 'counters', 'amount' => 1, 'self' => true], $source, $source, $seat, 0, null, $choice['incarnation']);
+        }
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+    /**
      * Answers the optional five-life gain for the original trigger controller.
      * This decision does not target a player.
      *
@@ -11028,33 +11067,34 @@ final class Game
                 }
             }
         }
-        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain'], true)) {
+        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter'], true)) {
             $choice = $game->pendingChoice;
-            $gain = $choice['type'] === 'optional_life_gain';
+            $counter = $choice['type'] === 'optional_source_counter';
+            $untargeted = $choice['type'] !== 'optional_life_loss';
             $resume = $choice['resume'] ?? null;
             $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < ($gain ? 9 : 8) || $game->stage !== self::PLAYING || $source === null ||
+            if ($version < ($counter ? 10 : ($untargeted ? 9 : 8)) || $game->stage !== self::PLAYING || $source === null ||
                 ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
                 ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
                 ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
-                ($gain ? array_key_exists('target', $choice) : (! is_string($choice['target'] ?? null) || ! in_array($choice['target'], array_map(fn (int $seat) => "p:{$seat}", array_diff(array_keys($game->players), [$choice['seat']])), true))) ||
+                ($untargeted ? array_key_exists('target', $choice) : (! is_string($choice['target'] ?? null) || ! in_array($choice['target'], array_map(fn (int $seat) => "p:{$seat}", array_diff(array_keys($game->players), [$choice['seat']])), true))) ||
                 ($choice['options'] ?? null) !== ['accept', 'decline'] || ($choice['label'] ?? null) !== $source->name() ||
                 ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
                 ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
                 ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
-                ($resume['item']['targets'] ?? null) !== ($gain ? [] : [$choice['target']]) ||
+                ($resume['item']['targets'] ?? null) !== ($untargeted ? [] : [$choice['target']]) ||
                 ! array_key_exists('self', $resume) || ($resume['self'] !== null && $resume['self'] !== [$source->id, $choice['incarnation']]) || ! is_array($resume['followed'] ?? null)) {
-                throw new GameException('Invalid saved optional life choice.');
+                throw new GameException('Invalid saved optional '.($counter ? 'source-counter' : 'life').' choice.');
             }
             foreach ($resume['steps'] as $step) {
                 if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
                     ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved optional life continuation.');
+                    throw new GameException('Invalid saved optional '.($counter ? 'source-counter' : 'life').' continuation.');
                 }
             }
             foreach ($resume['followed'] as $from => $to) {
                 if (! is_string($from) || ! is_string($to)) {
-                    throw new GameException('Invalid saved optional life continuation.');
+                    throw new GameException('Invalid saved optional '.($counter ? 'source-counter' : 'life').' continuation.');
                 }
             }
         }

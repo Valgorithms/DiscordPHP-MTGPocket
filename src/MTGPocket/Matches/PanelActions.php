@@ -42,7 +42,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, `maylife`, `maygain`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, `maylife`, `maygain`, `maycounter`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
@@ -72,6 +72,7 @@ final class PanelActions
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'fabricate' => $act(fn (Game $game, int $seat) => $game->chooseFabricate($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
+            'maycounter' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceCounter($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maygain' => $act(fn (Game $game, int $seat) => $game->chooseOptionalLifeGain($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maylife' => $act(fn (Game $game, int $seat) => $game->chooseOptionalLifeLoss($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'sacgo' => $act(function (Game $game, int $seat, MatchRecord $match) use ($playerId, $args): void {

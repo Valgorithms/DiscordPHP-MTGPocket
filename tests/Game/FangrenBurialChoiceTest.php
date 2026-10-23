@@ -402,7 +402,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $this->game = Game::fromArray($saved);
         $this->game->chooseOptionalLifeLoss(0, $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame([20, 19], [$this->life(0), $this->life(1)]);
-        $this->assertSame(9, $this->saved()['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $this->saved()['schemaVersion']);
     }
 
     public static function orders(): array
