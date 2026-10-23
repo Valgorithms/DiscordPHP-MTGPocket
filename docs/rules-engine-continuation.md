@@ -67,3 +67,7 @@ The [functional coverage ledger](functional-coverage-ledger.md) pins the October
 The [2026-10-20 coverage checkpoint](card-coverage-progress.md) records a fresh, hashed public corpus, the current recognition baseline, tested graveyard-cast behavior, and remaining scope. It also refreshes the older ownership status above: #124 is merged, while #327 covers enchanted/equipped conditional bonuses and keywords. Recognition percentages remain separate from gameplay support.
 
 The next [delayed-upkeep-draw milestone](delayed-upkeep-draw.md) adds an exact one-card delayed-draw family through the ordinary trigger queue. It advances saved-state format to version 3, with legacy migration and rejection of missing delayed state. See that note for the tested behavior, compatibility boundary, recognition delta, and remaining limits.
+
+## Sacrifice-specific observer follow-up (2026-10-23)
+
+The [Mayhem Devil milestone](sacrifice-observer-lookback.md) now preserves selected-group sacrifice callbacks and ordinary single-sacrifice source context, distinct from actual creature deaths. Its pinned WAR printing has scoped evidence only: recognition remains 11,282/28,729 and whole-card certificates remain zero. The next source-backed seed is Disciple of the Vault: determine all-player artifact-graveyard recognition and observer visibility before claiming runtime coverage. Broader replacement/continuous-condition/choice/APNAP limits remain explicit.
