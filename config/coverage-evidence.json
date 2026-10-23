@@ -12,9 +12,9 @@
   "engineSource": "233e256fd11945c213057331afb1c9a534bc0dda",
   "validation": {
     "source": "233e256fd11945c213057331afb1c9a534bc0dda",
-    "evidenceMeaning": "Scoped Molder Beast exact parser/engine/incarnation/cleanup/save/display evidence and targeted eight-name superset. Overall recognition remains pinned to its historical source; no fresh aggregate parser audit or newest-printing/whole-card certificate. Full suite and final exact-head CI pending.",
-    "local": "8 regression-first failures/40 assertions;31 Molder cases/980 assertions;404 adjacent tests/6540 assertions in6.611sec;three-file Pint and diff-check passed.181-pool targeted scan0.859sec: eight names, Molder newly readable, Disciple/Fangren unchanged, five remain unread. Full offline suite and updated ledger pending.",
-    "ci": "Final exact-head full Pint/PHPUnit on PHP8.3/8.4/8.5 pending."
+    "evidenceMeaning": "Scoped Molder Beast exact parser/engine/incarnation/cleanup/save/display evidence and targeted eight-name superset. Overall recognition stays pinned to its historical source; no fresh aggregate parser audit or newest-printing/whole-card certificate. Full offline suite passed at ead5a10; final documentation-only head needs its own exact CI.",
+    "local": "8 regression-first failures/40 assertions;31 Molder cases/980 assertions;404 adjacent tests/6540 assertions in6.611sec;three-file Pint and diff-check passed.181-pool targetscan0.859sec:eight names,Molder newly readable,Disciple/Fangren unchanged,five remain unread. Ledger18/37,181pool0.956sec. Full ead5a10b40c3bc4f40755a6b22c20a7ac08f3800 passed1190tests/38958assertions/2expectedimported-data skips in77.684sec with120sec treecap/512MiB/Xdebugoff/emptydata and isolated task-local sys_temp_dir. First full used user-temp and had2 unrelated DraftsTest JsonStore rename errors (1190/38935,79.600sec); focused reproduced1 error, both passed2/23 after isolating temp. No storage fix or root-cause claim.",
+    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40033146349; exact ead5a10b40c3bc4f40755a6b22c20a7ac08f3800 allPHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final documentation-only head requires separate exact CI."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7b109e72979f6a511340f96dab6612886e27ab72e13f6e960c3d32d4b35df81f",
