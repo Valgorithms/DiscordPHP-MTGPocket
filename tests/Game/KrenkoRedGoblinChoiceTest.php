@@ -275,7 +275,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
     }
 
     /** @dataProvider sourceOrders */
-    public function testSimultaneousCreatureDestructionRetainsEachArtifactTriggerAfterKrenkoDies(int $active, int $controller, bool $first): void
+    public function testPaidDamnationRetainsEachArtifactTriggerAfterKrenkoDies(int $active, int $controller, bool $first): void
     {
         $this->newGame();
         $source = $first ? $this->krenko(1 - $controller) : null;
@@ -284,8 +284,21 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         $source ??= $this->krenko(1 - $controller);
         $this->game->objects[$source]->controller = $controller;
         $this->game->active = $this->game->priority = $active;
-        (new \ReflectionMethod(Game::class, 'applyEffect'))->invoke($this->game, ['type' => 'destroy', 'all' => 'all creatures', 'noRegen' => true], $this->game->objects[$source], null, $active, 0, null);
-        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/simultaneous-deaths.json'));
+        $this->assertSame('44e9b312a983d7cc1e477ba44d6049c961fcb2e7c6096352836552e2aa8c0cb6', hash('sha256', $bytes));
+        $card = json_decode($bytes, true, flags: JSON_THROW_ON_ERROR)['cards']['Damnation']['card'];
+        $this->assertSame([], (new CardDefinition($card))->unsupported);
+        $lands = $this->lands($active, 'Swamp', 4);
+        $this->game->cast($active, $this->game->addCard($active, $card, GameObject::HAND)->id);
+        foreach ($lands as $id) {
+            $this->assertTrue($this->game->objects[$id]->tapped);
+        }
+        $before = $this->saved();
+        $this->resolveOne();
+        $queued = $this->saved();
+        $this->game = Game::fromArray($before);
+        $this->resolveOne();
+        $this->assertSame($queued, $this->saved());
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
         $this->assertCount(2, $this->game->stack);
         $this->game = Game::fromArray($this->saved());
