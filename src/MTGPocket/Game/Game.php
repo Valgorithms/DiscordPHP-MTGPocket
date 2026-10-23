@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 5 adds resumable, simultaneous creature-sacrifice choices.
+     * Version 6 persists departure statistics per source incarnation; version 5 added sacrifice choices.
      */
-    public const int STATE_VERSION = 5;
+    public const int STATE_VERSION = 6;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -3965,7 +3965,7 @@ final class Game
 
                 continue;
             }
-            if ($this->applyEffect($effect, $source, $permanent, $item['controller'], $item['x'], $target)) {
+            if ($this->applyEffect($effect, $source, $permanent, $item['controller'], $item['x'], $target, (int) $item['incarnation'])) {
                 $steps = array_merge($this->pendingChoice['nestedSteps'] ?? [], $steps);
                 unset($this->pendingChoice['nestedSteps']);
                 $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
@@ -4400,10 +4400,11 @@ final class Game
      * @param int             $controller
      * @param int             $x
      * @param string|null     $target
+     * @param int|null        $sourceIncarnation Resolving source identity, retained through nested effects.
      *
      * @return bool Whether it waits for a player's choice.
      */
-    private function applyEffect(array $effect, GameObject $source, ?GameObject $self, int $controller, int $x, ?string $target): bool
+    private function applyEffect(array $effect, GameObject $source, ?GameObject $self, int $controller, int $x, ?string $target, ?int $sourceIncarnation = null): bool
     {
         // `At the beginning of each opponent's upkeep, that player loses 1 life.`: the player the trigger names; see trigger().
         if (isset($effect['player'])) {
@@ -4418,6 +4419,8 @@ final class Game
         if (($effect['sameTarget'] ?? false) && $target !== null && isset($this->followed[$target])) {
             $target = $this->followed[$target];
         }
+        $sameSource = $source->zone === GameObject::BATTLEFIELD && ($sourceIncarnation === null || $source->incarnation === $sourceIncarnation);
+        $sourceStatistics = $source->lastKnownStatistics[$sourceIncarnation ?? $source->incarnation] ?? null;
         $amount = match ($effect['amount'] ?? 0) {
             'X' => $x,
             // `Look at the top X cards of your library, where X is the number of lands you control.`
@@ -4428,8 +4431,8 @@ final class Game
             // Swords to Plowshares: `… gains life equal to its power.`, read from the object wherever it went.
             'target_power', 'target_toughness' => ($known = $target !== null && str_starts_with($target, 'o:') ? ($this->objects[(int) explode(':', $target)[1]] ?? null) : null) === null ? 0
                 : max(0, $effect['amount'] === 'target_power' ? $this->power($known) : $this->toughness($known)),
-            'self_power' => max(0, $source->zone === GameObject::BATTLEFIELD ? $this->power($source) : (int) $source->definition()->power),
-            'self_toughness' => max(0, $source->zone === GameObject::BATTLEFIELD ? $this->toughness($source) : (int) $source->definition()->toughness),
+            'self_power' => max(0, $sameSource ? $this->power($source) : ($sourceStatistics['power'] ?? (int) $source->definition()->power)),
+            'self_toughness' => max(0, $sameSource ? $this->toughness($source) : ($sourceStatistics['toughness'] ?? (int) $source->definition()->toughness)),
             default => (int) ($effect['amount'] ?? 0),
         };
         // `Draw a card for each creature you control.`: counted as it resolves.
@@ -5780,7 +5783,7 @@ final class Game
                         $this->players[$controller]->energy = 0;
                         $this->log("{$this->players[$controller]->name} pays {$paid} energy for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $paid, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $paid, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5791,7 +5794,7 @@ final class Game
                         $self->frozen = true;
                         $this->log("{$this->players[$controller]->name} exerts {$self->name()}.");
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5805,7 +5808,7 @@ final class Game
                     if ($beheld !== []) {
                         $this->log("{$this->players[$controller]->name} beholds ".reset($beheld)->name()." for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5842,7 +5845,7 @@ final class Game
                         $this->log("{$this->players[$controller]->name} pays {$m[3]} life for {$source->name()}.");
                     }
                     foreach ($effect['then'] as $then) {
-                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                     }
                     break;
                 }
@@ -5852,7 +5855,7 @@ final class Game
                         $this->log("{$this->players[$controller]->name} exiles {$affected->name()} from their graveyard.");
                         $this->moveTo($affected, GameObject::EXILE);
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5877,7 +5880,7 @@ final class Game
                         $this->moveTo($lands[0], GameObject::HAND);
                     }
                     foreach ($effect['then'] as $then) {
-                        $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                        $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                     }
                     break;
                 }
@@ -5894,7 +5897,7 @@ final class Game
                         }
                         $this->log("{$this->players[$controller]->name} forages for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5907,7 +5910,7 @@ final class Game
                         $tapped->tapped = true;
                         $this->log("{$this->players[$controller]->name} taps {$tapped->name()} for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5920,7 +5923,7 @@ final class Game
                         }
                         $this->log("{$this->players[$controller]->name} collects evidence {$m[1]} for {$source->name()}.");
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5933,7 +5936,7 @@ final class Game
                         $this->log("{$this->players[$controller]->name} sacrifices {$fodder->name()} for {$source->name()}.");
                         $this->sacrifice($fodder);
                         foreach ($effect['then'] as $then) {
-                            $this->applyEffect($then, $source, $self, $controller, $x, $target);
+                            $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
                     }
                     break;
@@ -5950,7 +5953,7 @@ final class Game
                     $remaining = $effect['then'];
                     while ($remaining !== []) {
                         $then = array_shift($remaining);
-                        if ($this->applyEffect($then, $source, $self, $controller, $x, $target)) {
+                        if ($this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation)) {
                             $this->pendingChoice['nestedSteps'] = array_merge(
                                 $this->pendingChoice['nestedSteps'] ?? [],
                                 array_map(fn (array $next) => [$next, $target], $remaining)
@@ -8804,7 +8807,7 @@ final class Game
         }
         $characteristics = [];
         foreach ($doomed as $object) {
-            $characteristics[$object->id] = new DepartureCharacteristics($object->definition(), $this->isCreature($object));
+            $characteristics[$object->id] = new DepartureCharacteristics($object->definition(), $this->isCreature($object), $this->power($object), $this->toughness($object));
         }
         $batch = new DeathObserverBatch($this->permanents(), $doomed, $characteristics);
         $previous = $this->deathObserverBatch;
@@ -9403,6 +9406,13 @@ final class Game
         // Capture before movement clears animation, counters, attachments and transform/morph state.
         $departingCharacteristics = $leaves ? new DepartureCharacteristics($object->definition(), $this->isCreature($object)) : null;
         $departingDefinition = $departingCharacteristics?->definition;
+        if ($leaves) {
+            // Retain the departing incarnation even if this card returns before its ability resolves.
+            $object->lastKnownStatistics[$incarnation] = [
+                'power' => $selectedCharacteristics?->power ?? $this->power($object),
+                'toughness' => $selectedCharacteristics?->toughness ?? $this->toughness($object),
+            ];
+        }
         $dies = $toGraveyard && $departingCharacteristics->isCreature;
         $plusCounters = $object->counter('+1/+1');
         $diedPower = $dies ? $this->power($object) : 0;
@@ -10780,6 +10790,9 @@ final class Game
         }
         ksort($game->players);
         foreach ($data['objects'] as $object) {
+            if ($version >= 6 && (! is_array($object) || ! array_key_exists('lastKnownStatistics', $object))) {
+                throw new GameException('Missing saved source statistics.');
+            }
             $object = GameObject::fromArray((array) $object);
             $game->objects[$object->id] = $object;
         }
@@ -10838,7 +10851,7 @@ final class Game
                 ($choice['min'] ?? null) !== $choice['count'] || ($choice['max'] ?? null) !== $choice['count'] ||
                 ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) || ! array_key_exists('self', $resume) ||
                 ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
-                ! is_int($resume['item']['controller'] ?? null) || ! isset($game->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null) ||
+                ! is_int($resume['item']['incarnation'] ?? null) || ! is_int($resume['item']['controller'] ?? null) || ! isset($game->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null) ||
                 ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
                     ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1]))) || ! is_array($resume['followed'] ?? null)) {
                 throw new GameException('Invalid saved sacrifice choice.');
