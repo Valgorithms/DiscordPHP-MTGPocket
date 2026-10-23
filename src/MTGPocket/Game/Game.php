@@ -6217,8 +6217,8 @@ final class Game
      * @param int                 $controller        Who controlled the source when the event happened.
      * @param int|null            $incarnation       The source's, if it has since changed zones.
      * @param int                 $context           For modular, the +1/+1 counters it died with; for graft, the creature that entered.
-     * @param CardDefinition|null $contextDefinition The dying creature's battlefield face for subtype observers.
-     * @param CardDefinition|null $sourceDefinition  The departing source's battlefield face for its own death abilities.
+     * @param CardDefinition|null $contextDefinition The departing permanent's static battlefield face for type/subtype observers.
+     * @param CardDefinition|null $sourceDefinition  The departing source's battlefield face for its own departure abilities.
      *
      * @return void
      */
