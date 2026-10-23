@@ -250,7 +250,7 @@ final class Game
     /** Inside a `create N tokens` effect: `Whenever you create one or more tokens, …` waits for the whole batch. */
     private bool $creatingTokens = false;
 
-    /** Synchronous destroy-all notification scope; never crosses a saved decision. */
+    /** Synchronous death notification scope; never crosses a saved decision. */
     private ?DeathObserverBatch $deathObserverBatch = null;
 
     /** The cards the last mill put into a graveyard, for `You may put a land card from among them into your hand.` */
@@ -4564,7 +4564,7 @@ final class Game
                 if (isset($effect['all'])) {
                     $doomed = $this->allMatching($effect['all'], $source, $controller);
                     if ($effect['type'] === 'destroy') {
-                        $this->destroyTogether($doomed, ! ($effect['noRegen'] ?? false));
+                        $this->withDeathObservers($doomed, fn (GameObject $object) => $this->destroy($object, ! ($effect['noRegen'] ?? false)));
                     } else {
                         foreach ($doomed as $object) {
                             $this->moveTo($object, GameObject::EXILE);
@@ -8665,19 +8665,23 @@ final class Game
     }
 
     /**
-     * Retain pre-event observers, apply destruction, then notify actual deaths.
+     * Retain pre-event observers, process a selected group, then notify actual deaths.
      * Replacement/prevention behavior stays in destroy()/moveTo().
      *
      * @param GameObject[] $doomed
+     * @param callable(GameObject): void $move
      */
-    private function destroyTogether(array $doomed, bool $regenerates): void
+    private function withDeathObservers(array $doomed, callable $move): void
     {
+        if ($doomed === []) {
+            return;
+        }
         $batch = new DeathObserverBatch($this->permanents(), $doomed);
         $previous = $this->deathObserverBatch;
         $this->deathObserverBatch = $batch;
         try {
             foreach ($doomed as $object) {
-                $this->destroy($object, $regenerates);
+                $move($object);
             }
         } finally {
             $this->deathObserverBatch = $previous;
@@ -9674,9 +9678,11 @@ final class Game
                 }
             }
 
-            foreach ($toGraveyard as $id => $reason) {
-                $this->log("{$reason}.", null, '†'.$this->objects[$id]->name());
-                $this->moveTo($this->objects[$id], GameObject::GRAVEYARD);
+            if ($toGraveyard !== []) {
+                $this->withDeathObservers(array_map(fn (int $id) => $this->objects[$id], array_keys($toGraveyard)), function (GameObject $object) use ($toGraveyard): void {
+                    $this->log("{$toGraveyard[$object->id]}.", null, '†'.$object->name());
+                    $this->moveTo($object, GameObject::GRAVEYARD);
+                });
                 $changed = true;
             }
 

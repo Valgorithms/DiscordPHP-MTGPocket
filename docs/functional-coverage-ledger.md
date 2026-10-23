@@ -10,9 +10,9 @@ This ledger makes the existing 100% functionality goal measurable against the pi
 | Recognized whole | 11,282 | No unread parser clauses in the saved recognition audit |
 | Has unread text | 17,447 | Complement of recognized names, not a gameplay verdict |
 | Recognized without a whole-card certificate | 11,282 | Recognition does not clear the functional review |
-| Named cards with scoped regression evidence | 5 | Three departure exemplars and two exact-printing destroy-all observers |
+| Named cards with scoped regression evidence | 5 | Three departure exemplars and two exact-printing observers with destroy-all/state-based group evidence |
 | Named cards with an explicit unsupported gap | 3 | One unread Partner exemplar; two observers with remaining simultaneous-event gaps |
-| Intersection of the previous two rows | 2 | The destroy-all observers retain explicit gaps in other interactions |
+| Intersection of the previous two rows | 2 | The two observers retain explicit gaps in other interactions |
 | Recorded whole-card certificates | 0 | No whole-card reviews have been issued |
 | Remaining whole-card reviews | 28,729 | The initial certification backlog, not a count of broken cards |
 
@@ -41,13 +41,13 @@ Provenance:
 - Recognition source: `65134ebb3a748e9ee23ae3c188b1411a52023440`. `TextParser.php` and `CardDefinition.php` Git blobs are unchanged through merged engine source `e40c470d74c7f9da5f798e9d3f6635d1b6f6bad4`.
 - Historical behavior evidence: exact PR339 head `9f2f5670b533283130ab29f8a94492964eaf7dd1`, [CI 39970148365](https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/39970148365), PHP 8.3/8.4/8.5. Local full suite: 777 tests, 32,292 assertions, two expected imported-data skips, exit 0. Ledger generation does not rerun these behaviors.
 
-The source pins cover all fourteen current files in the Game namespace, including departure and death-batch snapshots, plus the three cited regression test files. The simultaneous-death test also pins its complete selected-printing JSON fixture. Updating a pinned engine or evidence source intentionally invalidates its pin. Review affected claims, rerun meaningful checks and update provenance before accepting new pins; never refresh hashes solely to silence a failing test. Current destroy-all evidence and its precise limits are recorded in [the milestone note](simultaneous-death-observers.md) and manifest validation fields. This milestone introduces no environment variables or runtime configuration, so `env.example` has no new entries.
+The source pins cover all fourteen current files in the Game namespace, including departure and death-batch snapshots, plus the four cited regression test files. The destroy-all and state-based death tests also pin their complete selected-printing JSON fixtures. Updating a pinned engine or evidence source intentionally invalidates its pin. Review affected claims, rerun meaningful checks and update provenance before accepting new pins; never refresh hashes solely to silence a failing test. Current evidence and its precise limits are recorded in the [destroy-all](simultaneous-death-observers.md) and [state-based group](state-based-death-observers.md) milestone notes and manifest validation fields. This milestone introduces no environment variables or runtime configuration, so `env.example` has no new entries.
 
 ## Next measured family
 
-**Two selected candidates: Zulaport Cutthroat and Grim Haruspex, during simultaneous state-based deaths after lethal mass damage.** Both are recognized in this exact corpus and now have [destroy-all observer evidence](simultaneous-death-observers.md). State-based death groups and mass sacrifices remain distinct gaps; neither card receives a whole-card certificate. This is a bounded seed, not a claim that only two cards are affected.
+**Two selected candidates: Zulaport Cutthroat and Grim Haruspex, during simultaneous sacrifices from Barter in Blood.** Both are recognized in this exact corpus and now have [destroy-all](simultaneous-death-observers.md) and [selected state-based group](state-based-death-observers.md) evidence. Simultaneous sacrifices remain a distinct gap; neither card receives a whole-card certificate. This is a bounded seed, not a claim that only two cards are affected.
 
-Start with exact pinned wording and paid mass damage, checking both battlefield insertion orders. Each qualifying death must be seen once with prior controller, self/other and nontoken restrictions intact. Process the state-based group before rechecking continuous sources removed by that group. Include opposing-controller, token, nonlethal/prevented damage controls and pending-stack JSON replay. General replacement semantics and APNAP decisions remain distinct gaps. Count scoped evidence separately; do not automatically promote either card to whole-card support.
+Start with exact pinned wording and paid Barter in Blood when players have exactly the required creatures, checking both battlefield insertion orders and prior controllers. Select the simultaneous sacrifice group before moving it, retaining self/other and nontoken restrictions across both players. Include unaffected permanent types, indestructible, token and JSON stack replay controls. Sacrifice choices when additional eligible creatures exist are still heuristic and must remain explicit; general replacement semantics and APNAP decisions remain distinct gaps. Count scoped evidence separately; do not automatically promote either card to whole-card support.
 
 An exact bounded text scan found no `Whenever an Elf ... leaves the battlefield` card in this pinned inventory. That synthetic wording gap is not used as the next corpus-coverage family.
 
