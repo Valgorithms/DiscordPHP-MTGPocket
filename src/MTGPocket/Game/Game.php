@@ -9377,6 +9377,9 @@ final class Game
         }
         $controller = $object->controller;
         $incarnation = $object->incarnation;
+        // Keep this selected group's registry before record() consumes its death entry.
+        $selectedCharacteristics = $this->deathObserverBatch?->characteristicsOf($object);
+        $departureObservers = $selectedCharacteristics !== null ? $this->deathObserverBatch->observers : null;
         if ($object->unearthed && $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD) {
             $zone = GameObject::EXILE;
         }
@@ -9489,15 +9492,26 @@ final class Game
         }
         if ($toGraveyard) {
             $this->trigger($object, 'to_graveyard', $controller, $incarnation, sourceDefinition: $departingDefinition);
-            // `Whenever an artifact you control is put into a graveyard from the battlefield, …`: itself included.
-            if ($departingDefinition?->is('Artifact')) {
-                foreach ([$object, ...$this->permanents($controller)] as $permanent) {
-                    $this->trigger($permanent, 'artifact_to_graveyard', $controller, null, $object->id, $departingCharacteristics, $permanent === $object ? $departingDefinition : null);
+            // Same-controller artifact/permanent burial observers, including a departing source.
+            $observers = $departureObservers ?? [$object, ...$this->permanents($controller)];
+            $events = $departingDefinition?->is('Artifact') ? ['artifact_to_graveyard', 'permanent_to_graveyard_yours'] : ['permanent_to_graveyard_yours'];
+            foreach ($events as $event) {
+                foreach ($observers as $permanent) {
+                    if ($departureObservers !== null && $permanent->controller !== $controller) {
+                        continue;
+                    }
+                    $definition = $departureObservers !== null ? $permanent->definition() : ($permanent === $object ? $departingDefinition : null);
+                    $sourceIncarnation = $departureObservers !== null ? $permanent->incarnation : ($permanent === $object ? $incarnation : null);
+                    $context = $selectedCharacteristics ?? $departingCharacteristics;
+                    $actual = $this->objects[$permanent->id];
+                    if ($departureObservers !== null) {
+                        $permanent->used = array_replace($permanent->used, $actual->used);
+                    }
+                    $this->trigger($permanent, $event, $controller, $sourceIncarnation, $object->id, $context, $definition);
+                    if ($departureObservers !== null && $actual->zone === GameObject::BATTLEFIELD && $actual->incarnation === $permanent->incarnation) {
+                        $actual->used = array_replace($actual->used, $permanent->used);
+                    }
                 }
-            }
-            // `Whenever a land (an enchantment, a Treasure) you control is put into a graveyard from the battlefield, …`
-            foreach ([$object, ...$this->permanents($controller)] as $permanent) {
-                $this->trigger($permanent, 'permanent_to_graveyard_yours', $controller, null, $object->id, $departingCharacteristics, $permanent === $object ? $departingDefinition : null);
             }
         }
         // `When CARDNAME leaves the battlefield, …`
