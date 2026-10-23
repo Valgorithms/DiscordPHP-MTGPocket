@@ -12,9 +12,9 @@
   "engineSource": "77f9961a8d70ed6bcc7f3c2ddfba7b5bce10beeb",
   "validation": {
     "source": "77f9961a8d70ed6bcc7f3c2ddfba7b5bce10beeb",
-    "evidenceMeaning": "Scoped exact MKM Krenko optional red payment, temporary-haste Goblin, paid cast/activation, controller/departure/save/Discord/practice. Historical aggregate recognition unchanged; no newest-printing or whole-card certificate. Full suite and exact-head CI pending.",
-    "local": "8 regression-first failures/40assertions. Final82focused/1800assertions in1.170sec;638adjacent/11165 in9.572sec before final supporting paid-Damnation enhancement; eight-file Pint plus changed-test Pint and diff-check passed. Targeted181pool scan1.026sec:8names, Krenko newly readable, five previous unchanged, two unread. Ledger/full pending.",
-    "ci": "Pending exact-head required PHP8.3/8.4/8.5 full Pint/PHPUnit."
+    "evidenceMeaning": "Scoped exact MKM Krenko optional red payment, temporary-haste Goblin, paid cast/activation, controller/departure/save/Discord/practice. Historical aggregate recognition unchanged; no newest-printing or whole-card certificate. Full offline suite and tested-head CI passed; final metadata-head CI verified separately before merge.",
+    "local": "8 regression-first failures/40 assertions. Final 82 focused/1800 assertions in1.170sec;638 adjacent/11165 in9.572sec before final supporting paid-Damnation enhancement; eight-file Pint plus changed-test Pint and diff-check passed. Targeted181pool scan1.026sec:8 names,6 readable,2 unread. Ledger18/37 and inventory14scoped/1gap/0wholecertificates passed. Full offline at bde33f25825b2825602d18cab6551de2d9063845:1405 tests/44403 assertions/2 expected imported-data skips in78.828sec,184MiB;120sec treecap,512MiB/Xdebugoff,emptydata/task-localtemp.",
+    "ci": "Tested-head CI40037242332 at bde33f25825b2825602d18cab6551de2d9063845: all PHP8.3/8.4/8.5 full Pint/PHPUnit passed. Final metadata-head CI checked separately before merge; source/test pins unchanged."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "6c1bc304495043a3c1d1448ce3ac5e4464f569b0a6c1a59b04c1920e77e84634",
