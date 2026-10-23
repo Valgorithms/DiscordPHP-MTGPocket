@@ -9255,17 +9255,14 @@ final class Game
             $this->diedWithCounter = $plusCounters > 0;
             $this->trigger($object, 'dies', $controller, $incarnation, $plusCounters);
             // `Whenever another creature (you control) dies, …`
-            if ($object->definition()->is('Creature')) {
-                foreach ($this->permanents() as $permanent) {
-                    $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id);
-                }
+            // $dies captured creature status before the move; animation is gone in the graveyard.
+            foreach ($this->permanents() as $permanent) {
+                $this->trigger($permanent, $permanent->controller === $controller ? 'creature_dies_other' : 'creature_dies_any', $permanent->controller, null, $object->id);
             }
             // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
-            if ($object->definition()->is('Creature')) {
-                foreach ($owner->graveyard as $other) {
-                    if ($other !== $object->id && isset($this->objects[$other]->printed()->altCosts['recover'])) {
-                        $this->recover($this->objects[$other]);
-                    }
+            foreach ($owner->graveyard as $other) {
+                if ($other !== $object->id && isset($this->objects[$other]->printed()->altCosts['recover'])) {
+                    $this->recover($this->objects[$other]);
                 }
             }
             // Sengir Vampire: `Whenever a creature dealt damage by CARDNAME this turn dies, …`
