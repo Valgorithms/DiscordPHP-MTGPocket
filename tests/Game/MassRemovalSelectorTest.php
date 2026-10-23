@@ -69,6 +69,7 @@ final class MassRemovalSelectorTest extends GameTestCase
         $bears = $this->battlefield(0, 'Grizzly Bears');
         $elf = $this->battlefield(1, 'Llanowar Elves');
         $ornithopter = $this->battlefield(1, 'Ornithopter');
+        $pyromancer = $this->battlefield(0, 'Prodigal Pyromancer');
         $giant = $this->battlefield(1, 'Hill Giant');
         $ingot = $this->put(0, 'Darksteel Ingot', GameObject::BATTLEFIELD);
         $game->objects[$bears]->shields = 1;
@@ -76,7 +77,7 @@ final class MassRemovalSelectorTest extends GameTestCase
         $game->cast(0, $this->put(0, 'Consume the Meek'));
         $this->reload();
         $this->resolve();
-        foreach ([$bears, $elf, $ornithopter] as $id) {
+        foreach ([$bears, $elf, $ornithopter, $pyromancer] as $id) {
             $this->assertSame(GameObject::GRAVEYARD, $this->zone($id));
         }
         foreach ([$giant, $ingot, ...$lands] as $id) {
@@ -94,6 +95,7 @@ final class MassRemovalSelectorTest extends GameTestCase
         $equipment = $this->battlefield(1, 'Bonesplitter');
         $ingot = $this->put(0, 'Darksteel Ingot', GameObject::BATTLEFIELD);
         $anthem = $this->put(0, 'Glorious Anthem', GameObject::BATTLEFIELD);
+        $indestructible = $this->put(1, 'Indestructible Bear', GameObject::BATTLEFIELD);
         $walker = $this->battlefield(1, 'Chandra, Pyrogenius');
         $game->objects[$bear]->shields = 1;
         $game->objects[$artifact]->shields = 2;
@@ -107,7 +109,7 @@ final class MassRemovalSelectorTest extends GameTestCase
         foreach ([$bear, $artifact, $equipment, ...$lands] as $id) {
             $this->assertSame(GameObject::GRAVEYARD, $this->zone($id));
         }
-        foreach ([$ingot, $anthem, $walker] as $id) {
+        foreach ([$ingot, $anthem, $walker, $indestructible] as $id) {
             $this->assertSame(GameObject::BATTLEFIELD, $this->zone($id));
         }
     }
@@ -179,6 +181,32 @@ final class MassRemovalSelectorTest extends GameTestCase
             'Destroy each creature that shares a color with it.',
         ] as $text) {
             $this->assertNotSame([], (new CardDefinition(['name' => 'Unknown Fixture', 'type' => 'Sorcery', 'text' => $text]))->unsupported, $text);
+        }
+    }
+
+    public function testOrdinaryMassRemovalCanBeCounteredAndRejectsUnpaidCasts(): void
+    {
+        $game = $this->newGame();
+        $spell = $this->put(0, 'Jokulhaups');
+        $before = $game->toArray();
+        try {
+            $game->cast(0, $spell);
+            $this->fail('The mass removal must be paid for.');
+        } catch (GameException) {
+        }
+        $this->assertSame($before, $game->toArray());
+        $lands = $this->lands(0, 'Mountain', 6);
+        $lands = [...$lands, ...$this->lands(1, 'Island', 2)];
+        $bear = $this->battlefield(1, 'Grizzly Bears');
+        $game->cast(0, $spell);
+        $game->pass(0);
+        $game->cast(1, $this->hand(1, 'Counterspell'), 0, ['s:'.$game->stack[0]['id']]);
+        $this->reload();
+        $this->resolve();
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($spell));
+        $this->assertSame([], $this->game->stack);
+        foreach ([$bear, ...$lands] as $id) {
+            $this->assertSame(GameObject::BATTLEFIELD, $this->zone($id));
         }
     }
 }
