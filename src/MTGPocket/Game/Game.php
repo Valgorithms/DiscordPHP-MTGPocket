@@ -88,7 +88,7 @@ final class Game
      * Persisted rules-state format; unversioned records are version 1.
      * Version 11 adds optional source untap; version 10 added optional source counters.
      */
-    public const int STATE_VERSION = 11;
+    public const int STATE_VERSION = 12;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4645,6 +4645,15 @@ final class Game
                     $this->log("{$this->players[$controller]->name} extorts.");
                 }
                 break;
+
+            case 'optional_red_goblin':
+                $this->pendingChoice = [
+                    'type' => 'optional_red_goblin', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'label' => $source->name(), 'options' => ['accept', 'decline'],
+                ];
+
+                return true;
 
             case 'optional_source_untap':
                 $this->pendingChoice = [
@@ -9316,6 +9325,55 @@ final class Game
     }
 
     /**
+     * Whether the pending Goblin decision's original controller can pay {R}.
+     * Uses the ordinary mana planner without spending or tapping anything.
+     *
+     * @param int $seat
+     *
+     * @return bool
+     */
+    public function canPayOptionalRedGoblin(int $seat): bool
+    {
+        return $this->stage === self::PLAYING && ($this->pendingChoice['type'] ?? null) === 'optional_red_goblin'
+            && $this->pendingChoice['seat'] === $seat && $this->payFor($seat, '{R}') !== null;
+    }
+
+    /**
+     * Answers the exact optional {R} payment for a temporary-haste Goblin.
+     * The trigger controller pays and creates the token even if the source left.
+     *
+     * @param int    $seat
+     * @param int    $choiceId Identity from choiceAwaiting().
+     * @param string $option `accept` or `decline`.
+     *
+     * @return void
+     */
+    public function chooseOptionalRedGoblin(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_red_goblin' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That optional red-payment choice is no longer available to you.');
+        }
+        $payment = $option === 'accept' ? $this->payFor($seat, '{R}') : null;
+        if ($option === 'accept' && $payment === null) {
+            throw new GameException('You cannot pay {R} for that Goblin.');
+        }
+        $resume = $choice['resume'];
+        $this->followed = $resume['followed'];
+        $this->pendingChoice = null;
+        if ($payment !== null) {
+            $this->pay($seat, $payment);
+            $this->applyEffect(['type' => 'token', 'amount' => 1, 'haste' => true, 'token' => [
+                'name' => 'Goblin Token', 'type' => 'Token Creature — Goblin', 'types' => ['Creature'],
+                'subtypes' => ['Goblin'], 'colors' => ['R'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null,
+            ]], $this->objects[$choice['object']], null, $seat, 0, null, $choice['incarnation']);
+        }
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+    /**
      * Answers the exact optional source-untap decision at resolution.
      * The original trigger controller answers; only the same battlefield
      * incarnation can be untapped. A departed source does not stop
@@ -11111,15 +11169,16 @@ final class Game
                 }
             }
         }
-        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap'], true)) {
+        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin'], true)) {
             $choice = $game->pendingChoice;
             $counter = $choice['type'] === 'optional_source_counter';
             $untap = $choice['type'] === 'optional_source_untap';
-            $choiceKind = $untap ? 'source-untap' : ($counter ? 'source-counter' : 'life');
+            $goblin = $choice['type'] === 'optional_red_goblin';
+            $choiceKind = $goblin ? 'red-payment' : ($untap ? 'source-untap' : ($counter ? 'source-counter' : 'life'));
             $untargeted = $choice['type'] !== 'optional_life_loss';
             $resume = $choice['resume'] ?? null;
             $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8))) || $game->stage !== self::PLAYING || $source === null ||
+            if ($version < ($goblin ? 12 : ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8)))) || $game->stage !== self::PLAYING || $source === null ||
                 ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
                 ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
                 ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||

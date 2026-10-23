@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Exact optional red-payment token family; payment is a resolution choice.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may pay {R}. If you do, create a 1/1 red Goblin creature token. It gains haste until end of turn.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_red_goblin']]];
+
+            return true;
+        }
         // Exact optional source untap; the original controller makes the decision.
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may untap CARDNAME.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',

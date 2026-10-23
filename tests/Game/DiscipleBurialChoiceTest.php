@@ -328,7 +328,7 @@ final class DiscipleBurialChoiceTest extends GameTestCase
                 $this->assertSame([], $definition->triggersOn('artifact_to_graveyard_any'), $entry['card']['name']);
             }
         }
-        $this->assertSame(['Disciple of the Vault', 'Fangren Marauder', 'Molder Beast', 'Moriok Rigger', 'Summoning Station'], $recognized);
+        $this->assertSame(['Disciple of the Vault', 'Fangren Marauder', 'Krenko, Baron of Tin Street', 'Molder Beast', 'Moriok Rigger', 'Summoning Station'], $recognized);
     }
 
     public static function orders(): array

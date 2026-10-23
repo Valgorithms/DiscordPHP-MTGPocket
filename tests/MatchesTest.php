@@ -672,6 +672,76 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
     }
 
+    /** @dataProvider redGoblinOptions */
+    public function testOptionalRedGoblinPanelPersistsPaymentAndRejectsInvalidAnswers(string $option, bool $payable): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $land = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, $payable, &$land): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/all-player-artifact-burial-candidates.json'), true, flags: JSON_THROW_ON_ERROR);
+            $entry = array_values(array_filter($fixture['candidates'], fn (array $entry) => $entry['card']['name'] === 'Krenko, Baron of Tin Street'))[0];
+            $game->addCard($seat, $entry['card'], GameObject::BATTLEFIELD);
+            if ($payable) {
+                $land = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD)->id;
+            }
+            $artifact = $game->addCard(1 - $seat, ['name' => 'Goblin Route Unit Fixture', 'type' => 'Artifact', 'text' => null], GameObject::BATTLEFIELD);
+            (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($game, $artifact, GameObject::GRAVEYARD);
+            (new \ReflectionMethod(Game::class, 'settle'))->invoke($game);
+        });
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_red_goblin', $choice['type']);
+        $this->assertStringContainsString('choose whether to pay {R}', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Pay {R}: create a Goblin', $json);
+        $this->assertStringContainsString('haste until end of turn.', $json);
+        $this->assertStringContainsString('Decline', $json);
+        $this->assertSame(! $payable, $this->sacrificeComponent($match, $player, 'maygoblin:'.$choice['id'].':accept')['disabled']);
+        $this->assertStringNotContainsString('maygoblin:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, (string) $choice['id'], $option], [$player, (string) ($choice['id'] + 1), $option], [$player, (string) $choice['id'], 'both']] as [$actor, $choiceId, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'maygoblin', [$choiceId, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        if (! $payable) {
+            $this->assertException(fn () => $panel->run($match->id, $player, 'maygoblin', [(string) $choice['id'], 'accept']), 'cannot pay');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'maygoblin', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $tokens = array_filter($match->game->objects, fn (GameObject $object) => $object->zone === GameObject::BATTLEFIELD && $object->definition()->isToken());
+        $this->assertCount($option === 'accept' ? 1 : 0, $tokens);
+        if ($option === 'accept') {
+            $token = array_values($tokens)[0];
+            $this->assertSame($seat, $token->controller);
+            $this->assertSame(['R'], $token->definition()->colors);
+            $this->assertSame(['Goblin'], $token->definition()->subtypes);
+            $this->assertTrue($match->game->hasKeyword($token, 'haste'));
+        }
+        if ($land !== null) {
+            $this->assertSame($option === 'accept', $match->game->objects[$land]->tapped);
+        }
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'maygoblin', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    public static function redGoblinOptions(): array
+    {
+        return [['accept', true], ['decline', true], ['decline', false]];
+    }
+
     public static function optionalLifeOptions(): array
     {
         return [['accept'], ['decline']];

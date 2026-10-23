@@ -360,6 +360,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'look' => 'choose from the top of their library',
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
+                'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
                 'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
                 'optional_source_counter' => 'choose whether to put a +1/+1 counter on '.$game->choiceAwaiting()['label'],
                 'optional_life_gain' => 'choose whether to gain 5 life',
@@ -689,6 +690,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'optional_red_goblin':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygoblin', (string) $optional['id'], 'accept'))->setLabel('Pay {R}: create a Goblin')->setDisabled(! $game->canPayOptionalRedGoblin($seat)))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygoblin', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
             case 'optional_source_untap':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
@@ -882,6 +890,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'sacrifice' => self::sacrificePrompt($game, $choice),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
+            'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
             'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
             'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a +1/+1 counter on this creature. Only the original battlefield incarnation can receive it; this does not target.',
             'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',
