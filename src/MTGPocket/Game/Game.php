@@ -7044,11 +7044,18 @@ final class Game
     private function sacrifice(GameObject $object): void
     {
         $seat = $object->controller;
-        $watchers = $this->permanents();
+        $characteristics = $this->deathObserverBatch?->characteristicsOf($object);
+        $watchers = $characteristics !== null ? $this->deathObserverBatch->observers : array_map(fn (GameObject $watcher) => clone $watcher, $this->permanents());
+        $characteristics ??= new DepartureCharacteristics($object->definition(), $this->isCreature($object));
         $this->moveTo($object, GameObject::GRAVEYARD);
         foreach ($watchers as $watcher) {
-            $this->trigger($watcher, $watcher->controller === $seat ? 'you_sacrifice' : 'opponent_sacrifices', $watcher->controller, null, $object->id);
-            $this->trigger($watcher, 'player_sacrifices', $watcher->controller, null, $object->id);
+            $actual = $this->objects[$watcher->id];
+            $watcher->used = array_replace($watcher->used, $actual->used);
+            $this->trigger($watcher, $watcher->controller === $seat ? 'you_sacrifice' : 'opponent_sacrifices', $watcher->controller, $watcher->incarnation, $object->id, $characteristics, $watcher->definition());
+            $this->trigger($watcher, 'player_sacrifices', $watcher->controller, $watcher->incarnation, $object->id, $characteristics, $watcher->definition());
+            if ($actual->zone === GameObject::BATTLEFIELD && $actual->incarnation === $watcher->incarnation) {
+                $actual->used = array_replace($actual->used, $watcher->used);
+            }
         }
     }
 
@@ -8795,7 +8802,11 @@ final class Game
         if ($doomed === []) {
             return;
         }
-        $batch = new DeathObserverBatch($this->permanents(), $doomed);
+        $characteristics = [];
+        foreach ($doomed as $object) {
+            $characteristics[$object->id] = new DepartureCharacteristics($object->definition(), $this->isCreature($object));
+        }
+        $batch = new DeathObserverBatch($this->permanents(), $doomed, $characteristics);
         $previous = $this->deathObserverBatch;
         $this->deathObserverBatch = $batch;
         try {
