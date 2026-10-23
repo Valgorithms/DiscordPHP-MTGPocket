@@ -1,6 +1,6 @@
 # Functional coverage evidence ledger
 
-The [Disciple milestone](disciple-optional-artifact-burial.md) supersedes the earlier Disciple unread-gap assertion: complete pinned 2XM wording now has scoped optional/all-player behavior evidence. The current manifest records nine names with scoped evidence, one explicit gap and zero whole-card certificates. Its overall recognition totals remain the historical pinned report, not current parser totals. The [Fabricate milestone](fabricate-resolution-choices.md) retains its scoped entry decisions on the complete KLD Marionette fixture.
+The [Disciple milestone](disciple-optional-artifact-burial.md) supersedes the earlier Disciple unread-gap assertion: complete pinned 2XM wording now has scoped optional/all-player behavior evidence. The current manifest records eleven names with scoped evidence, one explicit gap and zero whole-card certificates, including the later Fangren and Molder Beast milestones. Its overall recognition totals remain the historical pinned report, not current parser totals. The [Fabricate milestone](fabricate-resolution-choices.md) retains its scoped entry decisions on the complete KLD Marionette fixture.
 
 This ledger makes the existing 100% functionality goal measurable against the pinned **28,729 newest-printing card names** in 181 imported pools, MTGJSON `5.3.0+20261022`. It does not redefine the goal as parser recognition or a smaller supported deck. A card name is the unit; all selected card data, including extra faces, contribute to the corpus fingerprint. It is not the complete MTGJSON database or a fresh Modern measurement.
 
@@ -12,8 +12,8 @@ This ledger makes the existing 100% functionality goal measurable against the pi
 | Recognized whole | 11,282 | No unread parser clauses in the saved recognition audit |
 | Has unread text | 17,447 | Complement of recognized names, not a gameplay verdict |
 | Recognized without a whole-card certificate | 11,282 | Recognition does not clear the functional review |
-| Named cards with scoped regression evidence | 8 | Three departure exemplars, two exact-printing death observers, explicit Barter choices, Mayhem Devil sacrifice callbacks and printed-power Marionette Master burial callbacks |
-| Named cards with an explicit unsupported gap | 2 | Unread Partner and Disciple of the Vault optional all-player wording; specific Barter player choices are implemented |
+| Named cards with scoped regression evidence | 11 | Three departure exemplars, two death observers, Barter, Mayhem Devil, Marionette Master, Disciple, Fangren and Molder Beast; each has a bounded evidence scope |
+| Named cards with an explicit unsupported gap | 1 | Akroma's unread Partner; this reviewed seed is not an exhaustive list of unsupported cards |
 | Intersection of the previous two rows | 0 | Closing one specific observer gap does not certify its other interactions |
 | Recorded whole-card certificates | 0 | No whole-card reviews have been issued |
 | Remaining whole-card reviews | 28,729 | The initial certification backlog, not a count of broken cards |
@@ -57,4 +57,6 @@ The [resumable edict milestone](resumable-edict-choices.md) closes the exact Bar
 
 The [departed-source statistics milestone](departed-source-statistics.md) adds scoped counter/temporary-power and per-incarnation evidence for the existing Marionette Master exemplar; it adds no new corpus names or certificates. Next is the separately unread complete Disciple optional/all-player ability, retaining real targeting and resolution choices. Recognition remains unchanged until measured parser changes.
 
-The [Fangren optional-life-gain milestone](fangren-optional-artifact-burial.md) separately adds its untargeted controller choice. Current scoped evidence covers ten names, one explicit gap and zero whole-card certificates; the earlier Disciple nine-name status is historical. The same eight-name candidate set now has two fully readable records and six with unread abilities. Overall recognition remains the original historical report.
+The [Fangren optional-life-gain milestone](fangren-optional-artifact-burial.md) separately adds its untargeted controller choice. At that milestone scoped evidence covered ten names, one explicit gap and zero whole-card certificates; the earlier Disciple nine-name status is historical. The same eight-name candidate set now has two fully readable records and six with unread abilities. Overall recognition remains the original historical report.
+
+The [Molder Beast milestone](molder-beast-artifact-burial.md) adds the exact temporary source boost through existing incarnation and cleanup rules. Current scoped evidence covers eleven names, one explicit gap and zero whole-card certificates. Three of the targeted eight records are now fully readable; five remain unread. Moriok Rigger's optional source counter is the next separately measured seed. Aggregate recognition remains historical.
