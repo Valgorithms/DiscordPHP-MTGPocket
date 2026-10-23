@@ -1,12 +1,12 @@
-# Proposed selector saved-state contract
+# Selector saved-state contract
 
-This is a local, unpublished proposal. Recovery resumed on 2026-10-23 in the existing DiscordPHP coordinator after the original task stopped accepting turns. The Projects coordinator took ownership of the unreachable parent's resource deferral and cleared one serial offline PHP slice with a hard 30-second process-tree timeout. Broad tests, corpus scans and long games remain subject to separate resource reconciliation.
+Recovery verification completed on 2026-10-23 in the existing DiscordPHP coordinator. The Projects coordinator released the stale source-only deferral and authorized serial offline checks with process-tree timeouts. No live bot or deployment was used.
 
-The first cleared run at `5e69c4b` executed `SelectorStateCompatibilityTest` on PHP 8.5.12: 5 tests, 18 assertions, 1 failure in 0.957 seconds. The strict saved-array assertion compared pre-JSON `manaValue: 0.0` with decoded `0`. The test now compares the actual JSON-decoded persisted record without weakening strict equality; its rerun is pending. No compatibility pass is claimed. The previous 8-test / 70-assertion result applies to selector preparation commit `3109819dd69afbe175890fdc42af29f9f88fe761`, before this version change.
+At `65134ebb`, `SelectorStateCompatibilityTest` passes 5 tests / 22 assertions; `MassRemovalSelectorTest` passes 9 / 87; adjacent delayed-draw and entry-choice tests pass 38 / 333. Seven separate historical writer/reader and upgrade processes pass. The initial assertion at `5e69c4b` compared pre-JSON `manaValue: 0.0` with decoded `0`; the corrected test compares the actual JSON-decoded persisted record while retaining strict equality. Production serialization did not change.
 
 ## Narrow runtime delta
 
-Change only `Game::STATE_VERSION` from 3 to 4, with a comment explaining the semantic compatibility boundary. `toArray()` already writes that constant. `fromArray()` already rejects a non-integer, out-of-range, or future version before constructing a game or hydrating its objects, stack, and pending decisions. Its version-1/version-2 defaults and version-3 delayed-draw requirements stay unchanged.
+The compatibility change sets `Game::STATE_VERSION` from 3 to 4, with a comment explaining the semantic compatibility boundary. `toArray()` already writes that constant. `fromArray()` already rejects a non-integer, out-of-range, or future version before constructing a game or hydrating its objects, stack, and pending decisions. Its version-1/version-2 defaults and version-3 delayed-draw requirements stay unchanged.
 
 The new `all artifacts, creatures, and lands` selector can persist in an ability's effect array. An older version-3 `allMatching()` falls back to nonland permanents for that unknown selector. It could therefore destroy enchantments and planeswalkers while sparing lands. Keeping the version at 3 would permit that misinterpretation.
 
@@ -18,25 +18,25 @@ All saves from this engine write version 4, even before a new selector is used. 
 | --- | --- | --- |
 | Unversioned or version 1–2 | New version-4 engine | Existing defaults/migrations remain; next save writes 4. |
 | Valid version 3 | New version-4 engine | Preserve stack, choices, and delayed draws; next save writes 4. Missing or malformed delayed-draw state remains rejected. |
-| Version 4 | Historical version-1/2/3 engine, including current main and PR #331 | Existing upper-version gate rejects before hydration; it must not resolve the unknown selector. Execution against actual historical readers is still pending. |
+| Version 4 | Historical version-1/2/3 engine, including current main and PR #331 | Existing upper-version gate rejects before hydration; it must not resolve the unknown selector. Actual pinned main and PR #331 readers both rejected the schema-4 fixture. |
 | Version 4 | New version-4 engine | Preserve the new selector, its pending stack/ability state, and deterministic resolution. |
 | Version 5 or later | Version-4 engine | Existing future-version rejection remains. |
 
 Do not manually lower a schema label. There is no supported downgrade or migration of a version-4 game back to an older engine. A process resuming version-4 matches must keep a compatible reader. This proposal does not validate every possible tampered effect array or repair the older reader's fallback.
 
-PR #331 stays independent at `3f309578ebc35f17ae9321f969a67fe4e14db4ab`, with its existing version-3 behavior. This proposal does not edit or publish that branch. Its +20 recognition result and this branch's independently measured +4 must remain separate until integration is tested.
+PR #331 stays independent at `3f309578ebc35f17ae9321f969a67fe4e14db4ab`, with its existing version-3 behavior. This milestone does not edit that branch. Its +20 recognition result and this branch's independently measured +4 must remain separate until integration is tested.
 
-## Focused verification plan before publication
+## Focused verification
 
-1. Run `SelectorStateCompatibilityTest` once execution is authorized. Its five source cases cover unconditional version-4 output; a persisted union ability that destroys lands/creatures while preserving enchantments/planeswalkers; migration of a version-3 pending ordinary ability plus a delayed draw; missing delayed state in versions 3 and 4; and future-version rejection using a version-only record, before any game payload can be read.
-2. Run `DelayedUpkeepDrawTest` and `EntryLifeChoiceTest` for legacy defaults, strict delayed-state validation, resumable decisions, and future-version rejection. Two delayed-draw assertions now expect `Game::STATE_VERSION` instead of a fixed current value of 3. Explicit legacy version 3 remains exercised in the new compatibility test.
-3. Run `MassRemovalSelectorTest`, including its saved-stack and deterministic replay cases, against the new version gate. Add/verify Culling Sun's actual card fixture before making an individual gameplay claim about it.
+1. `SelectorStateCompatibilityTest` passed. Its five source cases cover unconditional version-4 output; a persisted union ability that destroys lands/creatures while preserving enchantments/planeswalkers; migration of a version-3 pending ordinary ability plus a delayed draw; missing delayed state in versions 3 and 4; and future-version rejection using a version-only record, before any game payload can be read.
+2. Passed `DelayedUpkeepDrawTest` and `EntryLifeChoiceTest` for legacy defaults, strict delayed-state validation, resumable decisions, and future-version rejection. Two delayed-draw assertions now expect `Game::STATE_VERSION` instead of a fixed current value of 3. Explicit legacy version 3 remains exercised in the new compatibility test.
+3. `MassRemovalSelectorTest` passed, including saved-stack replay, actual Culling Sun wording and regeneration, union deduplication, targeting/payment rejection, and countering controls.
 4. In separate offline PHP processes, exercise the actual immutable reader sources from main `710a47cde58525c24d59fb591ef81b6d63ee945d` and PR #331 `3f309578ebc35f17ae9321f969a67fe4e14db4ab`. Extract byte-exact `Game.php` and `TextParser.php` snapshots using Git and record their blob hashes. Each historical process must load a newly generated version-4 pending-union fixture and throw `GameException` with the schema-version rejection before interpreting effects. Use the repository's existing offline dependencies; do not substitute a copied guard or a mock reader. Never load two `Game` class definitions into the same process.
-5. Record commands, exact source commit and reader blob hashes, pass/fail/skip counts, and rejection output. Run Pint/whitespace checks. Resume Modern corpus measurement and adjacent removal/regeneration regressions only after the parent's startup resource hold is lifted.
+5. Commands, exact source commit, reader hashes and rejection outputs are retained in ignored recovery evidence. Pint on all eight changed PHP files passed in 4.928 seconds with process-local `-d xdebug.mode=off`; local Xdebug develop mode caused the earlier 30-second formatter timeouts. No machine PHP configuration was changed. Modern recognition measurement and the offline suite are tracked in the selector checkpoint.
 
 ## Historical source preparation
 
-Byte-exact reader snapshots have been extracted from the existing local Git objects, without a network fetch or PHP execution. Source identity is verified; runtime compatibility is still pending.
+Byte-exact reader snapshots have been extracted from the existing local Git objects, without a network fetch or PHP execution. Source identity and both compatibility directions are verified for the fixtures below.
 
 | Reader | File | Git blob | SHA-256 |
 | --- | --- | --- | --- |
@@ -45,10 +45,10 @@ Byte-exact reader snapshots have been extracted from the existing local Git obje
 | PR #331 `3f30957` | `Game.php` | `aaae2f3795c30235fc28805cf2e858c842c57140` | `276a4b5358b5be9bacb8571f397371c5ee4c89603626980d445c772a962c6cd6` |
 | PR #331 `3f30957` | `TextParser.php` | `4af5ddf1737f300c63d6c00accfc3ac179ea4e1a` | `c97fb9cad705da177e419d1a3c1292d0221ab8f229d4662f2f457dcd5eb47ba7` |
 
-The task-local offline probes are prepared to generate a pending union-ability fixture with the new writer, verify both old readers reject it, then generate actual version-3 fixtures with each historical writer. Those historical fixtures include a pending ordinary damage ability and a delayed draw. The new reader must preserve their state except for the schema label, deal the damage once, and draw once at the next upkeep. These complement the synthetic version-3 unit case; neither direction has been executed under the source-only hold.
+The versioned offline probes generated a schema-4 pending union-ability fixture; both actual old readers rejected it before hydration. Each historical writer generated a schema-3 fixture with pending damage and a scheduled draw. The new reader preserved each record except for its schema label, dealt damage once, and drew once at the next upkeep. Current fixture SHA-256: `fab7f90d5056236b773a76ec60ad58391ce85c1528b189723b064be60ab39140`. Both historical fixtures: `71f7f3becf886c70a34c03ac46ce7ef617b5d5dd792c04653eef4a4b18067620`.
 
-No selector PR should be published while these compatibility checks are unverified. General simultaneous death/leave handling remains an inherited limitation requiring separate review; this version gate only prevents older builds from silently interpreting new saved semantics.
+General simultaneous death/leave handling remains an inherited limitation requiring separate work; this version gate prevents older builds from silently interpreting new saved semantics. These probes establish the tested state transitions, not whole-card functionality.
 
 ## Reusable checks
 
-The prepared probes are now versioned under [bin/selector-compatibility](../bin/selector-compatibility/README.md). They use ignored `var/selector-compatibility` for extracted sources and fixtures, so continuation does not depend on a particular chat directory. Historical writers and readers check the extracted source hashes. Their execution remains pending; the original task-local scripts and evidence are preserved unchanged.
+The prepared probes are now versioned under [bin/selector-compatibility](../bin/selector-compatibility/README.md). They use ignored `var/selector-compatibility` for extracted sources and fixtures, so continuation does not depend on a particular chat directory. Historical writers and readers check the extracted source hashes. All seven PHP processes passed with 30-second process-tree caps; the original task-local scripts and evidence are preserved unchanged.
