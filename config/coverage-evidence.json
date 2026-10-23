@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "815cc534bd27b7ac061acbd767bfe827b902626e",
+  "engineSource": "01bc69e52594525abbe34b545bf8b5d857777e59",
   "validation": {
-    "evidenceMeaning": "Exact-head historical full offline suite with identical pinned engine/test bytes; ledger generation does not rerun behavior tests. Metadata-only successors reuse local runtime results and require their own exact-head CI.",
-    "local": "862 tests, 33012 assertions, 2 expected imported-data skips; exit 0 in 68.318 seconds",
-    "source": "9417337b960964a68c570979d70819c7eb8a94d8",
-    "ci": "https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/39987560549"
+    "evidenceMeaning": "Current focused checks passed; current full-suite and exact-head CI provenance pending. Ledger generation does not rerun behavior tests.",
+    "local": "21 focused tests, 356 assertions; source-pin checks 18 tests, 37 assertions; current full offline suite pending",
+    "source": "01bc69e52594525abbe34b545bf8b5d857777e59",
+    "ci": "pending"
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "1d1121507b8d33cfae96165091f0f30b58572ee534f16495e158ff942dec2ef1",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
-    "src/MTGPocket/Game/Game.php": "a5aed4a0c055a9b2727560a99927fe4063b3c78bbe7d5f45abb360cc5276e3dd",
+    "src/MTGPocket/Game/Game.php": "b88b532d445d3bd6a4e54feaef67bf16bbd4d89aeaf55d8f61d14d0c55f4fc83",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -34,7 +34,8 @@
     "src/MTGPocket/Game/CreatureDeath.php": "4d39c10adce98d8e515b25ebcce712681d09dd7c89c8b2f42efa0778242c978f",
     "src/MTGPocket/Game/DeathObserverBatch.php": "0f056b3556b66872f54c9d03cf1dc4a715b190cd4954044b7d43d30cd79b9edf",
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
-    "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541"
+    "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
+    "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388"
   },
   "scopedEvidence": [
     {
@@ -98,6 +99,21 @@
       ],
       "scope": "Exact pinned Pyroclasm and Infest with exact observers in both insertion orders/former controllers, self/other/token/nontoken/opponent controls and JSON before spell/with death abilities. A synthetic lord distinguishes successive state-based groups; prevention and zero-toughness controls.",
       "limits": "Selected state-based death-group notifications only. No general continuous-characteristic snapshot, replacement ordering, simultaneous sacrifice, general conditions/APNAP decisions, every state-based action or whole-card certificate. Synthetic supporting probes do not certify additional corpus names."
+    },
+    {
+      "id": "simultaneous-sacrifice-death-observers",
+      "cards": [
+        "Zulaport Cutthroat",
+        "Grim Haruspex"
+      ],
+      "tests": [
+        "tests/Game/SimultaneousSacrificeObserverTest.php::testPaidBarterKeepsItsDyingObservers",
+        "tests/Game/SimultaneousSacrificeObserverTest.php::testBothControllersRetainTheirOwnAbilities",
+        "tests/Game/SimultaneousSacrificeObserverTest.php::testOnlyOneAvailableCreatureIsNotSelectedTwice",
+        "tests/Game/SimultaneousSacrificeObserverTest.php::testNoEligibleCreatureDoesNotSacrificeOtherPermanents"
+      ],
+      "scope": "Exact pinned Barter in Blood and observers: paid spell, exactly required or fewer creatures, both insertion orders/prior controllers, self/other/token/nontoken/opponent restrictions, both controllers, indestructible and unaffected permanents, JSON before spell and with death abilities on stack. A synthetic all-deaths observer tests the group across both players.",
+      "limits": "Death notifications from one edict effect only. Sacrifice choices remain heuristic when extra eligible permanents exist. Sacrifice-specific observer events, sacrifice costs, continuous-characteristic snapshots, replacement ordering, general APNAP decisions and whole-card support are not certified. The all-deaths probe is synthetic, not additional corpus-card evidence."
     }
   ],
   "explicitUnsupported": [
@@ -109,31 +125,30 @@
       "scope": "Partner is an unread clause in the pinned report; no claim about its other abilities."
     },
     {
+      "id": "edict-choice-policy",
       "cards": [
-        "Zulaport Cutthroat",
-        "Grim Haruspex"
+        "Barter in Blood"
       ],
-      "id": "simultaneous-observer-gap",
-      "scope": "Zulaport Cutthroat and Grim Haruspex still lack verified pre-event observer behavior across simultaneous mass sacrifices. Destroy-all and selected state-based death groups now have scoped evidence; continuous characteristics, replacement ordering and general conditions remain separate gaps."
+      "scope": "With more than two eligible creatures, the engine chooses the weakest instead of obtaining each player's sacrifice choices. The simultaneous death-notification tests intentionally use exactly required or fewer creatures."
     }
   ],
   "nextFamily": {
-    "id": "simultaneous-sacrifice-observers",
+    "id": "resumable-edict-sacrifice-choices",
     "cards": [
-      "Zulaport Cutthroat",
-      "Grim Haruspex"
+      "Barter in Blood"
     ],
-    "measuredCandidateCount": 2,
-    "scope": "Two pinned observer candidates for paid Barter in Blood with exactly the required creatures; not an exhaustive affected-card count or certification of heuristic sacrifice choices.",
+    "measuredCandidateCount": 1,
+    "scope": "One exact pinned spell exposes heuristic player choices; a bounded continuation through existing pendingChoice and saved resolution state, not a generic sacrifice-cost or all-choice claim.",
     "acceptance": [
-      "Reproduce with exact pinned observer/spell wording and paid Barter in Blood; both insertion orders and prior controllers.",
-      "Select the simultaneous sacrifice group before moving it; notify each qualifying death once, including tokens/nontokens and both players.",
-      "Use exactly the required permanents first; preserve explicit choice-policy limitations when additional legal sacrifices exist.",
-      "Include non-sacrificed/permanent-type/indestructible and JSON pending-stack controls; never increase whole-card certification from partial tests."
+      "Reproduce paid Barter in Blood with more than two eligible creatures and exact pinned wording.",
+      "Use validated engine choices for each responsible player; collect all choices before the simultaneous move group.",
+      "Reject wrong-player, duplicate, stale, ineligible and wrong-count answers without mutation.",
+      "Persist and resume pending player choices and resolution; verify both players and actual death-observer behavior.",
+      "Keep zero/fewer-than-required cases and existing targeted/greatest-power edicts correct; do not infer whole-card certificates."
     ],
     "deferred": [
-      "General replacement effects, continuous-characteristic snapshots and APNAP player decisions",
-      "Heuristic sacrifice selection when a player has additional eligible permanents",
+      "General sacrifice costs and other heuristic type/color/devour policies",
+      "General replacement effects, continuous-characteristic snapshots and APNAP trigger ordering",
       "Complete MTG rules and every whole-card interaction"
     ]
   },

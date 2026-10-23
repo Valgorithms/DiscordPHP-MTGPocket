@@ -1,0 +1,15 @@
+# Simultaneous sacrifice death observers
+
+Barter in Blood moved each selected creature immediately. Zulaport Cutthroat and Grim Haruspex could disappear before later creatures died in the same event. Nineteen initial regression cases reproduced ten failures. Twenty-one final cases pass, including zero and fewer-than-required creatures.
+
+The edict effect now selects distinct victims across all affected players before moving any of them. It wraps that group in the existing synchronous death-observer boundary, retaining each pre-event observer for actual creature-death notifications. Single-target and greatest-power selection retain their existing policies. This follows the pre-event lookback principle in [Comprehensive Rules 603.10/603.10a](https://media.wizards.com/2026/downloads/MagicCompRules%2020260619.pdf); it does not claim a complete simultaneous-event model.
+
+[SimultaneousSacrificeObserverTest](../tests/Game/SimultaneousSacrificeObserverTest.php) pins complete selected records for Zulaport Cutthroat (A25), Grim Haruspex (PLST) and Barter in Blood (PLST). The normalized-LF [fixture](../tests/Fixtures/simultaneous-sacrifices.json) has SHA-256 `fd0f0aae92c0e7560953565d2fbf14f2993711d3ff02e3d42f5ce772c7ad627a`. Tests pay for Barter, use exactly the required creatures or fewer, and cover both insertion orders, prior ownership/control, both controllers, self/other, token/nontoken and opponent restrictions. Sacrifice ignores indestructible; lands and ordinary artifacts stay. JSON replay agrees both before spell resolution and with death triggers on the stack. A synthetic all-deaths observer confirms one group spans both players; it does not certify another corpus card.
+
+When a player has additional eligible permanents, the engine still chooses the weakest rather than asking that player. The next measured family is explicit resumable sacrifice choices for this exact spell. Sacrifice-specific observer events, sacrifice costs, continuous-characteristic snapshots, replacement ordering, one-or-more event identity and general APNAP decisions remain separate. No persisted-state or environment contract changed; `env.example` needs no new entries.
+
+The ledger retains five names with scoped evidence and zero whole-card certificates. It replaces the two observers' now-tested mass-sacrifice gap with Barter in Blood's concrete player-choice gap: two explicit gap names including Akroma, and zero overlap with the five evidence names. This is a non-exhaustive index; removing a specific gap is not whole-card acceptance. Recognition remains 11,282 of 28,729. No fresh full parser walk, imported-data gameplay, bot/Gaia startup, import, build, deployment or restart was performed.
+
+## Validation
+
+Focused tests: 21 cases/356 assertions; adjacent checks before the final two negative controls: 124 cases/1,402 assertions. Two-file Pint passed. Full suite, source-pin and corpus verification are recorded after the final runtime commit; exact-head CI must pass before merge.
