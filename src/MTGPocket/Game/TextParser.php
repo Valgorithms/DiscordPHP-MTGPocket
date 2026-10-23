@@ -4651,7 +4651,9 @@ final class TextParser
         }
         $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'creatures you don\'t control' => 'opponents', 'creatures defending player controls' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying', 'attacking creatures' => 'attacking', 'attacking creatures you control' => 'attacking'];
         $group = implode('|', array_keys($each));
-        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
+        // Consume the Meek: "each creature" selects the same objects as "all creatures".
+        $s = (string) preg_replace('/^(destroy|exile) each creature\b/i', '$1 all creatures', $s);
+        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all artifacts, creatures, and lands|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
         // Evacuation, Aetherize-style sweepers: `Return all creatures to their owners' hands.`
