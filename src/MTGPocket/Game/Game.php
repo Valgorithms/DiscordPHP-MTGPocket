@@ -84,8 +84,11 @@ final class Game
      */
     public ?array $pendingChoice = null;
 
-    /** Persisted rules-state format; unversioned records are version 1. */
-    public const int STATE_VERSION = 3;
+    /**
+     * Persisted rules-state format; unversioned records are version 1.
+     * Version 4 prevents older readers from misinterpreting new mass-removal selectors.
+     */
+    public const int STATE_VERSION = 4;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -9472,6 +9475,7 @@ final class Game
             'all artifacts' => $o->definition()->is('Artifact'),
             'all enchantments' => $o->definition()->is('Enchantment'),
             'all artifacts and enchantments' => $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'),
+            'all artifacts, creatures, and lands' => $o->definition()->is('Artifact') || $this->isCreature($o) || $o->definition()->isLand(),
             // `Destroy all creatures with power 3 or less.`, or with mana value.
             default => preg_match('/^all creatures with (power|mana value) (\d+) or (less|greater)$/', $all, $m)
                 ? $this->isCreature($o) && (($m[1] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[2]) !== ($m[3] === 'less' ? 1 : -1)

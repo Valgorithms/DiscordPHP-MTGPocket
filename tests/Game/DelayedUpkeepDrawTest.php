@@ -493,7 +493,7 @@ final class DelayedUpkeepDrawTest extends GameTestCase
     public function testLegacySavesDefaultTheQueueAndFutureVersionsAreRejected(): void
     {
         $data = $this->newGame()->toArray();
-        $this->assertSame(3, $data['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $data['schemaVersion']);
         unset($data['delayedDraws']);
         foreach ([null, 1, 2] as $version) {
             $legacy = $data;
@@ -504,7 +504,7 @@ final class DelayedUpkeepDrawTest extends GameTestCase
             }
             $loaded = Game::fromArray($legacy);
             $this->assertSame([], $loaded->delayedDraws);
-            $this->assertSame(3, $loaded->toArray()['schemaVersion']);
+            $this->assertSame(Game::STATE_VERSION, $loaded->toArray()['schemaVersion']);
         }
         $this->assertInvalidSave($data);
         $data['schemaVersion'] = Game::STATE_VERSION + 1;
