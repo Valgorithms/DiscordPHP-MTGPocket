@@ -2879,9 +2879,9 @@ final class TextParser
 
                 return true;
             }
-        } elseif (preg_match('/^Whenever you (?:cycle or )?discard (a card|one or more cards), (.+)$/', $line, $match)) {
-            // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too.
-            $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
+        } elseif (preg_match('/^Whenever you (?:cycle or )?discard (a card|another card|one or more cards), (.+)$/', $line, $match)) {
+            // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too. "Another card": a permanent is never discarded, so any card.
+            $event = $match[1] === 'one or more cards' ? 'you_discard_batch' : 'you_discard';
             $text = $match[2];
         } elseif (preg_match("/^Whenever you activate (an ability that isn't a mana ability|an exhaust ability)(?: that isn't a mana ability)?, (.+)$/", $line, $match)
             && ! preg_match('/\b(?:it|that ability)\b/', $match[2])) {
@@ -4868,6 +4868,10 @@ final class TextParser
         if (preg_match("/^(?:you may )?put (\w+) -1\/-1 counters? on ({$targets})$/i", $s, $m) && is_int($n = self::amount($m[1]))
             && in_array(self::TARGETS[strtolower($m[2])], self::CREATURE_KINDS, true)) {
             return ['type' => 'counters', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[2])], 'kind' => '-1/-1'];
+        }
+        // `Put a -1/-1 counter on each creature your opponents control.` / `… on each other creature.`
+        if (preg_match("/^[Pp]ut (\w+) -1\/-1 counters? on each (other )?creature( your opponents control| you don't control)?$/", ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))) {
+            return ['type' => 'counters', 'amount' => $n, 'kind' => '-1/-1', 'each' => ($m[3] ?? '') === '' ? 'all' : 'opponents'] + (($m[2] ?? '') !== '' ? ['other' => true] : []);
         }
         // `Put a +1/+1 counter on each creature you control.` / `… each other creature you control.`
         // `… each creature you control with flying.`: only those with the keyword.
