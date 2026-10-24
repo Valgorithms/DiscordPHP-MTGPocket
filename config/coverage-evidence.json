@@ -17,9 +17,9 @@
     "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "a1d435e99a74b863faa2d05c55b8b5335c816ee1168617ab9ca274149c8c9995",
+    "src/MTGPocket/Game/TextParser.php": "e9cdd527005fae0f3917f2d22b7606787c6af72475e8943f2ea5b876d5176ab0",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "1252f2c241f4323d5066b1d2040b7d50287155190c03c3a7eb713fcdbee306fc",
+    "src/MTGPocket/Game/Game.php": "d77a204adffeb079559656c203b1d2b38612a58d6e7fb27a4a3746ecc3a8a684",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -46,7 +46,7 @@
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "d6f5036f82a069c456ee2423ce9806b7929ccaf0338408090bd9730f6302260b",
+    "tests/Game/ModernCardTextTest.php": "a97faaf00ab0ed816f2e31d88d3a44ff883c8294ff3e58e0de4bd530632c287c",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
