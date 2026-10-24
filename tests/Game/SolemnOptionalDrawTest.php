@@ -40,7 +40,7 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $this->assertSame('9a79f3ccf7bd725f6d3c326e166ab68872235caa5bd4df8b47e95b1017b940e0', hash('sha256', $bytes));
         $card = json_decode($bytes, true, flags: JSON_THROW_ON_ERROR)['card'];
         $this->assertSame('9c3514e4-85a9-5c7f-9a10-fe160bc6dc35', $card['uuid']);
-        $this->assertCount(1, (new CardDefinition($card))->unsupported, 'The entry search remains a separate gap.');
+        $this->assertSame([], (new CardDefinition($card))->unsupported);
         return $card;
     }
 
@@ -60,6 +60,8 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $this->game = Game::fromArray($this->saved());
         $this->resolveOne();
         $this->assertSame(GameObject::BATTLEFIELD, $this->zone($source));
+        $this->resolveOne();
+        $this->game->chooseOptionalBasicLandSearch($actor, $this->game->choiceAwaiting()['id'], 'decline');
         $this->game->objects[$source]->controller = $controller;
         $smelt = json_decode(file_get_contents(__DIR__.'/../Fixtures/artifact-burial-smelt.json'), true, flags: JSON_THROW_ON_ERROR)['card'];
         $mountain = $this->lands($actor, 'Mountain', 1)[0];
@@ -213,9 +215,27 @@ final class SolemnOptionalDrawTest extends GameTestCase
     {
         $cases = SummoningStationChoiceTest::malformed();
         $cases[0] = ['schemaVersion', 12];
-        $cases[] = ['schemaVersion', 14];
+        $cases[] = ['schemaVersion', Game::STATE_VERSION + 1];
 
         return $cases;
+    }
+
+    public function testVersionThirteenDeathChoiceStillLoadsAndCannotAnswerASearch(): void
+    {
+        $this->die(0);
+        $saved = $this->saved();
+        $saved['schemaVersion'] = 13;
+        $this->game = Game::fromArray($saved);
+        $before = $this->saved();
+        $choice = $this->game->choiceAwaiting();
+        try {
+            $this->game->chooseOptionalBasicLandSearch(0, $choice['id'], 'accept');
+            $this->fail('Search answered a saved death-draw decision.');
+        } catch (GameException) {
+            $this->assertSame($before, $this->saved());
+        }
+        $this->game->chooseOptionalDeathDraw(0, $choice['id'], 'accept');
+        $this->assertCount(count($before['players'][0]['hand']) + 1, $this->game->players[0]->hand);
     }
 
     public function testMandatoryDeathDrawDoesNotBecomeOptional(): void

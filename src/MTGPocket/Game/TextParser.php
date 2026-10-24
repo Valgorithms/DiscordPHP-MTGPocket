@@ -2481,6 +2481,12 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Keep the optional search distinct from accepting and failing to find a land.
+        if ($line === 'When CARDNAME enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'enters', 'effects' => [['type' => 'optional_basic_land_search']]];
+
+            return true;
+        }
         // Solemn Simulacrum's self-death draw is optional at resolution.
         if ($line === 'When CARDNAME dies, you may draw a card.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'dies',

@@ -364,6 +364,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
                 'optional_source_counter' => 'choose whether to put a +1/+1 counter on '.$game->choiceAwaiting()['label'],
                 'optional_death_draw' => 'choose whether to draw a card',
+                'optional_basic_land_search' => 'choose whether to search for a basic land',
                 'optional_life_gain' => 'choose whether to gain 5 life',
                 'optional_life_loss' => 'choose whether the targeted opponent loses 1 life',
                 'sacrifice' => 'choose creatures to sacrifice',
@@ -712,6 +713,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'decline'))->setLabel('Decline')));
                 break;
 
+            case 'optional_basic_land_search':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maysearch', (string) $optional['id'], 'accept'))->setLabel('Search library'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maysearch', (string) $optional['id'], 'decline'))->setLabel('Decline search')));
+                break;
+
             case 'optional_death_draw':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
@@ -902,6 +910,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
             'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a +1/+1 counter on this creature. Only the original battlefield incarnation can receive it; this does not target.',
             'optional_death_draw' => '**'.$game->choiceAwaiting()['label'].'**: you may draw a card. This does not target a player; declining does not draw.',
+            'optional_basic_land_search' => '**'.$game->choiceAwaiting()['label'].'**: search for a basic land to enter tapped, then shuffle, or decline without searching or shuffling. If you search, you may fail to find.',
             'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',
             'optional_life_loss' => '**'.$game->choiceAwaiting()['label'].'**: you may have **'.$game->players[(int) substr($game->choiceAwaiting()['target'], 2)]->name.'** lose 1 life.',
             'mulligan' => $player->mulligans === 0

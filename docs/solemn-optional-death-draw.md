@@ -1,5 +1,7 @@
 # Solemn Simulacrum optional death draw
 
+Subsequent [entry-search work](solemn-optional-entry-search.md) resolves the entry gap described in this historical death-draw milestone. The current state format is version 14 and retains version 13 death-choice compatibility; the original verification below remains scoped to death draws.
+
 The complete pinned M12 Solemn Simulacrum now gives the original death-trigger controller an explicit choice to draw exactly one card or decline. Previously, the paid four-mana cast and paid Smelt destruction path drew immediately on resolution. The saved baseline reproduced four failures/52 assertions. This change intercepts only `When CARDNAME dies, you may draw a card.`; unrelated optional-draw wording retains its existing behavior.
 
 The complete fixture `tests/Fixtures/solemn-simulacrum-optional-draw.json` pins UUID `9c3514e4-85a9-5c7f-9a10-fe160bc6dc35`, MTGJSON `5.3.0+20261022`, normalized-LF SHA-256 `9a79f3ccf7bd725f6d3c326e166ab68872235caa5bd4df8b47e95b1017b940e0`. Its optional entry basic-land search remains one unread clause. No entry-search or whole-card support is claimed.
