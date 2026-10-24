@@ -1626,6 +1626,11 @@ final class TextParser
 
             return true;
         }
+        // Wild Cantor: `Sacrifice CARDNAME: Add one mana of any color.`, with no {T}, so even while tapped or summoning sick.
+        $untapped = (bool) preg_match('/^Sacrifice CARDNAME: Add /', $line);
+        if ($untapped) {
+            $line = '{T}, '.$line;
+        }
         if (! preg_match('/^\{T\}(, Pay 1 life|, Sacrifice CARDNAME|, Remove an? (?:charge|storage|oil) counter from CARDNAME)?: Add (.+?)\.?(?: CARDNAME deals 1 damage to you\.)?$/', $line, $match)) {
             return false;
         }
@@ -1680,7 +1685,7 @@ final class TextParser
             if ($result['mana'] !== null) {
                 return false;
             }
-            $result['mana'] = $ability + ['sacrifice' => true];
+            $result['mana'] = $ability + ['sacrifice' => true] + ($untapped ? ['noTap' => true] : []);
 
             return true;
         }
