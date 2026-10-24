@@ -4467,6 +4467,10 @@ final class TextParser
         if (preg_match('/^CARDNAME deals (\w+) damage to each (opponent|player)$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => strtolower($m[2])];
         }
+        // `CARDNAME deals 2 damage to each other creature.`: not CARDNAME itself.
+        if (preg_match('/^CARDNAME deals (\w+) damage to each other creature$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'damage', 'amount' => $n, 'each' => 'creature_other'];
+        }
         if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying| with flying| your opponents control)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => match ($m[2] ?? '') {
                 ' without flying' => 'creature_without_flying',

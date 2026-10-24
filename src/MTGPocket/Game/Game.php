@@ -4521,6 +4521,7 @@ final class Game
                     'opponent' => array_map(fn (int $seat) => "p:{$seat}", $opponents),
                     'player' => array_map(fn (int $seat) => "p:{$seat}", $this->turnOrderSeats()),
                     'creature' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o))),
+                    'creature_other' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $o->id !== $source->id)),
                     'creature_without_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && ! $this->hasKeyword($o, 'flying'))),
                     'creature_with_flying' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $this->hasKeyword($o, 'flying'))),
                     'creature_opponents' => array_map(fn (GameObject $o) => "o:{$o->id}", array_filter($this->permanents(), fn (GameObject $o) => $this->isCreature($o) && $o->controller !== $controller)),
