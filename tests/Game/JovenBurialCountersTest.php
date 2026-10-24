@@ -22,8 +22,6 @@ use MTGPocket\Builders\MatchMessageBuilder;
 /** @covers \MTGPocket\Game\Game */
 final class JovenBurialCountersTest extends GameTestCase
 {
-    private const UNREAD = '{R}{R}{R}, {T}: Gain control of target artifact until end of turn. Untap it. It gains haste until end of turn.';
-
     private function saved(): array
     {
         return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
@@ -51,7 +49,7 @@ final class JovenBurialCountersTest extends GameTestCase
     {
         $card = $this->selected();
         $definition = new CardDefinition($card);
-        $this->assertSame([self::UNREAD], $definition->unsupported, 'The separate temporary-control ability remains unread.');
+        $this->assertSame([], $definition->unsupported);
         $this->assertCount(1, $definition->triggersOn('artifact_to_graveyard_any'));
         $this->game->active = $this->game->priority = $seat;
         $lands = $this->lands($seat, 'Mountain', 5);

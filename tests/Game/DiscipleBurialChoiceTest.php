@@ -327,14 +327,11 @@ final class DiscipleBurialChoiceTest extends GameTestCase
             } elseif ($entry['card']['name'] === 'Ich-Tekik, Salvage Splicer') {
                 $this->assertSame(['Partner'], $definition->unsupported);
                 $this->assertCount(1, $definition->triggersOn('artifact_to_graveyard_any'));
-            } elseif ($entry['card']['name'] === 'Joven and Chandler') {
-                $this->assertSame(['{R}{R}{R}, {T}: Gain control of target artifact until end of turn. Untap it. It gains haste until end of turn.'], $definition->unsupported);
-                $this->assertCount(1, $definition->triggersOn('artifact_to_graveyard_any'));
             } else {
                 $this->assertSame([], $definition->triggersOn('artifact_to_graveyard_any'), $entry['card']['name']);
             }
         }
-        $this->assertSame(['Disciple of the Vault', 'Fangren Marauder', 'Krenko, Baron of Tin Street', 'Molder Beast', 'Moriok Rigger', 'Summoning Station'], $recognized);
+        $this->assertSame(['Disciple of the Vault', 'Fangren Marauder', 'Joven and Chandler', 'Krenko, Baron of Tin Street', 'Molder Beast', 'Moriok Rigger', 'Summoning Station'], $recognized);
     }
 
     public static function orders(): array
