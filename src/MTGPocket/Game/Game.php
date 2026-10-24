@@ -10056,11 +10056,12 @@ final class Game
             $this->trigger($object, 'to_graveyard', $controller, $incarnation, sourceDefinition: $departingDefinition);
             // Preserve existing family order; all-player observers use their own controller.
             $observers = $departureObservers ?? [$object, ...$this->permanents()];
-            $events = $departingDefinition?->is('Artifact') ? ['artifact_to_graveyard', 'permanent_to_graveyard_yours', 'artifact_to_graveyard_any'] : ['permanent_to_graveyard_yours'];
+            // `Whenever a land is put into a graveyard from the battlefield, …`: anyone's, after the existing families.
+            $events = $departingDefinition?->is('Artifact') ? ['artifact_to_graveyard', 'permanent_to_graveyard_yours', 'artifact_to_graveyard_any', 'permanent_to_graveyard_any'] : ['permanent_to_graveyard_yours', 'permanent_to_graveyard_any'];
             foreach ($events as $event) {
                 foreach ($observers as $permanent) {
                     $observerController = $departureObservers === null && $permanent === $object ? $controller : $permanent->controller;
-                    if ($event !== 'artifact_to_graveyard_any' && $observerController !== $controller) {
+                    if (! in_array($event, ['artifact_to_graveyard_any', 'permanent_to_graveyard_any'], true) && $observerController !== $controller) {
                         continue;
                     }
                     $definition = $departureObservers !== null ? $permanent->definition() : ($permanent === $object ? $departingDefinition : null);
