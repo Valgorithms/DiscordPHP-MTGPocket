@@ -7187,6 +7187,8 @@ final class Game
             'multicolored' => count($card->colors) > 1,
             // `a spell that has an X in its mana cost`
             'x spell' => $card->cost->xCount > 0,
+            // `Whenever an equipped creature you control attacks, …`
+            'equipped creature', 'enchanted creature' => $this->isCreature($object) && array_filter($this->attachments($object), fn (GameObject $o) => in_array($kind === 'equipped creature' ? 'Equipment' : 'Aura', $o->definition()->subtypes, true)) !== [],
             // `an Aura, Equipment, or Vehicle spell`
             default => str_starts_with($kind, 'any:') ? array_intersect(explode('|', substr($kind, 4)), $card->subtypes) !== [] : in_array($kind, $card->subtypes, true),
         };
