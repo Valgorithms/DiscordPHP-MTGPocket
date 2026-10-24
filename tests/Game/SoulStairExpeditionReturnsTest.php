@@ -109,7 +109,75 @@ final class SoulStairExpeditionReturnsTest extends GameTestCase
         $this->charge($actor, $source);
         $a = $this->game->addCard($actor, self::card('Grizzly Bears'), GameObject::GRAVEYARD)->id;
         $this->reject(fn () => $this->game->activate($actor, $source, 0, ["o:{$a}", "o:{$a}"]));
+        $incarnation = $this->game->objects[$a]->incarnation;
+        $this->reject(fn () => $this->game->activate($actor, $source, 0, ["o:{$a}", "o:{$a}:{$incarnation}"]));
+        $this->reject(fn () => $this->game->activate($actor, $source, 0, ["o:{$a}", "o:0{$a}"]));
     }
+
+    /** @dataProvider actors */
+    public function testInvalidSelectionsAndInsufficientCountersLeaveStateUnchanged(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->reject(fn () => $this->game->activate($actor, $source, 0, ['-', '-']));
+        $this->charge($actor, $source);
+        $land = $this->game->addCard($actor, self::card('Swamp'), GameObject::GRAVEYARD)->id;
+        $enemy = $this->game->addCard(1 - $actor, self::card('Grizzly Bears'), GameObject::GRAVEYARD)->id;
+        $living = $this->game->addCard($actor, self::card('Grizzly Bears'), GameObject::BATTLEFIELD)->id;
+        foreach ([["o:{$land}", '-'], ["o:{$enemy}", '-'], ["o:{$living}", '-'], ["o:{$source}", '-'], ['-'], ['-', '-', '-']] as $targets) {
+            $this->reject(fn () => $this->game->activate($actor, $source, 0, $targets));
+        }
+        $this->reject(fn () => $this->game->activate(1 - $actor, $source, 0, ['-', '-']));
+    }
+
+    /** @dataProvider optionalCounts */
+    public function testZeroOrOneTargetStillPaysBothCosts(int $actor, int $count): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $a = $this->game->addCard($actor, self::card('Grizzly Bears'), GameObject::GRAVEYARD)->id;
+        $this->game->activate($actor, $source, 0, [$count === 1 ? "o:{$a}" : '-', '-']);
+        $this->assertSame([GameObject::GRAVEYARD, 0], [$this->zone($source), $this->game->objects[$source]->counter('quest')]);
+        $this->game = Game::fromArray($this->saved());
+        $this->resolveOne();
+        $this->assertSame($count === 1 ? GameObject::HAND : GameObject::GRAVEYARD, $this->zone($a));
+        $this->reject(fn () => $this->game->activate($actor, $source, 0, ['-', '-']));
+    }
+
+    /** @dataProvider invalidCounts */
+    public function testResolutionRechecksTargetsAndReplaysQueuedAbility(int $actor, int $invalid): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $a = $this->game->addCard($actor, self::card('Grizzly Bears'), GameObject::GRAVEYARD)->id;
+        $b = $this->game->addCard($actor, self::card('Ornithopter'), GameObject::GRAVEYARD)->id;
+        $this->game->activate($actor, $source, 0, ["o:{$a}", "o:{$b}"]);
+        // Explicit zone-movement probe, not evidence for a supporting exile spell.
+        $move = new \ReflectionMethod(Game::class, 'moveTo');
+        foreach (array_slice([$a, $b], 0, $invalid) as $id) {
+            $move->invoke($this->game, $this->game->objects[$id], GameObject::EXILE);
+            $move->invoke($this->game, $this->game->objects[$id], GameObject::GRAVEYARD);
+        }
+        $queued = $this->saved();
+        $this->resolveOne();
+        $resolved = $this->saved();
+        $this->assertSame($invalid > 0 ? GameObject::GRAVEYARD : GameObject::HAND, $this->zone($a));
+        $this->assertSame($invalid > 1 ? GameObject::GRAVEYARD : GameObject::HAND, $this->zone($b));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
+        $this->game = Game::fromArray($queued);
+        $this->resolveOne();
+        $this->assertSame($resolved, $this->saved());
+    }
+
+    public static function optionalCounts(): array
+    {
+        return [[0, 0], [0, 1], [1, 0], [1, 1]];
+    }
+
+    public static function invalidCounts(): array
+    {
+        return [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2]];
+    }
+
     public static function actors(): array
     {
         return [[0], [1]];
