@@ -1634,6 +1634,10 @@ final class TextParser
         } elseif (preg_match('/^(two|three|four|five) mana of any one colou?r$/i', $what, $n)) {
             // Gilded Lotus: all of one color; see ManaPayer::plan().
             $ability = ['count' => self::amount($n[1]), 'colors' => ['W', 'U', 'B', 'R', 'G'], 'same' => true];
+        } elseif (preg_match('/^(two|three) mana in any combination of (colou?rs|\{[WUBRG]\} and\/or \{[WUBRG]\})$/i', $what, $n)) {
+            // `Add two mana in any combination of colors.`, `… of {R} and/or {G}.`: each one of them; see ManaPayer::plan().
+            preg_match_all('/\{([WUBRG])\}/', $n[2], $symbols);
+            $ability = ['count' => self::amount($n[1]), 'colors' => $symbols[1] !== [] ? array_values(array_unique($symbols[1])) : ['W', 'U', 'B', 'R', 'G']];
         } elseif (preg_match('/^one mana of the chosen color$/i', $what) && $result['chooses'] === 'color') {
             // See Game::manaSources().
             $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G'], 'chosen' => true];
