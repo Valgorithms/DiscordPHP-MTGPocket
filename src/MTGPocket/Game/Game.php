@@ -6422,6 +6422,8 @@ final class Game
                 ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
+                // The departing battlefield definition includes token/copy costs; X is zero off the stack.
+                ($effect['amount'] ?? null) === 'departing_mana_value' => ['amount' => $contextCharacteristics?->definition->cost->manaValue() ?? 0] + $effect,
                 ($effect['amount'] ?? null) === 'combat_dealt' => ['amount' => $this->combatDealt[$event === 'combat_damage' ? $source->id : $context] ?? 0] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
