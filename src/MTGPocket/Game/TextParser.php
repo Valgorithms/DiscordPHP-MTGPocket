@@ -3016,6 +3016,13 @@ final class TextParser
             $extra = ['minPower' => $power];
             $text = $match[3];
             $match = [$match[0], $text];
+        } elseif (preg_match('/^Whenever (?:one or more ([A-Z][a-z]+) you control attack|you attack with one or more ([A-Z][a-z]+)), (.+)$/', $line, $match)
+            && ($kind = self::subtypeOf($match[1] !== '' ? $match[1] : $match[2])) !== null && ! preg_match('/\b(?:it|its|they|them|their|those creatures)\b/', $match[3])) {
+            // `Whenever one or more Rabbits you control attack, …`: once, however many; see Game::declareAttackers().
+            $event = 'you_attack_kind';
+            $extra = ['objectKind' => $kind];
+            $text = $match[3];
+            $match = [$match[0], $text];
         } elseif (preg_match('/^Whenever (?:you attack|one or more creatures you control attack), (.+)$/', $line, $match)) {
             $event = 'you_attack';
             $text = (string) preg_replace('/^they (get|gain)/', 'attacking creatures you control $1', $match[1]);
