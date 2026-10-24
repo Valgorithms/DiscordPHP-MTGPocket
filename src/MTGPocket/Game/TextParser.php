@@ -2535,6 +2535,13 @@ final class TextParser
 
             return true;
         }
+        // The quest counter is optional at resolution, like the existing source counter.
+        if (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), you may put a quest counter on CARDNAME\.$/', $line)) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'landfall',
+                'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+
+            return true;
+        }
         // Exact temporary source boost; existing self/incarnation and cleanup rules own it.
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, CARDNAME gets +2/+0 until end of turn.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
@@ -3417,6 +3424,8 @@ final class TextParser
                 [$cost['mana'], $cost['waterbend']] = [$water[1], true];
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
+            } elseif ($part === 'Remove three quest counters from CARDNAME and sacrifice it') {
+                $cost += ['remove' => ['quest', 3], 'sacrifice' => true];
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
             } elseif ($part === 'Exile CARDNAME from your graveyard') {

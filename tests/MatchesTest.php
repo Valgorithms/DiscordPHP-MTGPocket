@@ -1243,6 +1243,71 @@ final class MatchesTest extends PocketTestCase
     }
 
     /** @dataProvider optionalLifeOptions */
+    public function testKhalniQuestPanelPersistsNamedCounterAndSacrificeSearch(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = $land = $find = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source, &$land, &$find): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 2; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Forest'), GameObject::BATTLEFIELD);
+            }
+            $land = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Forest'), GameObject::HAND)->id;
+            $find = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Island'), GameObject::LIBRARY)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/khalni-expedition-quest-search.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        for ($n = 0; $match->game->stack !== [] && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $land]);
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('quest', $choice['counterKind']);
+        $this->assertStringContainsString('choose whether to put a quest counter', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_THROW_ON_ERROR);
+        $this->assertStringContainsString('Put a quest counter', $json);
+        $this->assertStringContainsString('this permanent', $json);
+        $this->assertStringNotContainsString('Put a +1/+1 counter', $json);
+        $this->assertStringNotContainsString('maycounter:', json_encode(MatchMessageBuilder::actions($match, $other), JSON_THROW_ON_ERROR));
+        $before = $match->game->toArray();
+        $this->assertException(fn () => $panel->run($match->id, $other, 'maycounter', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        [$match] = $panel->run($match->id, $player, 'maycounter', [(string) $choice['id'], $option]);
+        $this->assertSame($option === 'accept' ? 1 : 0, $match->game->objects[$source]->counter('quest'));
+        $this->assertSame(0, $match->game->objects[$source]->counter('+1/+1'));
+        $this->assertException(fn () => $panel->run($match->id, $player, 'maycounter', [(string) $choice['id'], $option]), 'no longer available');
+        $before = $match->game->toArray();
+        $this->assertException(fn () => $panel->run($match->id, $player, 'ability', [], [$source.'.0']), 'cannot activate');
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        // Counter setup isolates persisted activation/search routing; game tests earn all three through land plays.
+        $match = $this->modifyGame($match, function (Game $game) use ($source): void {
+            $object = $game->objects[$source];
+            $object->addCounters('quest', 3 - $object->counter('quest'));
+        });
+        [$match] = $panel->run($match->id, $player, 'ability', [], [$source.'.0']);
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$source]->zone);
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $this->assertSame('look', $match->game->choiceAwaiting()['type']);
+        [$match] = $panel->run($match->id, $player, 'take', [], [(string) $find]);
+        $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$find]->zone);
+        $this->assertTrue($match->game->objects[$find]->tapped);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    /** @dataProvider optionalLifeOptions */
     public function testOptionalSourceCounterPanelPersistsAndRejectsWrongOrRepeatedAnswers(string $option): void
     {
         $match = $this->startMatch();
