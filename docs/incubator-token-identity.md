@@ -12,6 +12,6 @@ Focused offline verification passed 34 tests / 934 assertions in 0.613 seconds. 
 
 This adds one scoped name: 18 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates. Historical recognition remains 11,282 / 28,729; it is not an aggregate functional percentage. The change introduces no state schema, UI action, practice policy, environment variable or runtime configuration, so `env.example` needs no new entry. No live bot, import, token-bearing build, restart or deployment is part of this milestone.
 
-Token copies using the printed front instead of the active face remain a separate, unreproduced lead. General copy/merged/face-down, continuous/replacement/APNAP models, Clay's search ETB and Partner/commander rules remain explicit limitations.
+The later [transforming-token copy milestone](transforming-token-copy-face.md) separately reproduces and repairs active-face entry for unmerged transforming copies. General copy/merged/face-down, continuous/replacement/APNAP models, Clay's search ETB and Partner/commander rules remain explicit limitations.
 
 Tested-head [CI 40058704977](https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40058704977) passed full Pint/PHPUnit on PHP 8.3, 8.4 and 8.5. Exact source/branch/workflow, all three jobs and full-check steps were verified from saved REST responses; zero artifacts are expected. The final metadata head needs its own successful matrix before merge.

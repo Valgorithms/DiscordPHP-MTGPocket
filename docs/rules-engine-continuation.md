@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [transforming-token copy milestone](transforming-token-copy-face.md) selects the active face before entry for unmerged transforming copies. Converter Beast remains scoped evidence: 18 names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. A separately selected Woolly Loxodon face-down-copy lead is unreproduced.
+
 The [Incubator token-identity milestone](incubator-token-identity.md) preserves token identity across transformation on the paid Converter Beast path. Current evidence covers 18 scoped names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. Recognition remains historical; active-face token copying is the next separate, unreproduced lead.
 
 The [transformed-artifact burial milestone](transformed-artifact-burial-mana-value.md) freezes the selected crafted back face's front mana value before departure. The ledger now has17scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; Clay's search ETB and broader copy/transforming-token lifecycle remain explicit. Historical recognition is unchanged.
