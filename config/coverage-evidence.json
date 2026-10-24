@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "a912820188cbd60a2244e528ac1c079e7c417587",
+  "engineSource": "67d39fbc6d4344b2b06dd33615feeccb70cbb11e",
   "validation": {
-    "source": "a912820188cbd60a2244e528ac1c079e7c417587",
-    "evidenceMeaning": "Complete pinned M12 Solemn Simulacrum now offers its original entry-trigger controller an explicit basic-land search or decline. Declining neither searches nor shuffles; accepting reuses the existing basic-land tutor with tapped entry and shuffle, including failure to find. Separate scoped death-draw evidence is retained. No whole-card certification or fresh aggregate recognition measurement.",
-    "local": "Baseline ea64c2d90f9386c3a51568e7333f21f2ec1186cd: four paid cases/32 assertions/four failures (missing entry trigger). Expanded focused 85 tests/1176 assertions/0.981s/44MiB; adjacent 956 tests/18432 assertions/22.204s/140MiB (22.660s wall). Eight-file nonmutating Pint and diff check passed. Serial 30-second process-tree caps, 512MiB, Xdebug off, empty data and task-local TEMP/TMP/sys_temp_dir. Ledger 18 tests/37 assertions passed; existing 181-pool inventory passed: 21 scoped names, two explicit-gap names, one overlap, zero whole-card certificates; all 49 normalized PHP pins verified. Full offline target 0cf9b8921600312dc25f258b1d18eb5380a558f5 passed 1,779 tests/52,804 assertions with two expected missing-imported-pool/rental skips in 59.406 seconds/240MiB (60.025 seconds wall), under a 120-second process-tree cap with the same isolation and fresh 14.34GiB capacity at2026-10-24T08:43:42.4662370Z. All49 normalized PHP pins match that full-tested target.",
-    "ci": "Tested0cf9b8921600312dc25f258b1d18eb5380a558f5 exactCI40079167320 passed full Pint/PHPUnit on PHP8.3/8.4/8.5; REST run/jobs/artifacts saved, zero artifacts expected. Final metadata head requires its own passing exact CI before merge;49normalized PHP pins are identical to the full-tested target."
+    "source": "67d39fbc6d4344b2b06dd33615feeccb70cbb11e",
+    "evidenceMeaning": "Complete pinned MBS Viridian Emissary now offers its original death-trigger controller an explicit basic-land search/decline using the existing optional-search continuation. Decline skips search/shuffle; accepting, including failure to find, shuffles. Earlier Solemn entry/death evidence remains separate. No whole-card certification or fresh aggregate recognition measurement.",
+    "local": "Baseline d70f52208ed095c0234a980b0cdd4347e2b0a256: four paid cases/48 assertions/four failures (no optional decision). Focused114tests1752assertions1.894s48MiB;adjacent985tests19008assertions21.022s144MiB21.344s wall. Four-file nonmutating Pint and diff check passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Ledger18tests37assertions and existing181-pool inventory passed:22scoped names2explicit-gap names1overlap0whole-card certificates;50normalized PHP pins verified. Full offline pending.",
+    "ci": "Exact tested and final-head fullPint/PHPUnit PHP8.3/8.4/8.5 pending."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "f7745e138689d262e3ddb40250456abe19b18ec5b15101b0c517694063819977",
+    "src/MTGPocket/Game/TextParser.php": "03a5ad1156fc39c24f28752eaffe34b6da933dae90c86768e62534282d64116c",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "0dd69076150d82b607357037ef81b6b27dc3ded529389e38cc09093116a7b44a",
+    "src/MTGPocket/Game/Game.php": "2693d0236c8a3c277a42b7ecc8d10f848d99ac4703410df78c78fa5b19fe8c67",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -41,7 +41,7 @@
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "2bcf39680d9a72933b5d2ddfea89a202ad590958caa5b807957e27fc8197f8b5",
+    "tests/MatchesTest.php": "6d0d3593b700bb6170a86362f7ff41f23707e64c579dd5835a199a7b4b4862f3",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -65,7 +65,8 @@
     "tests/Game/DenProtectorCombatPowerTest.php": "6810637788db52771e9c422c83fd1091528e44834e74dedbc0aa13b78123030e",
     "tests/Game/ClayFiredBricksSearchTest.php": "019b75f76fc2b1d2ad7d64bfc1c87ec4cc418c1b66db1998228428568a904225",
     "tests/Game/SolemnOptionalDrawTest.php": "949d627f1066f6f4a1105bc6325ae30bc5386af458d26746d4887b69a3648ec6",
-    "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68"
+    "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68",
+    "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9"
   },
   "scopedEvidence": [
     {
@@ -578,6 +579,24 @@
       ],
       "scope": "Complete M12 UUID9c3514e4-85a9-5c7f-9a10-fe160bc6dc35, normalized fixture SHA2569a79f3ccf7bd725f6d3c326e166ab68872235caa5bd4df8b47e95b1017b940e0: both seats paid four-mana cast; explicit original-controller search/decline; decline preserves library order and shuffle count, search/fail-to-find shuffles once; basic-land eligibility and tapped Island/Forest/Snow-Covered Island selection; Wastes eligibility; wrong-seat/stale/future/invalid/repeated/cross-family decisions and invalid selections unchanged; JSON replay, source removal and seeded control/zone relocation, continuation exactly once; paid Smelt and Counterspell, unpaid/opposing cast controls; practice policy; persisted Discord panel; version14 validation and old version13 death-choice compatibility.",
       "limits": "Only the exact normalized entry wording is added; nearby Island/snow/untapped variants remain unread. Seeded mana sources, library exhaustion, source controller/zone relocation and later continuation isolate lifecycle contracts rather than proving every enabling spell. Wastes is eligibility-only. One older pinned printing; no general search/optional effect, replacement/copy/continuous/APNAP/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "viridian-optional-death-search",
+      "cards": [
+        "Viridian Emissary"
+      ],
+      "tests": [
+        "tests/Game/ViridianDeathSearchTest.php::testPaidDeathWaitsForSearchOrDecline",
+        "tests/Game/ViridianDeathSearchTest.php::testOriginalDeathControllerAndContinuationSurviveRelocation",
+        "tests/Game/ViridianDeathSearchTest.php::testInvalidAnswersAndFailureToFindAreAtomicAndReplayable",
+        "tests/Game/ViridianDeathSearchTest.php::testEmptyAndNoEligibleLibrariesPreserveTheOptionalDecision",
+        "tests/Game/ViridianDeathSearchTest.php::testPaidBounceIsNotDeathAndPracticeUsesTheSharedApi",
+        "tests/Game/ViridianDeathSearchTest.php::testOnlyTheExactOptionalDeathSearchUsesTheNewChoice",
+        "tests/Game/ViridianDeathSearchTest.php::testUnpaidOpposingAndCounteredCastsNeverQueueADeathSearch",
+        "tests/MatchesTest.php::testOptionalDeathSearchPanelPersistsBothDecisions"
+      ],
+      "scope": "Complete MBS UUID2cc1026b-3dd1-5476-9b47-4c0b8b7a0eb1 fixtureSHA25668ed685d6e9366336d2f5a4688ca5857abb4820e381354a691bf601bd64c93f7 and complete M12 Shock UUIDdcd1bd29-140a-5dee-bc91-faa2079f54ba fixtureSHA256ca08cf03fb0e80b2ea483cb937667c64a87c545f76d4180927071b760a897530: both seats paid1Gcast/RShock, explicit original-controller accept/decline before library mutation, tapped Island/Forest selection, seeded control/zone relocation queued/pending, later continuation exactly once, wrong-seat/stale/future/invalid/repeated/cross-family/priority rejection, basic eligibility negatives, fail-to-find and empty/noeligible search versus decline, deterministic JSON replay, schema14 boundary, paid bounce/counterspell/unpaid/opposing cast controls, practice search policy and persisted public panel actions.",
+      "limits": "Exact normalized self-death optional one-basic-land wording only. Seeded lands, library exhaustion, source control/zone relocation and appended continuation isolate lifecycle behavior rather than every enabling spell. Unsummon/Counterspell are shared semantic test cards; selected source and Shock fixtures are complete pinned records. Practice acceptance is tested here; its later selection policy has separate shared tests. No general death/search/optional/replacement/copy/continuous/APNAP/newest-printing or whole-card/live certificate."
     }
   ],
   "explicitUnsupported": [
