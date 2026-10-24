@@ -2581,6 +2581,8 @@ final class TextParser
         }
         // Creatures only attack players here (see Game::declareAttackers()), so "or planeswalker" adds nothing.
         $line = (string) preg_replace('/deals combat damage to a player(?:, planeswalker,)? or (?:planeswalker|battle)\b/', 'deals combat damage to a player', $line);
+        // Creatures attack only opponents, so their combat damage to a player is always to an opponent.
+        $line = (string) preg_replace('/^(Whenever CARDNAME deals combat damage to) an opponent,/', '$1 a player,', $line);
         // `Whenever another creature you control enters, if it has power 3 or greater, …`: read as `… with power 3 or greater enters, …`.
         $line = (string) preg_replace('/^Whenever (another|a) creature you control enters, if it has power (\d+) or greater, /', 'Whenever $1 creature you control with power $2 or greater enters, ', $line);
         // `Whenever another creature you control enters, if it's a Human, …`: read as `Whenever another Human you control enters, …`.
@@ -2650,7 +2652,8 @@ final class TextParser
         }
         // Enrage: `Whenever CARDNAME is dealt damage, create a Treasure token.`; see Game::dealDamage().
         if (preg_match('/^Whenever CARDNAME is dealt damage, (.+)\.$/', $line, $m) && ! str_contains($m[1], 'that much')
-            && ($effects = self::sentenceEffects((string) preg_replace('/^it deals\b/', 'CARDNAME deals', $m[1]))) !== null) {
+            // `… put a +1/+1 counter on it.`: "it" is CARDNAME.
+            && ($effects = self::sentenceEffects((string) preg_replace(['/^it deals\b/', '/\b(counters?) on it$/'], ['CARDNAME deals', '$1 on CARDNAME'], $m[1]))) !== null) {
             $result['triggered'][] = ['text' => $line, 'event' => 'dealt_damage', 'effects' => $effects];
 
             return true;
