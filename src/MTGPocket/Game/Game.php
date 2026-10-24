@@ -7832,6 +7832,7 @@ final class Game
                 || ((bool) preg_match('/^creature_opp_power_le_(\d+)$/', $kind, $m) && $creature && $object->controller !== $controller && $this->power($object) <= (int) $m[1])
                 || ((bool) preg_match('/^creature_opp_mv_le_(\d+)$/', $kind, $m) && $creature && $object->controller !== $controller && $card->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^creature_or_planeswalker_mv_le_(\d+)$/', $kind, $m) && ($creature || $card->isPlaneswalker()) && $card->cost->manaValue() <= (int) $m[1])
+                || ((bool) preg_match('/^nonland_mv_le_(\d+)$/', $kind, $m) && ! $card->isLand() && $card->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^nonland_opp_mv_le_(\d+)$/', $kind, $m) && ! $card->isLand() && $object->controller !== $controller && $card->cost->manaValue() <= (int) $m[1])
                 || ((bool) preg_match('/^creature_card_yours_not_(\d+)$/', $kind, $m) && $object->printed()->isCreature() && $object->owner === $controller && $object->id !== (int) $m[1])
                 || ((bool) preg_match('/^creature_card_yours_mv_le_(\d+)$/', $kind, $m) && $object->printed()->isCreature() && $object->owner === $controller && $object->printed()->cost->manaValue() <= (int) $m[1])

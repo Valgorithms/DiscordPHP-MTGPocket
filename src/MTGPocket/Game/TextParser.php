@@ -227,6 +227,12 @@ final class TextParser
         'target creature or planeswalker with mana value 3 or less' => 'creature_or_planeswalker_mv_le_3',
         'target creature or planeswalker with mana value 4 or less' => 'creature_or_planeswalker_mv_le_4',
         'target creature or planeswalker with mana value 5 or less' => 'creature_or_planeswalker_mv_le_5',
+        // `Destroy target nonland permanent with mana value 2 or less.`: anyone's; see Game::matchesKind().
+        'target nonland permanent with mana value 1 or less' => 'nonland_mv_le_1',
+        'target nonland permanent with mana value 2 or less' => 'nonland_mv_le_2',
+        'target nonland permanent with mana value 3 or less' => 'nonland_mv_le_3',
+        'target nonland permanent with mana value 4 or less' => 'nonland_mv_le_4',
+        'target nonland permanent with mana value 5 or less' => 'nonland_mv_le_5',
         // `exile target nonland permanent an opponent controls with mana value 2 or less`; see Game::matchesKind().
         'target nonland permanent an opponent controls with mana value 1 or less' => 'nonland_opp_mv_le_1',
         'target nonland permanent you don\'t control with mana value 1 or less' => 'nonland_opp_mv_le_1',
