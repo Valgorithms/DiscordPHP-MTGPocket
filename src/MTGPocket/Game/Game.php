@@ -6307,6 +6307,9 @@ final class Game
             $this->lastMilled[] = $object->id;
         }
         $this->log("{$this->players[$seat]->name} mills ".($milled === [] ? 'nothing' : implode(', ', $milled)).'.');
+        foreach ($milled === [] ? [] : $this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'you_mill', $seat);
+        }
     }
 
     /**
