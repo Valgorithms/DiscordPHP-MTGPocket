@@ -1,0 +1,5 @@
+# Clay-Fired Bricks search entry
+
+Separate regression-first offline milestone using the existing complete LCI record in `tests/Fixtures/transformed-artifact-mana-value.json`, UUID `32480bfd-5be9-5eb9-989d-6650eb53c16e`. Current parser leaves the front entry trigger unread. The existing tutor choice supports choosing one qualified card or none, remaining effects and save/resume; the planned narrow extension filters both Basic supertype and Plains subtype.
+
+Acceptance: paid casting in both seats; correct eligible basic Plains including Snow-Covered Plains; nonbasic Plains/other basics/opposing-zone rejection; gain two only after the search choice; fail-to-find/empty-library behavior; JSON before and during resolution; source removal after entry; cost and controller negatives; existing craft/back-face behavior remains covered separately. Reuse existing choice controls; no new state schema, environment or live-service contract. No test result or whole-card certificate is claimed yet. Dog Walker ward remains deferred under the no-network boundary.
