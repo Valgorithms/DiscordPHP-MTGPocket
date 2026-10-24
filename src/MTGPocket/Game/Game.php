@@ -6476,6 +6476,9 @@ final class Game
             'gained' => $this->players[$controller]->gainedTurn === $this->turn && $this->players[$controller]->gained >= (int) $n,
             'creatures' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object))) >= (int) $n,
             'no_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object)) === [],
+            'no_other' => array_filter($this->permanents($controller), fn (GameObject $object) => $object->id !== $source->id && $object->definition()->is((string) $n)) === [],
+            'life_le' => $this->players[$controller]->life <= (int) $n,
+            'life_lead' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life >= $this->players[$controller]->life) === [],
             'no_other_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $object->id !== $source->id && $this->isCreature($object)) === [],
             'power_ge' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object) && $this->power($object) >= (int) $n) !== [],
             // Coven: three or more creatures with different powers.
