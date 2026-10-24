@@ -2836,10 +2836,19 @@ final class TextParser
             $event = 'you_discard_kind';
             $extra = ['objectKind' => $match[1]];
             $text = $match[2];
-        } elseif (preg_match('/^Whenever an opponent (?:cycles or )?discards a card, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|that card|that player)\b/', $match[1])) {
-            // See Game::discardedBy(): once for each card.
+        } elseif (preg_match('/^Whenever an opponent (?:cycles or )?discards a card, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|that card)\b/', $match[1])) {
+            // See Game::discardedBy(): once for each card. "That player" is the opponent who discarded.
             $event = 'opponent_discards';
-            $text = $match[1];
+            $text = (string) preg_replace('/^they (lose|discard|mill|sacrifice)\b/', 'that player $1s', $match[1]);
+            if (str_contains($text, 'that player') && ! str_contains($text, 'target')) {
+                $effects = self::effects(str_replace('that player', 'target player', $text));
+                if ($effects === null) {
+                    return false;
+                }
+                $result['triggered'][] = ['text' => $line, 'event' => $event, 'effects' => array_map(fn (array $effect) => ($effect['target'] ?? null) === 'player' ? ['thatPlayer' => true] + array_diff_key($effect, ['target' => true]) : $effect, $effects)];
+
+                return true;
+            }
         } elseif (preg_match('/^Whenever you (?:cycle or )?discard (a card|one or more cards), (.+)$/', $line, $match)) {
             // See Game::discardCards(): "one or more" triggers once for them all. Cycling discards too.
             $event = $match[1] === 'a card' ? 'you_discard' : 'you_discard_batch';
