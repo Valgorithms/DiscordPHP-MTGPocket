@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "73ab68fde8e6530707512ba95c6fde5d06da5967",
+  "engineSource": "a912820188cbd60a2244e528ac1c079e7c417587",
   "validation": {
-    "source": "73ab68fde8e6530707512ba95c6fde5d06da5967",
-    "evidenceMeaning": "Complete pinned M12 Solemn Simulacrum now waits for its original death-trigger controller to accept or decline exactly one card. Entry basic-land search remains unread; this is scoped death-draw evidence, not whole-card certification or a fresh aggregate recognition measurement.",
-    "local": "Baseline a6b7f8e76cee5bccf5aa7d56c80199d5d7dd9c70: four paid cases/52 assertions/four failures (unconditional draw). Expanded focused36tests591assertions1.180s38MiB;adjacent884tests17428assertions21.482s132MiB21.786s wall. Seven-file nonmutating Pint and diff check passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Ledger18tests37assertions and181-pool inventory passed:21scoped names3explicit gaps2overlaps0whole-card certificates;48normalized PHP pins verified. Full offline tested01b2bcb3c29e3972a31a4832f67679444830ef9c:1730tests52219assertions2expected missing-imported-pool/rental skips62.813s232MiB63.187s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir;fresh14.00GiB at2026-10-24T07:42:16.5212856Z. All48normalized PHP pins match the tested target.",
-    "ci": "Tested01b2bcb3c29e3972a31a4832f67679444830ef9c exactCI40075168458 passed full Pint/PHPUnit on PHP8.3/8.4/8.5;REST run/jobs/artifacts saved,zero artifacts expected. Final metadata head requires its own passing exact CI before merge;48normalized PHP pins are identical to the full-tested target."
+    "source": "a912820188cbd60a2244e528ac1c079e7c417587",
+    "evidenceMeaning": "Complete pinned M12 Solemn Simulacrum now offers its original entry-trigger controller an explicit basic-land search or decline. Declining neither searches nor shuffles; accepting reuses the existing basic-land tutor with tapped entry and shuffle, including failure to find. Separate scoped death-draw evidence is retained. No whole-card certification or fresh aggregate recognition measurement.",
+    "local": "Baseline ea64c2d90f9386c3a51568e7333f21f2ec1186cd: four paid cases/32 assertions/four failures (missing entry trigger). Expanded focused 85 tests/1176 assertions/0.981s/44MiB; adjacent 956 tests/18432 assertions/22.204s/140MiB (22.660s wall). Eight-file nonmutating Pint and diff check passed. Serial 30-second process-tree caps, 512MiB, Xdebug off, empty data and task-local TEMP/TMP/sys_temp_dir. Ledger 18 tests/37 assertions passed; existing 181-pool inventory passed: 21 scoped names, two explicit-gap names, one overlap, zero whole-card certificates; all 49 normalized PHP pins verified. Full offline pending.",
+    "ci": "Exact tested and final head CI pending; required full Pint/PHPUnit matrix is PHP 8.3/8.4/8.5."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "a9fc8d95d2ccc9aa404aa969648ff7b87e81ac6251f3b63a1224b1b30080bbb9",
+    "src/MTGPocket/Game/TextParser.php": "f7745e138689d262e3ddb40250456abe19b18ec5b15101b0c517694063819977",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "9889fabc4f26f958d3c1f39d57af7bf23efeee2c92e5851365ee73a4b018d138",
+    "src/MTGPocket/Game/Game.php": "0dd69076150d82b607357037ef81b6b27dc3ded529389e38cc09093116a7b44a",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -36,12 +36,12 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "ed35d65c45095e73d9389d14b55bf9aff20146588787549a4ede6fd5306d9d4f",
-    "src/MTGPocket/Matches/PanelActions.php": "234240aa4213194ad8d30fac38bb4cbbb47bc7271d8f1c53dc289ffa42533886",
-    "src/MTGPocket/Tutorial/PracticeBot.php": "b04731ac18737fe6c27114c94d547a5811f35b804aa62de28f568fc06d269b92",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "d6b0ca8981388e13eaebbbe74faef5c6cefea2da4397d5789b3089ba821739af",
+    "src/MTGPocket/Matches/PanelActions.php": "7a4bcb69b5d840281d3279688e0b227b20ba68409aad9bed49ba7741c173848a",
+    "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "a84ad0f3d3e03f88ee128fa6596c5e4bbbfb37c4dfc427ab263ed699a761b1c7",
+    "tests/MatchesTest.php": "2bcf39680d9a72933b5d2ddfea89a202ad590958caa5b807957e27fc8197f8b5",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -64,7 +64,8 @@
     "tests/Game/MegamorphTokenCopyTest.php": "0021407297bf72b7204b3b406180691aeaf27ccc7d3eb9c039bcc8be5380943b",
     "tests/Game/DenProtectorCombatPowerTest.php": "6810637788db52771e9c422c83fd1091528e44834e74dedbc0aa13b78123030e",
     "tests/Game/ClayFiredBricksSearchTest.php": "019b75f76fc2b1d2ad7d64bfc1c87ec4cc418c1b66db1998228428568a904225",
-    "tests/Game/SolemnOptionalDrawTest.php": "7be956d513dab571659cd16e82fa33c2df5f72e7440b28fca55c5d3f5e94b9e8"
+    "tests/Game/SolemnOptionalDrawTest.php": "949d627f1066f6f4a1105bc6325ae30bc5386af458d26746d4887b69a3648ec6",
+    "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68"
   },
   "scopedEvidence": [
     {
@@ -554,7 +555,29 @@
         "tests/MatchesTest.php::testOptionalDeathDrawPanelPersistsAndRejectsWrongOrRepeatedAnswers"
       ],
       "scope": "Complete M12 UUID9c3514e4-85a9-5c7f-9a10-fe160bc6dc35, normalized fixture SHA2569a79f3ccf7bd725f6d3c326e166ab68872235caa5bd4df8b47e95b1017b940e0: both seats paid4cast and paid Smelt death; explicit non-targeted accept/decline; wrong seat/stale/future/invalid/repeated answers and priority unchanged; original death controller after seeded control change; JSON before/queued/pending/after, source relocation, deterministic draw/resume of a seeded later effect; empty-library accept loses/decline survives; practice policy and persisted Discord panels; malformed new choices rejected and version12 plain state migrated; nearby mandatory/entry parser controls.",
-      "limits": "Entry optional basic-land search remains unread. Seeded lands, library exhaustion, source controller/zone relocation and continuation are explicit harness limits. Only exact normalized self-death optional one-card wording; unrelated optional draws retain existing policy. One pinned older printing, no general optional draw/replacement/copy/continuous/APNAP/newest-printing or whole-card/live certificate."
+      "limits": "Entry optional basic-land search has separate scoped evidence below; it is not certified by these death-draw tests. Seeded lands, library exhaustion, source controller/zone relocation and continuation are explicit harness limits. Only exact normalized self-death optional one-card wording; unrelated optional draws retain existing policy. One pinned older printing, no general optional draw/replacement/copy/continuous/APNAP/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "solemn-optional-entry-search",
+      "cards": [
+        "Solemn Simulacrum"
+      ],
+      "tests": [
+        "tests/Game/SolemnEntrySearchTest.php::testPaidEntryCanSearchOrDeclineWithoutShuffling",
+        "tests/Game/SolemnEntrySearchTest.php::testEligibilityTappedEntryAndReplayUseTheExistingTutor",
+        "tests/Game/SolemnEntrySearchTest.php::testDeclineAndFailingToFindHaveDifferentShuffleSemantics",
+        "tests/Game/SolemnEntrySearchTest.php::testEmptyOrNoEligibleSearchStillShuffles",
+        "tests/Game/SolemnEntrySearchTest.php::testPaidSourceDestructionDoesNotCancelEntrySearch",
+        "tests/Game/SolemnEntrySearchTest.php::testOriginalControllerAndLaterEffectsSurviveSourceRelocation",
+        "tests/Game/SolemnEntrySearchTest.php::testCounteredCastAndUnpaidOrOpposingCastNeverSearch",
+        "tests/Game/SolemnEntrySearchTest.php::testPracticeSearchesThenUsesExistingLegalSelection",
+        "tests/Game/SolemnEntrySearchTest.php::testMalformedSavedSearchesAreRejected",
+        "tests/Game/SolemnEntrySearchTest.php::testNearbyUntestedWordingRemainsUnread",
+        "tests/Game/SolemnOptionalDrawTest.php::testVersionThirteenDeathChoiceStillLoadsAndCannotAnswerASearch",
+        "tests/MatchesTest.php::testOptionalEntrySearchPanelPersistsBothDecisions"
+      ],
+      "scope": "Complete M12 UUID9c3514e4-85a9-5c7f-9a10-fe160bc6dc35, normalized fixture SHA2569a79f3ccf7bd725f6d3c326e166ab68872235caa5bd4df8b47e95b1017b940e0: both seats paid four-mana cast; explicit original-controller search/decline; decline preserves library order and shuffle count, search/fail-to-find shuffles once; basic-land eligibility and tapped Island/Forest/Snow-Covered Island selection; Wastes eligibility; wrong-seat/stale/future/invalid/repeated/cross-family decisions and invalid selections unchanged; JSON replay, source removal and seeded control/zone relocation, continuation exactly once; paid Smelt and Counterspell, unpaid/opposing cast controls; practice policy; persisted Discord panel; version14 validation and old version13 death-choice compatibility.",
+      "limits": "Only the exact normalized entry wording is added; nearby Island/snow/untapped variants remain unread. Seeded mana sources, library exhaustion, source controller/zone relocation and later continuation isolate lifecycle contracts rather than proving every enabling spell. Wastes is eligibility-only. One older pinned printing; no general search/optional effect, replacement/copy/continuous/APNAP/newest-printing or whole-card/live certificate."
     }
   ],
   "explicitUnsupported": [
@@ -565,13 +588,6 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
-    },
-    {
-      "id": "solemn-entry-search-unread",
-      "cards": [
-        "Solemn Simulacrum"
-      ],
-      "scope": "Complete pinned M12 entry text: optional basic-land library search, put that card onto battlefield tapped, then shuffle remains unread and unverified. Death-draw scoped evidence does not certify this clause or the whole card."
     }
   ],
   "nextFamily": {
