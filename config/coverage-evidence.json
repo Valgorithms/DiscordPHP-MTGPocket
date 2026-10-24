@@ -12,12 +12,52 @@
   "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
   "validation": {
     "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
-    "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
-    "local": "Original paid baselines2/14/2fail and2/22/2errors; followups2/16 and2/28PASS. Integrated main355a84f through PR404 preserving upstream runtime. Current Khalni+Modern442tests6386assertions/Pint3PASS; earlier integratedfocused23/732,Modern423/5900,adjacent312/6924/Pint7 passed. Ledger18/37 and existing181-pool inventory30scopenames2Partnergaps1overlap0wholecert. Initialfull071f0c4fixtureerror corrected by faithful old-schema fixture, not runtime workaround. Full offline target `71db2da86085b881ae6918487c1cc9f8be770b96` after PR404/main355a84f passed 2048tests/57419assertions/2expected missing-imported-pool/rental skips. PHPUnit01:04.286,276.00MiB;64.690s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh7.93GiB/nootherPHP at2026-10-24T17:57:16.2601596Z. All58normalizedPHPpins match this target. Schema16/noenvchange.",
-    "ci": "Previous source65faf3b passed CI40118185025 (full Pint/PHPUnit8.3/8.4/8.5). It predates PR404 and is historical. Final metadata commit with all58 PHP source pins unchanged from the current local full target requires its own exact full Pint/PHPUnit8.3/8.4/8.5 before merge."
+    "evidenceMeaning": "Source-only integration of Khalni quest/search and upstream opponent-discard recognition. Scoped evidence remains historical until the integrated source passes validation; no whole-card certification.",
+    "local": "NOT RUN for this integrated source: PHP lint, Pint, PHPUnit, corpus scans and runtime checks. Only Git/source review, normalized source-pin inspection and JSON metadata inspection were performed. Earlier local passes are preserved below with their exact sources and do not validate this integration.",
+    "ci": "NOT RUN for this integrated source. Exact final-head Tests CI must pass full Pint/PHPUnit on PHP 8.3, 8.4 and 8.5 after publication is approved. Earlier CI records below are historical.",
+    "integration": {
+      "prHead": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
+      "mainHead": "27189a71df613c26846c92c997e8accb435cf64e",
+      "status": "source-only; functional validation pending",
+      "changedSourcePins": {
+        "src/MTGPocket/Game/TextParser.php": {
+          "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
+          "main": "cb56be75277087578ee54849c1cf65003980604be27a7e161c30ba2433ac5d86",
+          "integrated": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5"
+        },
+        "tests/Game/ModernCardTextTest.php": {
+          "pr375": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
+          "main": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+          "integrated": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27"
+        }
+      },
+      "historicalValidation": [
+        {
+          "head": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
+          "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
+          "validation": {
+            "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
+            "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
+            "local": "Original paid baselines2/14/2fail and2/22/2errors; followups2/16 and2/28PASS. Integrated main355a84f through PR404 preserving upstream runtime. Current Khalni+Modern442tests6386assertions/Pint3PASS; earlier integratedfocused23/732,Modern423/5900,adjacent312/6924/Pint7 passed. Ledger18/37 and existing181-pool inventory30scopenames2Partnergaps1overlap0wholecert. Initialfull071f0c4fixtureerror corrected by faithful old-schema fixture, not runtime workaround. Full offline target `71db2da86085b881ae6918487c1cc9f8be770b96` after PR404/main355a84f passed 2048tests/57419assertions/2expected missing-imported-pool/rental skips. PHPUnit01:04.286,276.00MiB;64.690s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh7.93GiB/nootherPHP at2026-10-24T17:57:16.2601596Z. All58normalizedPHPpins match this target. Schema16/noenvchange.",
+            "ci": "Previous source65faf3b passed CI40118185025 (full Pint/PHPUnit8.3/8.4/8.5). It predates PR404 and is historical. Final metadata commit with all58 PHP source pins unchanged from the current local full target requires its own exact full Pint/PHPUnit8.3/8.4/8.5 before merge."
+          }
+        },
+        {
+          "head": "27189a71df613c26846c92c997e8accb435cf64e",
+          "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
+          "validation": {
+            "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
+            "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
+            "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target `1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb` passed 1,998 tests and 56,374 assertions, with two expected missing-imported-pool/rental skips. PHPUnit57.955s270MiB;58.327s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh11.76GiB/no other test processes at2026-10-24T14:42:03.4480779Z. All57normalizedPHPpins match this target. Exact tested/final CI required before merge. Noenv/schema15change.",
+            "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+          }
+        }
+      ],
+      "engineSourceMeaning": "Historical anchor during local merge; replace with immutable integration commit in the metadata follow-up before handoff."
+    }
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
+    "src/MTGPocket/Game/TextParser.php": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
     "src/MTGPocket/Game/Game.php": "122a7a4b7a93d4352da10cdd4f3301c292baf6809619b1e73e029c097252938d",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -46,7 +86,7 @@
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
+    "tests/Game/ModernCardTextTest.php": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
