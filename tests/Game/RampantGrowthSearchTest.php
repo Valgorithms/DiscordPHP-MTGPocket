@@ -245,7 +245,7 @@ final class RampantGrowthSearchTest extends GameTestCase
         $this->assertNull($this->game->choiceAwaiting());
         $this->assertNull(TextParser::effect('You may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle'));
         $this->assertNull(TextParser::effect('Search your library for a basic land card, put that card onto the battlefield, then shuffle'));
-        $legacy = TextParser::effect('Search your library for a basic land card, put it onto the battlefield tapped, then shuffle');
+        $legacy = TextParser::effect('You may search your library for a basic land card, put it onto the battlefield tapped, then shuffle');
         $this->assertSame('search', $legacy['type']);
     }
 }

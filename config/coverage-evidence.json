@@ -9,15 +9,15 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "2c18f170b8a635b06542d61c537e20c927b19cab",
+  "engineSource": "49ab8ea83e3803381e12689705877931931d6f19",
   "validation": {
-    "source": "2c18f170b8a635b06542d61c537e20c927b19cab",
-    "evidenceMeaning": "Test-only evidence for complete pinned M13 Farseek on existing runtime. Paid baseline already passed; no parser or engine defect/change is claimed. Subtype-based search includes a synthetic nonbasic Forest/Plains dual and snow Island while excluding Forest-only and Wastes. No whole-card certificate or fresh recognition measurement.",
-    "local": "Baselinea72e184:4paid cases52assertionsPASS. Focused23tests327assertions0.474s36MiB;adjacent650tests11439assertions21.824s106MiB22.150s wall. Two-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Expanded-first harness had a cp1252-corrupted dash in snow-land type; corrected UTF8 test data only, no runtime change. Ledger18/37 and existing181-pool inventory passed:24scoped names2explicit-gap names1overlap0whole-card certificates;52normalized PHP pins verified. Full offline targeted5b67879220b5efb0e563775f7024c3822412cd passed1854tests54019assertions2expected missing-imported-pool/rental skips55.076s250MiB55.395s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.65GiB at2026-10-24T09:49:50.3871208Z. All52normalized PHP pins match the full-tested target.",
-    "ci": "Testeded5b67879220b5efb0e563775f7024c3822412cd exactCI40083502497 passed fullPint/PHPUnit PHP8.3/8.4/8.5;RESTrun/jobs/artifacts savedzeroartifacts expected. Finalmetadata requires own passing exactCI beforemerge;52PHPpins identical to full-tested target."
+    "source": "49ab8ea83e3803381e12689705877931931d6f19",
+    "evidenceMeaning": "Complete pinned M13 Evolving Wilds through actual land play and tap/self-sacrifice activation. Only mandatory basic-land put-it/put-that-card wording uses explicit tutor choice; optional legacy wording remains unchanged. No whole-card or fresh recognition claim.",
+    "local": "Paid baseline4tests28assertions4failures: mandatory put-it wording automatically selected a land. Focused26tests391assertions0.474s36MiB;adjacent675tests11826assertions21.084s110MiB21.439s wall. Two shared-wording companion tests passed2tests22assertions after replacing automatic-selection expectations with explicit choice/tapped/shuffle checks. Five-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Full offline target89063796170287785617de665b11fea4b3a5a0bf passed1879tests54406assertions2expected missing-imported-pool/rental skips56.113s252MiB56.819s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.07GiB at2026-10-24T10:42:04.1209547Z. All53normalized PHP pins match the full-tested target. No whole-card certificate or fresh recognition measurement. Ledger18tests37assertions and existing181-pool inventory passed:25scoped names2explicit-gap names1overlap0whole-card certificates;53normalized PHP pins verified.",
+    "ci": "Tested89063796170287785617de665b11fea4b3a5a0bf exactCI40086951110 passed fullPint/PHPUnit PHP8.3/8.4/8.5;RESTrun/jobs/artifacts savedzeroartifacts expected. Finalmetadata requires own passing exactCI beforemerge;53PHPpins identical to full-tested target."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "0e69b72eb08a294763b897d68f7f80e6d39e4f8f2710f8d2ae4498f34ca3e6ba",
+    "src/MTGPocket/Game/TextParser.php": "b281655eed3fe24880df75576edca63968e05f8d59501f2b4c479f07c8517304",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
     "src/MTGPocket/Game/Game.php": "2693d0236c8a3c277a42b7ecc8d10f848d99ac4703410df78c78fa5b19fe8c67",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -41,12 +41,12 @@
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "cfa94e802218d90720cc1b6a530c8827eea49a25353c6cca58ded447b7e496a5",
+    "tests/MatchesTest.php": "510188bc967408184ee28ff3a750f5a1d201a0ac5a31a1397407487412bf43a5",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "29c05c412aeec29e46a3177a9a212bb329fa26e4e51e6bb6347ca73eb232370d",
+    "tests/Game/ModernCardTextTest.php": "3d1903cf633fe831452afc41441b63bd6e77bc30bee6b55664eea06c8551bb26",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
@@ -67,8 +67,9 @@
     "tests/Game/SolemnOptionalDrawTest.php": "949d627f1066f6f4a1105bc6325ae30bc5386af458d26746d4887b69a3648ec6",
     "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68",
     "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9",
-    "tests/Game/RampantGrowthSearchTest.php": "da056fdc2d3d47cc61147d6e9bc02d530ff2435a5f55cfd8bc98396e459af522",
-    "tests/Game/FarseekSearchTest.php": "4c68e3c8e11f88737f554403c08652aa2ec257263a3617f892e29b6993c3ac1b"
+    "tests/Game/RampantGrowthSearchTest.php": "42cff887467974eb57d4378d1b0a006d65be31ac323dfdf614b6f3d25177789b",
+    "tests/Game/FarseekSearchTest.php": "4c68e3c8e11f88737f554403c08652aa2ec257263a3617f892e29b6993c3ac1b",
+    "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57"
   },
   "scopedEvidence": [
     {
@@ -633,6 +634,24 @@
       ],
       "scope": "Complete M13 UUIDda73dc10-1286-5c38-a2d0-92ae64f49690 normalized fixtureSHA25658ea654a88c5ffc9aaca41229575447774102cc7e959f575baeb5c1cbb7dcffe: both seats paid1Gcast, explicit selection/failfind/shuffle, actual Island/snowIsland/nonbasicForestPlains-fixture tapped entry, excludes Forest/snowForest/Wastes/untypedland/nonland/opposinglibrary/hand, rejects wrongseat/overselection/crossfamily/priority/repeated actions, empty/noeligible shuffle, JSON/replay, original controller/syntheticlater effect exactly once, paid Counterspell/unpaid/opposing controls, practice and persisted panels.",
       "limits": "Existing runtime passed baseline; this is test-only evidence. Selected Farseek record is complete; seeded lands, synthetic dual, Counterspell, library exhaustion, sourcecontrol and appended gain-life isolate contracts rather than certify other named cards/enabling spells. Existing duplicate-ID normalization unchanged. No general search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "evolving-wilds-search-choice",
+      "cards": [
+        "Evolving Wilds"
+      ],
+      "tests": [
+        "tests/Game/EvolvingWildsSearchTest.php::testPaidLandAndSacrificeAbilityRequireSelectionAndShuffle",
+        "tests/Game/EvolvingWildsSearchTest.php::testSelectionEligibilityAndInvalidAnswersRemainAtomic",
+        "tests/Game/EvolvingWildsSearchTest.php::testEmptyAndIneligibleLibrariesStillShuffle",
+        "tests/Game/EvolvingWildsSearchTest.php::testOriginalControllerAndLaterEffectsSurviveSaveLoad",
+        "tests/Game/EvolvingWildsSearchTest.php::testTapSacrificeOwnershipAndZoneCostsAreRequired",
+        "tests/Game/EvolvingWildsSearchTest.php::testAbilityCanBeUsedOnTheOpponentsTurnAndIsNotACounterspellTarget",
+        "tests/Game/EvolvingWildsSearchTest.php::testPracticeUsesExistingSelectionAndOptionalWordingKeepsItsLegacyPolicy",
+        "tests/MatchesTest.php::testEvolvingWildsSearchPanelPersistsSelectionOrFailureToFind"
+      ],
+      "scope": "Complete M13 UUID132d60ff-6620-5cd5-a861-d57d72ef5ab0 normalized fixtureSHA2569b814c11fbb3d48e94259bb96fde35845e56285eedb7ff4c57fc12e1bc4f1995: both seats actual land play/tap/self-sacrifice activation, explicit basic-land selection/failure to find, normal/snow/Wastes tapped entry, one shuffle, all five basic subtypes eligible, nonbasic/basic-nonland/opposing-library/hand exclusions, wrong-seat/overselection/cross-family/priority/repeated rejection, empty/noeligible shuffle, JSON/replay, original-controller/synthetic later-effect continuation, costs/zone/ownership, opponent-turn activation and Counterspell cannot target ability, practice and persisted panels.",
+      "limits": "Narrow mandatory put-it/put-that-card mapping only; optional legacy search policy unchanged. Semantic lands, Counterspell, synthetic source-control relocation, library exhaustion and appended gain-life isolate contracts rather than certify other cards. Existing duplicate-ID normalization unchanged. No general search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
     }
   ],
   "explicitUnsupported": [
