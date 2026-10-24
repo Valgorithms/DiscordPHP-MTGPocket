@@ -124,6 +124,12 @@ final class PracticeBot
 
                 return true;
 
+            case 'optional_basic_land_search':
+                // Explicit practice policy: search, then use the existing legal tutor selection.
+                $game->chooseOptionalBasicLandSearch($seat, $game->choiceAwaiting()['id'], 'accept');
+
+                return true;
+
             case 'optional_death_draw':
                 // Explicit practice policy: decline rather than draw from an empty library.
                 $game->chooseOptionalDeathDraw($seat, $game->choiceAwaiting()['id'], $game->players[$seat]->library === [] ? 'decline' : 'accept');

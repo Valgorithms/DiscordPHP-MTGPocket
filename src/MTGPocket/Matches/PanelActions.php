@@ -76,6 +76,7 @@ final class PanelActions
             'mayuntap' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceUntap($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maycounter' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceCounter($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maydraw' => $act(fn (Game $game, int $seat) => $game->chooseOptionalDeathDraw($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
+            'maysearch' => $act(fn (Game $game, int $seat) => $game->chooseOptionalBasicLandSearch($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maygain' => $act(fn (Game $game, int $seat) => $game->chooseOptionalLifeGain($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maylife' => $act(fn (Game $game, int $seat) => $game->chooseOptionalLifeLoss($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'sacgo' => $act(function (Game $game, int $seat, MatchRecord $match) use ($playerId, $args): void {
