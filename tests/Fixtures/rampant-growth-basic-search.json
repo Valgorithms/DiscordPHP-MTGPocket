@@ -1,0 +1,27 @@
+{
+  "setCode": "M12",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "28d848c2-ab24-5894-a8e9-2c1df4b854a0",
+    "name": "Rampant Growth",
+    "number": "190",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 2,
+    "type": "Sorcery",
+    "scryfallId": "fe45a787-6d8a-48d7-ad6c-fb20a9b468a4",
+    "manaCost": "{1}{G}",
+    "types": [
+      "Sorcery"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

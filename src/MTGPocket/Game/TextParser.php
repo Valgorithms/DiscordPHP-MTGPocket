@@ -4941,6 +4941,10 @@ final class TextParser
             }];
         }
         // Spider-Bot: `… search your library for a basic land card, reveal it, then shuffle and put that card on top.`
+        if (strcasecmp($s, 'Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle') === 0) {
+            return ['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped'];
+        }
+
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, reveal it, then shuffle and put that card on top$/i', $s, $m)) {
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => 'top'];
         }
