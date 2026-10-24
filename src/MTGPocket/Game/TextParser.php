@@ -3124,7 +3124,7 @@ final class TextParser
             $event = 'permanent_to_graveyard_yours';
             $extra = ['objectKind' => $match[2], 'other' => $match[1] === 'another'];
             $text = $match[4];
-        } elseif (preg_match('/^Whenever (you sacrifice|a player sacrifices|an opponent sacrifices) (a|an|another) (permanent|creature|artifact|enchantment|land|token|nontoken creature|[A-Z][a-z]+), (.+)$/', $line, $match)
+        } elseif (preg_match('/^Whenever (you sacrifice|a player sacrifices|an opponent sacrifices) (a|an|another) (permanent|creature|artifact|enchantment|land|token|nontoken creature|nontoken permanent|[A-Z][a-z]+), (.+)$/', $line, $match)
             && ! preg_match('/\b(it|its|that (?:permanent|creature|artifact|enchantment|land|token|player))\b/', $match[4])) {
             // `Whenever you sacrifice a permanent, …`, Mayhem Devil's `Whenever a player sacrifices a permanent, …`: see Game::sacrifice().
             $event = match ($match[1]) {
