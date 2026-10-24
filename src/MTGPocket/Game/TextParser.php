@@ -633,6 +633,13 @@ final class TextParser
 
                 continue;
             }
+            // `Each other creature you control enters with an additional +1/+1 counter on it.`, `… other Elf …`; see Game::putOntoBattlefield().
+            if (! $spell && preg_match('/^Each other (creature|[A-Z][a-z]+(?: creature)?) you control enters(?: the battlefield)? with an additional \+1\/\+1 counter on it\.$/', $line, $match)
+                && ($kind = $match[1] === 'creature' ? 'Creature' : self::subtypeOf(explode(' ', $match[1])[0])) !== null) {
+                $result['keywords'][] = "others enter with counter {$kind}";
+
+                continue;
+            }
             // Wild Growth / Fertile Ground: `Whenever enchanted land is tapped for mana, its controller adds an additional {G}.`; see Game::manaSources().
             if (! $spell && ($result['aura']['enchant'] ?? null) !== null && preg_match('/^Whenever enchanted land is tapped for mana, its controller adds an additional ((?:\{[WUBRGC]\})+|one mana of any colou?r)\.$/', $line, $match)) {
                 preg_match_all('/\{([WUBRGC])\}/', $match[1], $symbols);

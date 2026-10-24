@@ -9390,6 +9390,14 @@ final class Game
         if ($card->entersWithMinusCounters > 0) {
             $object->addCounters('-1/-1', $card->entersWithMinusCounters);
         }
+        // `Each other creature (Elf) you control enters with an additional +1/+1 counter on it.`
+        foreach ($this->isCreature($object) ? $this->permanents($controller) : [] as $permanent) {
+            foreach ($permanent->id !== $object->id ? $this->keywords($permanent) : [] as $word) {
+                if (str_starts_with($word, 'others enter with counter ') && (($kind = substr($word, 26)) === 'Creature' || in_array($kind, $card->subtypes, true) || in_array('changeling', $card->keywords, true))) {
+                    $object->addCounters('+1/+1', 1);
+                }
+            }
+        }
         $this->soulbond($object);
         if ($card->chooses !== null) {
             $object->chosen = $this->choiceFor($controller, $card->chooses);
