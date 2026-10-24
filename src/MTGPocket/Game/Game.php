@@ -4801,6 +4801,13 @@ final class Game
                             $this->moveTo($object, GameObject::EXILE);
                         }
                     }
+                    // `You gain 1 life for each creature exiled this way.`: those that left the battlefield.
+                    if (isset($effect['gainEach'])) {
+                        $gone = count(array_filter($doomed, fn (GameObject $object) => $object->zone !== GameObject::BATTLEFIELD));
+                        if ($gone > 0) {
+                            $this->gainLife($controller, $gone * (int) $effect['gainEach']);
+                        }
+                    }
                     break;
                 }
                 if ($effect['type'] === 'destroy') {

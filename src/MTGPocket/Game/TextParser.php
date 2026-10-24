@@ -4127,6 +4127,13 @@ final class TextParser
                 return true;
             }
         }
+        // Wrath-style sweepers: `Exile all creatures. You gain 1 life for each creature exiled this way.`; see Game::applyEffect().
+        if (preg_match('/^You gain (\w+) life for each (?:creature|permanent|artifact|enchantment|nonland permanent) (destroyed|exiled) this way$/', $sentence, $m) && is_int($n = self::amount($m[1]))
+            && isset($effects[$last]['all']) && $effects[$last]['type'] === ($m[2] === 'destroyed' ? 'destroy' : 'exile') && ! isset($effects[$last]['gainEach'])) {
+            $effects[$last]['gainEach'] = $n;
+
+            return true;
+        }
         // `Each opponent loses 3 life. You gain life equal to the life lost this way.`
         if ($sentence === 'You gain life equal to the life lost this way' && $effects[$last]['type'] === 'lose_life' && ($effects[$last]['each'] ?? null) === 'opponent' && is_int($effects[$last]['amount'])) {
             $effects[] = ['type' => 'gain_life', 'amount' => $effects[$last]['amount'], 'perOpponent' => true];
