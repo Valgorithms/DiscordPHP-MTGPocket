@@ -143,5 +143,34 @@ final class TargetClauseDistinctnessTest extends GameTestCase
         $choose = new \ReflectionMethod(PracticeBot::class, 'targets');
         $targets = $choose->invoke(null, $this->game, $actor, $harmful->targetKinds(), $harmful->spellEffects(), null, true);
         $this->assertSame(['-', '-'], $targets);
+        // Isolate the mandatory/forced policy using the same two-slot clause.
+        $effects = $harmful->spellEffects();
+        foreach ($effects as &$effect) {
+            $effect['target'] = 'creature';
+        }
+        unset($effect);
+        $forced = $choose->invoke(null, $this->game, $actor, ['creature', 'creature'], $effects, null, true);
+        $this->assertEqualsCanonicalizing(["o:{$a}", "o:{$b}"], $forced);
+    }
+
+    /** @dataProvider actors */
+    public function testSeparateActivatedClausesMayTargetSameObjectAndPayCosts(int $actor): void
+    {
+        $a = $this->start($actor);
+        $mana = $this->lands($actor, 'Island', 2);
+        $data = $this->definition('{U}, Sacrifice this enchantment: Untap target creature. Untap target creature.', 'Enchantment');
+        $source = $this->game->addCard($actor, $data, GameObject::HAND)->id;
+        $this->assertSame([], $this->game->objects[$source]->definition()->unsupported);
+        $this->game->cast($actor, $source);
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->game->objects[$a]->tapped = true;
+        $this->game->activate($actor, $source, 0, ["o:{$a}", "o:{$a}"]);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
+        $this->assertTrue($this->game->objects[$mana[0]]->tapped);
+        $this->assertTrue($this->game->objects[$mana[1]]->tapped);
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertFalse($this->game->objects[$a]->tapped);
     }
 }
