@@ -3982,6 +3982,11 @@ final class TextParser
             && count($found) === 1 && ($found[0]['per'] ?? null) === 'yours:creature') {
             return [['per' => 'yours:countered creature'] + $found[0]];
         }
+        // `Each opponent discards a card and loses 2 life.`: one action, then the other, by the same players.
+        if (preg_match('/^([Ee]ach (?:opponent|player)) (discards|loses|mills|draws|sacrifices|gains) (.+?) and (discards|loses|mills|draws|sacrifices|gains) (.+)$/', $sentence, $m)
+            && ($first = self::sentenceEffects("{$m[1]} {$m[2]} {$m[3]}")) !== null && ($second = self::sentenceEffects("{$m[1]} {$m[4]} {$m[5]}")) !== null) {
+            return [...$first, ...$second];
+        }
         // Reforge the Soul: `Each player discards their hand, then draws seven cards.`; `Discard your hand, then draw four cards.`
         if (preg_match('/^(Discard your hand|Each player discards their hand)(?:, then (draws?) (\w+) cards?)?$/', $sentence, $m)
             && (! isset($m[2]) || ($m[2] === 'draw') === str_starts_with($m[1], 'Discard')) && (! isset($m[3]) || is_int(self::amount($m[3])))) {
