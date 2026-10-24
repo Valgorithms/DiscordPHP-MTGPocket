@@ -9,11 +9,11 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "8bf386687b82aa023f643e673c26fc40032ef2d7",
+  "engineSource": "660ece89d3743accc146b8ae44e4c89bf3260cab",
   "validation": {
-    "source": "8bf386687b82aa023f643e673c26fc40032ef2d7",
+    "source": "660ece89d3743accc146b8ae44e4c89bf3260cab",
     "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
-    "local": "Paid1G+landplay baseline2tests14assertions2failures missing optional quest choice; followup2/16PASS. Three earned-counter activation baseline2/22/2errors missing ability; exact combined-cost followup2/28PASS. Focused22tests728assertions, adjacent Modern394/5378 and choices/mana/search/Matches244/4623 passed serial30s process-tree caps; nonmutating Pint6 and diff passed. Empty-library and unordered-eligible-ID test expectations corrected without production changes. Refreshed ledger18tests37assertions and existing181-pool inventory PASS:30scoped names2Partner-gap names1overlap0whole-card certificates. Full120s/exact CI pending. Schema16 validates counter kind and migrates old +1/+1 choices. No environment change. Initial full071f0c4 failed2018tests57058assertions1error2expectedskips: synthetic version10 fixture retained new counterKind field. Integrating main3234b6c preserves upstreamPR376-403; fresh source pins/full/exactCI required.",
+    "local": "Original paid baselines2/14/2fail and2/22/2errors; narrow followups2/16 and2/28PASS. Integrated upstream main3234b6c (PR376-403) without losing upstream runtime changes. Integrated focused23tests732assertions, adjacent Modern423/5900 and counters/choices/mana/search/Matches312/6924 PASS serial30s caps; nonmutating Pint7/diff PASS. Prior full071f0c4 failed2018/57058/1error/2expectedskips due synthetic version10 fixture retaining new counterKind; fixture corrected to actual old shape with +1/+1 migration assertion, not a production workaround. Refreshed ledger/existing181-pool inventory/full120s/exactCI pending. Schema16/noenvchange. Earlier harness empty-library/order issues corrected without production changes.",
     "ci": "Exact tested and final heads require their own PHP8.3/8.4/8.5 full Pint/PHPUnit CI before merge."
   },
   "sourcePins": {
@@ -52,7 +52,7 @@
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
     "tests/Game/MolderBurialBuffTest.php": "a83dc108bc903b1f77c41a43ab5623bf8deb953d574d3d7ca266889bd6136493",
     "tests/Game/MoriokBurialChoiceTest.php": "321e47036e13dcccca2664f5109d17103367c07e714f405e255a290ef9fc262c",
-    "tests/Game/SummoningStationChoiceTest.php": "64bddcb46f6cdc6269085429846f83963ac80515ce82bcc9031e187aac506a8a",
+    "tests/Game/SummoningStationChoiceTest.php": "5a897a58a4538b25a0d0129bee2555c6419cd4bea0cb3e8b241a6582b89fb57a",
     "tests/Game/KrenkoRedGoblinChoiceTest.php": "a714bf6ac50aa6f4957bd04351ff011805527b4ddd749b7a77c4ce3fd7404057",
     "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667",
     "tests/Game/JovenBurialCountersTest.php": "760b251bc2c88b06636f8aee91e3f43e80ea0a4b105a83a30bfbe3727c3278bc",
