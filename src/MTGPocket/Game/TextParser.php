@@ -1995,6 +1995,9 @@ final class TextParser
             $text === 'two or more nonland permanents entered the battlefield under your control this turn' => 'celebration',
             $text === 'you have more life than each opponent' => 'life_lead',
             $text === 'an opponent has more life than you' => 'life_behind',
+            // `as long as an opponent controls more creatures than you`: see Game::conditionMet().
+            $text === 'an opponent controls more creatures than you' => 'creatures_behind',
+            $text === 'an opponent controls more lands than you' => 'lands_behind',
             (bool) preg_match('/^you control no other (artifacts|enchantments)$/', $text, $m) => 'no_other '.ucfirst(rtrim($m[1], 's')),
             default => null,
         };
