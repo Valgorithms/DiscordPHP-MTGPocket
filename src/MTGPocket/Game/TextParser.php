@@ -2634,6 +2634,12 @@ final class TextParser
 
             return true;
         }
+        // `Whenever CARDNAME deals (combat) damage to a creature, that creature doesn't untap during its controller's next untap step.`: tapped or not.
+        if (preg_match("/^Whenever CARDNAME deals (combat )?damage to a creature, that creature doesn't untap during its controller's next untap step\\.$/", $line, $m)) {
+            $result['triggered'][] = ['text' => $line, 'event' => ($m[1] ?? '') === '' ? 'damages_creature' : 'combat_damage_creature', 'effects' => [['type' => 'freeze', 'target' => 'creature']]];
+
+            return true;
+        }
         // Boros Reckoner: `Whenever CARDNAME is dealt damage, it deals that much damage to any target.`; see Game::dealDamage().
         if (preg_match('/^Whenever CARDNAME is dealt damage, (.+)\.$/', $line, $m) && substr_count($m[1], 'that much') === 1
             && ($effects = self::sentenceEffects((string) preg_replace(['/^it deals that much damage\b/', '/\bthat much (damage|life)\b/'], ['CARDNAME deals 1 damage', '1 $1'], $m[1]))) !== null
