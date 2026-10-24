@@ -1696,6 +1696,9 @@ final class Game
             && array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) || $o->definition()->is('Artifact')) === []) {
             return "{$card->name} needs an artifact or creature to sacrifice.";
         }
+        if (! $options['faceDown'] && $this->orPayKeyword($card) === null && $card->additionalCost === 'sacrifice_land' && array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->isLand()) === []) {
+            return "{$card->name} needs a land to sacrifice.";
+        }
         if (! $options['faceDown'] && $this->orPayKeyword($card) === null && $card->additionalCost === 'discard' && count($player->hand) < 2) {
             return "{$card->name} needs another card in your hand to discard.";
         }
@@ -2917,6 +2920,7 @@ final class Game
         }
         $can = match ($card->additionalCost) {
             'sacrifice_creature' => array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o)) !== [],
+            'sacrifice_land' => array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->isLand()) !== [],
             'sacrifice_artifact' => array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->is('Artifact')) !== [],
             'sacrifice_artifact_or_creature' => array_filter($this->permanents($seat), fn (GameObject $o) => $this->isCreature($o) || $o->definition()->is('Artifact')) !== [],
             'discard' => count(array_diff($this->players[$seat]->hand, [$id])) > 0,
@@ -2929,7 +2933,12 @@ final class Game
 
     private function payAdditionalCost(int $seat, CardDefinition $card): void
     {
-        if (in_array($card->additionalCost, ['sacrifice_creature', 'sacrifice_artifact_or_creature', 'sacrifice_artifact'], true)) {
+        if ($card->additionalCost === 'sacrifice_land') {
+            // As with other additional sacrifice costs, use the automatic payment policy.
+            $land = $this->weakest($seat, fn (GameObject $o) => $o->definition()->isLand());
+            $this->log("{$this->players[$seat]->name} sacrifices {$land->name()} to cast {$card->name}.");
+            $this->sacrifice($land);
+        } elseif (in_array($card->additionalCost, ['sacrifice_creature', 'sacrifice_artifact_or_creature', 'sacrifice_artifact'], true)) {
             $creatures = $card->additionalCost !== 'sacrifice_artifact';
             $artifacts = $card->additionalCost !== 'sacrifice_creature';
             $weakest = $this->weakest($seat, fn (GameObject $o) => ($creatures && $this->isCreature($o)) || ($artifacts && $o->definition()->is('Artifact')));

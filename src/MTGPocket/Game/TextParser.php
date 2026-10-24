@@ -2071,7 +2071,7 @@ final class TextParser
 
             return true;
         }
-        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)(?: or pay ((?:\{[^}]+\})+))?\.?$/', $line, $m)) {
+        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|sacrifice a land|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)(?: or pay ((?:\{[^}]+\})+))?\.?$/', $line, $m)) {
             return false;
         }
         if (isset($m[2])) {
@@ -2081,6 +2081,7 @@ final class TextParser
             'sacrifice a creature' => 'sacrifice_creature',
             'sacrifice an artifact or creature' => 'sacrifice_artifact_or_creature',
             'sacrifice an artifact' => 'sacrifice_artifact',
+            'sacrifice a land' => 'sacrifice_land',
             'exile a creature card from your graveyard' => 'exile_creature_card',
             'exile a card from your graveyard' => 'exile_card',
             default => 'discard',
@@ -4932,9 +4933,9 @@ final class TextParser
         if (preg_match('/^its controller may search their library for a basic land card, put (?:it|that card) (onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => 'basic land', 'to' => strtolower($m[1]) === 'onto the battlefield' ? 'battlefield' : 'tapped', 'theirs' => true, 'sameTarget' => true];
         }
-        // Burnished Hart: an explicit choice of zero, one or two basics, followed by one shuffle.
-        if (strcasecmp($s, 'Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle') === 0) {
-            return ['type' => 'tutor', 'filter' => 'basic_land', 'count' => 2, 'to' => 'tapped', 'reveal' => false];
+        // Burnished Hart / Harrow: choose zero, one or two basics, then shuffle once.
+        if (preg_match('/^Search your library for up to two basic land cards, put them onto the battlefield( tapped)?, then shuffle$/i', $s, $m)) {
+            return ['type' => 'tutor', 'filter' => 'basic_land', 'count' => 2, 'to' => isset($m[1]) ? 'tapped' : 'battlefield', 'reveal' => false];
         }
         // Other legacy up-to searches retain their existing policy.
         if (preg_match('/^(?:you may )?search your library for up to (\w+) basic land cards, (?:reveal them, )?put them (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {

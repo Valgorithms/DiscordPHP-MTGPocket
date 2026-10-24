@@ -831,6 +831,67 @@ final class MatchesTest extends PocketTestCase
     }
 
     /** @dataProvider optionalLifeOptions */
+    public function testHarrowPanelPersistsLandCostAndUntappedSelection(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = null;
+        $castMana = $lands = [];
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source, &$castMana, &$lands): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 3; $n++) {
+                $castMana[] = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Forest'), GameObject::BATTLEFIELD)->id;
+            }
+            foreach (['Island', 'Forest'] as $name) {
+                $lands[] = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:'.$name), GameObject::LIBRARY)->id;
+            }
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/harrow-land-cost-search.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        foreach ($castMana as $id) {
+            $this->assertSame($match->game->objects[$id]->zone === GameObject::BATTLEFIELD, $match->game->objects[$id]->tapped);
+        }
+        $this->assertSame(GameObject::STACK, $match->game->objects[$source]->zone);
+        $this->assertCount(1, array_filter($castMana, fn (int $id) => $match->game->objects[$id]->zone === GameObject::GRAVEYARD));
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $this->assertSame('look', $match->game->choiceAwaiting()['type']);
+        $this->assertSame(2, $match->game->choiceAwaiting()['take']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_THROW_ON_ERROR);
+        $this->assertStringContainsString('choose up to 2 cards', $json);
+        $this->assertStringContainsString('battlefield', $json);
+        $this->assertStringNotContainsString('battlefield tapped', $json);
+        $this->assertStringContainsString('Take none', $json);
+        $this->assertStringContainsString('"max_values":2', $json);
+        $this->assertStringNotContainsString('Take none', json_encode(MatchMessageBuilder::actions($match, $other), JSON_THROW_ON_ERROR));
+        $before = $match->game->toArray();
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $other, 'take', [], [(string) $lands[0]]), 'not looking');
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        [$match, $changed] = $panel->run($match->id, $player, 'take', [], $option === 'accept' ? array_map('strval', $lands) : []);
+        $this->assertTrue($changed);
+        foreach ($lands as $id) {
+            $this->assertSame($option === 'accept' ? GameObject::BATTLEFIELD : GameObject::LIBRARY, $match->game->objects[$id]->zone);
+            if ($option === 'accept') {
+                $this->assertFalse($match->game->objects[$id]->tapped);
+            }
+        }
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($before['shuffles'] + 1, $match->game->toArray()['shuffles']);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'take', [], [(string) $lands[0]]), 'not looking');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    /** @dataProvider optionalLifeOptions */
     public function testCultivatePanelPersistsBothSelectionsOrFailureToFind(string $option): void
     {
         $match = $this->startMatch();

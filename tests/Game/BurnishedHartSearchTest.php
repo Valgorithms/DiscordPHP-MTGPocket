@@ -304,7 +304,7 @@ final class BurnishedHartSearchTest extends GameTestCase
     {
         $text = 'Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle';
         $this->assertSame(['type' => 'tutor', 'filter' => 'basic_land', 'count' => 2, 'to' => 'tapped', 'reveal' => false], TextParser::effect($text));
-        foreach (['You may '.$text, str_replace('two', 'three', $text), str_replace('battlefield tapped', 'battlefield', $text), str_replace('put them', 'reveal them, put them', $text)] as $legacy) {
+        foreach (['You may '.$text, str_replace('two', 'three', $text), str_replace('onto the battlefield tapped', 'into your hand', $text), str_replace('put them', 'reveal them, put them', $text)] as $legacy) {
             $this->assertSame('search', TextParser::effect($legacy)['type']);
         }
     }
