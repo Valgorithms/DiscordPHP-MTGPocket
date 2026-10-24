@@ -31,7 +31,7 @@ final class FaceDownTokenCopyTest extends GameTestCase
         $this->game->pass($this->game->priority);
     }
 
-    private function card(): array
+    private function loxodon(): array
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/woolly-loxodon-morph.json'));
         $this->assertSame('03f2ef9e9d6cd60ce492c3c82929ee8ecfac874e1d88643b9180be86f99a20c1', hash('sha256', $bytes));
@@ -48,7 +48,7 @@ final class FaceDownTokenCopyTest extends GameTestCase
     {
         $this->game->active = $this->game->priority = $actor;
         $lands = $this->lands($actor, 'Forest', 3);
-        $id = $this->game->addCard($actor, $this->card(), GameObject::HAND)->id;
+        $id = $this->game->addCard($actor, $this->loxodon(), GameObject::HAND)->id;
         $this->game->cast($actor, $id, 0, [], 'morph');
         foreach ($lands as $land) {
             $this->assertTrue($this->game->objects[$land]->tapped);
