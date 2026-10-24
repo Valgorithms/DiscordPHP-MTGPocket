@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "3b43fd03f57c8541c5083af04f92d3e64ee0424f",
+  "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
   "validation": {
-    "source": "3b43fd03f57c8541c5083af04f92d3e64ee0424f",
-    "evidenceMeaning": "Harrow scoped additional land payment and explicit untapped land search. Recognition remains historical; no whole-card certification.",
-    "local": "Actual2Gpaid baseline2tests12assertions2failures: missing land sacrifice in both seats. Cost-only follow-up corrected a tapped-status test assumption and then reproduced absent explicit search:2tests16assertions2failures. Focused31tests499assertions0.457s40MiB; adjacent788tests13728assertions23.767s126MiB; six-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocaltemp. Focused harness corrected private-method access and two tapped-entry expectations. Ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target0b4ad172d6edb380be218639ed42514a26bdf136 passed1992tests56308assertions2expectedmissing-imported-pool/rental skips;69.488s wall120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp,fresh12.63GiB at2026-10-24T13:47:12.4861490Z. All57normalizedPHPpins match the full-tested target. PHPUnit68.931s268MiB. ExacttestedCI passed. Noenv/schema15change.",
-    "ci": "Exact tested-head CI40099632122 at0b4ad172d6edb380be218639ed42514a26bdf136 passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+    "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
+    "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
+    "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. New full120s/exact CI required. Noenv/schema15change.",
+    "ci": "Pending exact CI for reservation follow-up; earlier tested/final runs are superseded."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "94e988d24428c3d94f060ad77cec9749f200aa77615264d6760947efbd269650",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "2bb9198ea3ddf5ebb60d1ccd1959c1fc4dd8995f2cfe90e8ef60135ad2f5de22",
+    "src/MTGPocket/Game/Game.php": "94911a3a64d40187809c088545a6ab251bb006fcb2e05005d7d54667aef3e7a7",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -73,7 +73,7 @@
     "tests/Game/CultivateSearchTest.php": "da61027f3b6f0010b0e372742e7236aa2c2316cfea2b30801c6eb3380b3dd14f",
     "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446",
     "tests/Game/BurnishedHartSearchTest.php": "f1746faee47f219a2a872d863f18803bb03f7afbcd0d3477cb1aed8d16862c59",
-    "tests/Game/HarrowSearchTest.php": "d8085497eadb5481a89fcce1c75eaece0263df35694062824b6bfcc3b878a239"
+    "tests/Game/HarrowSearchTest.php": "03d51933849cbd2cb2e47d81dc40bdbfb7bde006d05a53d3c3780785587b1172"
   },
   "scopedEvidence": [
     {
@@ -736,9 +736,12 @@
         "tests/Game/HarrowSearchTest.php::testDuplicateNamesDoNotCrowdOutOtherChoicesAndPracticeUsesExistingRoute",
         "tests/Game/HarrowSearchTest.php::testOptionalAndOtherLegacyWordingsKeepTheirPolicy",
         "tests/MatchesTest.php::testHarrowPanelPersistsLandCostAndUntappedSelection",
-        "tests/Game/BurnishedHartSearchTest.php::testOptionalAndOtherLegacyWordingsKeepTheirPolicy"
+        "tests/Game/BurnishedHartSearchTest.php::testOptionalAndOtherLegacyWordingsKeepTheirPolicy",
+        "tests/Game/HarrowSearchTest.php::testManaSacrificesMustLeaveALandForTheAdditionalCost",
+        "tests/Game/HarrowSearchTest.php::testInstantCanBePaidAndResolvedDuringOpponentsTurn",
+        "tests/Game/HarrowSearchTest.php::testAlternativeManaPlanReservesLandInsteadOfConsumingBoth"
       ],
-      "scope": "Complete cached ZEN UUID62454305-aa7f-5dce-9048-7b8af6ed09db normalized fixtureSHA256bf53c1c1adcaf45decf15aea7f8f6e3deacad70e492e36adf36bbc45dea81a53: both seats pay2G and one controlled land before resolution; explicit0/1/2basic finds, untapped entry and one final shuffle; normal/snow/Wastes and two same-name copies; wrong zone/type/seat/nonbasic/source/overselect excluded atomically; floating mana cannot replace land; borrowed land goes to owner graveyard; countering does not refund cost or search; queued/pending/completed JSON/replay and original-controller synthetic later effect; insufficient/wrong-color/opposing/repeated casts, synthetic or-pay control, duplicate-name selector, practice and persisted panels. Existing schema15/action families reused.",
+      "scope": "Complete cached ZEN UUID62454305-aa7f-5dce-9048-7b8af6ed09db normalized fixtureSHA256bf53c1c1adcaf45decf15aea7f8f6e3deacad70e492e36adf36bbc45dea81a53: both seats pay2G and one controlled land before resolution; explicit0/1/2basic finds, untapped entry and one final shuffle; normal/snow/Wastes and two same-name copies; wrong zone/type/seat/nonbasic/source/overselect excluded atomically; floating mana cannot replace land; borrowed land goes to owner graveyard; countering does not refund cost or search; queued/pending/completed JSON/replay and original-controller synthetic later effect; insufficient/wrong-color/opposing/repeated casts, synthetic or-pay control, duplicate-name selector, practice and persisted panels. Existing schema15/action families reused. Sacrificing mana sources cannot consume the last additional-cost land; impossible plans reject atomically and alternate plans reserve a surviving land. Paid instant casting during the opponent turn is covered in both seats.",
       "limits": "Additional sacrifice payment remains automatic under the existing weakest-permanent policy, not player-selected; synthetic alternative mana and appended life/controller relocation/supporting cards are contract probes, not independent certificates. Only exact mandatory up-to-two tapped/untapped wording uses explicit choices; optional/reveal/other-count/hand legacy policies unchanged. Arbitrary libraries with more than25distinct basic names/general selector paging, replacements/APNAP/copy/continuous rules, newest-printing and whole-card certification remain unverified. No sourcefetch/corpusscan/import/live/build/restart/deploy."
     }
   ],
