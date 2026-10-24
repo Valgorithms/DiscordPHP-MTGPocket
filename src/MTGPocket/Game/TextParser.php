@@ -3988,8 +3988,8 @@ final class TextParser
         if (preg_match('/^(.+?) must be blocked this turn if able$/', $sentence, $m) && preg_match('/^(?:[Tt]arget creature(?: you control)?|It|That creature|CARDNAME)$/', $m[1])) {
             return self::sentenceEffects("{$m[1]} gains must be blocked if able until end of turn");
         }
-        // `Each creature you control gets +1/+1 until end of turn.`: read as `Creatures you control get …`; `Each creature gets …` as `All creatures get …`.
-        if (preg_match('/^([Ee])ach (other )?creature( you control| your opponents control)? (gets|gains) (.+)$/', $sentence, $m) && ($m[2] === '' || $m[3] !== '')) {
+        // `Each creature you control gets +1/+1 until end of turn.`: read as `Creatures you control get …`; `Each creature gets …` as `All creatures get …`; also `… you don't control …`.
+        if (preg_match("/^([Ee])ach (other )?creature( you control| your opponents control| you don't control)? (gets|gains) (.+)$/", $sentence, $m) && ($m[2] === '' || $m[3] !== '')) {
             $subject = $m[3] === '' ? 'All creatures' : ($m[2] !== '' ? 'Other creatures' : 'Creatures').$m[3];
 
             return self::sentenceEffects(($m[1] === 'e' ? lcfirst($subject) : $subject).' '.substr($m[4], 0, -1).' '.$m[5]);
