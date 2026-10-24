@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Farseek subtype-search milestone](farseek-subtype-search.md) records paid evidence for existing explicit normal/snow/nonbasic-dual subtype selection, tapped entry, failure to find and shuffle. It changes tests, not runtime. Current ledger: 24 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier counts below are historical.
+
 The [Rampant Growth mandatory-search milestone](rampant-growth-basic-search.md) adds paid explicit basic-land selection, tapped entry and shuffle, including failure to find, using the existing tutor. Current ledger: 23 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier milestone counts below are historical.
 
 The [Viridian Emissary death-search milestone](viridian-optional-death-search.md) adds an explicit original-controller search/decline decision after a paid cast and Shock, reusing schema 14 optional-search continuations. Current ledger: 22 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier milestone counts below are historical.
