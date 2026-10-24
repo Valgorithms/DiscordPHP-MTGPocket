@@ -286,6 +286,10 @@ final class TextParser
         'target spell' => 'spell',
         'target creature spell' => 'creature_spell',
         'target noncreature spell' => 'noncreature_spell',
+        // `Counter target spell that targets a creature you control.`, `… that targets you.`
+        'target spell that targets a creature you control' => 'spell_targets_your_creature',
+        'target spell that targets you' => 'spell_targets_you',
+        'target spell that targets you or a creature you control' => 'spell_targets_you_or_creature',
         'target spell with mana value 1 or less' => 'spell_mv_le_1',
         'target spell with mana value 2 or less' => 'spell_mv_le_2',
         'target spell with mana value 3 or less' => 'spell_mv_le_3',
@@ -4220,7 +4224,7 @@ final class TextParser
             return true;
         }
         // `Destroy target artifact or enchantment. Its controller gains 3 life.`
-        if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell'], true)
+        if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'spell_targets_your_creature', 'spell_targets_you', 'spell_targets_you_or_creature'], true)
             && preg_match('/^Its controller gains (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
             $effects[] = ['type' => 'gain_life', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
 
@@ -4656,7 +4660,7 @@ final class TextParser
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'bounce', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell|target spell with mana value [1-4] or less)$/i', $s, $m)) {
+        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell|target spell with mana value [1-4] or less|target spell that targets (?:you or )?a creature you control|target spell that targets you)$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // Manlands and animated artifacts: `Until end of turn, CARDNAME becomes a 4/4 white and blue Elemental creature with flying.`; see Game::isCreature().
@@ -5209,7 +5213,7 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard', 'creature_card_yours_other', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true)
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'spell_targets_your_creature', 'spell_targets_you', 'spell_targets_you_or_creature', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard', 'creature_card_yours_other', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true)
             && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_') && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'spell_mv_le_');
     }
 }
