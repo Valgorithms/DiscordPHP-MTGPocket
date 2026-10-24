@@ -3656,6 +3656,11 @@ final class TextParser
      */
     private static function cardFilter(string $words): ?string
     {
+        // Clay-Fired Bricks requires both a Basic supertype and the Plains subtype.
+        // Keep mixed subtype alternatives unread until their grouping is supported.
+        if ($words === 'basic Plains') {
+            return 'basic_land&sub:Plains';
+        }
         $kinds = [
             'creature' => 'creature', 'land' => 'land', 'artifact' => 'artifact', 'enchantment' => 'enchantment', 'instant' => 'instant',
             'sorcery' => 'sorcery', 'planeswalker' => 'planeswalker', 'permanent' => 'permanent', 'nonland' => 'nonland',
