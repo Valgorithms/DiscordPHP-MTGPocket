@@ -6975,6 +6975,10 @@ final class Game
         if ($ability['sorcery'] && ! $this->sorcerySpeed($seat)) {
             return "That ability of {$card->name} can be activated only in your own main phase, when the stack is empty.";
         }
+        // `Activate only if you control an artifact.`, `Activate only during your turn.`
+        if (isset($ability['if']) && ! $this->conditionMet($ability['if'], $object, $seat)) {
+            return "That ability of {$card->name} can't be activated now: ".lcfirst((string) preg_replace('/^.*Activate only /', 'it can be activated only ', $ability['text']));
+        }
         if (isset($ability['fromLevel']) && $this->classLevel($object) !== $ability['fromLevel']) {
             return $this->classLevel($object) > $ability['fromLevel'] ? "{$card->name} is already past that level." : "{$card->name} must reach level {$ability['fromLevel']} first.";
         }
