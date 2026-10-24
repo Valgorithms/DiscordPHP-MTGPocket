@@ -3072,6 +3072,12 @@ final class TextParser
             $event = 'creature_dies_other';
             $extra = ['batch' => true] + ($m2[2] !== 'creatures' ? ['nontoken' => true] : []);
             $text = $match[1];
+        } elseif (preg_match('/^Whenever one or more (other )?nontoken creatures you control enter(?: the battlefield)?, (.+)$/', $line, $match) && ($match[1] !== '' || ! self::$creature)
+            && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $match[2])) {
+            // As `Whenever another nontoken creature you control enters, …`: only created tokens are batched (see Game::applyEffect()), so nontoken creatures entering together each trigger it.
+            $event = 'permanent_enters_yours';
+            $extra = ['objectKind' => 'nontoken creature', 'other' => true];
+            $text = $match[2];
         } elseif (preg_match('/^Whenever one or more (other )?creatures (?:you control enter|enter(?: the battlefield)? under your control)(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] !== '' || ! self::$creature)
             && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[2])) {
             // Once per batch, such as several tokens created together; see Game::putOntoBattlefield().
