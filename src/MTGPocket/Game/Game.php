@@ -6422,8 +6422,8 @@ final class Game
                 ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
-                // The departing battlefield definition includes token/copy costs; X is zero off the stack.
-                ($effect['amount'] ?? null) === 'departing_mana_value' => ['amount' => $contextCharacteristics?->definition->cost->manaValue() ?? 0] + $effect,
+                // Freeze battlefield mana value before movement resets the active face.
+                ($effect['amount'] ?? null) === 'departing_mana_value' => ['amount' => $contextCharacteristics?->manaValue ?? $contextCharacteristics?->definition->cost->manaValue() ?? 0] + $effect,
                 ($effect['amount'] ?? null) === 'combat_dealt' => ['amount' => $this->combatDealt[$event === 'combat_damage' ? $source->id : $context] ?? 0] + $effect,
                 $effect['type'] === 'graft' => ['to' => $context] + $effect,
                 ($effect['each'] ?? null) === 'that' => ['that' => $context] + $effect,
@@ -7115,7 +7115,7 @@ final class Game
         $seat = $object->controller;
         $characteristics = $this->deathObserverBatch?->characteristicsOf($object);
         $watchers = $characteristics !== null ? $this->deathObserverBatch->observers : array_map(fn (GameObject $watcher) => clone $watcher, $this->permanents());
-        $characteristics ??= new DepartureCharacteristics($object->definition(), $this->isCreature($object));
+        $characteristics ??= new DepartureCharacteristics($object->definition(), $this->isCreature($object), manaValue: $object->battlefieldManaValue());
         $this->moveTo($object, GameObject::GRAVEYARD);
         foreach ($watchers as $watcher) {
             $actual = $this->objects[$watcher->id];
@@ -8873,7 +8873,7 @@ final class Game
         }
         $characteristics = [];
         foreach ($doomed as $object) {
-            $characteristics[$object->id] = new DepartureCharacteristics($object->definition(), $this->isCreature($object), $this->power($object), $this->toughness($object));
+            $characteristics[$object->id] = new DepartureCharacteristics($object->definition(), $this->isCreature($object), $this->power($object), $this->toughness($object), $object->battlefieldManaValue());
         }
         $batch = new DeathObserverBatch($this->permanents(), $doomed, $characteristics);
         $previous = $this->deathObserverBatch;
@@ -9676,7 +9676,7 @@ final class Game
         }
         $toGraveyard = $object->zone === GameObject::BATTLEFIELD && $zone === GameObject::GRAVEYARD;
         // Capture before movement clears animation, counters, attachments and transform/morph state.
-        $departingCharacteristics = $leaves ? new DepartureCharacteristics($object->definition(), $this->isCreature($object)) : null;
+        $departingCharacteristics = $leaves ? new DepartureCharacteristics($object->definition(), $this->isCreature($object), manaValue: $object->battlefieldManaValue()) : null;
         $departingDefinition = $departingCharacteristics?->definition;
         if ($leaves) {
             // Retain the departing incarnation even if this card returns before its ability resolves.
