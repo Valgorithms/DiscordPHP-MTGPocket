@@ -6474,6 +6474,9 @@ final class Game
             'gy_creature', 'gy_land', 'gy_artifact', 'gy_enchantment' => count(array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->printed()->is(ucfirst(substr($kind, 3))))) >= (int) $n,
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
+            'opponent_turn' => $this->active !== $controller,
+            'combat' => in_array($this->step, [Step::BeginCombat, Step::DeclareAttackers, Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage, Step::EndCombat], true),
+            'before_blockers' => in_array($this->step, [Step::Untap, Step::Upkeep, Step::Draw, Step::PrecombatMain, Step::BeginCombat, Step::DeclareAttackers], true),
             'attacked' => $this->players[$controller]->attackedTurn === $this->turn,
             'self_attacked' => $source->attackedTurn === $this->turn,
             // Day and night (rule 726): neither until it becomes day.

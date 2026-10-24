@@ -3490,10 +3490,11 @@ final class TextParser
         if (preg_match('/^(.+?)\s*Activate only once\.$/', $text, $limit)) {
             [$text, $ever] = [$limit[1], true];
         }
-        // `Activate only if you control an artifact.`, `Activate only during your turn.`: checked as it is activated; see Game::conditionMet().
+        // `Activate only if you control an artifact.`, `Activate only during your turn.`, `… during combat.`: checked as it is activated; see Game::conditionMet().
         $only = null;
-        if (preg_match('/^(.+?)\s*Activate only during your turn\.$/', $text, $limit)) {
-            [$text, $only] = [$limit[1], 'your_turn'];
+        $windows = ['during your turn' => 'your_turn', "during an opponent's turn" => 'opponent_turn', 'during combat' => 'combat', 'before blockers are declared' => 'before_blockers'];
+        if (preg_match('/^(.+?)\s*Activate only (during your turn|during an opponent\'s turn|during combat|before blockers are declared)\.$/', $text, $limit)) {
+            [$text, $only] = [$limit[1], $windows[$limit[2]]];
         } elseif (preg_match('/^(.+?)\s*Activate only if (.+)\.$/', $text, $limit)) {
             if (! is_string($only = self::interveningIf("if {$limit[2]}, x")[0] ?? null)) {
                 return false;
