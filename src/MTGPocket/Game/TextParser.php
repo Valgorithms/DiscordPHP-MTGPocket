@@ -3524,7 +3524,7 @@ final class TextParser
                 $cost['life'] = (int) $life[1];
             } elseif (preg_match('/^Pay ((?:\{E\})+)$/', $part, $energy)) {
                 $cost['energy'] = substr_count($energy[1], '{E}');
-            } elseif (preg_match('/^Remove (\w+) (\w+) counters? from CARDNAME$/', $part, $remove) && is_int($n = self::amount($remove[1])) && $remove[2] !== 'loyalty') {
+            } elseif (preg_match('/^Remove (\w+) ([+-]1\/[+-]1|\w+) counters? from CARDNAME$/', $part, $remove) && is_int($n = self::amount($remove[1])) && $remove[2] !== 'loyalty') {
                 $cost['remove'] = [$remove[2], $n];
             } else {
                 return false;
