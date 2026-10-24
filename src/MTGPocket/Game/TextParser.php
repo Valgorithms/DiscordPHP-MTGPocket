@@ -633,10 +633,11 @@ final class TextParser
 
                 continue;
             }
-            // `Each other creature you control enters with an additional +1/+1 counter on it.`, `… other Elf …`; see Game::putOntoBattlefield().
-            if (! $spell && preg_match('/^Each other (creature|[A-Z][a-z]+(?: creature)?) you control enters(?: the battlefield)? with an additional \+1\/\+1 counter on it\.$/', $line, $match)
-                && ($kind = $match[1] === 'creature' ? 'Creature' : self::subtypeOf(explode(' ', $match[1])[0])) !== null) {
-                $result['keywords'][] = "others enter with counter {$kind}";
+            // `Each other creature you control enters with an additional +1/+1 counter on it.`, `… other Elf …`, `… other non-Human creature …`,
+            // and `Creatures you control enter with an additional +1/+1 counter on them.`, itself included; see Game::putOntoBattlefield().
+            if (! $spell && preg_match('/^(?:Each (other )?(creature|(non-)?[A-Z][a-z]+(?: creature)?) you control enters|(Creatures) you control enter)(?: the battlefield)? with an additional \+1\/\+1 counter on (?:it|them)\.$/', $line, $match)
+                && ($kind = in_array($match[2], ['creature', ''], true) ? 'Creature' : self::subtypeOf(explode(' ', substr($match[2], strlen($match[3] ?? '')))[0])) !== null) {
+                $result['keywords'][] = ($match[1] !== '' ? 'others' : 'creatures').' enter with counter '.($match[3] ?? '').$kind;
 
                 continue;
             }
