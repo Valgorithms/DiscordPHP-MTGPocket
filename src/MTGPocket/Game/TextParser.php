@@ -3170,6 +3170,10 @@ final class TextParser
             $event = $match[1] === 'one or more' ? 'you_create_tokens' : 'you_create_token';
             $extra = $match[2] !== '' ? ['objectKind' => $match[2]] : [];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever you mill one or more cards, (.+)$/', $line, $match)) {
+            // See Game::mill(): once per mill that put any card into your graveyard.
+            $event = 'you_mill';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you (scry|surveil), (.+)$/', $line, $match)) {
             $event = "you_{$match[1]}";
             $text = $match[2];
