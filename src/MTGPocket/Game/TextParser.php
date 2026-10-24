@@ -2881,6 +2881,11 @@ final class TextParser
             // The Swords: `Whenever equipped creature deals combat damage to a player, …`; see Game::attachedTrigger(). "It" is that creature.
             $event = 'attached_'.['attacks' => 'attacks', 'blocks' => 'blocks', 'deals combat damage to a player' => 'combat_damage', 'dies' => 'dies'][$match[1]];
             $text = $match[2];
+        } elseif (preg_match('/^Whenever an? (equipped|enchanted) creature you control (attacks|blocks|deals combat damage to a player), (.+)$/', $line, $match)) {
+            // `Whenever an equipped creature you control attacks, …`: "it" is that creature; see Game::objectFits().
+            $event = ['attacks' => 'creature_attacks', 'blocks' => 'creature_blocks', 'deals combat damage to a player' => 'creature_combat_damage'][$match[2]];
+            $extra = ['objectKind' => "{$match[1]} creature", 'other' => false];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|becomes blocked|deals combat damage to a player), (.+)$/', (string) preg_replace('/^(Whenever (?:a|another) creature you control) with power (\w+) or greater (attacks|blocks)/', '$1 $3', $line), $match)
             && ($match[1] === 'an') === (bool) preg_match('/^[AEIOU]/', $match[2])) {
             // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
