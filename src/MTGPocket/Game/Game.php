@@ -6486,6 +6486,7 @@ final class Game
             'spells_cast' => $this->players[$controller]->castTurn === $this->turn && $this->players[$controller]->cast >= (int) $n,
             'life_le' => $this->players[$controller]->life <= (int) $n,
             'life_lead' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life >= $this->players[$controller]->life) === [],
+            'legendary_creature' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object) && in_array('Legendary', $object->definition()->supertypes, true)) !== [],
             'no_other_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $object->id !== $source->id && $this->isCreature($object)) === [],
             'power_ge' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object) && $this->power($object) >= (int) $n) !== [],
             // Coven: three or more creatures with different powers.
