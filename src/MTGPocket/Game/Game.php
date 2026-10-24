@@ -6487,6 +6487,7 @@ final class Game
             'hand_ge' => count($this->players[$controller]->hand) >= (int) $n,
             'opp_life_le' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life <= (int) $n) !== [],
             'has_counter' => $source->counter('+1/+1') > 0,
+            'enchanted', 'equipped' => array_filter($this->attachments($source), fn (GameObject $o) => in_array($kind === 'enchanted' ? 'Aura' : 'Equipment', $o->definition()->subtypes, true)) !== [],
             'alone' => array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $source->id && $this->isCreature($o)) === [],
             'delirium' => count(array_filter(['Artifact', 'Battle', 'Creature', 'Enchantment', 'Instant', 'Kindred', 'Land', 'Planeswalker', 'Sorcery'], fn (string $type) => array_filter($this->players[$controller]->graveyard, fn (int $id) => $this->objects[$id]->definition()->is($type)) !== [])) >= (int) $n,
             'always' => true,
