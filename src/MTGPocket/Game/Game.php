@@ -6477,6 +6477,7 @@ final class Game
             'creatures' => count(array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object))) >= (int) $n,
             'no_creatures' => array_filter($this->permanents($controller), fn (GameObject $object) => $this->isCreature($object)) === [],
             'no_other' => array_filter($this->permanents($controller), fn (GameObject $object) => $object->id !== $source->id && $object->definition()->is((string) $n)) === [],
+            'celebration' => $this->players[$controller]->nonlandEnteredTurn === $this->turn && $this->players[$controller]->nonlandEntered >= 2,
             'spells_cast' => $this->players[$controller]->castTurn === $this->turn && $this->players[$controller]->cast >= (int) $n,
             'life_le' => $this->players[$controller]->life <= (int) $n,
             'life_lead' => array_filter($this->players, fn (GamePlayer $player) => $player->seat !== $controller && ! $player->lost && $player->life >= $this->players[$controller]->life) === [],
@@ -9295,6 +9296,11 @@ final class Game
             ? $this->perCount($controller, substr($card->entersWithCounters, 4), $object) : null;
         $this->removeFromZone($object);
         $object->moveTo(GameObject::BATTLEFIELD);
+        // Celebration: nonland permanents that entered under each player's control this turn.
+        if ($faceDown || ! $card->isLand()) {
+            $entrant = $this->players[$controller];
+            [$entrant->nonlandEntered, $entrant->nonlandEnteredTurn] = [$entrant->nonlandEnteredTurn === $this->turn ? $entrant->nonlandEntered + 1 : 1, $this->turn];
+        }
         $object->faceDown = $faceDown;
         $object->kicked = $kicked;
         $object->transformed = $transformed && $object->printed()->back !== null;
