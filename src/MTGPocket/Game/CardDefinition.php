@@ -272,7 +272,8 @@ final class CardDefinition
         $this->aura = $parsed['aura'];
         $this->equipment = $parsed['equipment'];
         $this->triggered = $parsed['triggered'];
-        $this->back = is_array($card['back'] ?? null) ? new CardDefinition(['uuid' => $this->key] + $card['back']) : null;
+        // Transforming changes characteristics, not whether this object is a token.
+        $this->back = is_array($card['back'] ?? null) ? new CardDefinition(['uuid' => $this->key, 'token' => $this->isToken()] + $card['back']) : null;
         $this->prepare = is_array($card['prepare'] ?? null) ? new CardDefinition(['uuid' => $this->key.'-prepare'] + $card['prepare']) : null;
         $activated = $parsed['activated'];
         $prepareUnsupported = [];

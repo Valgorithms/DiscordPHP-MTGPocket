@@ -137,6 +137,138 @@ final class IncubatorTokenIdentityTest extends GameTestCase
         }
     }
 
+    /** @dataProvider identityMarkers */
+    public function testFrontTokenIdentitySurvivesBackDefinitionAndOldSavedShapes(bool $token, ?bool $backMarker): void
+    {
+        // Characteristic unit controls; token identity cannot be changed by the back's data.
+        $card = ['name' => 'Identity Front Unit Fixture', 'type' => 'Artifact', 'text' => null, 'manaCost' => '{3}', 'token' => $token,
+            'back' => ['name' => 'Identity Back Unit Fixture', 'type' => 'Artifact', 'text' => null, 'manaCost' => null]];
+        if ($backMarker !== null) {
+            $card['back']['token'] = $backMarker;
+        }
+        $definition = new CardDefinition($card);
+        $this->assertSame($token, $definition->isToken());
+        $this->assertSame($token, $definition->back->isToken());
+        $this->assertSame(0, $definition->back->cost->manaValue());
+        $this->newGame();
+        $id = $this->game->addCard(1, $card, GameObject::BATTLEFIELD)->id;
+        $this->game->objects[$id]->transformed = true;
+        $this->game = Game::fromArray($this->saved());
+        $this->assertSame($token, $this->game->objects[$id]->definition()->isToken());
+        (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $this->game->objects[$id], GameObject::GRAVEYARD);
+        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        $this->assertSame($token ? GameObject::GONE : GameObject::GRAVEYARD, $this->zone($id));
+        $this->assertSame(! $token, in_array($id, $this->game->players[1]->graveyard, true));
+    }
+
+    public static function identityMarkers(): array
+    {
+        return [[true, null], [true, false], [true, true], [false, null], [false, false], [false, true]];
+    }
+
+    /** @dataProvider departureRoutes */
+    public function testActualIncubatorDepartureRoutesRetainBurialAndCreatureDeathSemantics(int $actor, bool $transformed, string $route): void
+    {
+        $this->newGame();
+        $source = $this->source(1 - $actor);
+        $observer = ['name' => 'Creature Death Life Unit Fixture', 'type' => 'Enchantment', 'manaCost' => '{1}', 'text' => 'Whenever another creature dies, you gain 1 life.'];
+        $this->assertSame([], (new CardDefinition($observer))->unsupported);
+        $this->game->addCard(0, $observer, GameObject::BATTLEFIELD);
+        $id = $this->incubate($actor);
+        if ($transformed) {
+            $this->transform($actor, $id);
+        }
+        // Supporting direct movement/control unit route; creation and transform are paid.
+        $this->game->objects[$id]->controller = 1 - $actor;
+        $life = $this->game->players[0]->life;
+        $this->game = Game::fromArray($this->saved());
+        (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $this->game->objects[$id], $route);
+        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        $this->assertSame(GameObject::GONE, $this->zone($id));
+        foreach ($this->game->players as $player) {
+            foreach (['graveyard', 'hand', 'library'] as $zone) {
+                $this->assertNotContains($id, $player->$zone);
+            }
+        }
+        $this->assertNotContains($id, $this->game->exile);
+        $burial = $route === GameObject::GRAVEYARD;
+        $count = (int) $burial + (int) ($burial && $transformed);
+        $this->assertCount($count, $this->game->stack);
+        $this->game = Game::fromArray($this->saved());
+        for ($i = 0; $i < $count; $i++) {
+            $this->resolveOne();
+        }
+        $this->assertSame($life + (int) ($burial && $transformed), $this->game->players[0]->life);
+        $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
+        $this->assertSame([], $this->game->stack);
+    }
+
+    public static function departureRoutes(): array
+    {
+        $cases = [];
+        foreach ([0, 1] as $actor) {
+            foreach ([false, true] as $transformed) {
+                foreach ([GameObject::GRAVEYARD, GameObject::EXILE, GameObject::HAND, GameObject::LIBRARY] as $route) {
+                    $cases[] = [$actor, $transformed, $route];
+                }
+            }
+        }
+
+        return $cases;
+    }
+
+    /** @dataProvider actors */
+    public function testNontokenDeathObserversIgnoreTransformedIncubatorButSeeOrdinaryCard(int $actor): void
+    {
+        $this->newGame();
+        $id = $this->incubate($actor);
+        $this->transform($actor, $id);
+        foreach (['Whenever a nontoken creature dies, you gain 1 life.', 'Whenever a nontoken permanent you control leaves the battlefield, you gain 1 life.'] as $text) {
+            $watcher = ['name' => 'Nontoken Departure Unit Fixture', 'type' => 'Enchantment', 'text' => $text];
+            $this->assertSame([], (new CardDefinition($watcher))->unsupported);
+            $this->game->addCard($actor, $watcher, GameObject::BATTLEFIELD);
+        }
+        $life = $this->game->players[$actor]->life;
+        $this->game = Game::fromArray($this->saved());
+        (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $this->game->objects[$id], GameObject::GRAVEYARD);
+        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        $this->assertSame(GameObject::GONE, $this->zone($id));
+        $this->assertSame([], $this->game->stack);
+        $this->assertSame($life, $this->game->players[$actor]->life);
+        $ordinary = $this->game->addCard($actor, ['name' => 'Ordinary Artifact Creature Unit Fixture', 'type' => 'Artifact Creature', 'power' => '1', 'toughness' => '1'], GameObject::BATTLEFIELD)->id;
+        (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $this->game->objects[$ordinary], GameObject::GRAVEYARD);
+        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($ordinary));
+        $this->assertCount(2, $this->game->stack);
+        $this->game = Game::fromArray($this->saved());
+        $this->resolveOne();
+        $this->resolveOne();
+        $this->assertSame($life + 2, $this->game->players[$actor]->life);
+    }
+
+    /** @dataProvider actors */
+    public function testTransformedIncubatorWithZeroToughnessDiesAsToken(int $actor): void
+    {
+        $this->newGame();
+        $source = $this->source(1 - $actor);
+        $id = $this->incubate($actor);
+        $this->transform($actor, $id);
+        $this->game->objects[$id]->counters = [];
+        $this->game = Game::fromArray($this->saved());
+        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        $this->assertSame(GameObject::GONE, $this->zone($id));
+        $this->assertNotContains($id, $this->game->players[$actor]->graveyard);
+        $this->assertCount(1, $this->game->stack);
+        $this->assertSame(0, $this->game->stack[0]['effects'][0]['amount']);
+        $this->resolveOne();
+        $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
+    }
+
+    public static function actors(): array
+    {
+        return [[0], [1]];
+    }
+
     public static function players(): array
     {
         $cases = [];
