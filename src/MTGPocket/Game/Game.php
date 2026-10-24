@@ -3102,6 +3102,10 @@ final class Game
             if ($permanent->controller !== $seat) {
                 $this->trigger($permanent, 'opponent_cast', $permanent->controller);
                 $this->trigger($permanent, 'opponent_cast_kind', $permanent->controller, null, $spell->id);
+                // `Whenever an opponent casts their first spell each turn, …`
+                if ($caster->cast <= 2) {
+                    $this->trigger($permanent, $caster->cast === 1 ? 'opponent_first_spell' : 'opponent_second_spell', $permanent->controller);
+                }
             }
         }
         // `Whenever a player casts a red spell, …`
