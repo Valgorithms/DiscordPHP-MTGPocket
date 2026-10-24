@@ -4393,7 +4393,11 @@ final class Game
         }
         if ($choice['rest'] === 'library') {
             // A tutor: the rest stay in the library, which is then shuffled.
-            $this->log("{$player->name} searches their library".($ids === [] ? ' and takes nothing.' : ' for '.$this->objects[$ids[0]]->name().'.'), $seat);
+            $found = $ids === [] ? null : $this->objects[$ids[0]]->name();
+            $this->log("{$player->name} searches their library".($found === null ? ' and takes nothing.' : (($choice['reveal'] ?? true) ? ' for '.$found.'.' : '.')), $seat);
+            if ($found !== null && ! ($choice['reveal'] ?? true)) {
+                $this->note("{$player->name} finds {$found}.", $seat);
+            }
             $this->shuffle($seat);
             if ($to === 'top' && $ids !== []) {
                 $player->library = [...array_values(array_diff($player->library, $ids)), ...$ids];
@@ -5766,7 +5770,7 @@ final class Game
                     $this->shuffle($controller);
                     break;
                 }
-                $this->pendingChoice = ['type' => 'look', 'seat' => $controller, 'cards' => array_values($eligible), 'eligible' => array_values($eligible), 'take' => 1, 'may' => $effect['filter'] !== 'any', 'rest' => 'library', 'to' => $effect['to']];
+                $this->pendingChoice = ['type' => 'look', 'seat' => $controller, 'cards' => array_values($eligible), 'eligible' => array_values($eligible), 'take' => 1, 'may' => $effect['filter'] !== 'any', 'rest' => 'library', 'to' => $effect['to'], 'reveal' => (bool) ($effect['reveal'] ?? false)];
 
                 return true;
 
@@ -11235,6 +11239,9 @@ final class Game
             'text' => (string) ($trigger['text'] ?? ''),
         ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : []), (array) ($data['pendingTriggers'] ?? [])));
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
+        if (($game->pendingChoice['type'] ?? null) === 'look' && array_key_exists('reveal', $game->pendingChoice) && ! is_bool($game->pendingChoice['reveal'])) {
+            throw new GameException('Invalid saved search reveal policy.');
+        }
         if (($game->pendingChoice['to'] ?? null) === 'split' || ($game->pendingChoice['rest'] ?? null) === 'split') {
             $choice = $game->pendingChoice;
             $finding = ($choice['to'] ?? null) === 'split';

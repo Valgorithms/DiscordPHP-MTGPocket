@@ -1,0 +1,27 @@
+{
+  "setCode": "M12",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "87ae0da5-88f9-503f-a3fc-48b02eca0dc0",
+    "name": "Diabolic Tutor",
+    "number": "92",
+    "rarity": "uncommon",
+    "colors": [
+      "B"
+    ],
+    "manaValue": 4,
+    "type": "Sorcery",
+    "scryfallId": "2db75949-f8cd-4461-83c0-7eaee2196132",
+    "manaCost": "{2}{B}{B}",
+    "types": [
+      "Sorcery"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Search your library for a card, put that card into your hand, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [
+      "B"
+    ]
+  }
+}

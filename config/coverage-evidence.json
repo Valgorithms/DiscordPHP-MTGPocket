@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "607b7f6d4ceebfb80838418461f88880ed4261ce",
+  "engineSource": "5d58281e73e4d4c4bf04ec4964c0967966f68221",
   "validation": {
-    "source": "607b7f6d4ceebfb80838418461f88880ed4261ce",
-    "evidenceMeaning": "Complete pinned M11 Cultivate paid2G cast, explicit up-to-two basic-land selection, public reveal and separate destination choice for two, tapped battlefield/hand split and one shuffle. Exact mandatory wording only; optional legacy policy unchanged. Schema15 split-choice validation; ordinary13/14 look compatibility. No whole-card certificate or fresh recognition claim.",
-    "local": "Paid baseline4tests24assertions4failures: no explicit search choice. Focused31tests472assertions0.437s38MiB;adjacent705tests12282assertions22.589s114MiB22.910s wall. Six-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Harness-only stale fixture path and direct parser test trailing period corrected; no extra runtime changes. Full offline targetfb944ebd7fd462616a8a6e6d4ceb622c75f89796 passed1909tests54862assertions2expected missing-imported-pool/rental skips54.944s258MiB55.267s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.38GiB at2026-10-24T10:51:40.9538319Z. All54normalized PHP pins match the full-tested target. Exact tested-head CI passed. Ledger18/37 and existing181-pool inventory passed:26scoped names2explicit-gap names1overlap0whole-card certificates;54normalized PHP pins verified.",
-    "ci": "Exact tested-head CI40087582028 atfb944ebd7fd462616a8a6e6d4ceb622c75f89796 passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+    "source": "5d58281e73e4d4c4bf04ec4964c0967966f68221",
+    "evidenceMeaning": "Complete pinned M12 Diabolic Tutor paid2BB unrestricted search and public-board privacy; qualified explicit-reveal/no-reveal and reveal-to-top synthetic controls. Schema15 optional boolean reveal policy validates; legacy13-15 look saves without flag retain historical logging. Scoped evidence, no whole-card certificate or fresh recognition claim.",
+    "local": "Paid mandatory-search baseline4tests60assertionsPASS; paid privacy baseline2tests6assertions2failures publicboard disclosed found name. Focused31tests526assertions0.390s40MiB;adjacent732tests12756assertions22.023s120MiB22.369s wall;five-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Harness-only CardDefinition method/schemaVersion and assumed Farseek reveal expectation corrected; no extra engine fixes for those. Ledger18tests37assertions and existing181-pool inventory passed:27scoped names2Partner-gap names1overlap0whole-card certificates;55normalized PHP pins verified. Full offline target37eaa605259c44efda175336307293576570075d passed1936tests55336assertions2expected missing-imported-pool/rental skips; PHPUnit time 01:01.048, 262.00MiB;61.407s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.48GiB at2026-10-24T11:51:15.4311877Z. All55normalized PHP pins match the full-tested target. Exact tested-head CI passed.",
+    "ci": "Exact tested-head CI40091553953 at37eaa605259c44efda175336307293576570075d passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "e188dd16b25846ee282ab48e01006cd4ae732820b3b90697ac653a5ae3c81b53",
+    "src/MTGPocket/Game/TextParser.php": "9b1c99b6e1df586f60e95658949ac80a79360022d13b32ae556e0cc2e14d0392",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "a3b1165a01f3f70c675b2869e58d7e9095c23962c648b0172a3c0cb8195e7534",
+    "src/MTGPocket/Game/Game.php": "08a8ad825616c80c2ca5a66be3210ac01d76b64815d2b9d2be9f83f336f0965f",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -41,7 +41,7 @@
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "ec8cd45f068dd71feff2bdc7310242dd2179c972d62f34a8574cdc05ada07872",
+    "tests/MatchesTest.php": "36a791316bb8c46db6a4f96b5ed4f3a247e9f73b612165cd7f3cf854d6f653fb",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -68,9 +68,10 @@
     "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68",
     "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9",
     "tests/Game/RampantGrowthSearchTest.php": "42cff887467974eb57d4378d1b0a006d65be31ac323dfdf614b6f3d25177789b",
-    "tests/Game/FarseekSearchTest.php": "4c68e3c8e11f88737f554403c08652aa2ec257263a3617f892e29b6993c3ac1b",
+    "tests/Game/FarseekSearchTest.php": "4ef27ac600cdd90c4d57820b7fb6191d1e34b31c735bca8307808f6a20a34bf1",
     "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57",
-    "tests/Game/CultivateSearchTest.php": "da61027f3b6f0010b0e372742e7236aa2c2316cfea2b30801c6eb3380b3dd14f"
+    "tests/Game/CultivateSearchTest.php": "da61027f3b6f0010b0e372742e7236aa2c2316cfea2b30801c6eb3380b3dd14f",
+    "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446"
   },
   "scopedEvidence": [
     {
@@ -673,6 +674,26 @@
       ],
       "scope": "Complete M11 UUID5f27bb0b-7c59-5b0c-9673-17db759e0076 normalized fixtureSHA25694b6e1c982251718ab0e753b51e460a6be85ab5fb75ab89054109fb5b7841cdf: both seats paid2Gcast; select0/1/2basics including2same-name, either destination for2, public reveal, tapped entry/otherhand, one final shuffle, normal/snow/Wastes eligibility, nonbasic/basicnonland/opposinglibrary/hand exclusions, atomic invalid actions both stages, empty/noeligible/oneeligible libraries, JSON/replay, originalcontroller/syntheticlater effect, unpaid/opposing/Counterspell controls, existingpractice and persisted panels. Two representatives per name avoid duplicate-library selector crowding. Schema15 validates both stages/cards/continuation and accepts ordinary13/14look saves.",
       "limits": "Exact mandatory wording only; optional legacy policy unchanged. Semantic lands, Counterspell, synthetic control relocation, library exhaustion and appended gain-life isolate contracts rather than certify other cards. Existing duplicate-ID normalization retained. Normal basic-name selector representatives are bounded; arbitrary synthetic >25distinctbasicnames/paging is not established. No general search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "diabolic-tutor-unrestricted-search",
+      "cards": [
+        "Diabolic Tutor"
+      ],
+      "tests": [
+        "tests/Game/DiabolicTutorSearchTest.php::testPaidUnrestrictedSearchAcceptsEveryCardTypeAndRequiresOneCard",
+        "tests/Game/DiabolicTutorSearchTest.php::testUnrevealedFindStaysOffThePublicBoardButRemainsInTheSeatAttributedRecord",
+        "tests/Game/DiabolicTutorSearchTest.php::testWrongZonesOverselectionAndOtherActionsAreAtomic",
+        "tests/Game/DiabolicTutorSearchTest.php::testEmptyLibraryStillShufflesAndLaterEffectsKeepTheOriginalController",
+        "tests/Game/DiabolicTutorSearchTest.php::testOnlyCardAndContinuationWaitForASelectionAcrossSaveLoad",
+        "tests/Game/DiabolicTutorSearchTest.php::testUnpaidWrongColorOpposingAndCounteredCastsNeverSearch",
+        "tests/Game/DiabolicTutorSearchTest.php::testPracticeAndDuplicateNamesUseTheExistingSingleCardRoute",
+        "tests/Game/DiabolicTutorSearchTest.php::testExplicitRevealToTopStillAnnouncesTheFoundCard",
+        "tests/Game/DiabolicTutorSearchTest.php::testRevealAndLegacySearchControlsKeepTheirPolicyAndRejectMalformedFlags",
+        "tests/MatchesTest.php::testDiabolicTutorPanelRequiresAFindAndKeepsItsNameOffThePublicBoard"
+      ],
+      "scope": "Complete M12 UUID87ae0da5-88f9-503f-a3fc-48b02eca0dc0 normalized fixtureSHA2561b57f697a358559f870e1690fbfef69bc0d6ee50cdbf5f659bbd19551abdd1bb: both seats actual paid2BB cast, six card types eligible, mustfind when nonempty, empty/single-card libraries, one handmove/shuffle, wrongzone/opposing/overselect/otheraction atomic controls, unpaid/wrongcolor/opposing/countered casts, JSON/replay, originalcontroller/later-effect continuation, duplicate-name compression, existingpractice and persistedpanel. Nonrevealed find hidden from publicboard and retained in seat-attributed fullrecord; synthetic qualified reveal/no-reveal and reveal-to-top controls; optional boolean flag validation and legacy13-15 noflag compatibility.",
+      "limits": "Existing saved look choices without reveal flag retain historical logging; privacy migration for those is not established. Supporting semantic and synthetic cards not independently certified. Existing duplicate-ID normalization unchanged; arbitrary libraries with more than25distinct eligible names/general selector paging not established. General search/replacement/APNAP/copy/continuous/newest-printing and whole-card certification remain separate. No live service/build/restart/deploy."
     }
   ],
   "explicitUnsupported": [

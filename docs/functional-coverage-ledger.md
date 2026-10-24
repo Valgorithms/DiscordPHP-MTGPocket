@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [Diabolic Tutor reveal-policy milestone](diabolic-tutor-unrestricted-search.md) verifies paid unrestricted searches and keeps an unrevealed find off the public board while preserving explicit reveal controls. The ledger now has 27 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition remains historical; pending legacy choices without the optional flag retain their old logging policy.
+
 The [Cultivate split-search milestone](cultivate-split-search.md) adds paid selection of up to two basics, reveal, a destination choice for two, tapped battlefield/hand split and one final shuffle. Schema15 validates both split stages while ordinary13/14 look saves remain readable; optional legacy wording is unchanged. Current ledger: 26 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
 
 The [Evolving Wilds search-choice milestone](evolving-wilds-search-choice.md) adds explicit selection or failure to find after actual land play and tap/self-sacrifice activation, including tapped entry, shuffle, save/load and persisted panels. Only mandatory put-it/put-that-card wording changes; optional legacy wording remains unchanged. Current ledger: 25 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition and earlier milestone counts remain historical.
