@@ -13,8 +13,8 @@
   "validation": {
     "source": "4c547d4d033b779f49d058c37410c7fc4cb7d848",
     "evidenceMeaning": "Scoped paid copy effect applied to complete selected Converter Beast incubate/transform path; active-face token entry and zero-counter death. Synthetic copy spell and characteristic units do not certify a printed copy card. No parser/corpus recognition or aggregate functionality claim.",
-    "local": "Baselineba2100b1aa0b4cd595bb85169e60c6b44a5a5b4d:4tests84assertions4failures,0.111sec; copies stayed front-face artifacts on battlefield. Final22focused/620assertions0.305sec; adjacent1224/22154/21.676sec under30sec process-tree caps;two-file Pint/diffcheck. Ledger/inventory/full verification pending.",
-    "ci": "Final exact-head fullPint/PHPUnit matrix required before merge; no live verification."
+    "local": "Baselineba2100b1aa0b4cd595bb85169e60c6b44a5a5b4d:4tests84assertions4failures/0.111sec. Final22focused/620assertions0.305sec;adjacent1224/22154/21.676sec under30sec treecaps;Pint2/diffcheck;ledger18/37;181poolinventory0.760secwall,18scope3gaps2overlaps0wholecerts. Full offline at2a15072a8e711b41d5e041c09ab003af6d36f7cc:1615tests49209assertions2expected imported-rental-data skips71.254sec216MiB/71.675secwall,120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp fresh8.14GiB2026-10-24T03:40:45Z.",
+    "ci": "Tested-head CI40059276638 at2a15072a8e711b41d5e041c09ab003af6d36f7cc passed fullPint/PHPUnit on all PHP8.3/8.4/8.5 jobs;RESTrun/jobs/artifacts saved,zero artifacts expected. Final metadata head requires its own successful exact CI before merge;43PHPpins match full-tested head."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
