@@ -83,7 +83,7 @@ final class SoulStairExpeditionReturnsTest extends GameTestCase
         $source = $this->expedition($actor);
         $this->charge($actor, $source);
         $a = $this->game->addCard($actor, self::card('Grizzly Bears'), GameObject::GRAVEYARD)->id;
-        $b = $this->game->addCard($actor, self::card('Memnite'), GameObject::GRAVEYARD)->id;
+        $b = $this->game->addCard($actor, self::card('Ornithopter'), GameObject::GRAVEYARD)->id;
         $this->game->activate($actor, $source, 0, ["o:{$a}", "o:{$b}"]);
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
         $this->assertSame(0, $this->game->objects[$source]->counter('quest'));
