@@ -5504,12 +5504,13 @@ final class Game
                 break;
 
             case 'copy_token':
-                // A copy of its printed card (rule 707.2), as a token.
+                // An unmerged transforming copy keeps both faces and enters on the same face.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $copy = $this->createToken(
                         $affected->printed()->card,
                         $controller,
-                        ['haste' => $effect['haste'] ?? false] + (isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : [])
+                        ['haste' => $effect['haste'] ?? false] + (isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []),
+                        transformed: ! $affected->faceDown && $affected->mutations === [] && $affected->transformed && ($affected->card['layout'] ?? null) === 'transform'
                     );
                     $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()}.");
                 }
@@ -6281,14 +6282,16 @@ final class Game
      *
      * @param array $token      Card data from {@see TextParser}.
      * @param int   $controller
+     * @param array $entryState State applied by the existing permanent-entry path.
+     * @param bool  $transformed Whether a transforming copy enters back face up.
      *
      * @return GameObject
      */
-    private function createToken(array $token, int $controller, array $entryState = []): GameObject
+    private function createToken(array $token, int $controller, array $entryState = [], bool $transformed = false): GameObject
     {
         $object = new GameObject($this->nextId++, $controller, ['token' => true] + $token, GameObject::GONE);
         $this->objects[$object->id] = $object;
-        $this->putOntoBattlefield($object, $controller, entryState: $entryState);
+        $this->putOntoBattlefield($object, $controller, transformed: $transformed, entryState: $entryState);
         // `Whenever you create a (creature) token, …`; `… one or more tokens, …` once per batch.
         foreach ($this->permanents($controller) as $permanent) {
             $this->trigger($permanent, 'you_create_token', $controller, null, $object->id);
