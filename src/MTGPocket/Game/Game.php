@@ -8350,6 +8350,7 @@ final class Game
             array_filter($colors, fn (string $color) => $this->hasKeyword($attacker, "can't be blocked by ".(['W' => 'white', 'U' => 'blue', 'B' => 'black', 'R' => 'red', 'G' => 'green'][$color] ?? 'colorless').' creatures')) !== [] => true,
             $this->evadesByPower($attacker, $this->power($blocker)) => true,
             $this->blocksOnlyByPower($blocker, $this->power($attacker)) => true,
+            $this->blockRestricted($attacker, $blocker) => true,
             array_filter($blocker->definition()->subtypes, fn (string $type) => $this->hasKeyword($attacker, "can't be blocked by sub:{$type}")) !== [] => true,
             $this->hasKeyword($attacker, "can't be blocked by lesser power") && $this->power($blocker) < $this->power($attacker) => true,
             // Your Ring-bearer can't be blocked by creatures with greater power.
@@ -8372,6 +8373,31 @@ final class Game
         foreach ($this->keywords($attacker) as $keyword) {
             if (preg_match("/^can't be blocked by power (\\d+) or (greater|less)$/", $keyword, $m)
                 && ($m[2] === 'greater' ? $power >= (int) $m[1] : $power <= (int) $m[1])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether an attacker's keyword or creature-type restriction stops this blocker
+     * (`can't be blocked except by creatures with flying`, `… except by Walls`,
+     * `can't be blocked by creatures with defender`).
+     *
+     * @param GameObject $attacker
+     * @param GameObject $blocker
+     *
+     * @return bool
+     */
+    private function blockRestricted(GameObject $attacker, GameObject $blocker): bool
+    {
+        foreach ($this->keywords($attacker) as $keyword) {
+            if (! preg_match("/^(blockable only by|can't be blocked by) (kw|sub):(.+)$/", $keyword, $m)) {
+                continue;
+            }
+            $has = array_filter(explode('|', $m[3]), fn (string $what) => $m[2] === 'kw' ? $this->hasKeyword($blocker, $what) : in_array($what, $blocker->definition()->subtypes, true)) !== [];
+            if ($has !== ($m[1] === 'blockable only by')) {
                 return true;
             }
         }
