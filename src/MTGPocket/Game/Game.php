@@ -7611,6 +7611,10 @@ final class Game
             $this->sacrifice($object);
             $this->log("{$player->name} sacrifices {$object->name()}.", $seat, "sac {$object->name()}");
         }
+        if (($cost['exileBattlefield'] ?? false) && $object->zone === GameObject::BATTLEFIELD) {
+            $this->log("{$player->name} exiles {$object->name()}.");
+            $this->moveTo($object, GameObject::EXILE);
+        }
         if (($cost['bounceSelf'] ?? false) && $object->zone === GameObject::BATTLEFIELD) {
             $this->log("{$player->name} returns {$object->name()} to its owner's hand.");
             $this->moveTo($object, GameObject::HAND);

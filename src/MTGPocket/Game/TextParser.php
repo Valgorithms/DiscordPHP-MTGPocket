@@ -3496,6 +3496,9 @@ final class TextParser
                 $cost += ['remove' => ['quest', 3], 'sacrifice' => true];
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
+            } elseif ($part === 'Exile CARDNAME') {
+                // Like sacrificing it, but to exile: it leaves the battlefield as the ability is activated.
+                $cost['exileBattlefield'] = true;
             } elseif ($part === 'Exile CARDNAME from your graveyard') {
                 // Renew and the like: activated from your graveyard; see Game::activatable().
                 $cost['exileSelf'] = true;
