@@ -6085,6 +6085,7 @@ final class Game
                             $this->sacrifice($food);
                         }
                         $this->log("{$this->players[$controller]->name} forages for {$source->name()}.");
+                        $this->foraged($controller);
                         foreach ($effect['then'] as $then) {
                             $this->applyEffect($then, $source, $self, $controller, $x, $target, $sourceIncarnation);
                         }
@@ -7363,6 +7364,18 @@ final class Game
     }
 
     /**
+     * `Whenever you forage, …` (Bloomburrow): once a player has foraged.
+     *
+     * @param int $seat
+     */
+    private function foraged(int $seat): void
+    {
+        foreach ($this->permanents($seat) as $permanent) {
+            $this->trigger($permanent, 'you_forage', $seat);
+        }
+    }
+
+    /**
      * Cards exiled from a graveyard to pay a cost (`Exile two cards from your
      * graveyard:`, forage): lands first, then the lowest mana value.
      *
@@ -7522,6 +7535,9 @@ final class Game
         }
         if ($exiled !== null) {
             $this->log("{$player->name} exiles ".implode(', ', array_map(fn (GameObject $c) => $c->name(), $exiled)).' from their graveyard.');
+        }
+        if ($cost['forage'] ?? false) {
+            $this->foraged($seat);
         }
         if (isset($cost['craft']) && ($material = $this->craftMaterial($seat, $object, $cost['craft'])) !== null) {
             $this->log("{$player->name} exiles {$material->name()} to craft {$object->name()}.");

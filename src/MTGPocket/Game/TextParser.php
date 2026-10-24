@@ -2875,6 +2875,10 @@ final class TextParser
             // See Game::targetedTriggers().
             $event = 'you_commit_crime';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you forage, (.+)$/', $line, $match)) {
+            // See Game::foraged(): as a cost or a `you may forage` payment.
+            $event = 'you_forage';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you play a land, (.+)$/', $line, $match)) {
             $event = 'you_play_land';
             $text = $match[1];
