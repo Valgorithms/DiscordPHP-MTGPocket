@@ -5013,6 +5013,15 @@ final class Game
                     }
                     break;
                 }
+                // `Put a -1/-1 counter on each creature (your opponents control).`
+                if (in_array($effect['each'] ?? null, ['all', 'opponents'], true)) {
+                    foreach ($this->permanents() as $object) {
+                        if ($this->isCreature($object) && ($effect['each'] === 'all' || $object->controller !== $controller) && (! ($effect['other'] ?? false) || $object->id !== $source->id)) {
+                            $object->addCounters($effect['kind'] ?? '+1/+1', $amount);
+                        }
+                    }
+                    break;
+                }
                 $affected?->addCounters($effect['kind'] ?? '+1/+1', $amount);
                 break;
 
