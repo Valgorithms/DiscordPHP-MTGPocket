@@ -3232,56 +3232,11 @@ final class TextParser
         $text = (string) preg_replace('/^if there are (\w+) or more cards in your graveyard, /', 'if you have $1 or more cards in your graveyard, ', $text);
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no (?:other )?creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater), (?<rest>.+)$/", $text, $match)) {
-            $if = match (true) {
-                $match[1] === 'you control no creatures' => 'no_creatures',
-                $match[1] === 'you control no other creatures' => 'no_other_creatures',
-                // Ferocious: `if you control a creature with power 4 or greater`.
-                ($match['power'] ?? '') !== '' => 'power_ge '.self::amount($match['power']),
-                // Coven: `if you control three or more creatures with different powers`.
-                $match[1] === 'you control three or more creatures with different powers' => 'coven',
-                $match[1] === "CARDNAME isn't prepared" => 'unprepared',
-                $match[1] === 'you gained life this turn' => 'gained 1',
-                $match[1] === 'a creature died this turn' => 'died 1',
-                $match[1] === 'you attacked this turn' => 'attacked',
-                $match[1] === 'CARDNAME attacked this turn' => 'self_attacked',
-                $match[1] === 'an opponent lost life this turn' => 'opponent_lost',
-                $match[1] === "it's not your turn" => 'not_your_turn',
-                $match[1] === "it's your turn" => 'your_turn',
-                // Survival: `At the beginning of your second main phase, if CARDNAME is tapped, …`.
-                $match[1] === 'CARDNAME is tapped' => 'tapped',
-                $match[1] === 'CARDNAME is untapped' => 'untapped',
-                $match[1] === 'a nonland permanent left the battlefield this turn or a spell was warped this turn' => 'void',
-                $match[1] === "you've cast a noncreature spell this turn" => 'cast_noncreature',
-                // Knight of the White Orchid: `if an opponent controls more lands than you`.
-                $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
-                $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
-                $match[1] === 'an opponent has more life than you' => 'life_behind',
-                // Lorwyn: `When this creature enters, if you control another Elf, …`.
-                ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
-                // `if an opponent controls a creature with flying` / `… an artifact`.
-                ($match['theirs'] ?? '') !== '' => $match['theirs'] === 'creature with flying' ? 'opp_flier' : 'opp_controls '.ucfirst($match['theirs']),
-                // `if you attacked with three or more creatures this combat`; see Game::declareAttackers().
-                ($match['attackers'] ?? '') !== '' => 'attackers '.self::amount($match['attackers']),
-                ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
-                ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
-                ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
-                ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
-                    'no' => 0,
-                    'one or fewer' => 1,
-                    default => 2,
-                },
-                ($match[5] ?? '') !== '' => 'life '.self::amount($match[5]),
-                ($match[6] ?? '') !== '' => 'controls '.ucfirst($match[6]),
-                $match[2] !== '' => 'lands '.self::amount($match[2]),
-                $match[3] !== '' => 'died '.self::amount($match[3]),
-                $match[4] !== '' => 'gained '.self::amount($match[4]),
-                default => 'hand_behind',
-            };
-            if (! preg_match('/^\w+( \w+)?$/', $if)) {
+        if (self::effects($text) === null && ($found = self::interveningIf($text)) !== null) {
+            if ($found[0] === false) {
                 return false;
             }
-            $text = $match['rest'];
+            [$if, $text] = $found;
         } elseif (self::effects($text) === null && preg_match("/^if (it's night|it's day|you cast it|you cast it from your hand), (.+)$/", $text, $match)
             && ($event === 'enters' || ! str_starts_with($match[1], 'you'))) {
             // Day and night (rule 726): `When CARDNAME enters, if it's night, draw a card.`; and `When CARDNAME enters, if you cast it, …`.
@@ -3535,6 +3490,16 @@ final class TextParser
         if (preg_match('/^(.+?)\s*Activate only once\.$/', $text, $limit)) {
             [$text, $ever] = [$limit[1], true];
         }
+        // `Activate only if you control an artifact.`, `Activate only during your turn.`: checked as it is activated; see Game::conditionMet().
+        $only = null;
+        if (preg_match('/^(.+?)\s*Activate only during your turn\.$/', $text, $limit)) {
+            [$text, $only] = [$limit[1], 'your_turn'];
+        } elseif (preg_match('/^(.+?)\s*Activate only if (.+)\.$/', $text, $limit)) {
+            if (! is_string($only = self::interveningIf("if {$limit[2]}, x")[0] ?? null)) {
+                return false;
+            }
+            $text = $limit[1];
+        }
         if ($cost['sacrifice'] ?? false) {
             // `Sacrifice CARDNAME: It deals 2 damage to target creature.`: "it" is the sacrificed permanent.
             $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
@@ -3543,9 +3508,72 @@ final class TextParser
         if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []);
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []) + ($only !== null ? ['if' => $only] : []);
 
         return true;
+    }
+
+    /**
+     * An intervening "if" clause (rule 603.4) at the start of a trigger's
+     * effect text, as a Game::conditionMet() condition and the rest of the
+     * text; false for a clause it matches but cannot express.
+     *
+     * @param string $text Such as `if you control an artifact, draw a card.`
+     *
+     * @return array{0: string|false, 1: string}|null
+     */
+    private static function interveningIf(string $text): ?array
+    {
+        if (! preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no (?:other )?creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater), (?<rest>.+)$/", $text, $match)) {
+            return null;
+        }
+        $if = match (true) {
+            $match[1] === 'you control no creatures' => 'no_creatures',
+            $match[1] === 'you control no other creatures' => 'no_other_creatures',
+            // Ferocious: `if you control a creature with power 4 or greater`.
+            ($match['power'] ?? '') !== '' => 'power_ge '.self::amount($match['power']),
+            // Coven: `if you control three or more creatures with different powers`.
+            $match[1] === 'you control three or more creatures with different powers' => 'coven',
+            $match[1] === "CARDNAME isn't prepared" => 'unprepared',
+            $match[1] === 'you gained life this turn' => 'gained 1',
+            $match[1] === 'a creature died this turn' => 'died 1',
+            $match[1] === 'you attacked this turn' => 'attacked',
+            $match[1] === 'CARDNAME attacked this turn' => 'self_attacked',
+            $match[1] === 'an opponent lost life this turn' => 'opponent_lost',
+            $match[1] === "it's not your turn" => 'not_your_turn',
+            $match[1] === "it's your turn" => 'your_turn',
+            // Survival: `At the beginning of your second main phase, if CARDNAME is tapped, …`.
+            $match[1] === 'CARDNAME is tapped' => 'tapped',
+            $match[1] === 'CARDNAME is untapped' => 'untapped',
+            $match[1] === 'a nonland permanent left the battlefield this turn or a spell was warped this turn' => 'void',
+            $match[1] === "you've cast a noncreature spell this turn" => 'cast_noncreature',
+            // Knight of the White Orchid: `if an opponent controls more lands than you`.
+            $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
+            $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
+            $match[1] === 'an opponent has more life than you' => 'life_behind',
+            // Lorwyn: `When this creature enters, if you control another Elf, …`.
+            ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
+            // `if an opponent controls a creature with flying` / `… an artifact`.
+            ($match['theirs'] ?? '') !== '' => $match['theirs'] === 'creature with flying' ? 'opp_flier' : 'opp_controls '.ucfirst($match['theirs']),
+            // `if you attacked with three or more creatures this combat`; see Game::declareAttackers().
+            ($match['attackers'] ?? '') !== '' => 'attackers '.self::amount($match['attackers']),
+            ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
+            ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
+            ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
+            ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
+                'no' => 0,
+                'one or fewer' => 1,
+                default => 2,
+            },
+            ($match[5] ?? '') !== '' => 'life '.self::amount($match[5]),
+            ($match[6] ?? '') !== '' => 'controls '.ucfirst($match[6]),
+            $match[2] !== '' => 'lands '.self::amount($match[2]),
+            $match[3] !== '' => 'died '.self::amount($match[3]),
+            $match[4] !== '' => 'gained '.self::amount($match[4]),
+            default => 'hand_behind',
+        };
+
+        return [preg_match('/^\w+( \w+)?$/', $if) ? $if : false, $match['rest']];
     }
 
     /**
