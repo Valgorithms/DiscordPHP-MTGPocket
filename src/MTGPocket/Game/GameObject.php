@@ -220,6 +220,24 @@ final class GameObject
     }
 
     /**
+     * Mana value before a battlefield departure; X is zero off the stack.
+     * An unmerged transforming card uses its front cost on either face, while
+     * face-down, modal and copied single-face definitions retain their own cost.
+     * This does not model meld or general copy/continuous-effect layers.
+     *
+     * @return int
+     */
+    public function battlefieldManaValue(): int
+    {
+        if (! $this->faceDown && $this->mutations === [] && $this->transformed
+            && ($this->card['layout'] ?? null) === 'transform' && $this->printed()->back !== null) {
+            return $this->printed()->cost->manaValue();
+        }
+
+        return $this->definition()->cost->manaValue();
+    }
+
+    /**
      * Merges a mutating card with it (rule 721.2).
      *
      * @param int   $id   The mutating card's object.
