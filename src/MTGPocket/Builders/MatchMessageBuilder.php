@@ -363,6 +363,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
                 'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
                 'optional_source_counter' => 'choose whether to put a +1/+1 counter on '.$game->choiceAwaiting()['label'],
+                'optional_death_draw' => 'choose whether to draw a card',
                 'optional_life_gain' => 'choose whether to gain 5 life',
                 'optional_life_loss' => 'choose whether the targeted opponent loses 1 life',
                 'sacrifice' => 'choose creatures to sacrifice',
@@ -711,6 +712,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'decline'))->setLabel('Decline')));
                 break;
 
+            case 'optional_death_draw':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maydraw', (string) $optional['id'], 'accept'))->setLabel('Draw a card'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maydraw', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
             case 'optional_life_gain':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
@@ -893,6 +901,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
             'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
             'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a +1/+1 counter on this creature. Only the original battlefield incarnation can receive it; this does not target.',
+            'optional_death_draw' => '**'.$game->choiceAwaiting()['label'].'**: you may draw a card. This does not target a player; declining does not draw.',
             'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',
             'optional_life_loss' => '**'.$game->choiceAwaiting()['label'].'**: you may have **'.$game->players[(int) substr($game->choiceAwaiting()['target'], 2)]->name.'** lose 1 life.',
             'mulligan' => $player->mulligans === 0

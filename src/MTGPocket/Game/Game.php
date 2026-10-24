@@ -86,9 +86,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 11 adds optional source untap; version 10 added optional source counters.
+     * Version 13 adds optional self-death draws; version 12 added optional red payments.
      */
-    public const int STATE_VERSION = 12;
+    public const int STATE_VERSION = 13;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4667,6 +4667,15 @@ final class Game
             case 'optional_source_counter':
                 $this->pendingChoice = [
                     'type' => 'optional_source_counter', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'label' => $source->name(), 'options' => ['accept', 'decline'],
+                ];
+
+                return true;
+
+            case 'optional_death_draw':
+                $this->pendingChoice = [
+                    'type' => 'optional_death_draw', 'id' => $this->nextChoiceId++, 'seat' => $controller,
                     'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
                     'label' => $source->name(), 'options' => ['accept', 'decline'],
                 ];
@@ -9474,6 +9483,34 @@ final class Game
     }
 
     /**
+     * Answers the original trigger controller's optional self-death draw.
+     * The source does not need to remain in its graveyard incarnation.
+     *
+     * @param int    $seat
+     * @param int    $choiceId Identity from choiceAwaiting().
+     * @param string $option `accept` or `decline`.
+     *
+     * @return void
+     */
+    public function chooseOptionalDeathDraw(int $seat, int $choiceId, string $option): void
+    {
+        $choice = $this->pendingChoice;
+        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_death_draw' ||
+            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
+            throw new GameException('That optional death-draw choice is no longer available to you.');
+        }
+        $resume = $choice['resume'];
+        $this->followed = $resume['followed'];
+        $this->pendingChoice = null;
+        if ($option === 'accept') {
+            $this->applyEffect(['type' => 'draw', 'amount' => 1], $this->objects[$choice['object']], null, $seat, 0, null, $choice['incarnation']);
+        }
+        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
+        $this->settle();
+    }
+
+
+    /**
      * Answers the optional targeted one-life loss when the ability resolves.
      * Its controller and target remain those chosen for the original trigger.
      *
@@ -11182,16 +11219,17 @@ final class Game
                 }
             }
         }
-        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin'], true)) {
+        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin', 'optional_death_draw'], true)) {
             $choice = $game->pendingChoice;
             $counter = $choice['type'] === 'optional_source_counter';
             $untap = $choice['type'] === 'optional_source_untap';
             $goblin = $choice['type'] === 'optional_red_goblin';
-            $choiceKind = $goblin ? 'red-payment' : ($untap ? 'source-untap' : ($counter ? 'source-counter' : 'life'));
+            $deathDraw = $choice['type'] === 'optional_death_draw';
+            $choiceKind = $deathDraw ? 'death-draw' : ($goblin ? 'red-payment' : ($untap ? 'source-untap' : ($counter ? 'source-counter' : 'life')));
             $untargeted = $choice['type'] !== 'optional_life_loss';
             $resume = $choice['resume'] ?? null;
             $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < ($goblin ? 12 : ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8)))) || $game->stage !== self::PLAYING || $source === null ||
+            if ($version < ($deathDraw ? 13 : ($goblin ? 12 : ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8))))) || $game->stage !== self::PLAYING || $source === null ||
                 ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
                 ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
                 ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
