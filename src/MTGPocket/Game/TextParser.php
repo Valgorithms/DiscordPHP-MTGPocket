@@ -221,6 +221,28 @@ final class TextParser
         'target creature you don\'t control with mana value 4 or less' => 'creature_opp_mv_le_4',
         'target creature an opponent controls with mana value 5 or less' => 'creature_opp_mv_le_5',
         'target creature you don\'t control with mana value 5 or less' => 'creature_opp_mv_le_5',
+        // `destroy target creature or planeswalker with mana value 3 or less`; see Game::matchesKind().
+        'target creature or planeswalker with mana value 1 or less' => 'creature_or_planeswalker_mv_le_1',
+        'target creature or planeswalker with mana value 2 or less' => 'creature_or_planeswalker_mv_le_2',
+        'target creature or planeswalker with mana value 3 or less' => 'creature_or_planeswalker_mv_le_3',
+        'target creature or planeswalker with mana value 4 or less' => 'creature_or_planeswalker_mv_le_4',
+        'target creature or planeswalker with mana value 5 or less' => 'creature_or_planeswalker_mv_le_5',
+        // `exile target nonland permanent an opponent controls with mana value 2 or less`; see Game::matchesKind().
+        'target nonland permanent an opponent controls with mana value 1 or less' => 'nonland_opp_mv_le_1',
+        'target nonland permanent you don\'t control with mana value 1 or less' => 'nonland_opp_mv_le_1',
+        'target nonland permanent with mana value 1 or less an opponent controls' => 'nonland_opp_mv_le_1',
+        'target nonland permanent an opponent controls with mana value 2 or less' => 'nonland_opp_mv_le_2',
+        'target nonland permanent you don\'t control with mana value 2 or less' => 'nonland_opp_mv_le_2',
+        'target nonland permanent with mana value 2 or less an opponent controls' => 'nonland_opp_mv_le_2',
+        'target nonland permanent an opponent controls with mana value 3 or less' => 'nonland_opp_mv_le_3',
+        'target nonland permanent you don\'t control with mana value 3 or less' => 'nonland_opp_mv_le_3',
+        'target nonland permanent with mana value 3 or less an opponent controls' => 'nonland_opp_mv_le_3',
+        'target nonland permanent an opponent controls with mana value 4 or less' => 'nonland_opp_mv_le_4',
+        'target nonland permanent you don\'t control with mana value 4 or less' => 'nonland_opp_mv_le_4',
+        'target nonland permanent with mana value 4 or less an opponent controls' => 'nonland_opp_mv_le_4',
+        'target nonland permanent an opponent controls with mana value 5 or less' => 'nonland_opp_mv_le_5',
+        'target nonland permanent you don\'t control with mana value 5 or less' => 'nonland_opp_mv_le_5',
+        'target nonland permanent with mana value 5 or less an opponent controls' => 'nonland_opp_mv_le_5',
         'target nonwhite creature' => 'creature_noncolor_W',
         'target nonblue creature' => 'creature_noncolor_U',
         'target nonred creature' => 'creature_noncolor_R',
@@ -264,6 +286,10 @@ final class TextParser
         'target spell' => 'spell',
         'target creature spell' => 'creature_spell',
         'target noncreature spell' => 'noncreature_spell',
+        // `Counter target spell that targets a creature you control.`, `… that targets you.`
+        'target spell that targets a creature you control' => 'spell_targets_your_creature',
+        'target spell that targets you' => 'spell_targets_you',
+        'target spell that targets you or a creature you control' => 'spell_targets_you_or_creature',
         'target spell with mana value 1 or less' => 'spell_mv_le_1',
         'target spell with mana value 2 or less' => 'spell_mv_le_2',
         'target spell with mana value 3 or less' => 'spell_mv_le_3',
@@ -1612,6 +1638,10 @@ final class TextParser
         } elseif (preg_match('/^(two|three|four|five) mana of any one colou?r$/i', $what, $n)) {
             // Gilded Lotus: all of one color; see ManaPayer::plan().
             $ability = ['count' => self::amount($n[1]), 'colors' => ['W', 'U', 'B', 'R', 'G'], 'same' => true];
+        } elseif (preg_match('/^(two|three) mana in any combination of (colou?rs|\{[WUBRG]\} and\/or \{[WUBRG]\})$/i', $what, $n)) {
+            // `Add two mana in any combination of colors.`, `… of {R} and/or {G}.`: each one of them; see ManaPayer::plan().
+            preg_match_all('/\{([WUBRG])\}/', $n[2], $symbols);
+            $ability = ['count' => self::amount($n[1]), 'colors' => $symbols[1] !== [] ? array_values(array_unique($symbols[1])) : ['W', 'U', 'B', 'R', 'G']];
         } elseif (preg_match('/^one mana of the chosen color$/i', $what) && $result['chooses'] === 'color') {
             // See Game::manaSources().
             $ability = ['count' => 1, 'colors' => ['W', 'U', 'B', 'R', 'G'], 'chosen' => true];
@@ -1850,13 +1880,13 @@ final class TextParser
 
             return true;
         }
-        // `Other green creatures you control get +1/+1.` (the Lieges) and `Attacking creatures you control get +1/+0.` (Goblin Oriflamme); see Game::anthems().
-        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking|[Aa]rtifact) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
+        // `Other green creatures you control get +1/+1.` (the Lieges), `Attacking creatures you control get +1/+0.` (Goblin Oriflamme) and `Equipped creatures you control have vigilance.`; see Game::anthems().
+        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking|[Aa]rtifact|[Ee]quipped|[Ee]nchanted) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
             $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
             if ($keywords === null) {
                 return false;
             }
-            $which = in_array(strtolower($m[2]), ['attacking', 'artifact'], true) ? [strtolower($m[2]) => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
+            $which = in_array(strtolower($m[2]), ['attacking', 'artifact', 'equipped', 'enchanted'], true) ? [strtolower($m[2]) => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
             $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== ''] + $which;
 
             return true;
@@ -1955,7 +1985,17 @@ final class TextParser
             $text === 'a creature died this turn' => 'died 1',
             $text === 'an opponent lost life this turn' => 'opponent_lost',
             $text === 'it has a +1/+1 counter on it' => 'has_counter',
+            // `As long as CARDNAME is equipped, it has first strike.`: an Aura or Equipment attached to it.
+            $text === "it's enchanted" => 'enchanted',
+            $text === "it's equipped" => 'equipped',
             $text === 'you control no other creatures' => 'alone',
+            // `as long as you have 5 or less life`, `… you've cast two or more spells this turn`, `… you have more life than each opponent`.
+            (bool) preg_match('/^you have (\w+) or less life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life_le {$n}",
+            (bool) preg_match('/^you(?:\'ve)? cast (\w+) or more spells this turn$/', $text, $m) && is_int($n = self::amount($m[1])) => "spells_cast {$n}",
+            $text === 'two or more nonland permanents entered the battlefield under your control this turn' => 'celebration',
+            $text === 'you have more life than each opponent' => 'life_lead',
+            $text === 'an opponent has more life than you' => 'life_behind',
+            (bool) preg_match('/^you control no other (artifacts|enchantments)$/', $text, $m) => 'no_other '.ucfirst(rtrim($m[1], 's')),
             default => null,
         };
     }
@@ -2158,6 +2198,14 @@ final class TextParser
         // The Mare cycle: `can't be blocked by black creatures`; read by Game::canBlock().
         if (preg_match('/^can\'t be blocked by (white|blue|black|red|green|artifact) creatures$/', $text, $match)) {
             return [...$found, "can't be blocked by {$match[1]} creatures"];
+        }
+        // Treetop Rangers: `can't be blocked except by creatures with flying`; `… by creatures with flying` without "except". Read by Game::canBlock().
+        if (preg_match('/^can\'t be blocked (except )?by creatures with (flying|reach|defender|flying or reach|horsemanship)$/', $text, $match)) {
+            return [...$found, ($match[1] !== '' ? 'blockable only by kw:' : "can't be blocked by kw:").str_replace(' or ', '|', $match[2])];
+        }
+        // `can't be blocked except by Walls`.
+        if (preg_match('/^can\'t be blocked except by ([A-Z][a-z]+s)$/', $text, $match) && ($type = self::subtypeOf($match[1])) !== null) {
+            return [...$found, "blockable only by sub:{$type}"];
         }
         // Juggernaut: `can't be blocked by Walls`.
         if (preg_match('/^can\'t be blocked by ([A-Z][a-z]+s)$/', $text, $match) && ($type = self::subtypeOf($match[1])) !== null) {
@@ -2577,6 +2625,8 @@ final class TextParser
         }
         // Creatures only attack players here (see Game::declareAttackers()), so "or planeswalker" adds nothing.
         $line = (string) preg_replace('/deals combat damage to a player(?:, planeswalker,)? or (?:planeswalker|battle)\b/', 'deals combat damage to a player', $line);
+        // Creatures attack only opponents, so their combat damage to a player is always to an opponent.
+        $line = (string) preg_replace('/^(Whenever CARDNAME deals combat damage to) an opponent,/', '$1 a player,', $line);
         // `Whenever another creature you control enters, if it has power 3 or greater, …`: read as `… with power 3 or greater enters, …`.
         $line = (string) preg_replace('/^Whenever (another|a) creature you control enters, if it has power (\d+) or greater, /', 'Whenever $1 creature you control with power $2 or greater enters, ', $line);
         // `Whenever another creature you control enters, if it's a Human, …`: read as `Whenever another Human you control enters, …`.
@@ -2594,6 +2644,7 @@ final class TextParser
             'becomes the target of a spell or ability an opponent controls' => 'targeted_by_opponent',
             'becomes the target of a spell or ability you control' => 'targeted_by_you',
             'becomes the target of a spell' => 'targeted_by_spell',
+            'becomes the target of an Aura spell' => 'targeted_by_aura_spell',
             'enters' => 'enters', 'enters the battlefield' => 'enters', 'dies' => 'dies', 'attacks' => 'attacks', 'attacks alone' => 'attacks_alone',
             'deals combat damage to a player' => 'combat_damage', 'is turned face up' => 'turned_face_up', 'becomes tapped' => 'becomes_tapped',
             'exploits a creature' => 'exploits', 'becomes monstrous' => 'monstrous', 'mutates' => 'mutates',
@@ -2629,6 +2680,20 @@ final class TextParser
 
             return true;
         }
+        // `Whenever CARDNAME deals (combat) damage to a creature, that creature doesn't untap during its controller's next untap step.`: tapped or not.
+        if (preg_match("/^Whenever CARDNAME deals (combat )?damage to a creature, that creature doesn't untap during its controller's next untap step\\.$/", $line, $m)) {
+            $result['triggered'][] = ['text' => $line, 'event' => ($m[1] ?? '') === '' ? 'damages_creature' : 'combat_damage_creature', 'effects' => [['type' => 'freeze', 'target' => 'creature']]];
+
+            return true;
+        }
+        // `Whenever CARDNAME deals damage, you gain that much life.`; see Game::dealDamage().
+        if (preg_match('/^Whenever CARDNAME deals damage, (.+)\.$/', $line, $m) && substr_count($m[1], 'that much') === 1
+            && ($effects = self::sentenceEffects((string) preg_replace('/\bthat much (damage|life)\b/', '1 $1', $m[1]))) !== null
+            && count($effects) === 1 && ($effects[0]['amount'] ?? null) === 1 && ! isset($effects[0]['per']) && ! isset($effects[0]['target'])) {
+            $result['triggered'][] = ['text' => $line, 'event' => 'deals_damage', 'effects' => [['amount' => 'that_much'] + $effects[0]]];
+
+            return true;
+        }
         // Boros Reckoner: `Whenever CARDNAME is dealt damage, it deals that much damage to any target.`; see Game::dealDamage().
         if (preg_match('/^Whenever CARDNAME is dealt damage, (.+)\.$/', $line, $m) && substr_count($m[1], 'that much') === 1
             && ($effects = self::sentenceEffects((string) preg_replace(['/^it deals that much damage\b/', '/\bthat much (damage|life)\b/'], ['CARDNAME deals 1 damage', '1 $1'], $m[1]))) !== null
@@ -2639,7 +2704,8 @@ final class TextParser
         }
         // Enrage: `Whenever CARDNAME is dealt damage, create a Treasure token.`; see Game::dealDamage().
         if (preg_match('/^Whenever CARDNAME is dealt damage, (.+)\.$/', $line, $m) && ! str_contains($m[1], 'that much')
-            && ($effects = self::sentenceEffects((string) preg_replace('/^it deals\b/', 'CARDNAME deals', $m[1]))) !== null) {
+            // `… put a +1/+1 counter on it.`: "it" is CARDNAME.
+            && ($effects = self::sentenceEffects((string) preg_replace(['/^it deals\b/', '/\b(counters?) on it$/'], ['CARDNAME deals', '$1 on CARDNAME'], $m[1]))) !== null) {
             $result['triggered'][] = ['text' => $line, 'event' => 'dealt_damage', 'effects' => $effects];
 
             return true;
@@ -2668,8 +2734,9 @@ final class TextParser
             return true;
         }
         // Basilisk-style: `Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.`; see Game::combatDamage().
-        if ($line === 'Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.') {
-            $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'destroy_end_combat', 'target' => 'creature']]];
+        // Without "combat", any damage counts and the creature is destroyed at the next end of combat; see Game::dealDamage().
+        if (preg_match('/^Whenever CARDNAME deals (combat )?damage to a creature, destroy that creature at end of combat\.$/', $line, $m)) {
+            $result['triggered'][] = ['text' => $line, 'event' => ($m[1] ?? '') === '' ? 'damages_creature' : 'combat_damage_creature', 'effects' => [['type' => 'destroy_end_combat', 'target' => 'creature']]];
 
             return true;
         }
@@ -2713,7 +2780,7 @@ final class TextParser
         if (preg_match('/^When CARDNAME becomes level (\d+), (.+)$/', $line, $match)) {
             $event = "class_level_{$match[1]}";
             $text = $match[2];
-        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability you control|becomes the target of a spell or ability|becomes the target of a spell|becomes blocked by a creature|becomes blocked|becomes tapped|blocks a creature|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^(?:When|Whenever) CARDNAME (enters the battlefield|enters|dies|attacks alone|attacks|deals combat damage to a player|is turned face up|exploits a creature|becomes monstrous|mutates|is put into a graveyard from the battlefield|is put into a graveyard from anywhere|becomes the target of a spell or ability an opponent controls|becomes the target of a spell or ability you control|becomes the target of a spell or ability|becomes the target of a spell|becomes the target of an Aura spell|becomes blocked by a creature|becomes blocked|becomes tapped|blocks a creature|blocks|leaves the battlefield)( while saddled)?, (.+)$/', $line, $match)) {
             $event = $events[$match[1]];
             $saddled = $match[2] !== '';
             $text = $match[3];
@@ -2815,6 +2882,10 @@ final class TextParser
             // See Game::targetedTriggers().
             $event = 'you_commit_crime';
             $text = $match[1];
+        } elseif (preg_match('/^Whenever you forage, (.+)$/', $line, $match)) {
+            // See Game::foraged(): as a cost or a `you may forage` payment.
+            $event = 'you_forage';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you play a land, (.+)$/', $line, $match)) {
             $event = 'you_play_land';
             $text = $match[1];
@@ -2884,6 +2955,11 @@ final class TextParser
             // The Swords: `Whenever equipped creature deals combat damage to a player, …`; see Game::attachedTrigger(). "It" is that creature.
             $event = 'attached_'.['attacks' => 'attacks', 'blocks' => 'blocks', 'deals combat damage to a player' => 'combat_damage', 'dies' => 'dies'][$match[1]];
             $text = $match[2];
+        } elseif (preg_match('/^Whenever an? (equipped|enchanted) creature you control (attacks|blocks|deals combat damage to a player), (.+)$/', $line, $match)) {
+            // `Whenever an equipped creature you control attacks, …`: "it" is that creature; see Game::objectFits().
+            $event = ['attacks' => 'creature_attacks', 'blocks' => 'creature_blocks', 'deals combat damage to a player' => 'creature_combat_damage'][$match[2]];
+            $extra = ['objectKind' => "{$match[1]} creature", 'other' => false];
+            $text = $match[3];
         } elseif (preg_match('/^Whenever (a|an|another) (creature|[A-Z][a-z]+) you control(?: with (flying|trample|deathtouch|lifelink|menace|reach|haste|vigilance|first strike|defender))? (attacks alone|attacks|blocks|becomes blocked|deals combat damage to a player), (.+)$/', (string) preg_replace('/^(Whenever (?:a|another) creature you control) with power (\w+) or greater (attacks|blocks)/', '$1 $3', $line), $match)
             && ($match[1] === 'an') === (bool) preg_match('/^[AEIOU]/', $match[2])) {
             // See Game::declareAttackers(), Game::declareBlockers() and Game::combatDamage(): "it" is that creature.
@@ -3182,55 +3258,11 @@ final class TextParser
         $text = (string) preg_replace('/^if there are (\w+) or more cards in your graveyard, /', 'if you have $1 or more cards in your graveyard, ', $text);
         // An intervening "if" clause (rule 603.4), checked as it triggers; see Game::conditionMet().
         $if = null;
-        if (self::effects($text) === null && preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater), (?<rest>.+)$/", $text, $match)) {
-            $if = match (true) {
-                $match[1] === 'you control no creatures' => 'no_creatures',
-                // Ferocious: `if you control a creature with power 4 or greater`.
-                ($match['power'] ?? '') !== '' => 'power_ge '.self::amount($match['power']),
-                // Coven: `if you control three or more creatures with different powers`.
-                $match[1] === 'you control three or more creatures with different powers' => 'coven',
-                $match[1] === "CARDNAME isn't prepared" => 'unprepared',
-                $match[1] === 'you gained life this turn' => 'gained 1',
-                $match[1] === 'a creature died this turn' => 'died 1',
-                $match[1] === 'you attacked this turn' => 'attacked',
-                $match[1] === 'CARDNAME attacked this turn' => 'self_attacked',
-                $match[1] === 'an opponent lost life this turn' => 'opponent_lost',
-                $match[1] === "it's not your turn" => 'not_your_turn',
-                $match[1] === "it's your turn" => 'your_turn',
-                // Survival: `At the beginning of your second main phase, if CARDNAME is tapped, …`.
-                $match[1] === 'CARDNAME is tapped' => 'tapped',
-                $match[1] === 'CARDNAME is untapped' => 'untapped',
-                $match[1] === 'a nonland permanent left the battlefield this turn or a spell was warped this turn' => 'void',
-                $match[1] === "you've cast a noncreature spell this turn" => 'cast_noncreature',
-                // Knight of the White Orchid: `if an opponent controls more lands than you`.
-                $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
-                $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
-                $match[1] === 'an opponent has more life than you' => 'life_behind',
-                // Lorwyn: `When this creature enters, if you control another Elf, …`.
-                ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
-                // `if an opponent controls a creature with flying` / `… an artifact`.
-                ($match['theirs'] ?? '') !== '' => $match['theirs'] === 'creature with flying' ? 'opp_flier' : 'opp_controls '.ucfirst($match['theirs']),
-                // `if you attacked with three or more creatures this combat`; see Game::declareAttackers().
-                ($match['attackers'] ?? '') !== '' => 'attackers '.self::amount($match['attackers']),
-                ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
-                ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
-                ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
-                ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
-                    'no' => 0,
-                    'one or fewer' => 1,
-                    default => 2,
-                },
-                ($match[5] ?? '') !== '' => 'life '.self::amount($match[5]),
-                ($match[6] ?? '') !== '' => 'controls '.ucfirst($match[6]),
-                $match[2] !== '' => 'lands '.self::amount($match[2]),
-                $match[3] !== '' => 'died '.self::amount($match[3]),
-                $match[4] !== '' => 'gained '.self::amount($match[4]),
-                default => 'hand_behind',
-            };
-            if (! preg_match('/^\w+( \w+)?$/', $if)) {
+        if (self::effects($text) === null && ($found = self::interveningIf($text)) !== null) {
+            if ($found[0] === false) {
                 return false;
             }
-            $text = $match['rest'];
+            [$if, $text] = $found;
         } elseif (self::effects($text) === null && preg_match("/^if (it's night|it's day|you cast it|you cast it from your hand), (.+)$/", $text, $match)
             && ($event === 'enters' || ! str_starts_with($match[1], 'you'))) {
             // Day and night (rule 726): `When CARDNAME enters, if it's night, draw a card.`; and `When CARDNAME enters, if you cast it, …`.
@@ -3255,7 +3287,7 @@ final class TextParser
             $text = "CARDNAME deals {$match[1]} damage to each opponent";
         }
         // `Whenever CARDNAME attacks, defending player loses 1 life.`: with two players, the opponent.
-        if (in_array($event, ['attacks', 'creature_attacks', 'creature_attacks_other'], true) && self::effects($text) === null && preg_match('/^defending player (discards|loses|mills|sacrifices) /', $text)) {
+        if (in_array($event, ['attacks', 'attacks_alone', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'blocked', 'blocked_by_creature', 'creature_becomes_blocked'], true) && self::effects($text) === null && preg_match('/^defending player (discards|loses|mills|sacrifices) /', $text)) {
             $text = 'each opponent '.substr($text, strlen('defending player '));
         }
         // `Whenever CARDNAME attacks, it deals 1 damage to defending player.`
@@ -3486,6 +3518,17 @@ final class TextParser
         if (preg_match('/^(.+?)\s*Activate only once\.$/', $text, $limit)) {
             [$text, $ever] = [$limit[1], true];
         }
+        // `Activate only if you control an artifact.`, `Activate only during your turn.`, `… during combat.`: checked as it is activated; see Game::conditionMet().
+        $only = null;
+        $windows = ['during your turn' => 'your_turn', "during an opponent's turn" => 'opponent_turn', 'during combat' => 'combat', 'before blockers are declared' => 'before_blockers', 'during your upkeep' => 'your_upkeep', 'during any upkeep step' => 'upkeep'];
+        if (preg_match('/^(.+?)\s*Activate only (during your turn|during an opponent\'s turn|during combat|before blockers are declared|during your upkeep|during any upkeep step)\.$/', $text, $limit)) {
+            [$text, $only] = [$limit[1], $windows[$limit[2]]];
+        } elseif (preg_match('/^(.+?)\s*Activate only if (.+)\.$/', $text, $limit)) {
+            if (! is_string($only = self::interveningIf("if {$limit[2]}, x")[0] ?? null)) {
+                return false;
+            }
+            $text = $limit[1];
+        }
         if ($cost['sacrifice'] ?? false) {
             // `Sacrifice CARDNAME: It deals 2 damage to target creature.`: "it" is the sacrificed permanent.
             $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
@@ -3494,9 +3537,81 @@ final class TextParser
         if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []);
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []) + ($only !== null ? ['if' => $only] : []);
 
         return true;
+    }
+
+    /**
+     * An intervening "if" clause (rule 603.4) at the start of a trigger's
+     * effect text, as a Game::conditionMet() condition and the rest of the
+     * text; false for a clause it matches but cannot express.
+     *
+     * @param string $text Such as `if you control an artifact, draw a card.`
+     *
+     * @return array{0: string|false, 1: string}|null
+     */
+    private static function interveningIf(string $text): ?array
+    {
+        if (! preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no (?:other )?creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater|you have (?<lifeLe>\\w+) or less life|you have more life than each opponent|you control no other (?<noOther>artifacts|enchantments)|you(?:'ve)? cast (?<spells>\\w+) or more spells this turn|two or more nonland permanents entered the battlefield under your control this turn), (?<rest>.+)$/", $text, $match)) {
+            return null;
+        }
+        $if = match (true) {
+            $match[1] === 'you control no creatures' => 'no_creatures',
+            $match[1] === 'you control no other creatures' => 'no_other_creatures',
+            // Ferocious: `if you control a creature with power 4 or greater`.
+            ($match['power'] ?? '') !== '' => 'power_ge '.self::amount($match['power']),
+            // Coven: `if you control three or more creatures with different powers`.
+            $match[1] === 'you control three or more creatures with different powers' => 'coven',
+            $match[1] === "CARDNAME isn't prepared" => 'unprepared',
+            $match[1] === 'you gained life this turn' => 'gained 1',
+            $match[1] === 'a creature died this turn' => 'died 1',
+            $match[1] === 'you attacked this turn' => 'attacked',
+            $match[1] === 'CARDNAME attacked this turn' => 'self_attacked',
+            $match[1] === 'an opponent lost life this turn' => 'opponent_lost',
+            $match[1] === "it's not your turn" => 'not_your_turn',
+            $match[1] === "it's your turn" => 'your_turn',
+            // Survival: `At the beginning of your second main phase, if CARDNAME is tapped, …`.
+            $match[1] === 'CARDNAME is tapped' => 'tapped',
+            $match[1] === 'CARDNAME is untapped' => 'untapped',
+            $match[1] === 'a nonland permanent left the battlefield this turn or a spell was warped this turn' => 'void',
+            $match[1] === "you've cast a noncreature spell this turn" => 'cast_noncreature',
+            // Knight of the White Orchid: `if an opponent controls more lands than you`.
+            $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
+            $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
+            $match[1] === 'an opponent has more life than you' => 'life_behind',
+            // Celebration: `if two or more nonland permanents entered the battlefield under your control this turn`.
+            $match[1] === 'two or more nonland permanents entered the battlefield under your control this turn' => 'celebration',
+            $match[1] === 'you have more life than each opponent' => 'life_lead',
+            // `if you have 10 or less life`.
+            ($match['lifeLe'] ?? '') !== '' => 'life_le '.self::amount($match['lifeLe']),
+            // `if you've cast two or more spells this turn`; see GamePlayer::$cast.
+            ($match['spells'] ?? '') !== '' => 'spells_cast '.self::amount($match['spells']),
+            // `if you control no other artifacts`.
+            ($match['noOther'] ?? '') !== '' => 'no_other '.ucfirst(rtrim($match['noOther'], 's')),
+            // Lorwyn: `When this creature enters, if you control another Elf, …`.
+            ($match['other'] ?? '') !== '' => 'controls_other '.ucfirst($match['other']),
+            // `if an opponent controls a creature with flying` / `… an artifact`.
+            ($match['theirs'] ?? '') !== '' => $match['theirs'] === 'creature with flying' ? 'opp_flier' : 'opp_controls '.ucfirst($match['theirs']),
+            // `if you attacked with three or more creatures this combat`; see Game::declareAttackers().
+            ($match['attackers'] ?? '') !== '' => 'attackers '.self::amount($match['attackers']),
+            ($match['others'] ?? '') !== '' => 'controls_others '.($match['others'] === 'creatures' ? 'Creature' : ($match['others'] === 'artifacts' ? 'Artifact' : self::subtypeOf($match['others']))).'_'.self::amount($match['count']),
+            ($match[7] ?? '') !== '' => strtolower($match[8]).' '.self::amount($match[7]),
+            ($match[9] ?? '') !== '' => 'graveyard '.self::amount($match[9]),
+            ($match[10] ?? '') !== '' => 'hand_le '.match ($match[10]) {
+                'no' => 0,
+                'one or fewer' => 1,
+                default => 2,
+            },
+            ($match[5] ?? '') !== '' => 'life '.self::amount($match[5]),
+            ($match[6] ?? '') !== '' => 'controls '.ucfirst($match[6]),
+            $match[2] !== '' => 'lands '.self::amount($match[2]),
+            $match[3] !== '' => 'died '.self::amount($match[3]),
+            $match[4] !== '' => 'gained '.self::amount($match[4]),
+            default => 'hand_behind',
+        };
+
+        return [preg_match('/^\w+( \w+)?$/', $if) ? $if : false, $match['rest']];
     }
 
     /**
@@ -3963,6 +4078,12 @@ final class TextParser
         if (preg_match('/^you draw (\w+) cards? and (?:you )?(gain|lose) (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[1])) !== null && ($life = self::amount($m[3])) !== null) {
             return [['type' => 'draw', 'amount' => $draw], strtolower($m[2]) === 'gain' ? ['type' => 'gain_life', 'amount' => $life] : ['type' => 'lose_life', 'amount' => $life, 'you' => true]];
         }
+        // `You and target opponent each draw a card.`, `You and target player each gain 2 life.`: you first.
+        if (preg_match('/^you and (target player|target opponent) each (draw|gain) (\w+) (cards?|life)$/i', $sentence, $m) && is_int($n = self::amount($m[3])) && (strtolower($m[2]) === 'draw') === str_starts_with(strtolower($m[4]), 'card')) {
+            $type = strtolower($m[2]) === 'draw' ? 'draw' : 'gain_life';
+
+            return [['type' => $type, 'amount' => $n], ['type' => $type, 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]]];
+        }
         if (preg_match('/^(target player|target opponent) draws (\w+) cards? and loses (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[2])) !== null && ($life = self::amount($m[3])) !== null) {
             return [['type' => 'draw', 'amount' => $draw, 'target' => self::TARGETS[strtolower($m[1])]], ['type' => 'lose_life', 'amount' => $life, 'sameTarget' => true]];
         }
@@ -4043,6 +4164,13 @@ final class TextParser
                 return true;
             }
         }
+        // Wrath-style sweepers: `Exile all creatures. You gain 1 life for each creature exiled this way.`; see Game::applyEffect().
+        if (preg_match('/^You gain (\w+) life for each (?:creature|permanent|artifact|enchantment|nonland permanent) (destroyed|exiled) this way$/', $sentence, $m) && is_int($n = self::amount($m[1]))
+            && isset($effects[$last]['all']) && $effects[$last]['type'] === ($m[2] === 'destroyed' ? 'destroy' : 'exile') && ! isset($effects[$last]['gainEach'])) {
+            $effects[$last]['gainEach'] = $n;
+
+            return true;
+        }
         // `Each opponent loses 3 life. You gain life equal to the life lost this way.`
         if ($sentence === 'You gain life equal to the life lost this way' && $effects[$last]['type'] === 'lose_life' && ($effects[$last]['each'] ?? null) === 'opponent' && is_int($effects[$last]['amount'])) {
             $effects[] = ['type' => 'gain_life', 'amount' => $effects[$last]['amount'], 'perOpponent' => true];
@@ -4093,7 +4221,7 @@ final class TextParser
             }
         }
         // "If that creature would die this turn, exile it instead." after damage.
-        if (preg_match('/^If (?:that creature(?: or planeswalker)?|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
+        if (preg_match('/^If (?:that creature(?: or planeswalker)?|that permanent|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
             // Or after a targeted -N/-N: `Target creature gets -3/-3 until end of turn. If that creature would die this turn, exile it instead.`
             $damages = array_keys(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage' || ($effect['type'] === 'pump' && isset($effect['target']) && ($effect['toughness'] ?? 0) < 0)));
             foreach ($damages as $i) {
@@ -4110,10 +4238,10 @@ final class TextParser
         if ($effects[$last]['type'] === 'copy_spell' && $sentence === 'You may choose new targets for the copy') {
             return true;
         }
-        // "Destroy target creature. Its controller loses 2 life.", also after a permanent or a spell.
+        // "Destroy target creature. Its controller loses 2 life.", "… Its controller draws a card.", also after a permanent or a spell.
         if (isset($effects[$last]['target']) && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true) && ! str_contains($effects[$last]['target'], 'card')
-            && preg_match('/^Its controller (loses (\w+) life|mills (\w+) cards?)$/', $sentence, $m) && is_int($n = self::amount($m[2] !== '' ? $m[2] : $m[3]))) {
-            $effects[] = ['type' => $m[2] !== '' ? 'lose_life' : 'mill', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
+            && preg_match('/^Its controller (loses (\w+) life|mills (\w+) cards?|draws (\w+) cards?)$/', $sentence, $m) && is_int($n = self::amount($m[2] !== '' ? $m[2] : (($m[3] ?? '') !== '' ? $m[3] : $m[4])))) {
+            $effects[] = ['type' => $m[2] !== '' ? 'lose_life' : (($m[3] ?? '') !== '' ? 'mill' : 'draw'), 'amount' => $n, 'sameTarget' => true, 'toController' => true];
 
             return true;
         }
@@ -4125,7 +4253,7 @@ final class TextParser
             return true;
         }
         // `Destroy target artifact or enchantment. Its controller gains 3 life.`
-        if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell'], true)
+        if (isset($effects[$last]['target']) && ! str_contains($effects[$last]['target'], 'card') && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'spell_targets_your_creature', 'spell_targets_you', 'spell_targets_you_or_creature'], true)
             && preg_match('/^Its controller gains (\w+) life$/', $sentence, $m) && is_int($n = self::amount($m[1]))) {
             $effects[] = ['type' => 'gain_life', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
 
@@ -4440,6 +4568,10 @@ final class TextParser
         if (preg_match('/^CARDNAME deals (\w+) damage to each (opponent|player)$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => strtolower($m[2])];
         }
+        // `CARDNAME deals 2 damage to each other creature.`: not CARDNAME itself.
+        if (preg_match('/^CARDNAME deals (\w+) damage to each other creature$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
+            return ['type' => 'damage', 'amount' => $n, 'each' => 'creature_other'];
+        }
         if (preg_match('/^CARDNAME deals (\w+) damage to each creature( without flying| with flying| your opponents control)?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'damage', 'amount' => $n, 'each' => match ($m[2] ?? '') {
                 ' without flying' => 'creature_without_flying',
@@ -4459,8 +4591,8 @@ final class TextParser
         if (preg_match('/^each (player|opponent|other player) (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[3] !== '' ? $m[3] : $m[4])) !== null) {
             return ['type' => $m[3] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => strtolower($m[1]) === 'player' ? 'player' : 'opponent'];
         }
-        if (preg_match('/^target player draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
-            return ['type' => 'draw', 'amount' => $n, 'target' => 'player'];
+        if (preg_match('/^target (player|opponent) draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
+            return ['type' => 'draw', 'amount' => $n, 'target' => strtolower($m[1])];
         }
         // Baleful Mastery: `an opponent draws a card` (the next opponent; see Game::opponent()).
         if (preg_match('/^an opponent draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
@@ -4557,7 +4689,7 @@ final class TextParser
         if (preg_match("/^return ({$targets}) to its owner's hand$/i", $s, $m) && self::isPermanentTarget($m[1])) {
             return ['type' => 'bounce', 'target' => self::TARGETS[strtolower($m[1])]];
         }
-        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell|target spell with mana value [1-4] or less)$/i', $s, $m)) {
+        if (preg_match('/^counter (target spell|target creature spell|target noncreature spell|target spell with mana value [1-4] or less|target spell that targets (?:you or )?a creature you control|target spell that targets you)$/i', $s, $m)) {
             return ['type' => 'counter', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         // Manlands and animated artifacts: `Until end of turn, CARDNAME becomes a 4/4 white and blue Elemental creature with flying.`; see Game::isCreature().
@@ -4741,7 +4873,9 @@ final class TextParser
         $group = implode('|', array_keys($each));
         // Consume the Meek: "each creature" selects the same objects as "all creatures".
         $s = (string) preg_replace('/^(destroy|exile) each creature\b/i', '$1 all creatures', $s);
-        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all artifacts, creatures, and lands|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
+        // Culling Ritual, Pernicious Deed: `Destroy each nonland permanent with mana value 2 or less.`
+        $s = (string) preg_replace(['/^(destroy|exile) each nonland permanent\b/i', '/^(destroy|exile) each artifact, creature, and enchantment\b/i'], ['$1 all nonland permanents', '$1 all artifacts, creatures, and enchantments'], $s);
+        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all artifacts, creatures, and lands|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all (?:creatures|nonland permanents|artifacts, creatures, and enchantments) with mana value \d+ or (?:less|greater)|all artifacts, creatures, and enchantments)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
         // Evacuation, Aetherize-style sweepers: `Return all creatures to their owners' hands.`
@@ -4832,6 +4966,10 @@ final class TextParser
         // `Whenever CARDNAME becomes blocked, it deals 2 damage to each creature blocking it.`
         if (preg_match('/^(?:CARDNAME|it) deals (\w+) damage to each creature blocking it$/', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'blocking_self'];
+        }
+        // `Whenever CARDNAME attacks, it gets +1/+0 until end of turn for each Aura and Equipment attached to it.`
+        if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each (Aura|Equipment|Aura and Equipment) attached to it$/', $s, $m)) {
+            return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perAttached' => str_replace(' and ', '|', $m[3])];
         }
         // `Whenever CARDNAME becomes blocked, it gets +1/+1 until end of turn for each creature blocking it.`
         if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each creature blocking it$/', $s, $m)) {
@@ -5104,7 +5242,7 @@ final class TextParser
 
     private static function isPermanentTarget(string $phrase): bool
     {
-        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard', 'creature_card_yours_other', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true)
+        return ! in_array(self::TARGETS[strtolower($phrase)], ['any', 'player', 'opponent', 'player_or_planeswalker', 'spell', 'creature_spell', 'noncreature_spell', 'spell_targets_your_creature', 'spell_targets_you', 'spell_targets_you_or_creature', 'instant_sorcery_spell', 'instant_sorcery_spell_yours', 'creature_card_yours', 'legendary_creature_card_yours', 'card_yours', 'card_graveyard_nonbasic', 'instant_sorcery_card_yours', 'artifact_card_yours', 'land_card_yours', 'enchantment_card_yours', 'permanent_card_yours', 'creature_card_graveyard', 'card_graveyard', 'creature_card_yours_other', 'card_graveyard_opponent', 'creature_card_graveyard_opponent'], true)
             && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'creature_card_yours_mv_le_') && ! str_starts_with(self::TARGETS[strtolower($phrase)], 'spell_mv_le_');
     }
 }

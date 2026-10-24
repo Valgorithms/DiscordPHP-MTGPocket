@@ -67,6 +67,11 @@ final class GamePlayer
 
     public int $expendedTurn = 0;
 
+    /** Nonland permanents that entered under their control this turn, for celebration, and the turn that was. */
+    public int $nonlandEntered = 0;
+
+    public int $nonlandEnteredTurn = 0;
+
     /** Cards drawn this turn, and the turn that was. */
     public int $drawn = 0;
 
@@ -150,6 +155,8 @@ final class GamePlayer
             'drawnTurn' => $this->drawnTurn,
             'expended' => $this->expended,
             'expendedTurn' => $this->expendedTurn,
+            'nonlandEntered' => $this->nonlandEntered,
+            'nonlandEnteredTurn' => $this->nonlandEnteredTurn,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
@@ -184,6 +191,8 @@ final class GamePlayer
         $player->drawnTurn = (int) ($data['drawnTurn'] ?? 0);
         $player->expended = (int) ($data['expended'] ?? 0);
         $player->expendedTurn = (int) ($data['expendedTurn'] ?? 0);
+        $player->nonlandEntered = (int) ($data['nonlandEntered'] ?? 0);
+        $player->nonlandEnteredTurn = (int) ($data['nonlandEnteredTurn'] ?? 0);
         $player->gained = (int) ($data['gained'] ?? 0);
         $player->gainedTurn = (int) ($data['gainedTurn'] ?? 0);
         $player->cast = (int) ($data['cast'] ?? 0);
