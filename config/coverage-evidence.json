@@ -9,16 +9,16 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "822ff4f0f1e200d5294c2ddf5d92f835ee902b0d",
+  "engineSource": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
   "validation": {
-    "source": "822ff4f0f1e200d5294c2ddf5d92f835ee902b0d",
-    "evidenceMeaning": "Source-only integration of Khalni quest/search and upstream opponent-discard recognition. Scoped evidence remains historical until the integrated source passes validation; no whole-card certification.",
-    "local": "NOT RUN for this integrated source: PHP lint, Pint, PHPUnit, corpus scans and runtime checks. Only Git/source review, normalized source-pin inspection and JSON metadata inspection were performed. Earlier local passes are preserved below with their exact sources and do not validate this integration.",
-    "ci": "NOT RUN for this integrated source. Exact final-head Tests CI must pass full Pint/PHPUnit on PHP 8.3, 8.4 and 8.5 after publication is approved. Earlier CI records below are historical.",
+    "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
+    "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
+    "local": "Sole-owner validation of the preserved integration with main27189a71df613c26846c92c997e8accb435cf64e. Focused40tests731assertionsPASS6.761s wall/30s cap: Khalni, opponent-discard recipient, legacy counter migration, persisted panels and ledger. All58normalizedPHPpins verified. Full offline source `336fabb6621c810096164b18f7dc69ac86dd0bc8` passed 2,049 tests and 57,506 assertions with two expected missing-imported-pool/rental skips. PHPUnit 73.900s/276MiB; 74.810s wall under the 120s process-tree cap, 512MiB, Xdebug off, empty data and task-local temporary storage. Fresh 9.02GiB/no other PHP tests at 2026-10-24T18:59:08.8000221Z. Local two-file Pint produced no output and timed out124 at34.853s wall/30s cap; owned process tree stopped, NOT accepted. Previous input-head passes remain historical under integration.historicalValidation. No corpus scan/import/live/bot/build/restart/deploy. Schema16/noenvchange.",
+    "ci": "NOT RUN at this metadata commit creation. Final head must pass its own exact Tests workflow with full Pint and PHPUnit on PHP8.3/8.4/8.5 before merge. Local Pint timeout is not a pass. CI40118185025 is historical and predates PR404/405.",
     "integration": {
       "prHead": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
       "mainHead": "27189a71df613c26846c92c997e8accb435cf64e",
-      "status": "source-only; functional validation pending",
+      "status": "combined source passed current focused and full offline PHPUnit; final hosted CI pending",
       "changedSourcePins": {
         "src/MTGPocket/Game/TextParser.php": {
           "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
@@ -53,7 +53,7 @@
           }
         }
       ],
-      "engineSourceMeaning": "Immutable source-only integration commit, not a tested-source claim. The metadata follow-up changes no PHP source."
+      "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
     }
   },
   "sourcePins": {
