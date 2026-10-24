@@ -13,8 +13,8 @@
   "validation": {
     "source": "d672c21193109bed9cabf9bceff886893d181822",
     "evidenceMeaning": "Pinned complete DTK Den Protector pays morph3 and existing synthetic copyU; megamorph face-down copiable characteristics, original turn-up1G/counter/targeted graveyard return and source/copy independence. No printed copy-card or whole-card certificate. Historical recognition unchanged.",
-    "local": "Baseline145c49716344b287203128368b86d0590df093d8:4tests68assertions4failures/0.100sec.16focused686assertions0.252sec;adjacent1260/23684/23.356sec186MiB23.851secwall30cap512MiB/Xdebugoff/emptydata;Pint2/diffcheck passed. Ledger/inventory/full pending.",
-    "ci": "Final exact-head fullPint/PHPUnit CI must pass before merge; previous milestone or baseline CI is not acceptance."
+    "local": "Baseline145c49716344b287203128368b86d0590df093d8:4tests68assertions4failures/0.100sec.16focused686assertions0.252sec;adjacent1260/23684/23.356sec186MiB23.851secwall30cap512MiB/Xdebugoff/emptydata;Pint2/diffcheck passed. Ledger18/37 and181poolinventory20scoped/3gaps/2overlaps/0whole-card certificates0.784secwall passed. Full offline atda028e54019dd800b4ac5aa095da43b96a4d7d29 passed1,651tests/50,739assertions with2expected imported-rental-data skips in65.660seconds222MiB/66.011secondswall,120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp after fresh7.03GiB2026-10-24T04:47:43Z.",
+    "ci": "Fulltestedda028e54019dd800b4ac5aa095da43b96a4d7d29 exact Tests40063738969 passed all three PHP8.3/8.4/8.5 fullPint/PHPUnit jobs; run/jobs/artifacts REST saved. Final metadata head requires its own exact CI before merge."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
