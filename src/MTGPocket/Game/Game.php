@@ -8215,6 +8215,15 @@ final class Game
         foreach ($ids === [] ? [] : $this->permanents($seat) as $permanent) {
             $this->trigger($permanent, 'you_attack', $seat);
             $this->trigger($permanent, 'you_attack_strongest', $seat, null, $strongest);
+            // `Whenever one or more Rabbits you control attack, …`: once, with the first such attacker.
+            foreach (array_unique(array_column($permanent->definition()->triggersOn('you_attack_kind'), 'objectKind')) as $kind) {
+                foreach ($ids as $id) {
+                    if ($this->objectFits($this->objects[$id], $kind)) {
+                        $this->trigger($permanent, 'you_attack_kind', $seat, null, $id);
+                        break;
+                    }
+                }
+            }
         }
         // Battle cry (rule 702.91): each other attacking creature gets +1/+0.
         foreach ($ids as $id) {
