@@ -13,8 +13,8 @@
   "validation": {
     "source": "5c3f5a2ac9f21892412ee0717d85a9275e0a2fba",
     "evidenceMeaning": "Scoped selected paid craft and Joven transformed-artifact burial; no parser/recognition change, whole-card or aggregate functional claim. Clay search ETB explicitly retained.",
-    "local": "Exact baseline test721f1f1042da6bc012e8771c6b5d02878a1172d2 against runtimeb03bf64b4f3f1692e9032dec5636673a7bb97895:8tests184assertions8failures,0.655sec30sectreecap; fixed20case family and adjacent1168tests20600assertions22.590sec passed;four-file Pint/diffcheck passed. Full/ledger/inventory pending.",
-    "ci": "Exact-head CI pending; final metadata head must pass separately."
+    "local": "Exact baseline test721f1f1042da6bc012e8771c6b5d02878a1172d2 against runtimeb03bf64b4f3f1692e9032dec5636673a7bb97895:8tests184assertions8failures,0.655sec30sectreecap. Adjacent1168tests20600assertions22.590sec, four-file Pint/diffcheck,ledger18/37 passed.181poolinventory0.747secwall:17scoped3gap2overlap0wholecerts. Full offline atccdabebbe04a2dba25609e831a67efc6296f7eb1:1559tests47655assertions2expected imported-rental-data skips53.155sec206MiB (53.503secwall),120sectreecap512MiB/Xdebugoff/emptydata/tasklocaltemp fresh9.91GiB.",
+    "ci": "Tested-head CI40054642016 atccdabebbe04a2dba25609e831a67efc6296f7eb1 passed all PHP8.3/8.4/8.5 fullPint/PHPUnit; REST run/jobs/artifacts saved,zero artifacts expected. Final metadata head must pass its own CI separately; all41PHPpins unchanged from full-tested head."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
