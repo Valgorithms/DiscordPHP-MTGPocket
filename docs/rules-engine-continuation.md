@@ -1,6 +1,6 @@
 # Rules-engine architecture and continuation
 
-The [Joven and Chandler burial-counter milestone](joven-artifact-burial-mana-value.md) binds the departing artifact's battlefield mana value into independent source-counter triggers, including scoped zero-cost/token/copy/X and selected-group controls. Its separate temporary artifact-control/untap/haste activation remains unread and is the next bounded seed. Partner/commander and general transformed/back-face/copy/continuous-model limits remain explicit; no whole-card certificate is implied.
+The [Joven temporary artifact-control milestone](joven-temporary-artifact-control.md) adds scoped paid activation, identity, cleanup/restoration, JSON, persisted panel and existing practice-resolution evidence. It removes Joven's explicit unread activation gap: the ledger now has 16 unique scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Historical aggregate recognition remains unchanged; a bounded eight-record scan is measured separately. Next is a regression-first transformed-artifact burial mana-value investigation, retaining broader model and Partner/commander limits.
 
 Reviewed 2026-10-13 against merge `1b81558adaabae16a54cf865cd87c37019aa1461` (PR #125). This is a source review and continuation plan, not a claim of complete Magic rules support or authorization to deploy.
 

@@ -9,15 +9,15 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "d673840a53c5ccffa1b4543b551b45a4378c714d",
+  "engineSource": "e15f55eaf07f8467e7128bf662b57ff8f4abb660",
   "validation": {
-    "source": "d673840a53c5ccffa1b4543b551b45a4378c714d",
-    "evidenceMeaning": "Scoped complete selected MBC Joven and Chandler artifact-burial mana-value source counters. Separate temporary-control/untap/haste activation stays unread. No whole-card/newest-printing or aggregate functionality claim. Full offline and tested-head CI passed; final metadata-head CI verified separately before merge.",
-    "local": "Baseline8failures/40assertions at612f163. Focused55tests/1188assertions in0.709sec;1109adjacent/19605assertions in17.732sec. FourfilePint/diffcheck passed. Ledger18/37;181pool inventory0.742secwall16scoped3explicitgap2overlap0wholecertificates. Targeted8records0.635secwall6fullyreadable2unread;Joven retains separate temporary-control activation. Full offline and CI pending. Full offline at 3c99e265267fcc780a69ef3b0eaf09b928fed7de:1500tests/46660assertions/2expected imported-rental-data skips,57.438sec198MiB (57.758secwall),120sec process-treecap512MiB/Xdebugoff/emptydata/tasklocaltemp afterfresh12.26GiB.",
-    "ci": "Tested-head CI40045341825 at3c99e265267fcc780a69ef3b0eaf09b928fed7de:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head CI checked separately before merge;all39runtime/testpins unchanged."
+    "source": "e15f55eaf07f8467e7128bf662b57ff8f4abb660",
+    "evidenceMeaning": "Scoped exact selected Joven temporary artifact-control activation; no save schema or practice initiation policy added. No aggregate functionality or whole-card claim.",
+    "local": "Baseline 8 tests /32 assertions /8 failures at be1ce6f. Focused 140 tests /2642 assertions in2.099sec; adjacent1148/20258 in19.458sec, five-file Pint and diff-check passed. Ledger18/37;181-pool inventory0.734sec wall:16scoped names/2gap names/1overlap/0whole-card certificates. Bounded8record scan0.613sec wall:7fullyreadable/1unread (Ich-Tekik Partner). Full offline at603b1f77ca36d932ad2b313b51304037067ea31d:1539tests47313assertions2expected imported-rental-data skips57.275sec202MiB (57.639secwall),120sec treecap512MiB/Xdebugoff/emptydata/tasklocaltemp fresh10.44GiB.",
+    "ci": "Tested-head CI40049986438 at603b1f77ca36d932ad2b313b51304037067ea31d:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head CI checked separately before merge;all40runtime/testpins unchanged."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "bf5e5d2d7fb120975aaabbce1b2ee92563da2a0ea36089dc25111ebb24d7c401",
+    "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
     "src/MTGPocket/Game/Game.php": "79f3b3e02d1c90f5f6c4bc98f9c230d3fc77ae91d78488b9904b0f2198eaef57",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -41,13 +41,13 @@
     "src/MTGPocket/Tutorial/PracticeBot.php": "e51fc274a61a62ca92d192d613a9338c226e4189f13ccf1f1dd9e32b7def3d8d",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "2d4a547c3894a53adcbb57b424a37d3e6ab53f25f282fa296c86b2563856f91c",
+    "tests/MatchesTest.php": "979f74672d032316f085eeefe70dc2c59b7229215a6cae06fcb035fc5caff397",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
     "tests/Game/ModernCardTextTest.php": "29c05c412aeec29e46a3177a9a212bb329fa26e4e51e6bb6347ca73eb232370d",
-    "tests/Game/DiscipleBurialChoiceTest.php": "2cd2741bb79cbcf88d450442d91d3543674fc96a23dedfe55a86bbe84330be52",
+    "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
     "tests/Game/MolderBurialBuffTest.php": "a83dc108bc903b1f77c41a43ab5623bf8deb953d574d3d7ca266889bd6136493",
@@ -55,7 +55,8 @@
     "tests/Game/SummoningStationChoiceTest.php": "64bddcb46f6cdc6269085429846f83963ac80515ce82bcc9031e187aac506a8a",
     "tests/Game/KrenkoRedGoblinChoiceTest.php": "a714bf6ac50aa6f4957bd04351ff011805527b4ddd749b7a77c4ce3fd7404057",
     "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667",
-    "tests/Game/JovenBurialCountersTest.php": "cde5f78c73fed3fdb15d007037ba548c4970762108e4e35fa40ac6a44722e605"
+    "tests/Game/JovenBurialCountersTest.php": "760b251bc2c88b06636f8aee91e3f43e80ea0a4b105a83a30bfbe3727c3278bc",
+    "tests/Game/JovenArtifactControlTest.php": "1374fc7fb1d29419812cc1a85f8633aa394fde5e0a57539256988ef20f45593c"
   },
   "scopedEvidence": [
     {
@@ -386,8 +387,32 @@
         "tests/Game/JovenBurialCountersTest.php::testFaceDownPrintedArtifactIsNotAnArtifactAtDeparture",
         "tests/Game/JovenBurialCountersTest.php::testNearbyWordingRemainsExplicitlyUnread"
       ],
-      "scope": "Complete selected MBC record retains its separate unread temporary artifact-control activation. Paid five-mana source, Smelt/Damnation/Shatterstorm, both active/source/artifact controllers, stolen ownership, source order/identity, zero-cost and token artifacts, paid X artifact, paid token-copy creation, merged battlefield definition/reset, selected and successive events, JSON before/queued/between resolutions, rendered stats and persistent counters.",
+      "scope": "Counter milestone; its separate activation is covered by the following scoped entry. Paid five-mana source, Smelt/Damnation/Shatterstorm, both active/source/artifact controllers, stolen ownership, source order/identity, zero-cost and token artifacts, paid X artifact, paid token-copy creation, merged battlefield definition/reset, selected and successive events, JSON before/queued/between resolutions, rendered stats and persistent counters.",
       "limits": "Exact printed counter clause only. Synthetic mana-cost/type/merged/movement/copy fixtures and supporting spells are scoped controls, not complete-card certificates. General transformed/back-face/copied-characteristic mana-value interactions, continuous/replacement/condition/APNAP models, Partner/commander rules, newest-printing, whole-card and live services are not certified."
+    },
+    {
+      "id": "joven-temporary-artifact-control-untap-haste",
+      "cards": [
+        "Joven and Chandler"
+      ],
+      "scope": "Exact complete selected MBC activation through existing temporary control, untap and haste. Paid source/ability, both actors/controllers and noncreature artifacts, colored/tap/sickness costs, atomic negative targets and repeated payment, source/target movement and incarnation, resolution type/controller revalidation, stun, attack, burial companion, JSON, same-turn cleanup, persisted panel and existing practice resolution/target policy.",
+      "tests": [
+        "tests/Game/JovenArtifactControlTest.php::testPaidActivationControlsUntapsAndGrantsTemporaryHasteWithJson",
+        "tests/Game/JovenArtifactControlTest.php::testInvalidCostsAndTargetsAreAtomic",
+        "tests/Game/JovenArtifactControlTest.php::testQueuedActivationRetainsActorWhenSourceLeavesOrChangesController",
+        "tests/Game/JovenArtifactControlTest.php::testOldTargetCannotBeControlledUntappedOrHastedAfterMovement",
+        "tests/Game/JovenArtifactControlTest.php::testTemporaryEffectsEndWhenTheBorrowedArtifactLeavesAndReturns",
+        "tests/Game/JovenArtifactControlTest.php::testActivationOnOpponentsTurnStillExpiresThatTurn",
+        "tests/Game/JovenArtifactControlTest.php::testStunCounterPreventsOnlyTheUntap",
+        "tests/Game/JovenArtifactControlTest.php::testActivatedArtifactCanAttackAndItsBurialStillTriggersTheSource",
+        "tests/Game/JovenArtifactControlTest.php::testPracticePassesThroughSavedActivationWithoutNeedingANewDecision",
+        "tests/Game/JovenArtifactControlTest.php::testTargetThatStopsBeingAnArtifactIsRevalidatedBeforeEveryEffect",
+        "tests/Game/JovenArtifactControlTest.php::testControllerAtResolutionIsTheRestorationBoundary",
+        "tests/Game/JovenArtifactControlTest.php::testRepeatedActivationCannotPayTheTapCostTwice",
+        "tests/Game/JovenArtifactControlTest.php::testNearbyUnimplementedControlDurationsRemainUnread",
+        "tests/MatchesTest.php::testJovenArtifactActivationThroughPersistedPanel"
+      ],
+      "limits": "Scoped complete selected record, not a whole-card or newest-printing certificate. Reflection movement, type/controller changes and seeded panel board are supporting unit fixtures. Practice can resolve the activation but does not initiate general activated abilities. General layered/Aura control, continuous/replacement/APNAP, transformed/back-face/copied mana value and Partner/commander remain unverified."
     }
   ],
   "explicitUnsupported": [
@@ -398,32 +423,24 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
-    },
-    {
-      "id": "joven-temporary-artifact-control-unread",
-      "cards": [
-        "Joven and Chandler"
-      ],
-      "scope": "The complete pinned record retains its separate {R}{R}{R}, {T} temporary artifact control/untap/haste activation as unread. Source-counter evidence does not certify that ability or the whole card."
     }
   ],
   "nextFamily": {
-    "id": "joven-temporary-artifact-control-untap-haste",
+    "id": "joven-transformed-artifact-burial-mana-value",
     "cards": [
       "Joven and Chandler"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Complete selected MBC record retains one unread temporary artifact-control activation. Investigate exact paid RRR plus tap, target artifact ownership/controller, untap and haste until end of turn through existing target/borrowedFrom machinery; reproduce actual gaps before edits.",
+    "scope": "Source-backed investigation only, not a reproduced failure: GameObject::definition selects a transformed back with no mana cost, while burial reads definition cost. Reproduce an actual transforming artifact and distinguish inherited front mana value from copy/token cases before editing.",
     "acceptance": [
-      "Reproduce exact unread activation while preserving complete record, counter trigger and Partner/commander gaps.",
-      "Test colored mana, tap and summoning sickness costs, own/opposing and noncreature artifact legality, target departure/incarnation and resolution revalidation.",
-      "Verify original controller restoration, untap, temporary haste, source/target departure, repeated or layered control effects, JSON, cleanup and Discord/practice companions where needed."
+      "Pin a complete existing-pool transforming artifact and exact Joven observer; reproduce departure mana value with actual transform/departure where supported.",
+      "Preserve modal double-face, face-down, copy/token and X distinctions with targeted negatives and per-incarnation JSON.",
+      "Keep general continuous/merged/copy models and whole-card claims separate; do not repeat the timed-out global parser walk."
     ],
     "deferred": [
       "Partner and commander deck rules",
-      "General transformed/back-face/copied-characteristic mana-value interactions",
-      "Newest-printing and whole-card certification",
-      "General continuous/replacement/conditions/APNAP models"
+      "General continuous/replacement/conditions/APNAP models",
+      "Newest-printing and whole-card certification"
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad"

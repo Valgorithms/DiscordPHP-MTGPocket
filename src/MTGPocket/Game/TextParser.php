@@ -4828,7 +4828,7 @@ final class TextParser
         if (preg_match('/^create (\w+) (Food|Clue|Treasure|Blood|Lander|Map|Junk) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'token', 'amount' => $n, 'token' => self::ARTIFACT_TOKENS[ucfirst(strtolower($m[2]))]];
         }
-        if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
+        if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], ['artifact', ...self::CREATURE_KINDS], true)) {
             return ['type' => 'control', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         if (preg_match('/^attach (?:it|CARDNAME) to target creature you control$/', $s)) {

@@ -1,5 +1,7 @@
 # Joven and Chandler artifact-burial counters
 
+The separate activation gap described in this historical counter milestone is addressed by the later [temporary artifact-control milestone](joven-temporary-artifact-control.md). Its counter evidence and general mana-value limitations remain scoped.
+
 This milestone uses the complete selected MBC record, UUID `6e88e450-3e9c-575e-96b2-6b0ac6a9434d`, in the existing eight-name candidate fixture. The fixture's normalized-LF SHA256 is `5b4683db36f12c404e3b314b1d5d5fa85246c43582d95bd624d5b8917133f20b`. Its separate temporary artifact-control/untap/haste activation remains unread. This is scoped counter evidence, not a whole-card, commander or newest-printing certificate.
 
 The exact burial clause was unread in eight regression cases at `612f163` (8 failures /40 assertions). The parser now creates the existing mandatory all-player artifact-burial event and self-counter effect. Trigger construction converts its amount to a number using the departing battlefield definition retained by `DepartureCharacteristics`, including the pre-group snapshot for selected departures. The number is saved in each ordinary stack item; later movement, definition reset or another artifact burial cannot replace it. Existing source incarnation checks prevent an old trigger from putting counters on a returned source. No save schema, optional decision, UI action or practice policy was added.

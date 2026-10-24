@@ -270,6 +270,94 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$bears]->zone);
     }
 
+    /** @dataProvider jovenPanelCases */
+    public function testJovenArtifactActivationThroughPersistedPanel(string $case): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        $ids = [self::ALICE, self::BOB];
+        $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $active = $match->game->active;
+        $player = $ids[$active];
+        $opponent = 1 - $active;
+        $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/Fixtures/all-player-artifact-burial-candidates.json'));
+        $this->assertSame('5b4683db36f12c404e3b314b1d5d5fa85246c43582d95bd624d5b8917133f20b', hash('sha256', $bytes));
+        $entries = json_decode($bytes, true, flags: JSON_THROW_ON_ERROR)['candidates'];
+        $card = array_values(array_filter($entries, fn (array $entry) => $entry['card']['uuid'] === '6e88e450-3e9c-575e-96b2-6b0ac6a9434d'))[0]['card'];
+        $match = $this->modifyGame($match, function (Game $game) use ($active, $opponent, $card, &$source, &$artifact, &$nonartifact): void {
+            $source = $game->addCard($active, $card, GameObject::BATTLEFIELD)->id;
+            $game->objects[$source]->sick = false; // UI fixture; paid casting is tested by the engine regression.
+            $artifact = $game->addCard($opponent, ['uuid' => 'panel-artifact', 'name' => 'Bottle Gnomes', 'type' => 'Artifact Creature — Gnome', 'manaCost' => '{3}', 'power' => '1', 'toughness' => '3'], GameObject::BATTLEFIELD)->id;
+            $game->objects[$artifact]->tapped = true;
+            $nonartifact = $game->addCard($opponent, $this->pocket->deckBuilder->cardData('bears'), GameObject::BATTLEFIELD)->id;
+            for ($i = 0; $i < 3; $i++) {
+                $game->addCard($active, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+        });
+        $actions = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('"value":"'.$source.'.0"', $actions);
+        [$match, $changed] = $panel->run($match->id, $player, 'ability', [], [$source.'.0']);
+        $this->assertFalse($changed);
+        $match = $this->pocket->matches->find($match->id);
+        $targets = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('"value":"o:'.$artifact.'"', $targets);
+        $this->assertStringNotContainsString('"value":"o:'.$nonartifact.'"', $targets);
+        $this->assertStringNotContainsString('"value":"p:'.$opponent.'"', $targets);
+        if (in_array($case, ['tapped source', 'no red', 'stale target'], true)) {
+            $match = $this->modifyGame($match, function (Game $game) use ($case, $source, $artifact, $active): void {
+                if ($case === 'tapped source') {
+                    $game->objects[$source]->tapped = true;
+                } elseif ($case === 'stale target') {
+                    (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($game, $game->objects[$artifact], GameObject::EXILE);
+                } else {
+                    foreach ($game->permanents($active) as $o) {
+                        if ($o->name() === 'Mountain') {
+                            $o->tapped = true;
+                        }
+                    }
+                }
+            });
+        }
+        $chosen = match ($case) {
+            'player' => 'p:'.$opponent,
+            'nonartifact' => 'o:'.$nonartifact,
+            default => 'o:'.$artifact,
+        };
+        if ($case !== 'success') {
+            $before = $match->game->toArray();
+            $this->assertException(fn () => $panel->run($match->id, $player, 'atgt', [], [$chosen]), $case === 'success' ? 'Pick the ability' : match ($case) {
+                'tapped source' => 'tapped', 'no red' => 'cannot pay', default => 'target'
+            });
+            $match = $this->pocket->matches->find($match->id);
+            $this->assertSame($before, $match->game->toArray());
+            $this->assertSame([], $match->choice($player));
+            return;
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'atgt', [], [$chosen]);
+        $this->assertTrue($changed);
+        $this->assertSame([], $match->choice($player));
+        $this->assertTrue($match->game->objects[$source]->tapped);
+        $before = $match->game->toArray();
+        $this->assertException(fn () => $panel->run($match->id, $player, 'atgt', [], [$chosen]), $case === 'success' ? 'Pick the ability' : match ($case) {
+            'tapped source' => 'tapped', 'no red' => 'cannot pay', default => 'target'
+        });
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray(), 'Repeated control cannot pay twice.');
+        while ($match->game->stack !== []) {
+            [$match] = $panel->run($match->id, $ids[$match->game->priority], 'pass');
+        }
+        $match = $this->pocket->matches->find($match->id);
+        $this->assertSame($active, $match->game->objects[$artifact]->controller);
+        $this->assertFalse($match->game->objects[$artifact]->tapped);
+        $this->assertTrue($match->game->hasKeyword($match->game->objects[$artifact], 'haste'));
+        $this->assertStringContainsString('Bottle Gnomes', json_encode(MatchMessageBuilder::board($match), JSON_UNESCAPED_UNICODE));
+    }
+
+    public static function jovenPanelCases(): array
+    {
+        return array_map(fn (string $case) => [$case], ['success', 'player', 'nonartifact', 'tapped source', 'no red', 'stale target']);
+    }
+
     public function testRevealedTopCardShowsOnTheBoard(): void
     {
         $match = $this->startMatch();
