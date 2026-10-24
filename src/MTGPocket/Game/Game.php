@@ -2542,6 +2542,9 @@ final class Game
                 $crime = $crime || "s:{$item['id']}" === $target && $item['controller'] !== $seat;
             }
         }
+        if ($crime) {
+            $this->players[$seat]->crimeTurn = $this->turn;
+        }
         foreach ($crime ? $this->permanents($seat) : [] as $permanent) {
             $this->trigger($permanent, 'you_commit_crime', $seat);
         }
@@ -6516,6 +6519,7 @@ final class Game
             'combat' => in_array($this->step, [Step::BeginCombat, Step::DeclareAttackers, Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage, Step::EndCombat], true),
             'before_blockers' => in_array($this->step, [Step::Untap, Step::Upkeep, Step::Draw, Step::PrecombatMain, Step::BeginCombat, Step::DeclareAttackers], true),
             'attacked' => $this->players[$controller]->attackedTurn === $this->turn,
+            'crime' => $this->players[$controller]->crimeTurn === $this->turn,
             'self_attacked' => $source->attackedTurn === $this->turn,
             // Day and night (rule 726): neither until it becomes day.
             'night' => $this->dayNight === 'night',
