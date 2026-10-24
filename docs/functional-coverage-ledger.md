@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [Incubator token-identity milestone](incubator-token-identity.md) preserves token identity across transformation on the paid Converter Beast path. Current evidence covers 18 scoped names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. Recognition remains historical; active-face token copying is the next separate, unreproduced lead.
+
 The [transformed-artifact burial milestone](transformed-artifact-burial-mana-value.md) freezes the selected crafted back face's front mana value before departure. The ledger now has17scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; Clay's search ETB and broader copy/transforming-token lifecycle remain explicit. Historical recognition is unchanged.
 
 The [Joven temporary artifact-control milestone](joven-temporary-artifact-control.md) adds scoped paid activation, identity, cleanup/restoration, JSON, persisted panel and existing practice-resolution evidence. It removes Joven's explicit unread activation gap: the ledger now has 16 unique scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Historical aggregate recognition remains unchanged; a bounded eight-record scan is measured separately. Next is a regression-first transformed-artifact burial mana-value investigation, retaining broader model and Partner/commander limits.
@@ -16,9 +18,9 @@ This ledger makes the existing 100% functionality goal measurable against the pi
 | Recognized whole | 11,282 | No unread parser clauses in the saved recognition audit |
 | Has unread text | 17,447 | Complement of recognized names, not a gameplay verdict |
 | Recognized without a whole-card certificate | 11,282 | Recognition does not clear the functional review |
-| Named cards with scoped regression evidence | 13 | Three departure exemplars, two death observers, Barter, Mayhem Devil, Marionette Master, Disciple, Fangren, Molder Beast, Moriok Rigger and Summoning Station; each has a bounded evidence scope |
-| Named cards with an explicit unsupported gap | 1 | Akroma's unread Partner; this reviewed seed is not an exhaustive list of unsupported cards |
-| Intersection of the previous two rows | 0 | Closing one specific observer gap does not certify its other interactions |
+| Named cards with scoped regression evidence | 18 | Current manifest names, including Converter Beast; each has a bounded evidence scope |
+| Named cards with an explicit unsupported gap | 3 | Akroma and Ich-Tekik Partner, and Clay-Fired Bricks search ETB; this is not an exhaustive gap list |
+| Intersection of the previous two rows | 2 | Scoped behavior evidence does not certify other interactions |
 | Recorded whole-card certificates | 0 | No whole-card reviews have been issued |
 | Remaining whole-card reviews | 28,729 | The initial certification backlog, not a count of broken cards |
 
