@@ -362,7 +362,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
                 'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
                 'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
-                'optional_source_counter' => 'choose whether to put a +1/+1 counter on '.$game->choiceAwaiting()['label'],
+                'optional_source_counter' => 'choose whether to put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on '.$game->choiceAwaiting()['label'],
                 'optional_death_draw' => 'choose whether to draw a card',
                 'optional_basic_land_search' => 'choose whether to search for a basic land',
                 'optional_life_gain' => 'choose whether to gain 5 life',
@@ -714,7 +714,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             case 'optional_source_counter':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'accept'))->setLabel('Put a +1/+1 counter'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'accept'))->setLabel('Put a '.($optional['counterKind'] ?? '+1/+1').' counter'))
                     ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'decline'))->setLabel('Decline')));
                 break;
 
@@ -913,7 +913,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
             'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
             'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
-            'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a +1/+1 counter on this creature. Only the original battlefield incarnation can receive it; this does not target.',
+            'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on this permanent. Only the original battlefield incarnation can receive it; this does not target.',
             'optional_death_draw' => '**'.$game->choiceAwaiting()['label'].'**: you may draw a card. This does not target a player; declining does not draw.',
             'optional_basic_land_search' => '**'.$game->choiceAwaiting()['label'].'**: search for a basic land to enter tapped, then shuffle, or decline without searching or shuffling. If you search, you may fail to find.',
             'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',

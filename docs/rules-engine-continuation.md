@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Khalni Heart Expedition milestone](khalni-expedition-quest-search.md) adds optional quest-counter landfall and paid three-counter/self-sacrifice searches for up to two tapped basics. Schema 16 records named optional counters and migrates legacy +1/+1 choices. Current scoped ledger: 30 names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
 The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.
 
 The [Burnished Hart search milestone](burnished-hart-land-search.md) adds explicit selection of zero, one or two basics after a paid cast and paid self-sacrifice, with tapped entry and one final shuffle. The ledger now has 28 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
