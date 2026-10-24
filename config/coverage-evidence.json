@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "d672c21193109bed9cabf9bceff886893d181822",
+  "engineSource": "6c9f0dd25db9e113501fcce8a26a8b6b6c67fd91",
   "validation": {
-    "source": "f421f621273e9ca7a5b565039fc77cf93d0ee347",
-    "evidenceMeaning": "Test-only Den Protector combat boundary evidence on the existing complete pinned DTK printing. Production runtime unchanged from d672c21193109bed9cabf9bceff886893d181822; no reproduced engine defect, whole-card certificate or new recognition measurement.",
-    "local": "20 focused tests/468 assertions/0.280sec32MiB; adjacent123/5324/6.395sec44MiB6.681secwall passed.30sec process-tree caps512MiB/Xdebugoff/emptydata/tasklocaltemp. Negative control temporarily disabling the lesser-power restriction:10tests202assertions6expected failures;4face-down/blank-copy controls passed. Runtime restored byte-for-byte and focused suite passed. Single-file nonmutating Pint and diffcheck passed. Ledger18tests37assertions and181pool inventory20scoped/3gaps/2overlaps/0whole-cardcertificates passed; inventory0.822secwall.",
-    "ci": "This final metadata head requires its own exact full Pint/PHPUnit PHP8.3/8.4/8.5 CI before merge. Prior unchanged production runtime full1651/50739/2expected rental-data skips passed atda028e54019dd800b4ac5aa095da43b96a4d7d29 in65.660sec222MiB; those results exclude these20newcases."
+    "source": "6c9f0dd25db9e113501fcce8a26a8b6b6c67fd91",
+    "evidenceMeaning": "Complete existing pinned LCI Clay-Fired Bricks entry now uses the existing resumable tutor choice with combined Basic-land and Plains-subtype filter. Paid casting/search/reveal/shuffle/gain and front-to-craft evidence; no whole-card certificate or fresh aggregate recognition measurement.",
+    "local": "Baseline2e3279adb9de3735d7df44c132392a0600620832:4tests28assertions4failures because paid artifact entered without its entry trigger. Final23focused419assertions0.348s34MiB;adjacent474/8826/15.306s86MiB15.625swall;nonmutatingPint4/diffcheck passed.30sec process-tree caps512MiB/Xdebugoff/emptydata/tasklocaltemp. Ledger18tests37assertions passed;181-pool inventory passed0.694s wall:20scoped names2explicit gaps1overlap0whole-card certificates;47normalized PHP pins verified. Full offline suite pending after metadata.",
+    "ci": "Final exact-head fullPint/PHPUnit PHP8.3/8.4/8.5 required before merge."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
+    "src/MTGPocket/Game/TextParser.php": "41e47d0d637ff133d5876c8e1d1dccdd50eb824fd93ddd2bb726cec2c50997fb",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "286e47772a142f3a28d684cc5a4cadf523bf36a018f94c9576a0f359dad05f36",
+    "src/MTGPocket/Game/Game.php": "a71ac47616814fc0642c09076a336f75ca03bae7966a1e50e46f1c988331a935",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -57,12 +57,13 @@
     "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667",
     "tests/Game/JovenBurialCountersTest.php": "760b251bc2c88b06636f8aee91e3f43e80ea0a4b105a83a30bfbe3727c3278bc",
     "tests/Game/JovenArtifactControlTest.php": "1374fc7fb1d29419812cc1a85f8633aa394fde5e0a57539256988ef20f45593c",
-    "tests/Game/TransformedArtifactBurialValueTest.php": "e13f41a03e8e750a31e709f43619f73c3992eb92bf413c42a2d2f09ddd37143d",
+    "tests/Game/TransformedArtifactBurialValueTest.php": "2eb255d6cc417fd5277aef838fdafd05ebea7bf3454712a221a2bac8c672b02a",
     "tests/Game/IncubatorTokenIdentityTest.php": "48594eea0c7189bb225154e0ba4b6a22cb7cb57dfdbf12af2885b6db084ad107",
     "tests/Game/TransformingTokenCopyTest.php": "7e951aefd68cb3e9ef9429f68101f1947ff9fcab7a720af267ed4077543b2529",
     "tests/Game/FaceDownTokenCopyTest.php": "4d020d26a1252496bbcb3faf34a3ad2a6ac483f7b5a50a5abbd0780822b46d9e",
     "tests/Game/MegamorphTokenCopyTest.php": "0021407297bf72b7204b3b406180691aeaf27ccc7d3eb9c039bcc8be5380943b",
-    "tests/Game/DenProtectorCombatPowerTest.php": "6810637788db52771e9c422c83fd1091528e44834e74dedbc0aa13b78123030e"
+    "tests/Game/DenProtectorCombatPowerTest.php": "6810637788db52771e9c422c83fd1091528e44834e74dedbc0aa13b78123030e",
+    "tests/Game/ClayFiredBricksSearchTest.php": "019b75f76fc2b1d2ad7d64bfc1c87ec4cc418c1b66db1998228428568a904225"
   },
   "scopedEvidence": [
     {
@@ -426,14 +427,14 @@
         "Joven and Chandler",
         "Clay-Fired Bricks // Cosmium Kiln"
       ],
-      "scope": "Selected LCI full record, seeded front because its search ETB remains unread; actual paid craft, source and Smelt, both actors/observers/owners and JSON before/queued/after. Frozen pre-departure front mana value for unmerged transform layout, unchanged back printed cost. Paid Shatterstorm, direct sacrifice/exile/bounce unit routes, return-before-resolution; modal, face-down, copied single-face token, explicitly modeled transforming-token, merged-top and X unit controls.",
+      "scope": "Selected LCI full record, seeded front to isolate burial behavior; paid front entry is verified separately; actual paid craft, source and Smelt, both actors/observers/owners and JSON before/queued/after. Frozen pre-departure front mana value for unmerged transform layout, unchanged back printed cost. Paid Shatterstorm, direct sacrifice/exile/bounce unit routes, return-before-resolution; modal, face-down, copied single-face token, explicitly modeled transforming-token, merged-top and X unit controls.",
       "tests": [
         "tests/Game/TransformedArtifactBurialValueTest.php::testPaidCraftAndSmeltUseFrontManaValueOfDepartingTransformedArtifact",
         "tests/Game/TransformedArtifactBurialValueTest.php::testPaidBurialPreservesModalCopiedFaceMergedTokenAndXDistinctions",
         "tests/Game/TransformedArtifactBurialValueTest.php::testFaceDownManaValueIsZeroAndCreatureIsNotAnArtifact",
         "tests/Game/TransformedArtifactBurialValueTest.php::testCraftedBackFaceValueIsFrozenAcrossDepartureRoutesAndJson"
       ],
-      "limits": "No whole-card/newest-printing certificate. Clay front ETB remains unread and was not cast. Supporting characteristic fixtures, direct movements and both-face token flags do not prove actual copy creation or transforming-token lifecycle. Actual copy_token currently reads printed front; transformed token back definitions may lose token identity: separate source leads, not fixed here. General merged transforming, meld, copy/continuous/replacement/APNAP and other mana-value consumers remain unverified. No save schema, UI action or practice policy change."
+      "limits": "No whole-card/newest-printing certificate. This burial fixture seeds the front; the separate Clay entry milestone now verifies paid front casting/search. Supporting characteristic fixtures, direct movements and both-face token flags do not prove actual copy creation or transforming-token lifecycle. Actual copy_token currently reads printed front; transformed token back definitions may lose token identity: separate source leads, not fixed here. General merged transforming, meld, copy/continuous/replacement/APNAP and other mana-value consumers remain unverified. No save schema, UI action or practice policy change."
     },
     {
       "id": "transforming-incubator-token-identity",
@@ -516,6 +517,25 @@
       ],
       "scope": "Complete pinned DTK printing in both seats: paid face-up/morph/megamorph and synthetic copy paths; real turn progression; weaker/equal/greater current-power blockers; candidate and declaration agreement; invalid declarations preserve state; paid turn-up before/after blocks; paid Giant Growth on attacker/blocker; damage/player-life outcomes and JSON replay.",
       "limits": "Test-only evidence; existing engine passed without a production change. Simplified seeded blockers and synthetic copy spell. No full blocking, continuous-layer, graveyard, disguise/ward, general copy, live or whole-card certification."
+    },
+    {
+      "id": "clay-fired-bricks-search-entry",
+      "cards": [
+        "Clay-Fired Bricks // Cosmium Kiln"
+      ],
+      "tests": [
+        "tests/Game/ClayFiredBricksSearchTest.php::testPaidEntryOffersOnlyBasicPlainsAndResumesLifeGain",
+        "tests/Game/ClayFiredBricksSearchTest.php::testFailingToFindStillShufflesAndGainsLife",
+        "tests/Game/ClayFiredBricksSearchTest.php::testNoEligibleOrEmptyLibraryStillGainsLife",
+        "tests/Game/ClayFiredBricksSearchTest.php::testPaidRemovalDoesNotCancelEntryTrigger",
+        "tests/Game/ClayFiredBricksSearchTest.php::testPaidFrontThenCraftOnlyRunsTheBackEntryAbility",
+        "tests/Game/ClayFiredBricksSearchTest.php::testCounteredPaidSpellNeverSearchesOrGainsLife",
+        "tests/Game/ClayFiredBricksSearchTest.php::testUnpaidOrOpposingCastIsAtomic",
+        "tests/Game/ClayFiredBricksSearchTest.php::testExistingPracticeChoiceUsesTriggerControllerAfterControlChanges",
+        "tests/Game/ClayFiredBricksSearchTest.php::testUntestedBasicLandWordingsRemainUnread"
+      ],
+      "scope": "Complete pinned LCI record in both seats: paid1Wcast, queued entry trigger, choose one normal/Snow-Covered basic Plains or fail to find, revealed selected name in shared log, shuffle then gain2, noeligible/emptylibrary, JSON before/queued/during/after, source paid destruction/counterspell, wrongplayer/cost/zone/quality/overselection rejection, fixed triggercontroller after seeded controlchange, existing practice-choice API, and paid7craft/back-entry Gnomes without repeating front effects.",
+      "limits": "One pinned printing and basic Plains filter only. Simplified nonbasic/nonland/supporting spell/control fixtures; seeded craft material and lands. Nearby basic Island/mixed alternatives/snow-worded searches remain unread. No new choice schema, generic land-search rewrite, full tutor/copy/continuous-layer/whole-card/newest-printing or live certification."
     }
   ],
   "explicitUnsupported": [
@@ -526,13 +546,6 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
-    },
-    {
-      "id": "clay-fired-bricks-search-entry",
-      "cards": [
-        "Clay-Fired Bricks // Cosmium Kiln"
-      ],
-      "scope": "Pinned complete LCI record still has unread enters/search basic Plains/reveal/hand/shuffle/gain2 clause. Craft/back-face burial evidence seeds the front and does not claim its cast/entry path."
     }
   ],
   "nextFamily": {
@@ -547,7 +560,6 @@
       "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
     ],
     "deferred": [
-      "Clay-Fired Bricks search ETB",
       "Partner and commander deck rules",
       "Merged/modal/general copy layers and other factories",
       "General face-down and continuous/replacement/conditions/APNAP models",
