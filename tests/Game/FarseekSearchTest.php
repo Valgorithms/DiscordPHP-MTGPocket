@@ -77,6 +77,7 @@ final class FarseekSearchTest extends GameTestCase
         $this->resolveOne();
         $choice = $this->game->choiceAwaiting();
         $this->assertSame('look', $choice['type'] ?? null);
+        $this->assertFalse($choice['reveal']);
         $this->assertSame($actor, $choice['seat']);
         $this->assertSame($before['players'][$actor]['library'], $this->game->players[$actor]->library);
         $this->assertSame($before['shuffles'], $this->saved()['shuffles']);

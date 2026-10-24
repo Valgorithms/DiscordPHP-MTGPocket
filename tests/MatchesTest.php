@@ -605,6 +605,60 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
     }
 
+    public function testDiabolicTutorPanelRequiresAFindAndKeepsItsNameOffThePublicBoard(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = $selected = null;
+        $mana = [];
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source, &$selected, &$mana): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 4; $n++) {
+                $mana[] = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Swamp'), GameObject::BATTLEFIELD)->id;
+            }
+            $selected = $game->addCard($seat, [
+                'uuid' => 'private-tutor-find', 'name' => 'Hidden Search Fixture', 'manaCost' => '{1}{G}',
+                'type' => 'Creature — Bear', 'power' => '2', 'toughness' => '2', 'text' => null, 'colors' => ['G'],
+            ], GameObject::LIBRARY)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/diabolic-tutor-unrestricted-search.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        foreach ($mana as $id) {
+            $this->assertTrue($match->game->objects[$id]->tapped);
+        }
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $this->assertSame('look', $match->game->choiceAwaiting()['type']);
+        $this->assertFalse($match->game->choiceAwaiting()['may']);
+        $this->assertFalse($match->game->choiceAwaiting()['reveal']);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertStringContainsString('Put into your hand', json_encode(MatchMessageBuilder::actions($match, $player), JSON_THROW_ON_ERROR));
+        $before = $match->game->toArray();
+        $this->assertException(fn () => $panel->run($match->id, $other, 'take', [], [(string) $selected]), 'not looking');
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'take', [], []), 'Choose 1');
+        $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        [$match, $changed] = $panel->run($match->id, $player, 'take', [], [(string) $selected]);
+        $this->assertTrue($changed);
+        $this->assertSame(GameObject::HAND, $match->game->objects[$selected]->zone);
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$source]->zone);
+        $this->assertSame($before['shuffles'] + 1, $match->game->toArray()['shuffles']);
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertStringNotContainsString('Hidden Search Fixture', json_encode(MatchMessageBuilder::board($match), JSON_THROW_ON_ERROR));
+        $this->assertStringContainsString('Hidden Search Fixture', json_encode(MatchMessageBuilder::actions($match, $player), JSON_THROW_ON_ERROR));
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'take', [], [(string) $selected]), 'not looking');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
     /** @dataProvider optionalLifeOptions */
     public function testFarseekSearchPanelPersistsSelectionOrFailureToFind(string $option): void
     {

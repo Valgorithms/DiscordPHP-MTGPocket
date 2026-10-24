@@ -4942,7 +4942,7 @@ final class TextParser
         }
         // Rampant Growth / Evolving Wilds: mandatory search with a choice, including failure to find.
         if (preg_match('/^search your library for a basic land card, put (?:it|that card) onto the battlefield tapped, then shuffle$/i', $s)) {
-            return ['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped'];
+            return ['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped', 'reveal' => false];
         }
 
         // Spider-Bot: `… search your library for a basic land card, reveal it, then shuffle and put that card on top.`
@@ -4965,7 +4965,7 @@ final class TextParser
         }
         // The Harbingers: `… search your library for a Goblin card, reveal it, then shuffle and put that card on top.`
         if (preg_match('/^(?:you may )?search your library for an? (.+?) card, reveal it, then shuffle and put that card on top$/i', $s, $m) && ($filter = self::cardFilter($m[1])) !== null) {
-            return ['type' => 'tutor', 'filter' => $filter, 'to' => 'top'];
+            return ['type' => 'tutor', 'filter' => $filter, 'to' => 'top', 'reveal' => true];
         }
         // A tutor: `Search your library for a creature card, reveal it, put it into your hand, then shuffle.`
         // `… for a creature card with mana value 3 or less, …` and `… with power 2 or less, …`: as printed.
@@ -4975,7 +4975,7 @@ final class TextParser
                 $filter = ($filter === 'any' ? '' : "{$filter}&").['mana value' => 'mv', 'power' => 'pow', 'toughness' => 'tou'][strtolower($m[2])].'_'.(strtolower($m[4]) === 'less' ? 'le' : 'ge')."_{$m[3]}";
             }
 
-            return ['type' => 'tutor', 'filter' => $filter, 'to' => match (strtolower($m[5])) {
+            return ['type' => 'tutor', 'filter' => $filter, 'reveal' => stripos($s, ', reveal it, ') !== false, 'to' => match (strtolower($m[5])) {
                 'into your hand' => 'hand',
                 'onto the battlefield tapped' => 'tapped',
                 default => 'battlefield',
