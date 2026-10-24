@@ -13,8 +13,8 @@
   "validation": {
     "source": "e15f55eaf07f8467e7128bf662b57ff8f4abb660",
     "evidenceMeaning": "Scoped exact selected Joven temporary artifact-control activation; no save schema or practice initiation policy added. No aggregate functionality or whole-card claim.",
-    "local": "Baseline 8 tests /32 assertions /8 failures at be1ce6f. Focused 140 tests /2642 assertions in2.099sec; adjacent1148/20258 in19.458sec, five-file Pint and diff-check passed. Ledger18/37;181-pool inventory0.734sec wall:16scoped names/2gap names/1overlap/0whole-card certificates. Bounded8record scan0.613sec wall:7fullyreadable/1unread (Ich-Tekik Partner). Full offline and exact-head CI pending.",
-    "ci": "Pending exact final head."
+    "local": "Baseline 8 tests /32 assertions /8 failures at be1ce6f. Focused 140 tests /2642 assertions in2.099sec; adjacent1148/20258 in19.458sec, five-file Pint and diff-check passed. Ledger18/37;181-pool inventory0.734sec wall:16scoped names/2gap names/1overlap/0whole-card certificates. Bounded8record scan0.613sec wall:7fullyreadable/1unread (Ich-Tekik Partner). Full offline at603b1f77ca36d932ad2b313b51304037067ea31d:1539tests47313assertions2expected imported-rental-data skips57.275sec202MiB (57.639secwall),120sec treecap512MiB/Xdebugoff/emptydata/tasklocaltemp fresh10.44GiB.",
+    "ci": "Tested-head CI40049986438 at603b1f77ca36d932ad2b313b51304037067ea31d:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head CI checked separately before merge;all40runtime/testpins unchanged."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
