@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "5d58281e73e4d4c4bf04ec4964c0967966f68221",
+  "engineSource": "45f87f9aa5dba22203fb0f0265bc8c03aeff9d56",
   "validation": {
-    "source": "5d58281e73e4d4c4bf04ec4964c0967966f68221",
-    "evidenceMeaning": "Complete pinned M12 Diabolic Tutor paid2BB unrestricted search and public-board privacy; qualified explicit-reveal/no-reveal and reveal-to-top synthetic controls. Schema15 optional boolean reveal policy validates; legacy13-15 look saves without flag retain historical logging. Scoped evidence, no whole-card certificate or fresh recognition claim.",
-    "local": "Paid mandatory-search baseline4tests60assertionsPASS; paid privacy baseline2tests6assertions2failures publicboard disclosed found name. Focused31tests526assertions0.390s40MiB;adjacent732tests12756assertions22.023s120MiB22.369s wall;five-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Harness-only CardDefinition method/schemaVersion and assumed Farseek reveal expectation corrected; no extra engine fixes for those. Ledger18tests37assertions and existing181-pool inventory passed:27scoped names2Partner-gap names1overlap0whole-card certificates;55normalized PHP pins verified. Full offline target37eaa605259c44efda175336307293576570075d passed1936tests55336assertions2expected missing-imported-pool/rental skips; PHPUnit time 01:01.048, 262.00MiB;61.407s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.48GiB at2026-10-24T11:51:15.4311877Z. All55normalized PHP pins match the full-tested target. Exact tested-head CI passed.",
-    "ci": "Exact tested-head CI40091553953 at37eaa605259c44efda175336307293576570075d passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+    "source": "45f87f9aa5dba22203fb0f0265bc8c03aeff9d56",
+    "evidenceMeaning": "Complete pinned THS Burnished Hart paid cast and self-sacrifice, explicit up-to-two basic-land choice, tapped entry and one final shuffle. Existing tutor/look/take/practice/panel routes and schema15 reused; optional and other legacy wording unchanged. Scoped evidence only, no whole-card certificate or fresh recognition claim.",
+    "local": "Paid 3-mana cast plus 3-mana self-sacrifice baseline:4tests44assertions4failures, automatic search/no choice. Focused27tests499assertions0.524s38MiB; adjacent758tests13234assertions22.300s122MiB22.635s wall; six-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Panel harness expectations corrected to existing generic activation error and private action prompt; legacy Ramp Lite companion updated to choose explicitly. No extra runtime fixes for those test assumptions. Ledger18tests37assertions and existing181-pool inventory passed:28scoped names2Partner-gap names1overlap0whole-card certificates;56normalized PHP source pins verified. Full offline validation pending.",
+    "ci": "Exact tested/final CI pending; do not claim acceptance yet."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "9b1c99b6e1df586f60e95658949ac80a79360022d13b32ae556e0cc2e14d0392",
+    "src/MTGPocket/Game/TextParser.php": "05e7f2999fdab1386a383e32a273c78670349387689b4e2b911b0ca2ef76b663",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "08a8ad825616c80c2ca5a66be3210ac01d76b64815d2b9d2be9f83f336f0965f",
+    "src/MTGPocket/Game/Game.php": "2a084f48b9b320d29ca844604a4b4a7154482b454438cb0ba3d36535665832c4",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -36,17 +36,17 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "70a135a63017545f38289edc58e1992e5b69f45230659711e8c13e9379989578",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "3878638a21a771414c0843a0389131dae89b224942705ff5e5b585bf35b43ec5",
     "src/MTGPocket/Matches/PanelActions.php": "7a4bcb69b5d840281d3279688e0b227b20ba68409aad9bed49ba7741c173848a",
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "36a791316bb8c46db6a4f96b5ed4f3a247e9f73b612165cd7f3cf854d6f653fb",
+    "tests/MatchesTest.php": "611a9d1c49a3946305bc1ea0dba25fbf1f879161d062c2ccc5dd2911423260f1",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "08c59cf1554ab7221061f0af6e2f8f251c87e2bcdd6599c1f035a5d7c6c4f1d8",
+    "tests/Game/ModernCardTextTest.php": "c341ba44386ba0b40ad30b827dcec6348bb675febd38b57147de134cbf887429",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
@@ -71,7 +71,8 @@
     "tests/Game/FarseekSearchTest.php": "4ef27ac600cdd90c4d57820b7fb6191d1e34b31c735bca8307808f6a20a34bf1",
     "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57",
     "tests/Game/CultivateSearchTest.php": "da61027f3b6f0010b0e372742e7236aa2c2316cfea2b30801c6eb3380b3dd14f",
-    "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446"
+    "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446",
+    "tests/Game/BurnishedHartSearchTest.php": "dc06bc6b8dc5b2c056b193337c894c6b411898e40ca396372734caedb51abfcd"
   },
   "scopedEvidence": [
     {
@@ -694,6 +695,27 @@
       ],
       "scope": "Complete M12 UUID87ae0da5-88f9-503f-a3fc-48b02eca0dc0 normalized fixtureSHA2561b57f697a358559f870e1690fbfef69bc0d6ee50cdbf5f659bbd19551abdd1bb: both seats actual paid2BB cast, six card types eligible, mustfind when nonempty, empty/single-card libraries, one handmove/shuffle, wrongzone/opposing/overselect/otheraction atomic controls, unpaid/wrongcolor/opposing/countered casts, JSON/replay, originalcontroller/later-effect continuation, duplicate-name compression, existingpractice and persistedpanel. Nonrevealed find hidden from publicboard and retained in seat-attributed fullrecord; synthetic qualified reveal/no-reveal and reveal-to-top controls; optional boolean flag validation and legacy13-15 noflag compatibility.",
       "limits": "Existing saved look choices without reveal flag retain historical logging; privacy migration for those is not established. Supporting semantic and synthetic cards not independently certified. Existing duplicate-ID normalization unchanged; arbitrary libraries with more than25distinct eligible names/general selector paging not established. General search/replacement/APNAP/copy/continuous/newest-printing and whole-card certification remain separate. No live service/build/restart/deploy."
+    },
+    {
+      "id": "burnished-hart-land-search",
+      "cards": [
+        "Burnished Hart"
+      ],
+      "tests": [
+        "tests/Game/BurnishedHartSearchTest.php::testPaidCastAndSacrificeAllowZeroOneOrTwoFindsAndOneShuffle",
+        "tests/Game/BurnishedHartSearchTest.php::testTwoCopiesAreSelectableAndWrongSeatZoneTypeAndOverselectionAreAtomic",
+        "tests/Game/BurnishedHartSearchTest.php::testEmptyIneligibleAndSingleEligibleLibrariesStillShuffleOnce",
+        "tests/Game/BurnishedHartSearchTest.php::testUnpaidOpposingAndRepeatedActivationsLeaveStateUnchanged",
+        "tests/Game/BurnishedHartSearchTest.php::testQueuedAbilityKeepsOriginalControllerAndLaterEffectWaitsForSelection",
+        "tests/Game/BurnishedHartSearchTest.php::testCounteredCreatureNeverOffersAnActivationOrSearch",
+        "tests/Game/BurnishedHartSearchTest.php::testSnowAndWastesAreBasicLands",
+        "tests/Game/BurnishedHartSearchTest.php::testDuplicateNamesDoNotCrowdOutOtherChoicesAndPracticeUsesExistingRoute",
+        "tests/Game/BurnishedHartSearchTest.php::testOptionalAndOtherLegacyWordingsKeepTheirPolicy",
+        "tests/MatchesTest.php::testBurnishedHartPanelPersistsPaidSacrificeAndLandSelection",
+        "tests/Game/ModernCardTextTest.php::testBlockingLimitsHandSizeAndLandSearches"
+      ],
+      "scope": "Complete THS UUID62e2bb8a-2c0a-505c-8c47-7f0c2d08f49d normalized fixtureSHA25646b9c6b35fc83b400df52913d4aeeddaed85750df15f19f1a398abd1c283ec46: both seats pay3cast then3+self-sacrifice; explicitly find0/1/2basic lands including two same-name copies, tapped entry and one final shuffle; normal/snow/Wastes inclusion, nonbasic/basicnonland/opposinglibrary/hand/source exclusions; invalid actions atomic; empty/noeligible/singleeligible libraries; queued/pending/completed JSON/replay, frozen original ability controller and synthetic later effect; unpaid/opposing/repeated/countered-cast controls, duplicate-name selector compression, existing practice and persisted panels. Existing schema15/action families reused.",
+      "limits": "Only the exact mandatory up-to-two-basic-lands/tapped wording changes; optional/reveal/other-count/untapped legacy policies unchanged. Supporting and synthetic cards, source-control relocation and appended gain-life are contract probes, not independent card certificates. Existing duplicate-ID normalization unchanged. Arbitrary synthetic libraries with more than25distinct basic names/general selector paging, replacement/APNAP/copy/continuous rules, newest-printing and whole-card certification remain unverified. No sourcefetch/corpusscan/import/live/build/restart/deploy."
     }
   ],
   "explicitUnsupported": [
