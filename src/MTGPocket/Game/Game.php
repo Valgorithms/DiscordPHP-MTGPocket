@@ -6583,7 +6583,8 @@ final class Game
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
                 // `Whenever another creature you control enters, put a +1/+1 counter on it.`: the creature that entered.
                 ($effect['entering'] ?? false) => ['thatObject' => $context] + $effect,
-                ($effect['thatPlayer'] ?? false) => ['player' => $context] + $effect,
+                // `Whenever a player casts a noncreature spell, … that player.`: the spell's controller.
+                ($effect['thatPlayer'] ?? false) => ['player' => $event === 'any_cast_kind' ? ($this->objects[$context] ?? null)?->controller ?? $controller : $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
                 // Freeze battlefield mana value before movement resets the active face.

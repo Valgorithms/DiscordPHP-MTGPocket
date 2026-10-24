@@ -3219,6 +3219,12 @@ final class TextParser
             $event = 'creature_dies_other';
             $extra = ($match[2] === '' ? ['anyController' => true] : []) + ($match[1] !== '' ? ['nontoken' => true] : []);
             $text = $match[3];
+        } elseif (preg_match('/^Whenever a player casts an? (creature|noncreature|artifact|enchantment|instant or sorcery|multicolored) spell, (CARDNAME deals \w+ damage to that player|that player loses \w+ life)\.$/', $line, $match)
+            && ($effects = self::effects(str_replace('that player', 'target player', $match[2]))) !== null && count($effects) === 1 && ($effects[0]['target'] ?? null) === 'player') {
+            // Ruric Thar: `… CARDNAME deals 6 damage to that player.`: the caster, whoever it is; see Game::trigger().
+            $result['triggered'][] = ['text' => $line, 'event' => 'any_cast_kind', 'objectKind' => $match[1], 'effects' => [['thatPlayer' => true] + array_diff_key($effects[0], ['target' => true])]];
+
+            return true;
         } elseif (preg_match('/^Whenever a player casts (?:a spell|an? (creature|noncreature|artifact|enchantment|instant or sorcery|multicolored|[A-Z][a-z]+) spell|a spell with (mana value \d+ or (?:greater|less))), (.+)$/', $line, $match)
             && ! preg_match('/\b(that player|its controller|that spell|it)\b/', $match[3])) {
             // Any player's spell, the caster's own included; see Game::castSpell().
