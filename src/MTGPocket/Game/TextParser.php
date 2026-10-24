@@ -2162,6 +2162,14 @@ final class TextParser
         if (preg_match('/^can\'t be blocked by (white|blue|black|red|green|artifact) creatures$/', $text, $match)) {
             return [...$found, "can't be blocked by {$match[1]} creatures"];
         }
+        // Treetop Rangers: `can't be blocked except by creatures with flying`; `… by creatures with flying` without "except". Read by Game::canBlock().
+        if (preg_match('/^can\'t be blocked (except )?by creatures with (flying|reach|defender|flying or reach|horsemanship)$/', $text, $match)) {
+            return [...$found, ($match[1] !== '' ? 'blockable only by kw:' : "can't be blocked by kw:").str_replace(' or ', '|', $match[2])];
+        }
+        // `can't be blocked except by Walls`.
+        if (preg_match('/^can\'t be blocked except by ([A-Z][a-z]+s)$/', $text, $match) && ($type = self::subtypeOf($match[1])) !== null) {
+            return [...$found, "blockable only by sub:{$type}"];
+        }
         // Juggernaut: `can't be blocked by Walls`.
         if (preg_match('/^can\'t be blocked by ([A-Z][a-z]+s)$/', $text, $match) && ($type = self::subtypeOf($match[1])) !== null) {
             return [...$found, "can't be blocked by sub:{$type}"];
