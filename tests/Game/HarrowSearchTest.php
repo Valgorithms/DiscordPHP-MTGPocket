@@ -308,6 +308,61 @@ final class HarrowSearchTest extends GameTestCase
         }
     }
 
+    /** @dataProvider actors */
+    public function testManaSacrificesMustLeaveALandForTheAdditionalCost(int $actor): void
+    {
+        foreach ([1, 2] as $count) {
+            $this->prepare($actor);
+            $source = $this->game->addCard($actor, $this->fixture(), GameObject::HAND)->id;
+            $mana = [];
+            for ($n = 0; $n < $count; $n++) {
+                $name = 'Mana-sacrifice land fixture '.$n;
+                $symbols = $count === 1 ? '{G}{G}{G}' : '{G}{G}';
+                $mana[] = $this->game->addCard($actor, ['name' => $name, 'type' => 'Land', 'types' => ['Land'], 'text' => "{T}, Sacrifice {$name}: Add {$symbols}."], GameObject::BATTLEFIELD)->id;
+            }
+            $this->reject(fn () => $this->game->cast($actor, $source));
+            // A separate tapped land can pay the additional cost, but no mana.
+            $land = $this->lands($actor, 'Forest', 1)[0];
+            $this->game->objects[$land]->tapped = true;
+            $this->game->cast($actor, $source);
+            foreach ([...$mana, $land] as $id) {
+                $this->assertSame(GameObject::GRAVEYARD, $this->zone($id));
+            }
+            $this->assertSame(GameObject::STACK, $this->zone($source));
+        }
+    }
+
+    /** @dataProvider actors */
+    public function testInstantCanBePaidAndResolvedDuringOpponentsTurn(int $actor): void
+    {
+        $this->prepare($actor);
+        $this->passUntil(Step::PrecombatMain, $this->game->turn + 1);
+        $this->assertSame(1 - $actor, $this->game->active);
+        $this->game->pass(1 - $actor);
+        $land = $this->game->addCard($actor, self::card('Island'), GameObject::LIBRARY)->id;
+        $source = $this->castHarrow($actor);
+        $this->resolveOne();
+        $this->assertSame($actor, $this->game->choiceAwaiting()['seat']);
+        $this->game->take($actor, [$land]);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($land));
+        $this->assertFalse($this->game->objects[$land]->tapped);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
+    }
+
+    /** @dataProvider actors */
+    public function testAlternativeManaPlanReservesLandInsteadOfConsumingBoth(int $actor): void
+    {
+        $this->prepare($actor);
+        $source = $this->game->addCard($actor, $this->fixture(), GameObject::HAND)->id;
+        $small = $this->game->addCard($actor, ['name' => 'Small mana land fixture', 'type' => 'Land', 'types' => ['Land'], 'text' => '{T}, Sacrifice Small mana land fixture: Add {G}.'], GameObject::BATTLEFIELD)->id;
+        $large = $this->game->addCard($actor, ['name' => 'Flexible mana land fixture', 'type' => 'Land', 'types' => ['Land'], 'text' => '{T}, Sacrifice Flexible mana land fixture: Add three mana of any one color.'], GameObject::BATTLEFIELD)->id;
+        $this->game->cast($actor, $source);
+        $this->assertSame(GameObject::STACK, $this->zone($source));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($small));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($large));
+        $this->assertSame(0, $this->game->players[$actor]->manaPool->total());
+    }
+
     public static function actors(): array
     {
         return [[0], [1]];

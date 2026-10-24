@@ -1936,13 +1936,34 @@ final class Game
         // `Spend this mana only to cast a creature spell.`: such sources pay only for a spell of that type; see payFor().
         $this->spending = $this->objects[$id];
         try {
-            return $this->spellPayment($seat, $id, $x, $options, $wardMana, $wardLife, $targets);
+            $payment = $this->spellPayment($seat, $id, $x, $options, $wardMana, $wardLife, $targets);
+            $card = $this->objects[$id]->printed();
+            if ($payment === null || (self::castOptions($options)['faceDown']) || $card->additionalCost !== 'sacrifice_land') {
+                return $payment;
+            }
+            $lands = array_map(fn (GameObject $o) => $o->id, array_filter($this->permanents($seat), fn (GameObject $o) => $o->definition()->isLand()));
+            if ($lands === []) {
+                return $this->orPayKeyword($card) !== null ? $payment : null;
+            }
+            $consumed = array_filter($payment['tap'], fn (int $source) => $this->objects[$source]->definition()->manaAbility['sacrifice'] ?? false);
+            if (array_diff($lands, $consumed) !== []) {
+                return $payment;
+            }
+            // Mana cannot sacrifice the last land needed for the additional cost.
+            // Try reserving each land; other legal mana sources may still pay.
+            foreach ($lands as $land) {
+                if (($payment = $this->spellPayment($seat, $id, $x, $options, $wardMana, $wardLife, $targets, [$land])) !== null) {
+                    return $payment;
+                }
+            }
+
+            return null;
         } finally {
             $this->spending = null;
         }
     }
 
-    private function spellPayment(int $seat, int $id, int $x, array $options, string $wardMana, int $wardLife, ?array $targets): ?array
+    private function spellPayment(int $seat, int $id, int $x, array $options, string $wardMana, int $wardLife, ?array $targets, array $without = []): ?array
     {
         $options = self::castOptions($options);
         $tax = $this->objects[$id]->zone === GameObject::COMMAND ? $this->commanderTax($id) : 0;
@@ -2023,14 +2044,14 @@ final class Game
             $generic = max(0, (ManaCost::parse($cost)->payments($x)[0]['mana']['generic'] ?? 0) + $tax);
             $cards = count(array_diff($this->players[$seat]->graveyard, [$id]));
             for ($delve = min($generic, $cards); $delve > 0; $delve--) {
-                $payment = $this->payFor($seat, $cost, $wardLife, [], $x, $tax - $delve, $convoke, $improvise);
+                $payment = $this->payFor($seat, $cost, $wardLife, $without, $x, $tax - $delve, $convoke, $improvise);
                 if ($payment !== null) {
                     return $payment + ['delve' => $delve];
                 }
             }
         }
 
-        return $this->payFor($seat, $cost, $wardLife, [], $x, $tax, $convoke, $improvise);
+        return $this->payFor($seat, $cost, $wardLife, $without, $x, $tax, $convoke, $improvise);
     }
 
     /**
