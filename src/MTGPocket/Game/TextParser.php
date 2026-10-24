@@ -1992,6 +1992,7 @@ final class TextParser
             // `as long as you have 5 or less life`, `… you've cast two or more spells this turn`, `… you have more life than each opponent`.
             (bool) preg_match('/^you have (\w+) or less life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life_le {$n}",
             (bool) preg_match('/^you(?:\'ve)? cast (\w+) or more spells this turn$/', $text, $m) && is_int($n = self::amount($m[1])) => "spells_cast {$n}",
+            $text === 'two or more nonland permanents entered the battlefield under your control this turn' => 'celebration',
             $text === 'you have more life than each opponent' => 'life_lead',
             $text === 'an opponent has more life than you' => 'life_behind',
             (bool) preg_match('/^you control no other (artifacts|enchantments)$/', $text, $m) => 'no_other '.ucfirst(rtrim($m[1], 's')),
@@ -3539,7 +3540,7 @@ final class TextParser
      */
     private static function interveningIf(string $text): ?array
     {
-        if (! preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no (?:other )?creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater|you have (?<lifeLe>\\w+) or less life|you have more life than each opponent|you control no other (?<noOther>artifacts|enchantments)|you(?:'ve)? cast (?<spells>\\w+) or more spells this turn), (?<rest>.+)$/", $text, $match)) {
+        if (! preg_match("/^if (CARDNAME isn't prepared|you control three or more creatures with different powers|you control (\\w+) or more lands|(\\w+) or more creatures died this turn|an opponent has more cards in hand than you|you gained (\\w+) or more life this turn|you gained life this turn|a creature died this turn|you attacked this turn|CARDNAME attacked this turn|an opponent lost life this turn|you have (\\w+) or more life|you control an? (artifact|enchantment|[A-Z][a-z]+)|you control (\\w+) or more (creatures|artifacts|enchantments)|you have (\\w+) or more cards in your graveyard|you have (no|one or fewer|two or fewer) cards in hand|it's not your turn|it's your turn|you've cast a noncreature spell this turn|CARDNAME is tapped|CARDNAME is untapped|a nonland permanent left the battlefield this turn or a spell was warped this turn|you control no (?:other )?creatures|an opponent controls more (?:lands|creatures) than you|an opponent has more life than you|you control another (?<other>artifact|enchantment|creature|[A-Z][a-z]+)|you control (?<count>\\w+) or more other (?<others>creatures|artifacts|[A-Z][a-z]+)|an opponent controls an? (?<theirs>creature with flying|artifact|enchantment|[A-Z][a-z]+)|you attacked with (?<attackers>\\w+) or more creatures this (?:combat|turn)|you control a creature with power (?<power>\\w+) or greater|you have (?<lifeLe>\\w+) or less life|you have more life than each opponent|you control no other (?<noOther>artifacts|enchantments)|you(?:'ve)? cast (?<spells>\\w+) or more spells this turn|two or more nonland permanents entered the battlefield under your control this turn), (?<rest>.+)$/", $text, $match)) {
             return null;
         }
         $if = match (true) {
@@ -3566,6 +3567,8 @@ final class TextParser
             $match[1] === 'an opponent controls more lands than you' => 'lands_behind',
             $match[1] === 'an opponent controls more creatures than you' => 'creatures_behind',
             $match[1] === 'an opponent has more life than you' => 'life_behind',
+            // Celebration: `if two or more nonland permanents entered the battlefield under your control this turn`.
+            $match[1] === 'two or more nonland permanents entered the battlefield under your control this turn' => 'celebration',
             $match[1] === 'you have more life than each opponent' => 'life_lead',
             // `if you have 10 or less life`.
             ($match['lifeLe'] ?? '') !== '' => 'life_le '.self::amount($match['lifeLe']),
