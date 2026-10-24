@@ -1989,6 +1989,12 @@ final class TextParser
             $text === "it's enchanted" => 'enchanted',
             $text === "it's equipped" => 'equipped',
             $text === 'you control no other creatures' => 'alone',
+            // `as long as you have 5 or less life`, `… you've cast two or more spells this turn`, `… you have more life than each opponent`.
+            (bool) preg_match('/^you have (\w+) or less life$/', $text, $m) && is_int($n = self::amount($m[1])) => "life_le {$n}",
+            (bool) preg_match('/^you(?:\'ve)? cast (\w+) or more spells this turn$/', $text, $m) && is_int($n = self::amount($m[1])) => "spells_cast {$n}",
+            $text === 'you have more life than each opponent' => 'life_lead',
+            $text === 'an opponent has more life than you' => 'life_behind',
+            (bool) preg_match('/^you control no other (artifacts|enchantments)$/', $text, $m) => 'no_other '.ucfirst(rtrim($m[1], 's')),
             default => null,
         };
     }
