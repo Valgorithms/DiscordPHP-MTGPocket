@@ -6487,6 +6487,8 @@ final class Game
             'life' => $this->players[$controller]->life >= (int) $n,
             'your_turn' => $this->active === $controller,
             'opponent_turn' => $this->active !== $controller,
+            'your_upkeep' => $this->active === $controller && $this->step === Step::Upkeep,
+            'upkeep' => $this->step === Step::Upkeep,
             'combat' => in_array($this->step, [Step::BeginCombat, Step::DeclareAttackers, Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage, Step::EndCombat], true),
             'before_blockers' => in_array($this->step, [Step::Untap, Step::Upkeep, Step::Draw, Step::PrecombatMain, Step::BeginCombat, Step::DeclareAttackers], true),
             'attacked' => $this->players[$controller]->attackedTurn === $this->turn,
