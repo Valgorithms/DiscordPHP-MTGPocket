@@ -12,9 +12,9 @@
   "engineSource": "d673840a53c5ccffa1b4543b551b45a4378c714d",
   "validation": {
     "source": "d673840a53c5ccffa1b4543b551b45a4378c714d",
-    "evidenceMeaning": "Scoped complete selected MBC Joven and Chandler artifact-burial mana-value source counters. Separate temporary-control/untap/haste activation stays unread. No whole-card/newest-printing or aggregate functionality claim. Full offline and exact-head CI pending.",
-    "local": "Baseline8failures/40assertions at612f163. Focused55tests/1188assertions in0.709sec;1109adjacent/19605assertions in17.732sec. FourfilePint/diffcheck passed. Ledger18/37;181pool inventory0.742secwall16scoped3explicitgap2overlap0wholecertificates. Targeted8records0.635secwall6fullyreadable2unread;Joven retains separate temporary-control activation. Full offline and CI pending.",
-    "ci": "Pending; no CI success claimed."
+    "evidenceMeaning": "Scoped complete selected MBC Joven and Chandler artifact-burial mana-value source counters. Separate temporary-control/untap/haste activation stays unread. No whole-card/newest-printing or aggregate functionality claim. Full offline and tested-head CI passed; final metadata-head CI verified separately before merge.",
+    "local": "Baseline8failures/40assertions at612f163. Focused55tests/1188assertions in0.709sec;1109adjacent/19605assertions in17.732sec. FourfilePint/diffcheck passed. Ledger18/37;181pool inventory0.742secwall16scoped3explicitgap2overlap0wholecertificates. Targeted8records0.635secwall6fullyreadable2unread;Joven retains separate temporary-control activation. Full offline and CI pending. Full offline at 3c99e265267fcc780a69ef3b0eaf09b928fed7de:1500tests/46660assertions/2expected imported-rental-data skips,57.438sec198MiB (57.758secwall),120sec process-treecap512MiB/Xdebugoff/emptydata/tasklocaltemp afterfresh12.26GiB.",
+    "ci": "Tested-head CI40045341825 at3c99e265267fcc780a69ef3b0eaf09b928fed7de:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head CI checked separately before merge;all39runtime/testpins unchanged."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "bf5e5d2d7fb120975aaabbce1b2ee92563da2a0ea36089dc25111ebb24d7c401",
