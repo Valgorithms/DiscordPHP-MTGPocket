@@ -3284,7 +3284,7 @@ final class TextParser
             $text = "CARDNAME deals {$match[1]} damage to each opponent";
         }
         // `Whenever CARDNAME attacks, defending player loses 1 life.`: with two players, the opponent.
-        if (in_array($event, ['attacks', 'creature_attacks', 'creature_attacks_other'], true) && self::effects($text) === null && preg_match('/^defending player (discards|loses|mills|sacrifices) /', $text)) {
+        if (in_array($event, ['attacks', 'attacks_alone', 'creature_attacks', 'creature_attacks_other', 'creature_attacks_alone', 'blocked', 'blocked_by_creature', 'creature_becomes_blocked'], true) && self::effects($text) === null && preg_match('/^defending player (discards|loses|mills|sacrifices) /', $text)) {
             $text = 'each opponent '.substr($text, strlen('defending player '));
         }
         // `Whenever CARDNAME attacks, it deals 1 damage to defending player.`
