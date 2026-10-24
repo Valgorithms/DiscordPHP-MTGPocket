@@ -2808,9 +2808,10 @@ final class TextParser
             }
 
             return true;
-        } elseif (preg_match('/^Whenever a creature an opponent controls dies, (.+)$/', $line, $match)) {
+        } elseif (preg_match('/^Whenever a (nontoken )?creature an opponent controls dies, (.+)$/', $line, $match)) {
             $event = 'creature_dies_any';
-            $text = $match[1];
+            $extra = $match[1] !== '' ? ['nontoken' => true] : [];
+            $text = $match[2];
         } elseif (preg_match('/^When you cycle CARDNAME, (.+)$/', $line, $match)) {
             $event = 'cycled';
             $text = $match[1];
