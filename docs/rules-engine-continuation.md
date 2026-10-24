@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Burnished Hart search milestone](burnished-hart-land-search.md) adds explicit selection of zero, one or two basics after a paid cast and paid self-sacrifice, with tapped entry and one final shuffle. The ledger now has 28 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
+
 The [Diabolic Tutor reveal-policy milestone](diabolic-tutor-unrestricted-search.md) verifies paid unrestricted searches and keeps an unrevealed find off the public board while preserving explicit reveal controls. The ledger now has 27 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition remains historical; pending legacy choices without the optional flag retain their old logging policy.
 
 The [Cultivate split-search milestone](cultivate-split-search.md) adds paid selection of up to two basics, reveal, a destination choice for two, tapped battlefield/hand split and one final shuffle. Schema15 validates both split stages while ordinary13/14 look saves remain readable; optional legacy wording is unchanged. Current ledger: 26 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
