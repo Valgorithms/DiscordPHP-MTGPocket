@@ -13,8 +13,8 @@
   "validation": {
     "source": "a26d6112bb885ea7f5d1db6548c7280bb4d8124f",
     "evidenceMeaning": "Scoped paid Converter Beast incubate/transform/departure identity and existing Joven zero-mana-value burial. No parser recognition change, aggregate functionality or whole-card certificate.",
-    "local": "Committed baseline3b2b1d7dab7995d6c90ee2cec54f6f9e1a537edf:8tests208assertions8failures, transformed Incubator retained in graveyard. Final34focused/934assertions0.613sec; adjacent1202/21534/24.385sec under30sec process-tree caps,512MiB/Xdebugoff/emptydata. Two-file Pint/diffcheck passed. Full suite and refreshed ledger verification pending.",
-    "ci": "Final exact-head full Pint/PHPUnit matrix must pass before merge; initial regression-only head is expected to fail. No live-service checks."
+    "local": "Baseline3b2b1d7dab7995d6c90ee2cec54f6f9e1a537edf:8tests208assertions8failures/1.001sec. Final34focused/934assertions0.613sec; adjacent1202/21534/24.385sec under30sec process-tree caps; two-file Pint/diffcheck;ledger18/37;181-pool inventory1.969secwall,18scoped3gaps2overlaps0whole certificates. Full offline at2664341e52a009f07c8833e328abf211b3a6d9d3:1593tests48589assertions2expected imported-rental-data skips72.137sec212MiB/72.609secwall,120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp after fresh8.26GiB.",
+    "ci": "Tested-head CI40058704977 at2664341e52a009f07c8833e328abf211b3a6d9d3 passed all PHP8.3/8.4/8.5 full Pint/PHPUnit; REST run/jobs/artifacts saved,zero artifacts expected. Final metadata head must pass its own exact CI before merge;42PHPpins match full-tested head."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
