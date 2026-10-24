@@ -1,0 +1,28 @@
+{
+  "setCode": "M12",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "9c3514e4-85a9-5c7f-9a10-fe160bc6dc35",
+    "name": "Solemn Simulacrum",
+    "number": "217",
+    "rarity": "rare",
+    "colors": [],
+    "manaValue": 4,
+    "type": "Artifact Creature — Golem",
+    "scryfallId": "246d2ce1-6926-4acc-810a-4894dc346b8b",
+    "manaCost": "{4}",
+    "types": [
+      "Artifact",
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Golem"
+    ],
+    "power": "2",
+    "toughness": "2",
+    "text": "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card.",
+    "layout": "normal",
+    "colorIdentity": []
+  }
+}

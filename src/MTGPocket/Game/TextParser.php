@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Solemn Simulacrum's self-death draw is optional at resolution.
+        if ($line === 'When CARDNAME dies, you may draw a card.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'dies',
+                'effects' => [['type' => 'optional_death_draw']]];
+
+            return true;
+        }
         // Exact source-counter wording; bind the artifact's battlefield mana value before movement changes its face.
         if ($line === "Whenever an artifact is put into a graveyard from the battlefield, put a number of +1/+1 counters equal to that artifact's mana value on CARDNAME.") {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',

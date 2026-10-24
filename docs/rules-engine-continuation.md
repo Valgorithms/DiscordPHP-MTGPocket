@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Solemn Simulacrum death-draw milestone](solemn-optional-death-draw.md) adds explicit accept/decline, original-controller continuation, version13 save validation, persisted panels and practice empty-library policy. Its entry basic-land search remains unread. The ledger has21scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; aggregate recognition remains historical.
+
 The [Clay-Fired Bricks entry milestone](clay-fired-bricks-search-entry.md) removes its explicit unread search gap and adds paid front search/reveal/shuffle/gain, negative choices, JSON and front-to-craft evidence. The ledger remains20unique scoped names, with2explicit-gap names,1overlap and zero whole-card certificates. Historical aggregate recognition is unchanged; the selected complete LCI record now parses without unread clauses.
 
 The [Den Protector combat milestone](den-protector-combat-power.md) adds test-only evidence for paid current-power blocking boundaries, response timing, damage and JSON replay. Existing production behavior passed; no engine defect or runtime change is claimed. The ledger remains20scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition is unchanged.

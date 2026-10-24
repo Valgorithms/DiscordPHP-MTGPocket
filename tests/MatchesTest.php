@@ -606,6 +606,64 @@ final class MatchesTest extends PocketTestCase
     }
 
     /** @dataProvider optionalLifeOptions */
+    public function testOptionalDeathDrawPanelPersistsAndRejectsWrongOrRepeatedAnswers(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = $smelt = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source, &$smelt): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 4; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Plains'), GameObject::BATTLEFIELD);
+            }
+            $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/solemn-simulacrum-optional-draw.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/artifact-burial-smelt.json'), true, flags: JSON_THROW_ON_ERROR);
+            $smelt = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        for ($n = 0; $match->game->stack !== [] && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$source]->zone);
+        // Target selection uses the same persisted public panel actions as ordinary matches.
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $smelt]);
+        [$match] = $panel->run($match->id, $player, 'tgt', [], ['o:'.$source]);
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_death_draw', $choice['type']);
+        $this->assertStringContainsString('choose whether to draw a card', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Draw a card', $json);
+        $this->assertStringContainsString('This does not target a player', $json);
+        $this->assertStringContainsString('Decline', $json);
+        $this->assertStringContainsString('maydraw:'.$choice['id'].':accept', $json);
+        $this->assertStringNotContainsString('maydraw:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, (string) $choice['id'], $option], [$player, (string) ($choice['id'] + 1), $option], [$player, (string) $choice['id'], 'both']] as [$actor, $choiceId, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'maydraw', [$choiceId, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'maydraw', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $this->assertCount(count($before['players'][$seat]['hand']) + ($option === 'accept' ? 1 : 0), $match->game->players[$seat]->hand);
+        $this->assertSame($before['players'][1 - $seat]['hand'], $match->game->players[1 - $seat]->hand);
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'maydraw', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    /** @dataProvider optionalLifeOptions */
     public function testOptionalLifeGainPanelPersistsAndRejectsWrongOrRepeatedAnswers(string $option): void
     {
         $match = $this->startMatch();
