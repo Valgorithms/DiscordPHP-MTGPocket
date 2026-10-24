@@ -9519,7 +9519,7 @@ final class Game
     }
 
     /**
-     * Answers an optional basic-land entry search for its original controller.
+     * Answers an optional basic-land search trigger for its original controller.
      * Declining does not search or shuffle; accepting reuses the ordinary tutor choice.
      *
      * @param int    $seat
