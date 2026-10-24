@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "a26d6112bb885ea7f5d1db6548c7280bb4d8124f",
+  "engineSource": "4c547d4d033b779f49d058c37410c7fc4cb7d848",
   "validation": {
-    "source": "a26d6112bb885ea7f5d1db6548c7280bb4d8124f",
-    "evidenceMeaning": "Scoped paid Converter Beast incubate/transform/departure identity and existing Joven zero-mana-value burial. No parser recognition change, aggregate functionality or whole-card certificate.",
-    "local": "Baseline3b2b1d7dab7995d6c90ee2cec54f6f9e1a537edf:8tests208assertions8failures/1.001sec. Final34focused/934assertions0.613sec; adjacent1202/21534/24.385sec under30sec process-tree caps; two-file Pint/diffcheck;ledger18/37;181-pool inventory1.969secwall,18scoped3gaps2overlaps0whole certificates. Full offline at2664341e52a009f07c8833e328abf211b3a6d9d3:1593tests48589assertions2expected imported-rental-data skips72.137sec212MiB/72.609secwall,120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp after fresh8.26GiB.",
-    "ci": "Tested-head CI40058704977 at2664341e52a009f07c8833e328abf211b3a6d9d3 passed all PHP8.3/8.4/8.5 full Pint/PHPUnit; REST run/jobs/artifacts saved,zero artifacts expected. Final metadata head must pass its own exact CI before merge;42PHPpins match full-tested head."
+    "source": "4c547d4d033b779f49d058c37410c7fc4cb7d848",
+    "evidenceMeaning": "Scoped paid copy effect applied to complete selected Converter Beast incubate/transform path; active-face token entry and zero-counter death. Synthetic copy spell and characteristic units do not certify a printed copy card. No parser/corpus recognition or aggregate functionality claim.",
+    "local": "Baselineba2100b1aa0b4cd595bb85169e60c6b44a5a5b4d:4tests84assertions4failures,0.111sec; copies stayed front-face artifacts on battlefield. Final22focused/620assertions0.305sec; adjacent1224/22154/21.676sec under30sec process-tree caps;two-file Pint/diffcheck. Ledger/inventory/full verification pending.",
+    "ci": "Final exact-head fullPint/PHPUnit matrix required before merge; no live verification."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "fcf20eac22a88a0de5ec0f70ea114c3b7c7edcca462a8eb29d75f0bc504d2615",
+    "src/MTGPocket/Game/Game.php": "aef8e4e3f04964870c28a96ed2e1debf64a40b1faf7975df415acf3793fcc794",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -58,7 +58,8 @@
     "tests/Game/JovenBurialCountersTest.php": "760b251bc2c88b06636f8aee91e3f43e80ea0a4b105a83a30bfbe3727c3278bc",
     "tests/Game/JovenArtifactControlTest.php": "1374fc7fb1d29419812cc1a85f8633aa394fde5e0a57539256988ef20f45593c",
     "tests/Game/TransformedArtifactBurialValueTest.php": "e13f41a03e8e750a31e709f43619f73c3992eb92bf413c42a2d2f09ddd37143d",
-    "tests/Game/IncubatorTokenIdentityTest.php": "48594eea0c7189bb225154e0ba4b6a22cb7cb57dfdbf12af2885b6db084ad107"
+    "tests/Game/IncubatorTokenIdentityTest.php": "48594eea0c7189bb225154e0ba4b6a22cb7cb57dfdbf12af2885b6db084ad107",
+    "tests/Game/TransformingTokenCopyTest.php": "7e951aefd68cb3e9ef9429f68101f1947ff9fcab7a720af267ed4077543b2529"
   },
   "scopedEvidence": [
     {
@@ -445,6 +446,22 @@
       ],
       "scope": "Complete pinned MOM Converter Beast, paid four-mana cast, entry/incubate5, paid two-mana transform and paid Smelt across eight actor/observer/caster cases. Same incarnation, five counters,5/5 active back, zero mana value, GONE with no graveyard membership and Joven zero-amount burial triggers. JSON queued entry/activation/Smelt/departure triggers and deterministic replay. Supporting ordinary-card/front-token/back-marker, both controllers, all four departure destinations, creature/nontoken observer and zero-toughness state-based controls.",
       "limits": "Exact Incubator identity/lifecycle only. Direct movement/control/counter manipulation and synthetic observers/ordinary-card definitions are identified unit controls. Token copying from transformed/merged permanents, generic face-down/copy/continuous/replacement/APNAP and whole-card certification remain separate. No new state schema, UI/practice policy, environment contract or live verification."
+    },
+    {
+      "id": "unmerged-transforming-token-copy-face",
+      "cards": [
+        "Converter Beast"
+      ],
+      "tests": [
+        "tests/Game/TransformingTokenCopyTest.php::testPaidCopyOfTransformedIncubatorEntersAsBackAndDiesWithoutCopiedCounters",
+        "tests/Game/TransformingTokenCopyTest.php::testPaidCopyOfFrontIncubatorRetainsBothFacesButDoesNotCopyCounters",
+        "tests/Game/TransformingTokenCopyTest.php::testPaidCopyUsesActiveFaceForEntryAndRetainsTransformingCardCharacteristics",
+        "tests/Game/TransformingTokenCopyTest.php::testPaidCopyUsesFaceAtResolutionAfterPaidTransformInResponse",
+        "tests/Game/TransformingTokenCopyTest.php::testRemovedIncubatorTargetProducesNoCopyAtResolution",
+        "tests/Game/TransformingTokenCopyTest.php::testCopyRejectsUnpaidCostAndOpposingTargetWithoutMutation"
+      ],
+      "scope": "Complete MOM Converter Beast paid cast/incubate5/transform plus paid synthetic existing copy-token effect across both actor/creator controllers. Back-face copy enters as0/0 without source counters, produces creature-entry/death/zero-value artifact-burial triggers and ceases to exist; original remains5/5. Front-face copies retain both faces and die after later paid transformation. Supporting seeded ordinary/token transforming definitions prove active-face ETB/costs/front mana value, no copied counters/damage/tapped/temporary bonuses, repeated paid transform and JSON replay. Paid response transformation uses resolution-time face; target departure and atomic unpaid/opposing-target controls.",
+      "limits": "Unmerged objects with explicit transform layout; source control changes and removals are unit routes. Copy spell/observers/characteristic fixtures are synthetic. Face-down/modal/merged/copy-effect-layer characteristics and other copy factories remain separate; no newest-printing/whole-card/general continuous/replacement/APNAP/live claims. No state schema,UI/practice or environment contract change."
     }
   ],
   "explicitUnsupported": [
@@ -465,21 +482,22 @@
     }
   ],
   "nextFamily": {
-    "id": "copy-token-active-transforming-face",
+    "id": "copy-token-face-down-characteristics",
     "cards": [
-      "Converter Beast"
+      "Woolly Loxodon"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Separate source-backed lead, not yet reproduced: copy_token passes printed front data to createToken. A token copy of a transformed Incubator should enter with the active back face and without source counters. Reproduce using the complete Converter Beast entry and paid transformation before changing runtime.",
+    "scope": "Separate source-backed lead, not reproduced: copy_token still passes printed card data for a face-down permanent. Complete existing KTK Woolly Loxodon UUID58ad74dd-6e19-5f96-9694-f2cee61a442e has been selected by one name; parser/paid-path reproduction pending.",
     "acceptance": [
-      "Start from a complete pinned paid incubate/transform path and actual paid existing copy-token effect; reproduce active-face entry, zero counters and zero-toughness death.",
-      "Preserve ordinary single-face copy costs and token identity, untransformed transforming copies, JSON replay and existing entry/departure observer behavior.",
-      "Do not claim all copy/merged/face-down layers or whole-card support; retain explicit gaps and reuse unchanged corpus evidence."
+      "Pin complete selected source, pay real morph and existing copy effect, and reproduce copied2/2/colorless/zero-cost/no-morph characteristics rather than printed6/7.",
+      "Test later paid original turn-face-up, source/copy independence, JSON and ordinary/transforming/single-face controls.",
+      "Keep disguise/ward, merged/copy layers and whole-card certification separate until specifically reproduced and verified; no global parser walk."
     ],
     "deferred": [
       "Clay-Fired Bricks search ETB",
       "Partner and commander deck rules",
-      "General merged/face-down/copied-characteristic models",
+      "Merged/modal/general copy-layer characteristics",
+      "Disguise/ward and other face-down rules",
       "General continuous/replacement/conditions/APNAP models",
       "Newest-printing and whole-card certification"
     ]
