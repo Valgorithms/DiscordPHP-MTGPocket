@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Den Protector combat milestone](den-protector-combat-power.md) adds test-only evidence for paid current-power blocking boundaries, response timing, damage and JSON replay. Existing production behavior passed; no engine defect or runtime change is claimed. The ledger remains20scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition is unchanged.
+
 The [megamorph copy milestone](megamorph-token-copy.md) adds the paid Den Protector face-down copy and original turn-up/counter/targeted-return path. The ledger has20scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition remains unchanged; disguise/ward and broader copying remain separate.
 
 The [plain-morph copy milestone](plain-morph-token-copy.md) selects a nameless, colorless2/2 with no hidden turn-up action for the paid Woolly Loxodon morph/copy path. The ledger has19scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition remains unchanged; megamorph/disguise and broader copy layers remain separate.

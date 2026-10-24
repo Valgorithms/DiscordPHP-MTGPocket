@@ -11,10 +11,10 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "d672c21193109bed9cabf9bceff886893d181822",
   "validation": {
-    "source": "d672c21193109bed9cabf9bceff886893d181822",
-    "evidenceMeaning": "Pinned complete DTK Den Protector pays morph3 and existing synthetic copyU; megamorph face-down copiable characteristics, original turn-up1G/counter/targeted graveyard return and source/copy independence. No printed copy-card or whole-card certificate. Historical recognition unchanged.",
-    "local": "Baseline145c49716344b287203128368b86d0590df093d8:4tests68assertions4failures/0.100sec.16focused686assertions0.252sec;adjacent1260/23684/23.356sec186MiB23.851secwall30cap512MiB/Xdebugoff/emptydata;Pint2/diffcheck passed. Ledger18/37 and181poolinventory20scoped/3gaps/2overlaps/0whole-card certificates0.784secwall passed. Full offline atda028e54019dd800b4ac5aa095da43b96a4d7d29 passed1,651tests/50,739assertions with2expected imported-rental-data skips in65.660seconds222MiB/66.011secondswall,120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp after fresh7.03GiB2026-10-24T04:47:43Z.",
-    "ci": "Fulltestedda028e54019dd800b4ac5aa095da43b96a4d7d29 exact Tests40063738969 passed all three PHP8.3/8.4/8.5 fullPint/PHPUnit jobs; run/jobs/artifacts REST saved. Final metadata head requires its own exact CI before merge."
+    "source": "f421f621273e9ca7a5b565039fc77cf93d0ee347",
+    "evidenceMeaning": "Test-only Den Protector combat boundary evidence on the existing complete pinned DTK printing. Production runtime unchanged from d672c21193109bed9cabf9bceff886893d181822; no reproduced engine defect, whole-card certificate or new recognition measurement.",
+    "local": "20 focused tests/468 assertions/0.280sec32MiB; adjacent123/5324/6.395sec44MiB6.681secwall passed.30sec process-tree caps512MiB/Xdebugoff/emptydata/tasklocaltemp. Negative control temporarily disabling the lesser-power restriction:10tests202assertions6expected failures;4face-down/blank-copy controls passed. Runtime restored byte-for-byte and focused suite passed. Single-file nonmutating Pint and diffcheck passed. Ledger18tests37assertions and181pool inventory20scoped/3gaps/2overlaps/0whole-cardcertificates passed; inventory0.822secwall.",
+    "ci": "This final metadata head requires its own exact full Pint/PHPUnit PHP8.3/8.4/8.5 CI before merge. Prior unchanged production runtime full1651/50739/2expected rental-data skips passed atda028e54019dd800b4ac5aa095da43b96a4d7d29 in65.660sec222MiB; those results exclude these20newcases."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
@@ -61,7 +61,8 @@
     "tests/Game/IncubatorTokenIdentityTest.php": "48594eea0c7189bb225154e0ba4b6a22cb7cb57dfdbf12af2885b6db084ad107",
     "tests/Game/TransformingTokenCopyTest.php": "7e951aefd68cb3e9ef9429f68101f1947ff9fcab7a720af267ed4077543b2529",
     "tests/Game/FaceDownTokenCopyTest.php": "4d020d26a1252496bbcb3faf34a3ad2a6ac483f7b5a50a5abbd0780822b46d9e",
-    "tests/Game/MegamorphTokenCopyTest.php": "0021407297bf72b7204b3b406180691aeaf27ccc7d3eb9c039bcc8be5380943b"
+    "tests/Game/MegamorphTokenCopyTest.php": "0021407297bf72b7204b3b406180691aeaf27ccc7d3eb9c039bcc8be5380943b",
+    "tests/Game/DenProtectorCombatPowerTest.php": "6810637788db52771e9c422c83fd1091528e44834e74dedbc0aa13b78123030e"
   },
   "scopedEvidence": [
     {
@@ -500,6 +501,21 @@
       ],
       "scope": "Complete pinned DTK record pays morph3/copyU/originalturnup1G across source/creator seats. Nameless colorless2/2 no copied hidden action/keyword/trigger; originalcounter/targetedgravecardreturn independent. Pendingchoice/queued/resolved JSON replay, cost/target/controller negatives, paid turn-up response selects printed2/1 without counter, paid face-up ordinary copying, copy-of-copy and source removal/modifier controls.",
       "limits": "Synthetic copy spell; seeded control/removal/modifiers and graveyard targets. No whole-card, full blocking, general graveyard, disguise/ward/merged/modal/copy-layer or live claims. No schema/environment/UI/practice change."
+    },
+    {
+      "id": "den-protector-combat-power",
+      "cards": [
+        "Den Protector"
+      ],
+      "tests": [
+        "tests/Game/DenProtectorCombatPowerTest.php::testPaidAttackerUsesCurrentFaceForBlockPowerBoundary",
+        "tests/Game/DenProtectorCombatPowerTest.php::testPaidTurnUpBeforeBlockDeclarationChangesEligibleBlockers",
+        "tests/Game/DenProtectorCombatPowerTest.php::testDecliningLegalBlockLetsPrintedAttackerDealPlayerDamage",
+        "tests/Game/DenProtectorCombatPowerTest.php::testTurningUpAfterDeclarationDoesNotRemoveExistingBlock",
+        "tests/Game/DenProtectorCombatPowerTest.php::testPaidGrowthChangesTheBoundaryBeforeBlockDeclaration"
+      ],
+      "scope": "Complete pinned DTK printing in both seats: paid face-up/morph/megamorph and synthetic copy paths; real turn progression; weaker/equal/greater current-power blockers; candidate and declaration agreement; invalid declarations preserve state; paid turn-up before/after blocks; paid Giant Growth on attacker/blocker; damage/player-life outcomes and JSON replay.",
+      "limits": "Test-only evidence; existing engine passed without a production change. Simplified seeded blockers and synthetic copy spell. No full blocking, continuous-layer, graveyard, disguise/ward, general copy, live or whole-card certification."
     }
   ],
   "explicitUnsupported": [
@@ -525,7 +541,7 @@
       "Dog Walker"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Separate source lead only, not parsed or reproduced: selected complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa by one name from271-card pool. Disguise face-down/copy/ward behavior remains unverified.",
+    "scope": "Deferred evidence gap: complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa selected by one name from271-card pool. Bounded local docs/fixtures/recovery search found no cached authoritative rules establishing copiable ward. No-network retained; no parser/paid reproduction or runtime-failure claim. Continue independent offline evidence slices.",
     "acceptance": [
       "Pin complete selected source and reproduce paid disguise cast/copy; verify current authoritative rules for copiable disguise/ward before changing runtime.",
       "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
