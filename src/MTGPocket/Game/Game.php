@@ -88,7 +88,7 @@ final class Game
      * Persisted rules-state format; unversioned records are version 1.
      * Version 14 adds optional basic-land entry searches; version 13 added optional self-death draws.
      */
-    public const int STATE_VERSION = 14;
+    public const int STATE_VERSION = 15;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4319,7 +4319,9 @@ final class Game
     /**
      * Finishes looking at the top cards of a library: the chosen cards go to
      * their owner's hand, and the rest go to the bottom in a random order
-     * or into the graveyard. Then the spell or ability goes on resolving.
+     * or into the graveyard. A split land search first selects up to two
+     * lands, then chooses which of two enters tapped; the other goes to hand.
+     * Then the spell or ability goes on resolving.
      *
      * @param int   $seat
      * @param int[] $ids
@@ -4342,6 +4344,16 @@ final class Game
                 throw new GameException('You can\'t take that card.');
             }
         }
+        if (($choice['to'] ?? null) === 'split') {
+            if ($ids !== []) {
+                $this->log($this->players[$seat]->name.' reveals '.implode(' and ', array_map(fn (int $id) => $this->objects[$id]->name(), $ids)).'.');
+            }
+            if (count($ids) === 2) {
+                $this->pendingChoice = array_replace($choice, ['cards' => $ids, 'eligible' => $ids, 'take' => 1, 'may' => false, 'rest' => 'split', 'to' => 'tapped']);
+
+                return;
+            }
+        }
         $player = $this->players[$seat];
         $to = $choice['to'] ?? 'hand';
         $this->pendingChoice = null;
@@ -4354,10 +4366,20 @@ final class Game
                 $this->moveTo($this->objects[$id], GameObject::HAND);
             } else {
                 // `You may put a land card from among them onto the battlefield tapped.`
-                $this->putOntoBattlefield($this->objects[$id], $seat, tapped: $to === 'tapped');
+                $this->putOntoBattlefield($this->objects[$id], $seat, tapped: in_array($to, ['tapped', 'split'], true));
             }
         }
         $rest = array_values(array_diff($choice['cards'], $ids));
+        if ($choice['rest'] === 'split') {
+            foreach ($rest as $id) {
+                $this->moveTo($this->objects[$id], GameObject::HAND);
+            }
+            $this->shuffle($seat);
+            $this->runSteps($choice['resume']['item'], $choice['resume']['steps'], $choice['resume']['self']);
+            $this->settle();
+
+            return;
+        }
         shuffle($rest);
         foreach (in_array($choice['rest'], ['top', 'library'], true) ? [] : $rest as $id) {
             $object = $this->objects[$id];
@@ -5709,6 +5731,26 @@ final class Game
                     return true;
                 }
                 break;
+
+            case 'split_land_search':
+                // Two representatives of each name allow finding two identical basics
+                // without filling the selector with every copy in the library.
+                $eligible = $names = [];
+                foreach (array_reverse($this->players[$controller]->library) as $id) {
+                    $card = $this->objects[$id]->printed();
+                    if ($this->matchesFilter($card, 'basic_land') && ($names[$card->name] ?? 0) < 2) {
+                        $eligible[] = $id;
+                        $names[$card->name] = ($names[$card->name] ?? 0) + 1;
+                    }
+                }
+                if ($eligible === []) {
+                    $this->log("{$this->players[$controller]->name} searches their library and finds nothing.");
+                    $this->shuffle($controller);
+                    break;
+                }
+                $this->pendingChoice = ['type' => 'look', 'seat' => $controller, 'cards' => $eligible, 'eligible' => $eligible, 'take' => min(2, count($eligible)), 'may' => true, 'rest' => 'library', 'to' => 'split'];
+
+                return true;
 
             case 'tutor':
                 // One card of each name that fits; the searcher picks (rule 701.19b: they may fail to find one with a stated quality).
@@ -11193,6 +11235,41 @@ final class Game
             'text' => (string) ($trigger['text'] ?? ''),
         ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : []), (array) ($data['pendingTriggers'] ?? [])));
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
+        if (($game->pendingChoice['to'] ?? null) === 'split' || ($game->pendingChoice['rest'] ?? null) === 'split') {
+            $choice = $game->pendingChoice;
+            $finding = ($choice['to'] ?? null) === 'split';
+            $resume = $choice['resume'] ?? null;
+            $cards = $choice['cards'] ?? null;
+            if ($version < 15 || $game->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'look' ||
+                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
+                ! is_array($cards) || ! array_is_list($cards) || $cards === [] || count(array_unique($cards, SORT_REGULAR)) !== count($cards) ||
+                ($choice['eligible'] ?? null) !== $cards ||
+                ($choice['take'] ?? null) !== ($finding ? min(2, count($cards)) : 1) || ($choice['may'] ?? null) !== $finding ||
+                ($choice['rest'] ?? null) !== ($finding ? 'library' : 'split') || ($choice['to'] ?? null) !== ($finding ? 'split' : 'tapped') ||
+                (! $finding && count($cards) !== 2) ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
+                ! array_key_exists('self', $resume) || ! is_array($resume['followed'] ?? null) ||
+                ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
+                ! is_int($resume['item']['incarnation'] ?? null) || $resume['item']['incarnation'] < 0 ||
+                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) ||
+                ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
+                    ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1])))) {
+                throw new GameException('Invalid saved split land search.');
+            }
+            foreach ($cards as $id) {
+                $object = is_int($id) ? ($game->objects[$id] ?? null) : null;
+                if ($object === null || $object->owner !== $choice['seat'] || $object->zone !== GameObject::LIBRARY ||
+                    ! in_array($id, $game->players[$choice['seat']]->library, true) || ! $game->matchesFilter($object->printed(), 'basic_land')) {
+                    throw new GameException('Invalid saved split land search card.');
+                }
+            }
+            foreach ($resume['steps'] as $step) {
+                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
+                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                    throw new GameException('Invalid saved split land search continuation.');
+                }
+            }
+        }
         $game->pendingEntries = array_values((array) ($data['pendingEntries'] ?? []));
         $game->nextChoiceId = (int) ($data['nextChoiceId'] ?? 1);
         if (($game->pendingChoice['type'] ?? null) === 'sacrifice') {

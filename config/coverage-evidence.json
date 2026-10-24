@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "49ab8ea83e3803381e12689705877931931d6f19",
+  "engineSource": "607b7f6d4ceebfb80838418461f88880ed4261ce",
   "validation": {
-    "source": "49ab8ea83e3803381e12689705877931931d6f19",
-    "evidenceMeaning": "Complete pinned M13 Evolving Wilds through actual land play and tap/self-sacrifice activation. Only mandatory basic-land put-it/put-that-card wording uses explicit tutor choice; optional legacy wording remains unchanged. No whole-card or fresh recognition claim.",
-    "local": "Paid baseline4tests28assertions4failures: mandatory put-it wording automatically selected a land. Focused26tests391assertions0.474s36MiB;adjacent675tests11826assertions21.084s110MiB21.439s wall. Two shared-wording companion tests passed2tests22assertions after replacing automatic-selection expectations with explicit choice/tapped/shuffle checks. Five-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Full offline target89063796170287785617de665b11fea4b3a5a0bf passed1879tests54406assertions2expected missing-imported-pool/rental skips56.113s252MiB56.819s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.07GiB at2026-10-24T10:42:04.1209547Z. All53normalized PHP pins match the full-tested target. No whole-card certificate or fresh recognition measurement. Ledger18tests37assertions and existing181-pool inventory passed:25scoped names2explicit-gap names1overlap0whole-card certificates;53normalized PHP pins verified.",
-    "ci": "Tested89063796170287785617de665b11fea4b3a5a0bf exactCI40086951110 passed fullPint/PHPUnit PHP8.3/8.4/8.5;RESTrun/jobs/artifacts savedzeroartifacts expected. Finalmetadata requires own passing exactCI beforemerge;53PHPpins identical to full-tested target."
+    "source": "607b7f6d4ceebfb80838418461f88880ed4261ce",
+    "evidenceMeaning": "Complete pinned M11 Cultivate paid2G cast, explicit up-to-two basic-land selection, public reveal and separate destination choice for two, tapped battlefield/hand split and one shuffle. Exact mandatory wording only; optional legacy policy unchanged. Schema15 split-choice validation; ordinary13/14 look compatibility. No whole-card certificate or fresh recognition claim.",
+    "local": "Paid baseline4tests24assertions4failures: no explicit search choice. Focused31tests472assertions0.437s38MiB;adjacent705tests12282assertions22.589s114MiB22.910s wall. Six-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Harness-only stale fixture path and direct parser test trailing period corrected; no extra runtime changes. Full offline targetfb944ebd7fd462616a8a6e6d4ceb622c75f89796 passed1909tests54862assertions2expected missing-imported-pool/rental skips54.944s258MiB55.267s wall,120s process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp and fresh13.38GiB at2026-10-24T10:51:40.9538319Z. All54normalized PHP pins match the full-tested target. Exact tested-head CI passed. Ledger18/37 and existing181-pool inventory passed:26scoped names2explicit-gap names1overlap0whole-card certificates;54normalized PHP pins verified.",
+    "ci": "Exact tested-head CI40087582028 atfb944ebd7fd462616a8a6e6d4ceb622c75f89796 passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "b281655eed3fe24880df75576edca63968e05f8d59501f2b4c479f07c8517304",
+    "src/MTGPocket/Game/TextParser.php": "e188dd16b25846ee282ab48e01006cd4ae732820b3b90697ac653a5ae3c81b53",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "2693d0236c8a3c277a42b7ecc8d10f848d99ac4703410df78c78fa5b19fe8c67",
+    "src/MTGPocket/Game/Game.php": "a3b1165a01f3f70c675b2869e58d7e9095c23962c648b0172a3c0cb8195e7534",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -36,17 +36,17 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "d6b0ca8981388e13eaebbbe74faef5c6cefea2da4397d5789b3089ba821739af",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "70a135a63017545f38289edc58e1992e5b69f45230659711e8c13e9379989578",
     "src/MTGPocket/Matches/PanelActions.php": "7a4bcb69b5d840281d3279688e0b227b20ba68409aad9bed49ba7741c173848a",
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "510188bc967408184ee28ff3a750f5a1d201a0ac5a31a1397407487412bf43a5",
+    "tests/MatchesTest.php": "ec8cd45f068dd71feff2bdc7310242dd2179c972d62f34a8574cdc05ada07872",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "3d1903cf633fe831452afc41441b63bd6e77bc30bee6b55664eea06c8551bb26",
+    "tests/Game/ModernCardTextTest.php": "08c59cf1554ab7221061f0af6e2f8f251c87e2bcdd6599c1f035a5d7c6c4f1d8",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
@@ -69,7 +69,8 @@
     "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9",
     "tests/Game/RampantGrowthSearchTest.php": "42cff887467974eb57d4378d1b0a006d65be31ac323dfdf614b6f3d25177789b",
     "tests/Game/FarseekSearchTest.php": "4c68e3c8e11f88737f554403c08652aa2ec257263a3617f892e29b6993c3ac1b",
-    "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57"
+    "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57",
+    "tests/Game/CultivateSearchTest.php": "da61027f3b6f0010b0e372742e7236aa2c2316cfea2b30801c6eb3380b3dd14f"
   },
   "scopedEvidence": [
     {
@@ -652,6 +653,26 @@
       ],
       "scope": "Complete M13 UUID132d60ff-6620-5cd5-a861-d57d72ef5ab0 normalized fixtureSHA2569b814c11fbb3d48e94259bb96fde35845e56285eedb7ff4c57fc12e1bc4f1995: both seats actual land play/tap/self-sacrifice activation, explicit basic-land selection/failure to find, normal/snow/Wastes tapped entry, one shuffle, all five basic subtypes eligible, nonbasic/basic-nonland/opposing-library/hand exclusions, wrong-seat/overselection/cross-family/priority/repeated rejection, empty/noeligible shuffle, JSON/replay, original-controller/synthetic later-effect continuation, costs/zone/ownership, opponent-turn activation and Counterspell cannot target ability, practice and persisted panels.",
       "limits": "Narrow mandatory put-it/put-that-card mapping only; optional legacy search policy unchanged. Semantic lands, Counterspell, synthetic source-control relocation, library exhaustion and appended gain-life isolate contracts rather than certify other cards. Existing duplicate-ID normalization unchanged. No general search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "cultivate-split-search",
+      "cards": [
+        "Cultivate"
+      ],
+      "tests": [
+        "tests/Game/CultivateSearchTest.php::testPaidSpellRequiresLegalSelectionAndShufflesOnFailureToFind",
+        "tests/Game/CultivateSearchTest.php::testBothChoicesRejectInvalidCardsAndCanFindTwoOfTheSameName",
+        "tests/Game/CultivateSearchTest.php::testEmptyIneligibleAndSingleEligibleLibrariesShuffleOnce",
+        "tests/Game/CultivateSearchTest.php::testOriginalControllerRevealAndLaterEffectWaitForTheDestination",
+        "tests/Game/CultivateSearchTest.php::testUnpaidOpposingAndCounteredSpellsNeverSearch",
+        "tests/Game/CultivateSearchTest.php::testPracticeCompletesBothChoicesAndOptionalWordingKeepsItsPolicy",
+        "tests/Game/CultivateSearchTest.php::testSnowAndWastesCanBeSelectedOntoTheBattlefield",
+        "tests/Game/CultivateSearchTest.php::testDuplicateBasicCopiesDoNotHideOtherNamesFromTheSelector",
+        "tests/Game/CultivateSearchTest.php::testSplitSearchSaveValidationAndLegacyLookCompatibility",
+        "tests/MatchesTest.php::testCultivatePanelPersistsBothSelectionsOrFailureToFind"
+      ],
+      "scope": "Complete M11 UUID5f27bb0b-7c59-5b0c-9673-17db759e0076 normalized fixtureSHA25694b6e1c982251718ab0e753b51e460a6be85ab5fb75ab89054109fb5b7841cdf: both seats paid2Gcast; select0/1/2basics including2same-name, either destination for2, public reveal, tapped entry/otherhand, one final shuffle, normal/snow/Wastes eligibility, nonbasic/basicnonland/opposinglibrary/hand exclusions, atomic invalid actions both stages, empty/noeligible/oneeligible libraries, JSON/replay, originalcontroller/syntheticlater effect, unpaid/opposing/Counterspell controls, existingpractice and persisted panels. Two representatives per name avoid duplicate-library selector crowding. Schema15 validates both stages/cards/continuation and accepts ordinary13/14look saves.",
+      "limits": "Exact mandatory wording only; optional legacy policy unchanged. Semantic lands, Counterspell, synthetic control relocation, library exhaustion and appended gain-life isolate contracts rather than certify other cards. Existing duplicate-ID normalization retained. Normal basic-name selector representatives are bounded; arbitrary synthetic >25distinctbasicnames/paging is not established. No general search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
     }
   ],
   "explicitUnsupported": [

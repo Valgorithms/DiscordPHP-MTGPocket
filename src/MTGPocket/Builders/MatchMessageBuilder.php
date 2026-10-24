@@ -659,7 +659,12 @@ class MatchMessageBuilder extends PocketMessageBuilder
             case 'look':
                 $look = $game->choiceAwaiting();
                 if ($look['eligible'] !== [] && $look['take'] > 0) {
-                    $message->addComponent(self::cardSelect($id('take'), ($look['to'] ?? 'hand') === 'hand' ? 'Put into your hand…' : 'Put onto the battlefield…', $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
+                    $placeholder = match ($look['to'] ?? 'hand') {
+                        'split' => 'Find up to two basic lands…',
+                        'hand' => 'Put into your hand…',
+                        default => 'Put onto the battlefield…',
+                    };
+                    $message->addComponent(self::cardSelect($id('take'), $placeholder, $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
                 }
                 if ($look['may'] || $look['take'] === 0) {
                     $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('takenone'))->setLabel($look['take'] === 0 ? 'Continue' : 'Take none')));
@@ -929,7 +934,11 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\nChoose any to put ".($decision === 'scry' ? 'on the bottom' : 'into your graveyard').', or keep them all on top.',
-            'look' => $game->choiceAwaiting()['rest'] === 'library'
+            'look' => ($game->choiceAwaiting()['to'] ?? null) === 'split'
+                ? 'Search your library: find up to two basic lands and reveal them. Choose which enters tapped; the other goes into your hand. Then shuffle once.'
+                : ($game->choiceAwaiting()['rest'] === 'split'
+                    ? 'Choose one of the two revealed lands to put onto the battlefield tapped. The other goes into your hand. Then shuffle your library.'
+                    : ($game->choiceAwaiting()['rest'] === 'library'
                 ? 'Search your library: choose a card to put '.(($game->choiceAwaiting()['to'] ?? 'hand') === 'hand' ? 'into your hand' : 'onto the battlefield').'. Then your library is shuffled.'
                 : 'From the top of your library, these are'."\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
@@ -941,7 +950,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     'graveyard' => 'The rest go into your graveyard.',
                     'top' => 'They stay on top.',
                     default => 'The rest go on the bottom in a random order.',
-                },
+                })),
             'mode' => 'Choose the mode for **'.$game->choiceAwaiting()['label'].'**, which just triggered.',
             'priority' => match (true) {
                 isset($choice['cast']) => 'Finish casting your spell, or cancel.',

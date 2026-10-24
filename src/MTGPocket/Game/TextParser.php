@@ -4950,7 +4950,10 @@ final class TextParser
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => 'top'];
         }
         // Cultivate: `… for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.`
-        if (preg_match('/^(?:you may )?search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle$/i', $s)) {
+        if (strcasecmp($s, 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle') === 0) {
+            return ['type' => 'split_land_search'];
+        }
+        if (preg_match('/^you may search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle$/i', $s)) {
             return ['type' => 'search', 'find' => 'basic land', 'count' => 2, 'to' => 'split'];
         }
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, (?:reveal it, )?put it (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {

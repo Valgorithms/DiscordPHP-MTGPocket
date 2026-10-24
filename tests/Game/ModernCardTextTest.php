@@ -2096,6 +2096,15 @@ final class ModernCardTextTest extends GameTestCase
         $cultivate = $this->put(0, 'Cultivate', GameObject::HAND);
         $game->cast(0, $cultivate);
         $this->resolve();
+        $this->assertSame(2, $game->choiceAwaiting()['take']);
+        $chosen = array_slice($game->choiceAwaiting()['eligible'], 0, 2);
+        $shuffles = $game->toArray()['shuffles'];
+        $game->take(0, $chosen);
+        $this->assertSame('split', $game->choiceAwaiting()['rest']);
+        $game->take(0, [$chosen[1]]);
+        $this->assertTrue($game->objects[$chosen[1]]->tapped);
+        $this->assertSame(GameObject::HAND, $game->objects[$chosen[0]]->zone);
+        $this->assertSame($shuffles + 1, $game->toArray()['shuffles']);
         $this->assertSame([$lands + 9, $hand + 1], [count($game->permanents(0)), count($game->players[0]->hand)], 'One onto the battlefield, one into hand.');
     }
 
