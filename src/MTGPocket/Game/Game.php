@@ -8958,6 +8958,8 @@ final class Game
                 ];
             }
         }
+        // `Whenever CARDNAME deals damage, you gain that much life.`: the damage dealt is the context.
+        $this->trigger($source, 'deals_damage', $source->controller, null, $amount);
         if ($this->hasKeyword($source, 'lifelink')) {
             $this->gainLife($source->controller, $amount);
         }
