@@ -10162,6 +10162,11 @@ final class Game
      */
     private function allMatching(string $all, GameObject $source, int $controller): array
     {
+        // `Destroy all creatures with power 3 or less.`, or with mana value; `each nonland permanent with mana value 2 or less`.
+        if (preg_match('/^(all (?:creatures|nonland permanents|artifacts, creatures, and enchantments)) with (power|mana value) (\d+) or (less|greater)$/', $all, $m)) {
+            return array_filter($this->allMatching($m[1], $source, $controller), fn (GameObject $o) => (($m[2] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[3]) !== ($m[4] === 'less' ? 1 : -1));
+        }
+
         return array_filter($this->permanents(), fn (GameObject $o) => match ($all) {
             'all creatures' => $this->isCreature($o),
             'all other creatures' => $this->isCreature($o) && $o->id !== $source->id,
@@ -10174,10 +10179,8 @@ final class Game
             'all enchantments' => $o->definition()->is('Enchantment'),
             'all artifacts and enchantments' => $o->definition()->is('Artifact') || $o->definition()->is('Enchantment'),
             'all artifacts, creatures, and lands' => $o->definition()->is('Artifact') || $this->isCreature($o) || $o->definition()->isLand(),
-            // `Destroy all creatures with power 3 or less.`, or with mana value.
-            default => preg_match('/^all creatures with (power|mana value) (\d+) or (less|greater)$/', $all, $m)
-                ? $this->isCreature($o) && (($m[1] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[2]) !== ($m[3] === 'less' ? 1 : -1)
-                : ! $o->definition()->isLand(),
+            'all artifacts, creatures, and enchantments' => $o->definition()->is('Artifact') || $this->isCreature($o) || $o->definition()->is('Enchantment'),
+            default => ! $o->definition()->isLand(),
         });
     }
 

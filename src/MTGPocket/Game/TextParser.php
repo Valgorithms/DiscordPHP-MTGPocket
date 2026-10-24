@@ -4794,7 +4794,9 @@ final class TextParser
         $group = implode('|', array_keys($each));
         // Consume the Meek: "each creature" selects the same objects as "all creatures".
         $s = (string) preg_replace('/^(destroy|exile) each creature\b/i', '$1 all creatures', $s);
-        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all artifacts, creatures, and lands|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
+        // Culling Ritual, Pernicious Deed: `Destroy each nonland permanent with mana value 2 or less.`
+        $s = (string) preg_replace(['/^(destroy|exile) each nonland permanent\b/i', '/^(destroy|exile) each artifact, creature, and enchantment\b/i'], ['$1 all nonland permanents', '$1 all artifacts, creatures, and enchantments'], $s);
+        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all artifacts, creatures, and lands|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all (?:creatures|nonland permanents|artifacts, creatures, and enchantments) with mana value \d+ or (?:less|greater)|all artifacts, creatures, and enchantments)$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
         // Evacuation, Aetherize-style sweepers: `Return all creatures to their owners' hands.`
