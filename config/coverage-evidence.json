@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "1333e67929c149eaffc0d8f88596ac636d1926b5",
+  "engineSource": "d672c21193109bed9cabf9bceff886893d181822",
   "validation": {
-    "source": "1333e67929c149eaffc0d8f88596ac636d1926b5",
-    "evidenceMeaning": "Pinned complete KTK Woolly Loxodon pays morph and a synthetic existing copy effect. Plain-morph face-down copiable characteristics and source/copy independence only; no printed copy-card or whole-card certificate. Historical recognition unchanged.",
-    "local": "Baseline runtimecc0a65f/helper-name correctionffa96f9:4tests64assertions4failures/0.747sec. Final20tests844assertions0.147sec;adjacent1244tests22998assertions24.143sec182MiB/24.537secwall under30sec process-tree cap512MiB/Xdebugoff/emptydata. Pint2/diffcheck passed. Ledger18/37 passed;181-pool inventory19scoped/3gap/2overlap/0whole certificates0.670secwall passed. Initial metadata count0 rejected and corrected by selecting one complete existing DTK Den Protector record, without parsing it. Full offline atfc5f77ee479a8655eeab4df7a69b011dae1f92d6 passed1,635tests/50,053assertions with2expected imported-rental-data skips in73.436seconds220MiB/73.843secondswall,under120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp after fresh6.66GiB2026-10-24T04:38:37Z.",
-    "ci": "Tested-headCI40063135630 atfc5f77ee479a8655eeab4df7a69b011dae1f92d6 passed fullPint/PHPUnit PHP8.3/8.4/8.5;exactRESTrun/jobs/artifacts saved,zeroartifacts expected. Finalmetadatahead must pass its own CI beforemerge.44PHPpins unchanged fromfulltestedhead."
+    "source": "d672c21193109bed9cabf9bceff886893d181822",
+    "evidenceMeaning": "Pinned complete DTK Den Protector pays morph3 and existing synthetic copyU; megamorph face-down copiable characteristics, original turn-up1G/counter/targeted graveyard return and source/copy independence. No printed copy-card or whole-card certificate. Historical recognition unchanged.",
+    "local": "Baseline145c49716344b287203128368b86d0590df093d8:4tests68assertions4failures/0.100sec.16focused686assertions0.252sec;adjacent1260/23684/23.356sec186MiB23.851secwall30cap512MiB/Xdebugoff/emptydata;Pint2/diffcheck passed. Ledger18/37 and181poolinventory20scoped/3gaps/2overlaps/0whole-card certificates0.784secwall passed. Full offline atda028e54019dd800b4ac5aa095da43b96a4d7d29 passed1,651tests/50,739assertions with2expected imported-rental-data skips in65.660seconds222MiB/66.011secondswall,120sec process-tree cap512MiB/Xdebugoff/emptydata/tasklocaltemp after fresh7.03GiB2026-10-24T04:47:43Z.",
+    "ci": "Fulltestedda028e54019dd800b4ac5aa095da43b96a4d7d29 exact Tests40063738969 passed all three PHP8.3/8.4/8.5 fullPint/PHPUnit jobs; run/jobs/artifacts REST saved. Final metadata head requires its own exact CI before merge."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
-    "src/MTGPocket/Game/Game.php": "61aea700fea1ecff07f1e2f061dd74bc8a2c516e386bad9619fa0bd149934f2e",
+    "src/MTGPocket/Game/Game.php": "286e47772a142f3a28d684cc5a4cadf523bf36a018f94c9576a0f359dad05f36",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -60,7 +60,8 @@
     "tests/Game/TransformedArtifactBurialValueTest.php": "e13f41a03e8e750a31e709f43619f73c3992eb92bf413c42a2d2f09ddd37143d",
     "tests/Game/IncubatorTokenIdentityTest.php": "48594eea0c7189bb225154e0ba4b6a22cb7cb57dfdbf12af2885b6db084ad107",
     "tests/Game/TransformingTokenCopyTest.php": "7e951aefd68cb3e9ef9429f68101f1947ff9fcab7a720af267ed4077543b2529",
-    "tests/Game/FaceDownTokenCopyTest.php": "4d020d26a1252496bbcb3faf34a3ad2a6ac483f7b5a50a5abbd0780822b46d9e"
+    "tests/Game/FaceDownTokenCopyTest.php": "4d020d26a1252496bbcb3faf34a3ad2a6ac483f7b5a50a5abbd0780822b46d9e",
+    "tests/Game/MegamorphTokenCopyTest.php": "0021407297bf72b7204b3b406180691aeaf27ccc7d3eb9c039bcc8be5380943b"
   },
   "scopedEvidence": [
     {
@@ -482,6 +483,23 @@
       ],
       "scope": "Complete pinned KTK record pays morph3 and existing synthetic copyU across both source/creator controllers. Face-up token copies colorless2/2/no name/no cost/no subtypes/no hidden morph action. JSON queued/resolved replay; original paid turn-up5G independent; source face at resolution; ordinary face-up paid7 and copy-of-copy controls; target removal, cost/controller negatives, seeded noncopiable counters/damage/tapped/temporary modifiers and entry observers.",
       "limits": "Plain morph only; synthetic copy spell and observer fixtures, seeded control/removal/modifier routes. No disguise/megamorph/merged/modal/general copy layers, UI/practice, live or whole-card claims."
+    },
+    {
+      "id": "megamorph-face-down-token-copy",
+      "cards": [
+        "Den Protector"
+      ],
+      "tests": [
+        "tests/Game/MegamorphTokenCopyTest.php::testPaidMegamorphThenCopyUsesFaceDownCharacteristics",
+        "tests/Game/MegamorphTokenCopyTest.php::testPaidTurnUpInResponseCopiesPrintedStatsWithoutMegamorphCounter",
+        "tests/Game/MegamorphTokenCopyTest.php::testCountersAndTemporaryModifiersAreNotCopied",
+        "tests/Game/MegamorphTokenCopyTest.php::testCopyOfCopyRemainsBlankAfterSourceLeaves",
+        "tests/Game/MegamorphTokenCopyTest.php::testRemovedTargetCreatesNoToken",
+        "tests/Game/MegamorphTokenCopyTest.php::testCopyAndTurnUpRejectUnpaidCostsAndOpposingTargets",
+        "tests/Game/MegamorphTokenCopyTest.php::testPaidFaceUpCastingStillCopiesPrintedKeywordsAndTrigger"
+      ],
+      "scope": "Complete pinned DTK record pays morph3/copyU/originalturnup1G across source/creator seats. Nameless colorless2/2 no copied hidden action/keyword/trigger; originalcounter/targetedgravecardreturn independent. Pendingchoice/queued/resolved JSON replay, cost/target/controller negatives, paid turn-up response selects printed2/1 without counter, paid face-up ordinary copying, copy-of-copy and source removal/modifier controls.",
+      "limits": "Synthetic copy spell; seeded control/removal/modifiers and graveyard targets. No whole-card, full blocking, general graveyard, disguise/ward/merged/modal/copy-layer or live claims. No schema/environment/UI/practice change."
     }
   ],
   "explicitUnsupported": [
@@ -502,22 +520,21 @@
     }
   ],
   "nextFamily": {
-    "id": "copy-token-megamorph-characteristics",
+    "id": "copy-token-disguise-characteristics",
     "cards": [
-      "Den Protector"
+      "Dog Walker"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Separate source lead only, not reproduced: plain-morph token copy deliberately excludes megamorph. Complete existing DTK Den Protector UUIDe0c322a9-4486-5282-9d62-4a1bf6d49453 selected by one name; no parser or paid-path reproduction yet.",
+    "scope": "Separate source lead only, not parsed or reproduced: selected complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa by one name from271-card pool. Disguise face-down/copy/ward behavior remains unverified.",
     "acceptance": [
-      "Pin selected source and reproduce actual paid megamorph and synthetic paid copy; copied2/2 has no printed identity or turn-up action.",
-      "Verify paid original turn-up and its megamorph counter do not change copy; resolution-time source face, JSON, ordinary/plain-morph/transforming controls."
+      "Pin complete selected source and reproduce paid disguise cast/copy; verify current authoritative rules for copiable disguise/ward before changing runtime.",
+      "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
     ],
     "deferred": [
       "Clay-Fired Bricks search ETB",
       "Partner and commander deck rules",
-      "Merged/modal/general copy layers",
-      "Disguise/ward and other face-down rules",
-      "General continuous/replacement/conditions/APNAP models",
+      "Merged/modal/general copy layers and other factories",
+      "General face-down and continuous/replacement/conditions/APNAP models",
       "Newest-printing and whole-card certification"
     ]
   },
