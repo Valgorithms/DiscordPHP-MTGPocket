@@ -43,6 +43,9 @@ final class GamePlayer
     /** The last turn they attacked with a creature, for raid. */
     public int $attackedTurn = 0;
 
+    /** The last turn they committed a crime (rule 700.13). */
+    public int $crimeTurn = 0;
+
     /** The city's blessing (rule 702.131): kept for the rest of the game. */
     public bool $blessed = false;
 
@@ -142,6 +145,7 @@ final class GamePlayer
             'speed' => $this->speed,
             'ring' => $this->ring,
             'attackedTurn' => $this->attackedTurn,
+            'crimeTurn' => $this->crimeTurn,
             'ringBearer' => $this->ringBearer,
             'blessed' => $this->blessed,
             'speedTurn' => $this->speedTurn,
@@ -183,6 +187,7 @@ final class GamePlayer
         $player->speed = (int) ($data['speed'] ?? 0);
         $player->ring = (int) ($data['ring'] ?? 0);
         $player->attackedTurn = (int) ($data['attackedTurn'] ?? 0);
+        $player->crimeTurn = (int) ($data['crimeTurn'] ?? 0);
         $player->ringBearer = isset($data['ringBearer']) ? (string) $data['ringBearer'] : null;
         $player->blessed = (bool) ($data['blessed'] ?? false);
         $player->speedTurn = (int) ($data['speedTurn'] ?? 0);
