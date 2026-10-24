@@ -6146,6 +6146,7 @@ final class Game
             'noncreature_nonland' => ! $card->isCreature() && ! $card->isLand(),
             'instant_sorcery' => $card->is('Instant') || $card->is('Sorcery'),
             'land' => $card->isLand(),
+            'basic_land' => $card->isLand() && in_array('Basic', $card->supertypes, true),
             'creature_or_land' => $card->isCreature() || $card->isLand(),
             'artifact' => $card->is('Artifact'),
             'enchantment' => $card->is('Enchantment'),

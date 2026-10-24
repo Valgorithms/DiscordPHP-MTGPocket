@@ -59,9 +59,9 @@ final class TransformedArtifactBurialValueTest extends GameTestCase
     {
         $card = $this->fixture('Clay-Fired Bricks');
         $this->assertSame('32480bfd-5be9-5eb9-989d-6650eb53c16e', $card['uuid']);
-        $this->assertSame(['When CARDNAME enters, search your library for a basic Plains card, reveal it, put it into your hand, then shuffle. You gain 2 life.'], (new CardDefinition($card))->unsupported);
+        $this->assertSame([], (new CardDefinition($card))->unsupported);
         $this->game->active = $this->game->priority = $actor;
-        // Seed the front face without its search ETB; transformation itself uses paid craft.
+        // Seed the front face to isolate burial evidence; paid entry/search is covered separately.
         $artifact = $this->game->addCard($owner, $card, GameObject::BATTLEFIELD)->id;
         $this->game->objects[$artifact]->controller = $actor;
         $material = $this->battlefield($actor, 'Bonesplitter');
@@ -209,9 +209,13 @@ final class TransformedArtifactBurialValueTest extends GameTestCase
         (new \ReflectionMethod(Game::class, 'putOntoBattlefield'))->invoke($this->game, $this->game->objects[$artifact], 1);
         $this->assertFalse($this->game->objects[$artifact]->transformed);
         $this->game = Game::fromArray($this->saved());
-        foreach ($amounts as $_) {
+        // The returned front now has a supported entry trigger; flush it and
+        // resolve it as well as the previously frozen burial observers.
+        (new \ReflectionMethod(Game::class, 'settle'))->invoke($this->game);
+        for ($i = 0; $i < 6 && $this->game->stack !== []; $i++) {
             $this->resolveOne();
         }
+        $this->assertSame(22, $this->life(1));
         $this->assertSame(2, $this->game->objects[$source]->counter('+1/+1'));
         $this->assertSame([], $this->game->stack);
     }
