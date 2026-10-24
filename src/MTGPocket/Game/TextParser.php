@@ -4188,10 +4188,10 @@ final class TextParser
         if ($effects[$last]['type'] === 'copy_spell' && $sentence === 'You may choose new targets for the copy') {
             return true;
         }
-        // "Destroy target creature. Its controller loses 2 life.", also after a permanent or a spell.
+        // "Destroy target creature. Its controller loses 2 life.", "… Its controller draws a card.", also after a permanent or a spell.
         if (isset($effects[$last]['target']) && ! in_array(ltrim($effects[$last]['target'], '?'), ['any', 'player', 'opponent', 'player_or_planeswalker'], true) && ! str_contains($effects[$last]['target'], 'card')
-            && preg_match('/^Its controller (loses (\w+) life|mills (\w+) cards?)$/', $sentence, $m) && is_int($n = self::amount($m[2] !== '' ? $m[2] : $m[3]))) {
-            $effects[] = ['type' => $m[2] !== '' ? 'lose_life' : 'mill', 'amount' => $n, 'sameTarget' => true, 'toController' => true];
+            && preg_match('/^Its controller (loses (\w+) life|mills (\w+) cards?|draws (\w+) cards?)$/', $sentence, $m) && is_int($n = self::amount($m[2] !== '' ? $m[2] : (($m[3] ?? '') !== '' ? $m[3] : $m[4])))) {
+            $effects[] = ['type' => $m[2] !== '' ? 'lose_life' : (($m[3] ?? '') !== '' ? 'mill' : 'draw'), 'amount' => $n, 'sameTarget' => true, 'toController' => true];
 
             return true;
         }
