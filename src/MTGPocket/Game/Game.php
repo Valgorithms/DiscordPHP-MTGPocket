@@ -10974,6 +10974,12 @@ final class Game
                     || (isset($anthem['token']) && $anthem['token'] !== $object->definition()->isToken())) {
                     continue;
                 }
+                // `Equipped creatures you control get +1/+1.`: an Equipment (Aura, for `enchanted`) attached to it.
+                foreach (['equipped' => 'Equipment', 'enchanted' => 'Aura'] as $key => $subtype) {
+                    if (($anthem[$key] ?? false) && array_filter($this->attachments($object), fn (GameObject $o) => in_array($subtype, $o->definition()->subtypes, true)) === []) {
+                        continue 2;
+                    }
+                }
                 // `Other creatures you control with flying get +1/+1.`: printed keywords, so anthems don't feed each other.
                 if (isset($anthem['withKeyword']) && ! in_array($anthem['withKeyword'], $object->definition()->keywords, true)) {
                     continue;
