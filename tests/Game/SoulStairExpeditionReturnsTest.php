@@ -91,6 +91,25 @@ final class SoulStairExpeditionReturnsTest extends GameTestCase
         $this->assertSame([GameObject::HAND, GameObject::HAND], [$this->zone($a), $this->zone($b)]);
     }
 
+    private function reject(callable $action): void
+    {
+        $before = $this->saved();
+        try {
+            $action();
+            $this->fail('Expected an invalid action to reject.');
+        } catch (GameException) {
+            $this->assertSame($before, $this->saved());
+        }
+    }
+
+    /** @dataProvider actors */
+    public function testDuplicateTargetsRejectBeforeQuestAndSacrificeCosts(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $a = $this->game->addCard($actor, self::card('Grizzly Bears'), GameObject::GRAVEYARD)->id;
+        $this->reject(fn () => $this->game->activate($actor, $source, 0, ["o:{$a}", "o:{$a}"]));
+    }
     public static function actors(): array
     {
         return [[0], [1]];
