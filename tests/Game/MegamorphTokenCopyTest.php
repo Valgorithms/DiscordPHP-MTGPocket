@@ -33,7 +33,7 @@ final class MegamorphTokenCopyTest extends GameTestCase
 
     private function denProtector(): array
     {
-        $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/woolly-denProtector-morph.json'));
+        $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/den-protector-megamorph.json'));
         $this->assertSame('d35324e93fdf9a45b288f238e9db4ddf801857cd8870a6a6032ffaf8c90f81b7', hash('sha256', $bytes));
         $card = json_decode($bytes, true, flags: JSON_THROW_ON_ERROR)['card'];
         $this->assertSame('e0c322a9-4486-5282-9d62-4a1bf6d49453', $card['uuid']);
