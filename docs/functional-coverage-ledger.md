@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.
+
 The [Burnished Hart search milestone](burnished-hart-land-search.md) adds explicit selection of zero, one or two basics after a paid cast and paid self-sacrifice, with tapped entry and one final shuffle. The ledger now has 28 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
 
 The [Diabolic Tutor reveal-policy milestone](diabolic-tutor-unrestricted-search.md) verifies paid unrestricted searches and keeps an unrevealed find off the public board while preserving explicit reveal controls. The ledger now has 27 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition remains historical; pending legacy choices without the optional flag retain their old logging policy.

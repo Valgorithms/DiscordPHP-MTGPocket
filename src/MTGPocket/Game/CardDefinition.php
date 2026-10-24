@@ -146,7 +146,7 @@ final class CardDefinition
     /** @var array<int, array{power: int, toughness: int, keywords: string[], other: bool}> What it gives the creatures its controller controls (`other`: but itself). */
     public readonly array $anthem;
 
-    /** `sacrifice_creature` or `discard`: an additional cost to cast it. */
+    /** An additional casting cost, such as `sacrifice_creature`, `sacrifice_land` or `discard`. */
     public readonly ?string $additionalCost;
 
     /** How many -1/-1 counters it enters with. */
