@@ -2515,7 +2515,7 @@ final class Game
             $this->copySpell(end($this->stack), $seat, 'conspire');
         }
         $this->castTriggers($seat, $object, $castFrom);
-        $this->targetedTriggers($targets, $seat, true);
+        $this->targetedTriggers($targets, $seat, true, $object);
         $this->settle();
     }
 
@@ -2525,11 +2525,12 @@ final class Game
      *
      * @param string[] $targets
      * @param int      $seat    Who controls the spell or ability.
-     * @param bool     $spell   A spell, not an ability: `When CARDNAME becomes the target of a spell, …`.
+     * @param bool            $spell   A spell, not an ability: `When CARDNAME becomes the target of a spell, …`.
+     * @param GameObject|null $card    That spell: `Whenever CARDNAME becomes the target of an Aura spell, …`.
      *
      * @return void
      */
-    private function targetedTriggers(array $targets, int $seat, bool $spell = false): void
+    private function targetedTriggers(array $targets, int $seat, bool $spell = false, ?GameObject $card = null): void
     {
         // Committing a crime (rule 700.13): targeting an opponent, or their spell, permanent or card in a graveyard.
         $crime = false;
@@ -2550,6 +2551,9 @@ final class Game
                 $this->trigger($object, 'targeted', $object->controller);
                 if ($spell) {
                     $this->trigger($object, 'targeted_by_spell', $object->controller);
+                }
+                if ($card !== null && in_array('Aura', $card->definition()->subtypes, true)) {
+                    $this->trigger($object, 'targeted_by_aura_spell', $object->controller);
                 }
                 foreach ($this->permanents($object->controller) as $permanent) {
                     $this->trigger($permanent, 'yours_targeted', $object->controller, null, $object->id);
