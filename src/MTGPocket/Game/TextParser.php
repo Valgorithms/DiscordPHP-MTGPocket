@@ -1347,6 +1347,10 @@ final class TextParser
             } elseif (preg_match('/^casualty (\d+)$/', $word, $m) && $spell) {
                 // Casualty (rule 702.153): see Game::castOptions().
                 $found['keywords'][] = "casualty {$m[1]}";
+            } elseif ($word === 'ravenous' && ! $spell && $found['counters'] === 0) {
+                // Ravenous (rule 702.156): X +1/+1 counters, and a card when it enters if X is 5 or more; see Game::putOntoBattlefield().
+                $found['counters'] = 'X';
+                $found['triggered'][] = ['text' => 'Ravenous', 'event' => 'ravenous', 'effects' => [['type' => 'draw', 'amount' => 1]]];
             } elseif ($word === 'living weapon' && ! $spell) {
                 // Living weapon (rule 702.92): a 0/0 Germ token to carry it.
                 $found['triggered'][] = ['text' => 'Living weapon', 'event' => 'enters', 'effects' => [['type' => 'living_weapon', 'self' => true]]];
