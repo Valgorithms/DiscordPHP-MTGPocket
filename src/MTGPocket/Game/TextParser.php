@@ -221,6 +221,12 @@ final class TextParser
         'target creature you don\'t control with mana value 4 or less' => 'creature_opp_mv_le_4',
         'target creature an opponent controls with mana value 5 or less' => 'creature_opp_mv_le_5',
         'target creature you don\'t control with mana value 5 or less' => 'creature_opp_mv_le_5',
+        // `destroy target creature or planeswalker with mana value 3 or less`; see Game::matchesKind().
+        'target creature or planeswalker with mana value 1 or less' => 'creature_or_planeswalker_mv_le_1',
+        'target creature or planeswalker with mana value 2 or less' => 'creature_or_planeswalker_mv_le_2',
+        'target creature or planeswalker with mana value 3 or less' => 'creature_or_planeswalker_mv_le_3',
+        'target creature or planeswalker with mana value 4 or less' => 'creature_or_planeswalker_mv_le_4',
+        'target creature or planeswalker with mana value 5 or less' => 'creature_or_planeswalker_mv_le_5',
         // `exile target nonland permanent an opponent controls with mana value 2 or less`; see Game::matchesKind().
         'target nonland permanent an opponent controls with mana value 1 or less' => 'nonland_opp_mv_le_1',
         'target nonland permanent you don\'t control with mana value 1 or less' => 'nonland_opp_mv_le_1',
@@ -4136,7 +4142,7 @@ final class TextParser
             }
         }
         // "If that creature would die this turn, exile it instead." after damage.
-        if (preg_match('/^If (?:that creature(?: or planeswalker)?|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
+        if (preg_match('/^If (?:that creature(?: or planeswalker)?|that permanent|a creature dealt damage this way|it) would die this turn, exile it instead$/', $sentence)) {
             // Or after a targeted -N/-N: `Target creature gets -3/-3 until end of turn. If that creature would die this turn, exile it instead.`
             $damages = array_keys(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage' || ($effect['type'] === 'pump' && isset($effect['target']) && ($effect['toughness'] ?? 0) < 0)));
             foreach ($damages as $i) {
