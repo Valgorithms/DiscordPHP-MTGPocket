@@ -2481,6 +2481,13 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Exact source-counter wording; bind the artifact's battlefield mana value before movement changes its face.
+        if ($line === "Whenever an artifact is put into a graveyard from the battlefield, put a number of +1/+1 counters equal to that artifact's mana value on CARDNAME.") {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'counters', 'amount' => 'departing_mana_value', 'self' => true]]];
+
+            return true;
+        }
         // Exact source-plus-Golem wording; the existing effects preserve source incarnation and controller.
         if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, put a +1/+1 counter on CARDNAME and a +1/+1 counter on each Golem you control.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',

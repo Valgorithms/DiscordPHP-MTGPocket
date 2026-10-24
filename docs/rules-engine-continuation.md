@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Joven and Chandler burial-counter milestone](joven-artifact-burial-mana-value.md) binds the departing artifact's battlefield mana value into independent source-counter triggers, including scoped zero-cost/token/copy/X and selected-group controls. Its separate temporary artifact-control/untap/haste activation remains unread and is the next bounded seed. Partner/commander and general transformed/back-face/copy/continuous-model limits remain explicit; no whole-card certificate is implied.
+
 Reviewed 2026-10-13 against merge `1b81558adaabae16a54cf865cd87c37019aa1461` (PR #125). This is a source review and continuation plan, not a claim of complete Magic rules support or authorization to deploy.
 
 ## Foundation to preserve

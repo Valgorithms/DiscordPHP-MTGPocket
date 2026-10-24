@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "ea49caf9dba036c0a1e314ff638f204b1577ee30",
+  "engineSource": "d673840a53c5ccffa1b4543b551b45a4378c714d",
   "validation": {
-    "source": "ea49caf9dba036c0a1e314ff638f204b1577ee30",
-    "evidenceMeaning": "Scoped selected complete CMR Ich-Tekik paid entry/token and burial counters. Partner explicitly unread; no whole-card/newest-printing certificate or updated aggregate recognition. Shared subtype-counter Kindred fix has positive and negative controls. Full offline and tested-head CI passed; final metadata-head CI checked separately before merge.",
-    "local": "Baseline8failures/40assertions. Kindred exclusion reproduced1failure/23assertions. Final40focused/1067assertions in0.421sec;1054adjacent/18416 in21.913sec;4filePint/diffcheck passed. Targeted8records/181pools scan0.802sec wall:6fullyreadable2stillunread, Ich-Tekik retains only Partner. Ledger18/37;inventory15scoped/2Partnergaps/1overlap/0wholecertificates. Full offline at bc163263c59cb62437d1bad106362f46874560b6:1445tests/45471assertions/2expected imported-data skips in74.922sec190MiB,120sec treecap512MiB/Xdebugoff/emptydata/tasklocaltemp afterfresh10.57GiB.",
-    "ci": "Tested-head CI40039440028 at bc163263c59cb62437d1bad106362f46874560b6:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head checks verified separately before merge;all38runtime/testpins unchanged."
+    "source": "d673840a53c5ccffa1b4543b551b45a4378c714d",
+    "evidenceMeaning": "Scoped complete selected MBC Joven and Chandler artifact-burial mana-value source counters. Separate temporary-control/untap/haste activation stays unread. No whole-card/newest-printing or aggregate functionality claim. Full offline and tested-head CI passed; final metadata-head CI verified separately before merge.",
+    "local": "Baseline8failures/40assertions at612f163. Focused55tests/1188assertions in0.709sec;1109adjacent/19605assertions in17.732sec. FourfilePint/diffcheck passed. Ledger18/37;181pool inventory0.742secwall16scoped3explicitgap2overlap0wholecertificates. Targeted8records0.635secwall6fullyreadable2unread;Joven retains separate temporary-control activation. Full offline and CI pending. Full offline at 3c99e265267fcc780a69ef3b0eaf09b928fed7de:1500tests/46660assertions/2expected imported-rental-data skips,57.438sec198MiB (57.758secwall),120sec process-treecap512MiB/Xdebugoff/emptydata/tasklocaltemp afterfresh12.26GiB.",
+    "ci": "Tested-head CI40045341825 at3c99e265267fcc780a69ef3b0eaf09b928fed7de:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head CI checked separately before merge;all39runtime/testpins unchanged."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "c77e6083a37ec55ccd75e6b3f26ece5ce2ad32ecab7dbd4ca4696ccd1533178c",
+    "src/MTGPocket/Game/TextParser.php": "bf5e5d2d7fb120975aaabbce1b2ee92563da2a0ea36089dc25111ebb24d7c401",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
-    "src/MTGPocket/Game/Game.php": "a969a281386ce5fc603f86e95d2233f7cd27e6e2b7ca63b7d4c4abb9f3809705",
+    "src/MTGPocket/Game/Game.php": "79f3b3e02d1c90f5f6c4bc98f9c230d3fc77ae91d78488b9904b0f2198eaef57",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -47,14 +47,15 @@
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
     "tests/Game/ModernCardTextTest.php": "29c05c412aeec29e46a3177a9a212bb329fa26e4e51e6bb6347ca73eb232370d",
-    "tests/Game/DiscipleBurialChoiceTest.php": "3c93859fe0f7383c3e70e9bacbeac53d978e2ed575aff838fbe3438f4b6f3e78",
+    "tests/Game/DiscipleBurialChoiceTest.php": "2cd2741bb79cbcf88d450442d91d3543674fc96a23dedfe55a86bbe84330be52",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
     "tests/Game/MolderBurialBuffTest.php": "a83dc108bc903b1f77c41a43ab5623bf8deb953d574d3d7ca266889bd6136493",
     "tests/Game/MoriokBurialChoiceTest.php": "321e47036e13dcccca2664f5109d17103367c07e714f405e255a290ef9fc262c",
     "tests/Game/SummoningStationChoiceTest.php": "64bddcb46f6cdc6269085429846f83963ac80515ce82bcc9031e187aac506a8a",
     "tests/Game/KrenkoRedGoblinChoiceTest.php": "a714bf6ac50aa6f4957bd04351ff011805527b4ddd749b7a77c4ce3fd7404057",
-    "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667"
+    "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667",
+    "tests/Game/JovenBurialCountersTest.php": "cde5f78c73fed3fdb15d007037ba548c4970762108e4e35fa40ac6a44722e605"
   },
   "scopedEvidence": [
     {
@@ -364,6 +365,29 @@
       ],
       "scope": "Complete selected CMR record retains Partner. Paid five-mana cast creates3/3 colorless Phyrexian Golem artifact token; paid Smelt/Damnation/Shatterstorm cover both active/source/artifact controllers and departure orders. Source identity, current controlled Golems/changeling/Kindred, permanent counters, independent artifact/token burials, JSON before/queued/between triggers, rendered stats and cleanup. Shared subtype-counter Kindred exclusion reproduced, then Golem/Goblin/changeling/opposing/other/creature-only unit controls.",
       "limits": "Partner stays unread; no commander/deck legality support. Exact printed counter clause only. Synthetic type/control/Kindred/movement fixtures and supporting spells are scoped controls, not complete-card certificates. No generic continuous/replacement/condition/APNAP, newest-printing, aggregate functionality, whole-card or live-service claims."
+    },
+    {
+      "id": "joven-artifact-burial-mana-value-counters",
+      "cards": [
+        "Joven and Chandler"
+      ],
+      "tests": [
+        "tests/Game/JovenBurialCountersTest.php::testPaidSourceAndSmeltUseBuriedManaValueAcrossControllersAndJson",
+        "tests/Game/JovenBurialCountersTest.php::testPaidSmeltBindsBattlefieldCostIncludingTokensAndX",
+        "tests/Game/JovenBurialCountersTest.php::testPaidXArtifactUsesZeroForXOffStack",
+        "tests/Game/JovenBurialCountersTest.php::testPaidTokenCopyRetainsCopiedManaCostWhenItCeasesToExist",
+        "tests/Game/JovenBurialCountersTest.php::testDepartingMergedDefinitionWinsOverPrintedAndLaterResetDefinition",
+        "tests/Game/JovenBurialCountersTest.php::testOldSourceTriggerCannotCounterDepartedOrReturnedIncarnation",
+        "tests/Game/JovenBurialCountersTest.php::testSurvivingSourceReceivesCountersAfterControlChanges",
+        "tests/Game/JovenBurialCountersTest.php::testOnlyActualArtifactBurialBindsManaValue",
+        "tests/Game/JovenBurialCountersTest.php::testPaidSelectedArtifactGroupsBindIndependentValuesAndPersist",
+        "tests/Game/JovenBurialCountersTest.php::testPaidSimultaneousSourceDeathRetainsValuesButCannotCounterReturnedSource",
+        "tests/Game/JovenBurialCountersTest.php::testSuccessiveBurialsOfDifferentArtifactIncarnationsKeepIndependentValues",
+        "tests/Game/JovenBurialCountersTest.php::testFaceDownPrintedArtifactIsNotAnArtifactAtDeparture",
+        "tests/Game/JovenBurialCountersTest.php::testNearbyWordingRemainsExplicitlyUnread"
+      ],
+      "scope": "Complete selected MBC record retains its separate unread temporary artifact-control activation. Paid five-mana source, Smelt/Damnation/Shatterstorm, both active/source/artifact controllers, stolen ownership, source order/identity, zero-cost and token artifacts, paid X artifact, paid token-copy creation, merged battlefield definition/reset, selected and successive events, JSON before/queued/between resolutions, rendered stats and persistent counters.",
+      "limits": "Exact printed counter clause only. Synthetic mana-cost/type/merged/movement/copy fixtures and supporting spells are scoped controls, not complete-card certificates. General transformed/back-face/copied-characteristic mana-value interactions, continuous/replacement/condition/APNAP models, Partner/commander rules, newest-printing, whole-card and live services are not certified."
     }
   ],
   "explicitUnsupported": [
@@ -374,23 +398,30 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
+    },
+    {
+      "id": "joven-temporary-artifact-control-unread",
+      "cards": [
+        "Joven and Chandler"
+      ],
+      "scope": "The complete pinned record retains its separate {R}{R}{R}, {T} temporary artifact control/untap/haste activation as unread. Source-counter evidence does not certify that ability or the whole card."
     }
   ],
   "nextFamily": {
-    "id": "all-player-artifact-burial-mana-value-source-counters",
+    "id": "joven-temporary-artifact-control-untap-haste",
     "cards": [
       "Joven and Chandler"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Complete selected MBC Joven and Chandler retains two unread clauses: source counters based on the buried artifact mana value and temporary artifact control/untap/haste. Next bounded seed is the mana-value counter trigger; the activated theft clause remains separate.",
+    "scope": "Complete selected MBC record retains one unread temporary artifact-control activation. Investigate exact paid RRR plus tap, target artifact ownership/controller, untap and haste until end of turn through existing target/borrowedFrom machinery; reproduce actual gaps before edits.",
     "acceptance": [
-      "Reproduce the exact unread source-counter clause while preserving the complete record and second unread activation.",
-      "Test paid source and burial spell, buried artifact mana value including tokens, both players/controllers, multiple/simultaneous groups, source incarnation/departure, JSON and cleanup.",
-      "Keep temporary artifact-control/untap/haste, Partner, commander rules and whole-card certification outside the counter slice."
+      "Reproduce exact unread activation while preserving complete record, counter trigger and Partner/commander gaps.",
+      "Test colored mana, tap and summoning sickness costs, own/opposing and noncreature artifact legality, target departure/incarnation and resolution revalidation.",
+      "Verify original controller restoration, untap, temporary haste, source/target departure, repeated or layered control effects, JSON, cleanup and Discord/practice companions where needed."
     ],
     "deferred": [
       "Partner and commander deck rules",
-      "Temporary artifact control with untap/haste",
+      "General transformed/back-face/copied-characteristic mana-value interactions",
       "Newest-printing and whole-card certification",
       "General continuous/replacement/conditions/APNAP models"
     ]
