@@ -1995,6 +1995,8 @@ final class TextParser
             (bool) preg_match('/^you have (\w+) or more cards in hand$/', $text, $m) && is_int($n = self::amount($m[1])) => "hand_ge {$n}",
             $text === 'you have no cards in hand' => 'hand_le 0',
             (bool) preg_match('/^an opponent has (\w+) or less life$/', $text, $m) && is_int($n = self::amount($m[1])) => "opp_life_le {$n}",
+            // `as long as an opponent has seven or more cards in their graveyard`.
+            (bool) preg_match('/^an opponent has (\w+) or more cards in their graveyard$/', $text, $m) && is_int($n = self::amount($m[1])) => "opp_graveyard {$n}",
             $text === 'you gained life this turn' => 'gained 1',
             $text === 'you attacked this turn' => 'attacked',
             $text === 'a creature died this turn' => 'died 1',
