@@ -1,0 +1,36 @@
+{
+  "setCode": "MOM",
+  "source": "Existing MOM pool; bounded name selection; no new import or parse",
+  "card": {
+    "uuid": "7d369fb5-4b98-59da-8373-60a0cd03486f",
+    "name": "Converter Beast",
+    "number": "180",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 4,
+    "type": "Creature — Phyrexian Beast",
+    "scryfallId": "1bdd3ecb-8c11-4a4c-a503-bc29f79a9dcb",
+    "manaCost": "{3}{G}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Phyrexian",
+      "Beast"
+    ],
+    "power": "0",
+    "toughness": "1",
+    "text": "When this creature enters, incubate 5. (Create an Incubator token with five +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)",
+    "keywords": [
+      "Incubate",
+      "Transform"
+    ],
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

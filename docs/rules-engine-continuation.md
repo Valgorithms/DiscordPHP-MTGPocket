@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Incubator token-identity milestone](incubator-token-identity.md) preserves token identity across transformation on the paid Converter Beast path. Current evidence covers 18 scoped names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. Recognition remains historical; active-face token copying is the next separate, unreproduced lead.
+
 The [transformed-artifact burial milestone](transformed-artifact-burial-mana-value.md) freezes the selected crafted back face's front mana value before departure. The ledger now has17scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; Clay's search ETB and broader copy/transforming-token lifecycle remain explicit. Historical recognition is unchanged.
 
 The [Joven temporary artifact-control milestone](joven-temporary-artifact-control.md) adds scoped paid activation, identity, cleanup/restoration, JSON, persisted panel and existing practice-resolution evidence. It removes Joven's explicit unread activation gap: the ledger now has 16 unique scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Historical aggregate recognition remains unchanged; a bounded eight-record scan is measured separately. Next is a regression-first transformed-artifact burial mana-value investigation, retaining broader model and Partner/commander limits.
