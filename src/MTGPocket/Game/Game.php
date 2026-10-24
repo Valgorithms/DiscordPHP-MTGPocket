@@ -80,15 +80,15 @@ final class Game
      * A rules decision, including an as-enters life payment. Resolution
      * waits for the responsible player; `resume` stores the remaining steps.
      *
-     * @var array{type: string, seat: int, cards?: int[], id?: int, options?: string[], resume?: array}|null
+     * @var array{type: string, seat: int, cards?: int[], id?: int, options?: string[], counterKind?: string, resume?: array}|null
      */
     public ?array $pendingChoice = null;
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 14 adds optional basic-land entry searches; version 13 added optional self-death draws.
+     * Version 16 records the optional source-counter kind; version 15 added split land searches.
      */
-    public const int STATE_VERSION = 15;
+    public const int STATE_VERSION = 16;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -4734,7 +4734,7 @@ final class Game
                 $this->pendingChoice = [
                     'type' => 'optional_source_counter', 'id' => $this->nextChoiceId++, 'seat' => $controller,
                     'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'],
+                    'label' => $source->name(), 'options' => ['accept', 'decline'], 'counterKind' => $effect['kind'] ?? '+1/+1',
                 ];
 
                 return true;
@@ -9606,7 +9606,7 @@ final class Game
     }
 
     /**
-     * Answers the exact optional +1/+1 source-counter decision at resolution.
+     * Answers the optional +1/+1 or quest source-counter decision at resolution.
      * The original trigger controller answers; only the same battlefield
      * incarnation can receive a counter. A departed source does not stop
      * the rest of the ability from resolving.
@@ -9629,7 +9629,7 @@ final class Game
         $this->pendingChoice = null;
         $source = $this->objects[$choice['object']];
         if ($option === 'accept' && $source->zone === GameObject::BATTLEFIELD && $source->incarnation === $choice['incarnation']) {
-            $this->applyEffect(['type' => 'counters', 'amount' => 1, 'self' => true], $source, $source, $seat, 0, null, $choice['incarnation']);
+            $this->applyEffect(['type' => 'counters', 'amount' => 1, 'self' => true, 'kind' => $choice['counterKind']], $source, $source, $seat, 0, null, $choice['incarnation']);
         }
         $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
         $this->settle();
@@ -11477,6 +11477,14 @@ final class Game
         if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin', 'optional_death_draw', 'optional_basic_land_search'], true)) {
             $choice = $game->pendingChoice;
             $counter = $choice['type'] === 'optional_source_counter';
+            if ($counter) {
+                if (($version < 16 && array_key_exists('counterKind', $choice)) ||
+                    ($version >= 16 && ! in_array($choice['counterKind'] ?? null, ['+1/+1', 'quest'], true))) {
+                    throw new GameException('Invalid saved optional source-counter kind.');
+                }
+                // Older source-counter choices always meant +1/+1. Upgrade before resaving.
+                $game->pendingChoice['counterKind'] = $choice['counterKind'] ?? '+1/+1';
+            }
             $untap = $choice['type'] === 'optional_source_untap';
             $goblin = $choice['type'] === 'optional_red_goblin';
             $deathDraw = $choice['type'] === 'optional_death_draw';

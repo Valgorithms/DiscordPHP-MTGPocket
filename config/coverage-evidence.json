@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
+  "engineSource": "660ece89d3743accc146b8ae44e4c89bf3260cab",
   "validation": {
-    "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
-    "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
-    "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target `1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb` passed 1,998 tests and 56,374 assertions, with two expected missing-imported-pool/rental skips. PHPUnit57.955s270MiB;58.327s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh11.76GiB/no other test processes at2026-10-24T14:42:03.4480779Z. All57normalizedPHPpins match this target. Exact tested/final CI required before merge. Noenv/schema15change.",
-    "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+    "source": "660ece89d3743accc146b8ae44e4c89bf3260cab",
+    "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
+    "local": "Original paid baselines2/14/2fail and2/22/2errors; narrow followups2/16 and2/28PASS. Integrated upstream main3234b6c (PR376-403) without losing upstream runtime changes. Integrated focused23tests732assertions, adjacent Modern423/5900 and counters/choices/mana/search/Matches312/6924 PASS serial30s caps; nonmutating Pint7/diff PASS. Prior full071f0c4 failed2018/57058/1error/2expectedskips due synthetic version10 fixture retaining new counterKind; fixture corrected to actual old shape with +1/+1 migration assertion, not a production workaround. Refreshed ledger/existing181-pool inventory/full120s/exactCI pending. Schema16/noenvchange. Earlier harness empty-library/order issues corrected without production changes.",
+    "ci": "Exact tested and final heads require their own PHP8.3/8.4/8.5 full Pint/PHPUnit CI before merge."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "cbf9cf6ae185feab3c2ee1cc06eeea8a29b49ef8a394a97aa8a3f2160ecdd68b",
+    "src/MTGPocket/Game/TextParser.php": "e1555b310b792804de3f1c0fd334e0971d2d9053dfc570db9355e8ca04e135e0",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "c7d82bcd3264630036144a42c1cf2d78276c435ce9918001d4d925005fdb0f56",
+    "src/MTGPocket/Game/Game.php": "36f95ac753774d7267509c897f1f9ed669030d60415d24833a55a3d49e66212c",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -36,12 +36,12 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "3878638a21a771414c0843a0389131dae89b224942705ff5e5b585bf35b43ec5",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "0c96b8a9c51ba98b68065724c8fc950cfb9093a098cbbdd893190797c4b0bf39",
     "src/MTGPocket/Matches/PanelActions.php": "7a4bcb69b5d840281d3279688e0b227b20ba68409aad9bed49ba7741c173848a",
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "110091a96b684ebf4c707da749400d082a3a5f5d1b33a6acf0ce53d8f282980e",
+    "tests/MatchesTest.php": "e35c1fec70fe155d161519f7c7f6872609afcd0b0c0772b94588b84033c67fba",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -52,7 +52,7 @@
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
     "tests/Game/MolderBurialBuffTest.php": "a83dc108bc903b1f77c41a43ab5623bf8deb953d574d3d7ca266889bd6136493",
     "tests/Game/MoriokBurialChoiceTest.php": "321e47036e13dcccca2664f5109d17103367c07e714f405e255a290ef9fc262c",
-    "tests/Game/SummoningStationChoiceTest.php": "64bddcb46f6cdc6269085429846f83963ac80515ce82bcc9031e187aac506a8a",
+    "tests/Game/SummoningStationChoiceTest.php": "5a897a58a4538b25a0d0129bee2555c6419cd4bea0cb3e8b241a6582b89fb57a",
     "tests/Game/KrenkoRedGoblinChoiceTest.php": "a714bf6ac50aa6f4957bd04351ff011805527b4ddd749b7a77c4ce3fd7404057",
     "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667",
     "tests/Game/JovenBurialCountersTest.php": "760b251bc2c88b06636f8aee91e3f43e80ea0a4b105a83a30bfbe3727c3278bc",
@@ -70,10 +70,11 @@
     "tests/Game/RampantGrowthSearchTest.php": "42cff887467974eb57d4378d1b0a006d65be31ac323dfdf614b6f3d25177789b",
     "tests/Game/FarseekSearchTest.php": "4ef27ac600cdd90c4d57820b7fb6191d1e34b31c735bca8307808f6a20a34bf1",
     "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57",
-    "tests/Game/CultivateSearchTest.php": "da61027f3b6f0010b0e372742e7236aa2c2316cfea2b30801c6eb3380b3dd14f",
+    "tests/Game/CultivateSearchTest.php": "2599748198acb8a5b2145d29e077819bd39743d3d09eca7428f4fb55b676fe85",
     "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446",
     "tests/Game/BurnishedHartSearchTest.php": "f1746faee47f219a2a872d863f18803bb03f7afbcd0d3477cb1aed8d16862c59",
-    "tests/Game/HarrowSearchTest.php": "03d51933849cbd2cb2e47d81dc40bdbfb7bde006d05a53d3c3780785587b1172"
+    "tests/Game/HarrowSearchTest.php": "03d51933849cbd2cb2e47d81dc40bdbfb7bde006d05a53d3c3780785587b1172",
+    "tests/Game/KhalniExpeditionSearchTest.php": "cbb55dda0dbe3982bf0cdb9c10fd805c01a73453387e1bcfc41b3b667331d103"
   },
   "scopedEvidence": [
     {
@@ -743,6 +744,24 @@
       ],
       "scope": "Complete cached ZEN UUID62454305-aa7f-5dce-9048-7b8af6ed09db normalized fixtureSHA256bf53c1c1adcaf45decf15aea7f8f6e3deacad70e492e36adf36bbc45dea81a53: both seats pay2G and one controlled land before resolution; explicit0/1/2basic finds, untapped entry and one final shuffle; normal/snow/Wastes and two same-name copies; wrong zone/type/seat/nonbasic/source/overselect excluded atomically; floating mana cannot replace land; borrowed land goes to owner graveyard; countering does not refund cost or search; queued/pending/completed JSON/replay and original-controller synthetic later effect; insufficient/wrong-color/opposing/repeated casts, synthetic or-pay control, duplicate-name selector, practice and persisted panels. Existing schema15/action families reused. Sacrificing mana sources cannot consume the last additional-cost land; impossible plans reject atomically and alternate plans reserve a surviving land. Paid instant casting during the opponent turn is covered in both seats.",
       "limits": "Additional sacrifice payment remains automatic under the existing weakest-permanent policy, not player-selected; synthetic alternative mana and appended life/controller relocation/supporting cards are contract probes, not independent certificates. Only exact mandatory up-to-two tapped/untapped wording uses explicit choices; optional/reveal/other-count/hand legacy policies unchanged. Arbitrary libraries with more than25distinct basic names/general selector paging, replacements/APNAP/copy/continuous rules, newest-printing and whole-card certification remain unverified. No sourcefetch/corpusscan/import/live/build/restart/deploy."
+    },
+    {
+      "id": "khalni-expedition-quest-search",
+      "cards": [
+        "Khalni Heart Expedition"
+      ],
+      "tests": [
+        "tests/Game/KhalniExpeditionSearchTest.php::testLandfallOffersAcceptOrDeclineAndRejectsWrongOrRepeatedAnswers",
+        "tests/Game/KhalniExpeditionSearchTest.php::testThreeEarnedCountersPaySacrificeAndZeroOneOrTwoTappedFinds",
+        "tests/Game/KhalniExpeditionSearchTest.php::testQuestChoiceSaveValidationAndLegacyCounterMigration",
+        "tests/Game/KhalniExpeditionSearchTest.php::testPracticeUsesExistingCounterRouteAndNonlandEntryDoesNotTrigger",
+        "tests/Game/KhalniExpeditionSearchTest.php::testQueuedLandfallKeepsControllerAndOriginalIncarnation",
+        "tests/Game/KhalniExpeditionSearchTest.php::testOpponentsLandDoesNotChargeAndTwoCountersCannotActivate",
+        "tests/Game/KhalniExpeditionSearchTest.php::testFailToFindAndTwoSameNameBasicsUseOneFinalShuffle",
+        "tests/MatchesTest.php::testKhalniQuestPanelPersistsNamedCounterAndSacrificeSearch"
+      ],
+      "scope": "Complete cached ZEN UUID0e4db2dc-36a6-5164-a5f7-d6e2efc3fbd0 normalized fixtureSHA2564c8373e38f293c70846d4bbd5a792fc0c3243856ca5edba587533476c9943e54. Both seats pay1G, play lands and accept/decline untargeted quest-counter landfall; three actually earned counters and self-sacrifice pay before resolution. Explicit0/1/2 tapped basic finds, empty-library failure to find, two same-name basics and one final shuffle. Wrong-seat/stale/repeated/invalid/cross-family/overselected/nonbasic actions reject atomically. Quest/+1/+1 separation, original-controller/incarnation probes, pending/queued/completed JSON replay, practice and persisted panels covered. Schema16 counter-kind validation and synthetic legacy10/15 +1/+1 migration.",
+      "limits": "Exact quest-landfall and combined remove-three/self-sacrifice wording only. Synthetic controller relocation/incarnation/legacy saves/nonland entry/panel counter setup isolate contracts, not supporting-card certificates. General replacement/APNAP/copy/continuous rules, more-than25-name selector paging, newest printing and whole-card certification remain unverified. Saved kind allowlist validation is not authentication of arbitrary forged game state. No sourcefetch/corpusscan/import/live/build/restart/deploy."
     }
   ],
   "explicitUnsupported": [
