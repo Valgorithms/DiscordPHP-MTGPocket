@@ -105,4 +105,43 @@ final class TargetClauseDistinctnessTest extends GameTestCase
     {
         return [[0], [1]];
     }
+
+    /** @dataProvider actors */
+    public function testSelectedModesKeepSeparateGroupsAndAllowCrossClauseReuse(int $actor): void
+    {
+        $a = $this->start($actor);
+        $b = $this->game->addCard($actor, self::card('Ornithopter'), GameObject::BATTLEFIELD)->id;
+        $this->lands($actor, 'Island', 1);
+        $data = $this->definition("Choose one or both —\n• Tap up to two target creatures.\n• Untap up to two target creatures.");
+        $card = new CardDefinition($data);
+        $this->assertSame([], $card->unsupported);
+        $this->assertSame([0, 0, 2, 2], Game::targetGroups($card->spellEffects([0, 1])));
+        $source = $this->game->addCard($actor, $data, GameObject::HAND)->id;
+        $this->unchanged(fn () => $this->game->cast($actor, $source, 0, ["o:{$a}", "o:{$b}", "o:{$a}", "o:{$a}"], ['modes' => [0, 1]]));
+        $this->game->cast($actor, $source, 0, ["o:{$a}", "o:{$b}", "o:{$a}", "o:{$b}"], ['modes' => [0, 1]]);
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertFalse($this->game->objects[$a]->tapped);
+        $this->assertFalse($this->game->objects[$b]->tapped);
+    }
+
+    /** @dataProvider actors */
+    public function testSupportClauseUsesDistinctTargetsAndPracticeForcedFallbackDoesToo(int $actor): void
+    {
+        $a = $this->start($actor);
+        $b = $this->game->addCard($actor, self::card('Ornithopter'), GameObject::BATTLEFIELD)->id;
+        $this->lands($actor, 'Island', 1);
+        $data = $this->definition('Support 2.');
+        $source = $this->game->addCard($actor, $data, GameObject::HAND)->id;
+        $this->assertSame([], $this->game->objects[$source]->definition()->unsupported);
+        $this->unchanged(fn () => $this->game->cast($actor, $source, 0, ["o:{$a}", "o:{$a}"]));
+        $this->game->cast($actor, $source, 0, ["o:{$a}", "o:{$b}"]);
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertSame([1, 1], [$this->game->objects[$a]->counter('+1/+1'), $this->game->objects[$b]->counter('+1/+1')]);
+        $harmful = new CardDefinition($this->definition('Tap up to two target creatures.'));
+        $choose = new \ReflectionMethod(PracticeBot::class, 'targets');
+        $targets = $choose->invoke(null, $this->game, $actor, $harmful->targetKinds(), $harmful->spellEffects(), null, true);
+        $this->assertSame(['-', '-'], $targets);
+    }
 }
