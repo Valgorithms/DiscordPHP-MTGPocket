@@ -4551,6 +4551,11 @@ final class Game
                     }
                     break;
                 }
+                if (isset($effect['toController'])) {
+                    // `Return target creature to its owner's hand. Its controller draws a card.`
+                    $this->draw(str_starts_with((string) $target, 'p:') ? (int) substr((string) $target, 2) : $this->objects[(int) explode(':', (string) $target)[1]]->controller, $amount);
+                    break;
+                }
                 $this->draw($target !== null ? (int) substr($target, 2) : (isset($effect['opponent']) ? $this->opponent($controller) : $controller), $amount);
                 break;
 
