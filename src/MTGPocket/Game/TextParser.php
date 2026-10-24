@@ -1850,13 +1850,13 @@ final class TextParser
 
             return true;
         }
-        // `Other green creatures you control get +1/+1.` (the Lieges) and `Attacking creatures you control get +1/+0.` (Goblin Oriflamme); see Game::anthems().
-        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking|[Aa]rtifact) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
+        // `Other green creatures you control get +1/+1.` (the Lieges), `Attacking creatures you control get +1/+0.` (Goblin Oriflamme) and `Equipped creatures you control have vigilance.`; see Game::anthems().
+        if (preg_match('/^(Other )?(white|blue|black|red|green|[Aa]ttacking|[Aa]rtifact|[Ee]quipped|[Ee]nchanted) creatures you control (?:get ([+-]\d+)\/([+-]\d+)(?: and have (.+?))?|have (.+?))\.?$/', $line, $m)) {
             $keywords = self::keywordList(($m[6] ?? '') !== '' ? $m[6] : ($m[5] ?? ''));
             if ($keywords === null) {
                 return false;
             }
-            $which = in_array(strtolower($m[2]), ['attacking', 'artifact'], true) ? [strtolower($m[2]) => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
+            $which = in_array(strtolower($m[2]), ['attacking', 'artifact', 'equipped', 'enchanted'], true) ? [strtolower($m[2]) => true] : ['color' => ['white' => 'W', 'blue' => 'U', 'black' => 'B', 'red' => 'R', 'green' => 'G'][$m[2]]];
             $result['anthem'][] = ['power' => (int) ($m[3] ?? 0), 'toughness' => (int) ($m[4] ?? 0), 'keywords' => $keywords, 'other' => $m[1] !== ''] + $which;
 
             return true;
