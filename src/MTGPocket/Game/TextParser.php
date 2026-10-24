@@ -2659,6 +2659,8 @@ final class TextParser
             'a creature spell' => 'cast_creature', 'an artifact spell' => 'cast_artifact', 'an enchantment spell' => 'cast_enchantment',
             'a white spell' => 'cast_color_W', 'a blue spell' => 'cast_color_U', 'a black spell' => 'cast_color_B', 'a red spell' => 'cast_color_R', 'a green spell' => 'cast_color_G',
             'a multicolored spell' => 'cast_multicolored', 'a spell from your graveyard' => 'cast_from_graveyard',
+            // See Game::castTriggers(): the zone it was cast from, and a kicker cost paid.
+            'a spell from exile' => 'cast_from_exile', 'a spell from anywhere other than your hand' => 'cast_not_from_hand', 'a kicked spell' => 'cast_kicked',
         ];
         // Haunt: `When CARDNAME enters or the creature it haunts dies, …` and `When the creature CARDNAME haunts dies, …`
         if (preg_match('/^When (CARDNAME enters or the creature it haunts dies|the creature CARDNAME haunts dies), (.+)\.$/', $line, $m) && ($effects = self::effects($m[2].'.')) !== null) {
