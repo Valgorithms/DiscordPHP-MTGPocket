@@ -4940,11 +4940,12 @@ final class TextParser
                 default => 'battlefield',
             }];
         }
-        // Spider-Bot: `… search your library for a basic land card, reveal it, then shuffle and put that card on top.`
+        // Rampant Growth: mandatory search with an explicit choice, including failure to find.
         if (strcasecmp($s, 'Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle') === 0) {
             return ['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped'];
         }
 
+        // Spider-Bot: `… search your library for a basic land card, reveal it, then shuffle and put that card on top.`
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, reveal it, then shuffle and put that card on top$/i', $s, $m)) {
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => 'top'];
         }
