@@ -2673,8 +2673,9 @@ final class TextParser
             return true;
         }
         // Basilisk-style: `Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.`; see Game::combatDamage().
-        if ($line === 'Whenever CARDNAME deals combat damage to a creature, destroy that creature at end of combat.') {
-            $result['triggered'][] = ['text' => $line, 'event' => 'combat_damage_creature', 'effects' => [['type' => 'destroy_end_combat', 'target' => 'creature']]];
+        // Without "combat", any damage counts and the creature is destroyed at the next end of combat; see Game::dealDamage().
+        if (preg_match('/^Whenever CARDNAME deals (combat )?damage to a creature, destroy that creature at end of combat\.$/', $line, $m)) {
+            $result['triggered'][] = ['text' => $line, 'event' => ($m[1] ?? '') === '' ? 'damages_creature' : 'combat_damage_creature', 'effects' => [['type' => 'destroy_end_combat', 'target' => 'creature']]];
 
             return true;
         }
