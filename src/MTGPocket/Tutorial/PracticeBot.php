@@ -99,6 +99,61 @@ final class PracticeBot
                 $game->chooseTriggerTargets($seat, self::targets($game, $seat, $trigger['kinds'], $trigger['effects'], $trigger['source'], true) ?? []);
 
                 return true;
+            case 'sacrifice':
+                $choice = $game->choiceAwaiting();
+                $cards = $choice['cards'];
+                usort($cards, fn (int $a, int $b) => [! $game->objects[$a]->definition()->isToken(), $game->power($game->objects[$a]) + $game->toughness($game->objects[$a])] <=> [! $game->objects[$b]->definition()->isToken(), $game->power($game->objects[$b]) + $game->toughness($game->objects[$b])]);
+                $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
+
+                return true;
+            case 'optional_red_goblin':
+                // Explicit policy: buy the Goblin when the normal mana planner can pay.
+                $game->chooseOptionalRedGoblin($seat, $game->choiceAwaiting()['id'], $game->canPayOptionalRedGoblin($seat) ? 'accept' : 'decline');
+
+                return true;
+
+            case 'optional_source_untap':
+                // Explicit policy, including a harmless accept if the old source is gone.
+                $game->chooseOptionalSourceUntap($seat, $game->choiceAwaiting()['id'], 'accept');
+
+                return true;
+
+            case 'optional_source_counter':
+                // Explicit policy, including a harmless accept if the old source is gone.
+                $game->chooseOptionalSourceCounter($seat, $game->choiceAwaiting()['id'], 'accept');
+
+                return true;
+
+            case 'optional_basic_land_search':
+                // Explicit practice policy: search, then use the existing legal tutor selection.
+                $game->chooseOptionalBasicLandSearch($seat, $game->choiceAwaiting()['id'], 'accept');
+
+                return true;
+
+            case 'optional_death_draw':
+                // Explicit practice policy: decline rather than draw from an empty library.
+                $game->chooseOptionalDeathDraw($seat, $game->choiceAwaiting()['id'], $game->players[$seat]->library === [] ? 'decline' : 'accept');
+
+                return true;
+
+            case 'optional_life_gain':
+                // Explicit simple practice policy: accept the optional controller gain.
+                $game->chooseOptionalLifeGain($seat, $game->choiceAwaiting()['id'], 'accept');
+
+                return true;
+
+            case 'optional_life_loss':
+                $choice = $game->choiceAwaiting();
+                // Explicit simple policy: accept this targeted opponent's life loss.
+                $game->chooseOptionalLifeLoss($seat, $choice['id'], 'accept');
+
+                return true;
+            case 'fabricate':
+                $choice = $game->choiceAwaiting();
+                // Deliberate simple practice policy; humans choose either outcome.
+                $game->chooseFabricate($seat, $choice['id'], 'counters');
+
+                return true;
             case 'entry_life':
                 $choice = $game->choiceAwaiting();
                 $pay = in_array('pay', $choice['options'], true) && ! $choice['tapped'] && $game->players[$seat]->life > 10;

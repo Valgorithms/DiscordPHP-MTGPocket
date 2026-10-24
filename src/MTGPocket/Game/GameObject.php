@@ -55,6 +55,9 @@ final class GameObject
     /** @var array<string, int> Counter kind => how many, e.g. `+1/+1`, `-1/-1`, `loyalty`. */
     public array $counters = [];
 
+    /** @var array<int, array{power: int, toughness: int}> Battlefield departure statistics keyed by the source incarnation; not permanent state. */
+    public array $lastKnownStatistics = [];
+
     public ?int $attachedTo = null;
 
     /** @var array<int, array{power: int, toughness: int, keywords: string[], creature?: bool}> Effects that last until end of turn; `creature` makes a crewed Vehicle one. */
@@ -217,6 +220,24 @@ final class GameObject
     }
 
     /**
+     * Mana value before a battlefield departure; X is zero off the stack.
+     * An unmerged transforming card uses its front cost on either face, while
+     * face-down, modal and copied single-face definitions retain their own cost.
+     * This does not model meld or general copy/continuous-effect layers.
+     *
+     * @return int
+     */
+    public function battlefieldManaValue(): int
+    {
+        if (! $this->faceDown && $this->mutations === [] && $this->transformed
+            && ($this->card['layout'] ?? null) === 'transform' && $this->printed()->back !== null) {
+            return $this->printed()->cost->manaValue();
+        }
+
+        return $this->definition()->cost->manaValue();
+    }
+
+    /**
      * Merges a mutating card with it (rule 721.2).
      *
      * @param int   $id   The mutating card's object.
@@ -346,6 +367,7 @@ final class GameObject
             'controller' => $this->controller,
             'zone' => $this->zone,
             'card' => $this->card,
+            'lastKnownStatistics' => $this->lastKnownStatistics,
         ];
         // Only state that differs from a fresh object, to keep saved games small.
         $state = [
@@ -421,6 +443,17 @@ final class GameObject
         $object->deathtouched = (bool) ($data['deathtouched'] ?? false);
         $object->damagedBy = array_map('intval', (array) ($data['damagedBy'] ?? []));
         $object->counters = array_map('intval', (array) ($data['counters'] ?? []));
+        $statistics = array_key_exists('lastKnownStatistics', $data) ? $data['lastKnownStatistics'] : [];
+        if (! is_array($statistics)) {
+            throw new GameException('Invalid saved source statistics.');
+        }
+        foreach ($statistics as $incarnation => $values) {
+            if (! is_int($incarnation) || $incarnation < 0 || $incarnation >= (int) ($data['incarnation'] ?? 0)
+                || ! is_array($values) || count($values) !== 2 || ! is_int($values['power'] ?? null) || ! is_int($values['toughness'] ?? null)) {
+                throw new GameException('Invalid saved source statistics.');
+            }
+        }
+        $object->lastKnownStatistics = $statistics;
         $object->attachedTo = isset($data['attachedTo']) ? (int) $data['attachedTo'] : null;
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
         $object->incarnation = (int) ($data['incarnation'] ?? 0);

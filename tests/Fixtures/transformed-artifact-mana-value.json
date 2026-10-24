@@ -1,0 +1,203 @@
+{
+  "source": "Existing imported DKA and LCI pools; source-only bounded selection, no new import.",
+  "candidates": [
+    {
+      "setCode": "DKA",
+      "card": {
+        "uuid": "34b16f70-2dd9-5843-b680-0a40a4b68e86",
+        "name": "Chalice of Life // Chalice of Death",
+        "number": "146",
+        "rarity": "uncommon",
+        "colors": [],
+        "manaValue": 3,
+        "type": "Artifact",
+        "scryfallId": "9d9c1c46-7aa7-464c-87b0-b29b9663daef",
+        "manaCost": "{3}",
+        "types": [
+          "Artifact"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "{T}: You gain 1 life. Then if you have at least 10 life more than your starting life total, transform this artifact.",
+        "keywords": [
+          "Transform"
+        ],
+        "layout": "transform",
+        "colorIdentity": [],
+        "back": {
+          "name": "Chalice of Death",
+          "colors": [],
+          "type": "Artifact",
+          "types": [
+            "Artifact"
+          ],
+          "supertypes": [],
+          "subtypes": [],
+          "text": "{T}: Target player loses 5 life.",
+          "keywords": [
+            "Transform"
+          ],
+          "colorIdentity": [],
+          "manaCost": null
+        }
+      }
+    },
+    {
+      "setCode": "LCI",
+      "card": {
+        "uuid": "32480bfd-5be9-5eb9-989d-6650eb53c16e",
+        "name": "Clay-Fired Bricks // Cosmium Kiln",
+        "number": "6",
+        "rarity": "uncommon",
+        "colors": [
+          "W"
+        ],
+        "manaValue": 2,
+        "type": "Artifact",
+        "scryfallId": "8aece300-656b-4e0d-a45f-aa7feaff0a4e",
+        "manaCost": "{1}{W}",
+        "types": [
+          "Artifact"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "When this artifact enters, search your library for a basic Plains card, reveal it, put it into your hand, then shuffle. You gain 2 life.\nCraft with artifact {5}{W}{W} ({5}{W}{W}, Exile this artifact, Exile another artifact you control or an artifact card from your graveyard: Return this card transformed under its owner's control. Craft only as a sorcery.)",
+        "keywords": [
+          "Craft",
+          "Transform"
+        ],
+        "layout": "transform",
+        "colorIdentity": [
+          "W"
+        ],
+        "back": {
+          "name": "Cosmium Kiln",
+          "colors": [
+            "W"
+          ],
+          "type": "Artifact",
+          "types": [
+            "Artifact"
+          ],
+          "supertypes": [],
+          "subtypes": [],
+          "text": "When this artifact enters, create two 1/1 colorless Gnome artifact creature tokens.\nCreatures you control get +1/+1.",
+          "keywords": [
+            "Craft",
+            "Transform"
+          ],
+          "colorIdentity": [
+            "W"
+          ],
+          "manaCost": null
+        }
+      }
+    },
+    {
+      "setCode": "LCI",
+      "card": {
+        "uuid": "12121978-97f4-588f-99c0-2b0ed31cde6c",
+        "name": "Braided Net // Braided Quipu",
+        "number": "47",
+        "rarity": "rare",
+        "colors": [
+          "U"
+        ],
+        "manaValue": 3,
+        "type": "Artifact",
+        "scryfallId": "68a6ede0-6d57-4e29-9e3b-3569ab7f0bcd",
+        "manaCost": "{2}{U}",
+        "types": [
+          "Artifact"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "This artifact enters with three net counters on it.\n{T}, Remove a net counter from this artifact: Tap another target nonland permanent. Its activated abilities can't be activated for as long as it remains tapped.\nCraft with artifact {1}{U}",
+        "keywords": [
+          "Craft",
+          "Transform"
+        ],
+        "layout": "transform",
+        "colorIdentity": [
+          "U"
+        ],
+        "back": {
+          "name": "Braided Quipu",
+          "colors": [
+            "U"
+          ],
+          "type": "Artifact",
+          "types": [
+            "Artifact"
+          ],
+          "supertypes": [],
+          "subtypes": [],
+          "text": "{3}{U}, {T}: Draw a card for each artifact you control, then put this artifact into its owner's library third from the top.",
+          "keywords": [
+            "Craft",
+            "Transform"
+          ],
+          "colorIdentity": [
+            "U"
+          ],
+          "manaCost": null
+        }
+      }
+    },
+    {
+      "setCode": "LCI",
+      "card": {
+        "uuid": "7425b8e1-e6d4-53c4-9a72-0db911baa48f",
+        "name": "The Enigma Jewel // Locus of Enlightenment",
+        "number": "55",
+        "rarity": "mythic",
+        "colors": [
+          "U"
+        ],
+        "manaValue": 1,
+        "type": "Legendary Artifact",
+        "scryfallId": "2e98970d-06a8-4c91-ba47-4a02c5b949f2",
+        "manaCost": "{U}",
+        "types": [
+          "Artifact"
+        ],
+        "supertypes": [
+          "Legendary"
+        ],
+        "subtypes": [],
+        "text": "The Enigma Jewel enters tapped.\n{T}: Add {C}{C}. Spend this mana only to activate abilities.\nCraft with four or more nonlands with activated abilities {8}{U} ({8}{U}, Exile this artifact, Exile the four or more from among other permanents you control and/or cards in your graveyard: Return this card transformed under its owner's control. Craft only as a sorcery.)",
+        "keywords": [
+          "Craft",
+          "Transform"
+        ],
+        "layout": "transform",
+        "colorIdentity": [
+          "U"
+        ],
+        "back": {
+          "name": "Locus of Enlightenment",
+          "colors": [
+            "U"
+          ],
+          "type": "Legendary Artifact",
+          "types": [
+            "Artifact"
+          ],
+          "supertypes": [
+            "Legendary"
+          ],
+          "subtypes": [],
+          "text": "Locus of Enlightenment has each activated ability of the exiled cards used to craft it. You may activate each of those abilities only once each turn.\nWhenever you activate an ability that isn't a mana ability, copy it. You may choose new targets for the copy.",
+          "keywords": [
+            "Craft",
+            "Transform"
+          ],
+          "colorIdentity": [
+            "U"
+          ],
+          "manaCost": null
+        }
+      }
+    }
+  ]
+}

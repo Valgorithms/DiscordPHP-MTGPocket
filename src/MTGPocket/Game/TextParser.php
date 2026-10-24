@@ -1289,8 +1289,8 @@ final class TextParser
                 // Hideaway (rule 702.75): one of the top N exiled face down for later; see Game::hideaway().
                 $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'hideaway', 'amount' => (int) $m[1], 'self' => true]]];
             } elseif (preg_match('/^fabricate (\d+)$/i', $part, $m) && ! $spell) {
-                // Fabricate (rule 702.123): always the counters, not the Servos.
-                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'counters', 'amount' => (int) $m[1], 'self' => true]]];
+                // Fabricate (rule 702.123): choose counters or Servos as the ability resolves.
+                $found['triggered'][] = ['text' => $part, 'event' => 'enters', 'effects' => [['type' => 'fabricate', 'amount' => (int) $m[1], 'self' => true]]];
             } elseif (preg_match('/^renown (\d+)$/i', $part, $m) && ! $spell) {
                 // Renown (rule 702.112): the first time it deals combat damage to a player.
                 $found['triggered'][] = ['text' => $part, 'event' => 'combat_damage', 'effects' => [['type' => 'renown', 'amount' => (int) $m[1], 'self' => true]]];
@@ -2074,7 +2074,7 @@ final class TextParser
 
             return true;
         }
-        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)(?: or pay ((?:\{[^}]+\})+))?\.?$/', $line, $m)) {
+        if (! preg_match('/^As an additional cost to cast CARDNAME, (sacrifice a creature|sacrifice an artifact or creature|sacrifice an artifact|sacrifice a land|discard a card|exile a creature card from your graveyard|exile a card from your graveyard)(?: or pay ((?:\{[^}]+\})+))?\.?$/', $line, $m)) {
             return false;
         }
         if (isset($m[2])) {
@@ -2084,6 +2084,7 @@ final class TextParser
             'sacrifice a creature' => 'sacrifice_creature',
             'sacrifice an artifact or creature' => 'sacrifice_artifact_or_creature',
             'sacrifice an artifact' => 'sacrifice_artifact',
+            'sacrifice a land' => 'sacrifice_land',
             'exile a creature card from your graveyard' => 'exile_creature_card',
             'exile a card from your graveyard' => 'exile_card',
             default => 'discard',
@@ -2484,6 +2485,79 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // Keep the optional search distinct from accepting and failing to find a land.
+        $optionalBasicSearch = match ($line) {
+            'When CARDNAME enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.' => 'enters',
+            'When CARDNAME dies, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.' => 'dies',
+            default => null,
+        };
+        if ($optionalBasicSearch !== null) {
+            $result['triggered'][] = ['text' => $line, 'event' => $optionalBasicSearch, 'effects' => [['type' => 'optional_basic_land_search']]];
+
+            return true;
+        }
+        // Solemn Simulacrum's self-death draw is optional at resolution.
+        if ($line === 'When CARDNAME dies, you may draw a card.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'dies',
+                'effects' => [['type' => 'optional_death_draw']]];
+
+            return true;
+        }
+        // Exact source-counter wording; bind the artifact's battlefield mana value before movement changes its face.
+        if ($line === "Whenever an artifact is put into a graveyard from the battlefield, put a number of +1/+1 counters equal to that artifact's mana value on CARDNAME.") {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'counters', 'amount' => 'departing_mana_value', 'self' => true]]];
+
+            return true;
+        }
+        // Exact source-plus-Golem wording; the existing effects preserve source incarnation and controller.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, put a +1/+1 counter on CARDNAME and a +1/+1 counter on each Golem you control.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'counters', 'amount' => 1, 'self' => true], ['type' => 'counters', 'amount' => 1, 'each' => 'yours', 'subtype' => 'Golem']]];
+
+            return true;
+        }
+        // Exact optional red-payment token family; payment is a resolution choice.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may pay {R}. If you do, create a 1/1 red Goblin creature token. It gains haste until end of turn.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_red_goblin']]];
+
+            return true;
+        }
+        // Exact optional source untap; the original controller makes the decision.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may untap CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_source_untap']]];
+
+            return true;
+        }
+        // Exact optional source-counter wording; keep its decision separate from life choices.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may put a +1/+1 counter on CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_source_counter']]];
+
+            return true;
+        }
+        // Exact temporary source boost; existing self/incarnation and cleanup rules own it.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, CARDNAME gets +2/+0 until end of turn.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'pump', 'power' => 2, 'toughness' => 0, 'keywords' => [], 'self' => true]]];
+
+            return true;
+        }
+        // Narrow optional/all-player burial family; only the life-loss wording targets.
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may gain 5 life.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_life_gain', 'amount' => 5]]];
+
+            return true;
+        }
+        if ($line === 'Whenever an artifact is put into a graveyard from the battlefield, you may have target opponent lose 1 life.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'artifact_to_graveyard_any', 'objectKind' => 'artifact',
+                'effects' => [['type' => 'optional_life_loss', 'amount' => 1, 'target' => 'opponent']]];
+
+            return true;
+        }
         // Valiant: `Whenever CARDNAME becomes the target of a spell or ability you control for the first time each turn, …`: see Game::trigger().
         // `Whenever …, draw a card. This ability triggers only once each turn.`: the same record.
         if (preg_match('/^(Whenever .+?) for the first time each turn, (.+)$/', $line, $once) || preg_match('/^(Whenever [^.]+?), (.+\.) This ability triggers only once each turn\.$/', $line, $once)) {
@@ -2526,7 +2600,7 @@ final class TextParser
             'a noncreature spell' => 'cast_noncreature', 'an instant or sorcery spell' => 'cast_instant_sorcery', 'a spell' => 'cast_spell', 'a Spirit or Arcane spell' => 'cast_spirit_arcane',
             'a creature spell' => 'cast_creature', 'an artifact spell' => 'cast_artifact', 'an enchantment spell' => 'cast_enchantment',
             'a white spell' => 'cast_color_W', 'a blue spell' => 'cast_color_U', 'a black spell' => 'cast_color_B', 'a red spell' => 'cast_color_R', 'a green spell' => 'cast_color_G',
-            'a multicolored spell' => 'cast_multicolored',
+            'a multicolored spell' => 'cast_multicolored', 'a spell from your graveyard' => 'cast_from_graveyard',
         ];
         // Haunt: `When CARDNAME enters or the creature it haunts dies, …` and `When the creature CARDNAME haunts dies, …`
         if (preg_match('/^When (CARDNAME enters or the creature it haunts dies|the creature CARDNAME haunts dies), (.+)\.$/', $line, $m) && ($effects = self::effects($m[2].'.')) !== null) {
@@ -3604,6 +3678,11 @@ final class TextParser
      */
     private static function cardFilter(string $words): ?string
     {
+        // Clay-Fired Bricks requires both a Basic supertype and the Plains subtype.
+        // Keep mixed subtype alternatives unread until their grouping is supported.
+        if ($words === 'basic Plains') {
+            return 'basic_land&sub:Plains';
+        }
         $kinds = [
             'creature' => 'creature', 'land' => 'land', 'artifact' => 'artifact', 'enchantment' => 'enchantment', 'instant' => 'instant',
             'sorcery' => 'sorcery', 'planeswalker' => 'planeswalker', 'permanent' => 'permanent', 'nonland' => 'nonland',
@@ -4366,6 +4445,10 @@ final class TextParser
         if (preg_match('/^(?:you )?draw (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
             return ['type' => 'draw', 'amount' => $n];
         }
+        // Slow cantrips: a one-shot triggered draw, not a draw now or in the draw step.
+        if (strcasecmp($s, "draw a card at the beginning of the next turn's upkeep") === 0) {
+            return ['type' => 'draw_next_upkeep'];
+        }
         // `Each player draws a card.`, `Each opponent gains 2 life.`: in turn order; see Game::applyEffect(). "Each other player" is each opponent.
         if (preg_match('/^each (player|opponent|other player) (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[3] !== '' ? $m[3] : $m[4])) !== null) {
             return ['type' => $m[3] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => strtolower($m[1]) === 'player' ? 'player' : 'opponent'];
@@ -4583,7 +4666,7 @@ final class TextParser
         }
         // `Put a +1/+1 counter on each other attacking creature.`: whoever controls them.
         if (preg_match('/^[Pp]ut (\w+) \+1\/\+1 counters? on each (other )?attacking creature$/', ucfirst($s), $m) && is_int($n = self::amount(strtolower($m[1])))) {
-            return ['type' => 'counters', 'amount' => $n, 'each' => 'attacking'] + ($m[2] !== '' ? ['other' => true] : []);
+            return ['type' => 'counters', 'amount' => $n, 'each' => 'attacking'] + (($m[2] ?? '') !== '' ? ['other' => true] : []);
         }
         // A ritual: `Add {R}{R}{R}.`
         if (preg_match('/^add ((\{[WUBRGC]\})\2*)$/i', $s, $m)) {
@@ -4650,7 +4733,9 @@ final class TextParser
         }
         $each = ['creatures you control' => 'yours', 'creatures your opponents control' => 'opponents', 'creatures you don\'t control' => 'opponents', 'creatures defending player controls' => 'opponents', 'all creatures' => 'all', 'creatures without flying' => 'without_flying', 'attacking creatures' => 'attacking', 'attacking creatures you control' => 'attacking'];
         $group = implode('|', array_keys($each));
-        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
+        // Consume the Meek: "each creature" selects the same objects as "all creatures".
+        $s = (string) preg_replace('/^(destroy|exile) each creature\b/i', '$1 all creatures', $s);
+        if (preg_match('/^(destroy|exile) (all creatures|all creatures you don\'t control|all creatures your opponents control|all artifacts|all enchantments|all nonland permanents|all artifacts and enchantments|all artifacts, creatures, and lands|all other creatures|all creatures with flying|all creatures without flying|all tapped creatures|all creatures with power \d+ or (?:less|greater)|all creatures with mana value \d+ or (?:less|greater))$/i', $s, $m)) {
             return ['type' => strtolower($m[1]), 'all' => strtolower($m[2])];
         }
         // Evacuation, Aetherize-style sweepers: `Return all creatures to their owners' hands.`
@@ -4770,7 +4855,7 @@ final class TextParser
         if (preg_match('/^create (\w+) (Food|Clue|Treasure|Blood|Lander|Map|Junk) tokens?$/i', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'token', 'amount' => $n, 'token' => self::ARTIFACT_TOKENS[ucfirst(strtolower($m[2]))]];
         }
-        if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], self::CREATURE_KINDS, true)) {
+        if (preg_match("/^gain control of ({$targets}) until end of turn$/i", $s, $m) && in_array(self::TARGETS[strtolower($m[1])], ['artifact', ...self::CREATURE_KINDS], true)) {
             return ['type' => 'control', 'target' => self::TARGETS[strtolower($m[1])]];
         }
         if (preg_match('/^attach (?:it|CARDNAME) to target creature you control$/', $s)) {
@@ -4851,7 +4936,11 @@ final class TextParser
         if (preg_match('/^its controller may search their library for a basic land card, put (?:it|that card) (onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => 'basic land', 'to' => strtolower($m[1]) === 'onto the battlefield' ? 'battlefield' : 'tapped', 'theirs' => true, 'sameTarget' => true];
         }
-        // `Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.`
+        // Burnished Hart / Harrow: choose zero, one or two basics, then shuffle once.
+        if (preg_match('/^Search your library for up to two basic land cards, put them onto the battlefield( tapped)?, then shuffle$/i', $s, $m)) {
+            return ['type' => 'tutor', 'filter' => 'basic_land', 'count' => 2, 'to' => isset($m[1]) ? 'tapped' : 'battlefield', 'reveal' => false];
+        }
+        // Other legacy up-to searches retain their existing policy.
         if (preg_match('/^(?:you may )?search your library for up to (\w+) basic land cards, (?:reveal them, )?put them (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
             return ['type' => 'search', 'find' => 'basic land', 'count' => $n, 'to' => match (strtolower($m[2])) {
                 'into your hand' => 'hand',
@@ -4859,12 +4948,20 @@ final class TextParser
                 default => 'battlefield',
             }];
         }
+        // Rampant Growth / Evolving Wilds: mandatory search with a choice, including failure to find.
+        if (preg_match('/^search your library for a basic land card, put (?:it|that card) onto the battlefield tapped, then shuffle$/i', $s)) {
+            return ['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped', 'reveal' => false];
+        }
+
         // Spider-Bot: `… search your library for a basic land card, reveal it, then shuffle and put that card on top.`
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, reveal it, then shuffle and put that card on top$/i', $s, $m)) {
             return ['type' => 'search', 'find' => strtolower($m[1]) === 'basic land' ? 'basic land' : ucfirst(strtolower($m[1])), 'to' => 'top'];
         }
         // Cultivate: `… for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.`
-        if (preg_match('/^(?:you may )?search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle$/i', $s)) {
+        if (strcasecmp($s, 'Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle') === 0) {
+            return ['type' => 'split_land_search'];
+        }
+        if (preg_match('/^you may search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle$/i', $s)) {
             return ['type' => 'search', 'find' => 'basic land', 'count' => 2, 'to' => 'split'];
         }
         if (preg_match('/^(?:you may )?search your library for an? (basic land|plains|island|swamp|mountain|forest) card, (?:reveal it, )?put it (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
@@ -4876,7 +4973,7 @@ final class TextParser
         }
         // The Harbingers: `… search your library for a Goblin card, reveal it, then shuffle and put that card on top.`
         if (preg_match('/^(?:you may )?search your library for an? (.+?) card, reveal it, then shuffle and put that card on top$/i', $s, $m) && ($filter = self::cardFilter($m[1])) !== null) {
-            return ['type' => 'tutor', 'filter' => $filter, 'to' => 'top'];
+            return ['type' => 'tutor', 'filter' => $filter, 'to' => 'top', 'reveal' => true];
         }
         // A tutor: `Search your library for a creature card, reveal it, put it into your hand, then shuffle.`
         // `… for a creature card with mana value 3 or less, …` and `… with power 2 or less, …`: as printed.
@@ -4886,7 +4983,7 @@ final class TextParser
                 $filter = ($filter === 'any' ? '' : "{$filter}&").['mana value' => 'mv', 'power' => 'pow', 'toughness' => 'tou'][strtolower($m[2])].'_'.(strtolower($m[4]) === 'less' ? 'le' : 'ge')."_{$m[3]}";
             }
 
-            return ['type' => 'tutor', 'filter' => $filter, 'to' => match (strtolower($m[5])) {
+            return ['type' => 'tutor', 'filter' => $filter, 'reveal' => stripos($s, ', reveal it, ') !== false, 'to' => match (strtolower($m[5])) {
                 'into your hand' => 'hand',
                 'onto the battlefield tapped' => 'tapped',
                 default => 'battlefield',
