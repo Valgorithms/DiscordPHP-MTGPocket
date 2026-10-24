@@ -3055,11 +3055,12 @@ final class TextParser
 
                 return true;
             }
-        } elseif (preg_match('/^Whenever one or more other (creatures|nontoken creatures) you control die, (.+)$/', $line, $m2) && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[2])) {
-            // Once for creatures dying together; see Game::trigger().
-            $match = [$m2[0], $m2[2]];
+        } elseif (preg_match('/^Whenever one or more (other )?(creatures|nontoken creatures) you control die, (.+)$/', $line, $m2) && ($m2[1] !== '' || ! self::$creature)
+            && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[3])) {
+            // Once for creatures dying together; see Game::trigger(). Without "other" only on a noncreature, which is never among them.
+            $match = [$m2[0], $m2[3]];
             $event = 'creature_dies_other';
-            $extra = ['batch' => true] + ($m2[1] !== 'creatures' ? ['nontoken' => true] : []);
+            $extra = ['batch' => true] + ($m2[2] !== 'creatures' ? ['nontoken' => true] : []);
             $text = $match[1];
         } elseif (preg_match('/^Whenever one or more (other )?creatures (?:you control enter|enter(?: the battlefield)? under your control)(?: the battlefield)?, (.+)$/', $line, $m2) && ($m2[1] !== '' || ! self::$creature)
             && ! preg_match('/\b(?:they|them|their|those creatures|it|its)\b/', $m2[2])) {
