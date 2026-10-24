@@ -7021,6 +7021,9 @@ final class Game
         if ($ability['once'] && ($object->used[$index] ?? 0) === $this->turn) {
             return "You have already activated that ability of {$card->name} this turn.";
         }
+        if (isset($ability['perTurn']) && ($object->used[$index] ?? 0) === $this->turn && ($object->activations[$index] ?? 0) >= $ability['perTurn']) {
+            return "You have already activated that ability of {$card->name} ".($ability['perTurn'] === 2 ? 'twice' : 'three times').' this turn.';
+        }
         if (($ability['ever'] ?? false) && isset($object->used[$index])) {
             return "You have already activated that ability of {$card->name}.";
         }
@@ -7575,6 +7578,7 @@ final class Game
 
             return;
         }
+        $object->activations[$index] = ($object->used[$index] ?? 0) === $this->turn ? ($object->activations[$index] ?? 0) + 1 : 1;
         $object->used[$index] = $this->turn;
         // Casting the copy of its prepare spell unprepares it.
         if ($ability['prepare'] ?? false) {

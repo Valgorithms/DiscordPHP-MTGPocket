@@ -3523,10 +3523,14 @@ final class TextParser
 
         $text = $match[2];
         $sorcery = $once = false;
+        $perTurn = null;
         if (preg_match('/^(.+?)\s*Activate only as a sorcery\.$/', $text, $limit)) {
             [$text, $sorcery] = [$limit[1], true];
         } elseif (preg_match('/^(.+?)\s*Activate only once each turn\.$/', $text, $limit)) {
             [$text, $once] = [$limit[1], true];
+        } elseif (preg_match('/^(.+?)\s*Activate no more than (twice|three times) each turn\.$/', $text, $limit)) {
+            // See Game::whyNotActivate() and GameObject::$activations.
+            [$text, $perTurn] = [$limit[1], $limit[2] === 'twice' ? 2 : 3];
         }
         if (preg_match('/^(.+?)\s*Activate only once\.$/', $text, $limit)) {
             [$text, $ever] = [$limit[1], true];
@@ -3550,7 +3554,7 @@ final class TextParser
         if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
             return false;
         }
-        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []) + ($only !== null ? ['if' => $only] : []);
+        $result['activated'][] = ['text' => $line, 'cost' => $cost, 'effects' => $effects, 'sorcery' => $sorcery || $powerUp, 'once' => $once] + ($ever ? ['ever' => true] : []) + ($exhaust ? ['exhaust' => true] : []) + (($cost['discardSelf'] ?? false) ? ['hand' => true] : []) + (($cost['exileSelf'] ?? false) ? ['graveyard' => true] : []) + ($only !== null ? ['if' => $only] : []) + ($perTurn !== null ? ['perTurn' => $perTurn] : []);
 
         return true;
     }
