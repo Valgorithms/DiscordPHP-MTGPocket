@@ -6598,7 +6598,7 @@ final class Game
                 continue;
             }
             // `Whenever a nontoken creature you control dies, …`: the creature that died, or this one (whose context is its +1/+1 counters).
-            if (($ability['nontoken'] ?? false) && ($event === 'dies' ? $source : $this->objects[$context])->definition()->isToken()) {
+            if (($ability['nontoken'] ?? false) && (($event === 'dies' ? $source : ($this->objects[$context] ?? null))?->definition()->isToken() ?? true)) {
                 continue;
             }
             // `Whenever a creature token you control dies, …`: the creature that died.
