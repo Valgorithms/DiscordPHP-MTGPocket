@@ -9390,10 +9390,12 @@ final class Game
         if ($card->entersWithMinusCounters > 0) {
             $object->addCounters('-1/-1', $card->entersWithMinusCounters);
         }
-        // `Each other creature (Elf) you control enters with an additional +1/+1 counter on it.`
-        foreach ($this->isCreature($object) ? $this->permanents($controller) : [] as $permanent) {
-            foreach ($permanent->id !== $object->id ? $this->keywords($permanent) : [] as $word) {
-                if (str_starts_with($word, 'others enter with counter ') && (($kind = substr($word, 26)) === 'Creature' || in_array($kind, $card->subtypes, true) || in_array('changeling', $card->keywords, true))) {
+        // `Each other creature (Elf, non-Human creature) you control enters with an additional +1/+1 counter on it.`, `Creatures you control enter …`: itself too.
+        $sources = array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $object->id);
+        foreach ($this->isCreature($object) ? [...$sources, $object] : [] as $permanent) {
+            foreach ($this->keywords($permanent) as $word) {
+                if (preg_match('/^(others|creatures) enter with counter (non-)?(\w+)$/', $word, $m) && ($m[1] === 'creatures' || $permanent->id !== $object->id)
+                    && ($m[3] === 'Creature' || (in_array($m[3], $card->subtypes, true) || in_array('changeling', $card->keywords, true)) !== ($m[2] === 'non-'))) {
                     $object->addCounters('+1/+1', 1);
                 }
             }
