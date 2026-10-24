@@ -9,9 +9,9 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
+  "engineSource": "822ff4f0f1e200d5294c2ddf5d92f835ee902b0d",
   "validation": {
-    "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
+    "source": "822ff4f0f1e200d5294c2ddf5d92f835ee902b0d",
     "evidenceMeaning": "Source-only integration of Khalni quest/search and upstream opponent-discard recognition. Scoped evidence remains historical until the integrated source passes validation; no whole-card certification.",
     "local": "NOT RUN for this integrated source: PHP lint, Pint, PHPUnit, corpus scans and runtime checks. Only Git/source review, normalized source-pin inspection and JSON metadata inspection were performed. Earlier local passes are preserved below with their exact sources and do not validate this integration.",
     "ci": "NOT RUN for this integrated source. Exact final-head Tests CI must pass full Pint/PHPUnit on PHP 8.3, 8.4 and 8.5 after publication is approved. Earlier CI records below are historical.",
@@ -53,7 +53,7 @@
           }
         }
       ],
-      "engineSourceMeaning": "Historical anchor during local merge; replace with immutable integration commit in the metadata follow-up before handoff."
+      "engineSourceMeaning": "Immutable source-only integration commit, not a tested-source claim. The metadata follow-up changes no PHP source."
     }
   },
   "sourcePins": {
