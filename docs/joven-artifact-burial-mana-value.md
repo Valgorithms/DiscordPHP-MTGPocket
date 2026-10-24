@@ -1,5 +1,7 @@
 # Joven and Chandler artifact-burial counters
 
+The later [transformed-artifact follow-up](transformed-artifact-burial-mana-value.md) adds one scoped paid craft/back-face departure case; general copy/transforming-token and other model limits remain.
+
 The separate activation gap described in this historical counter milestone is addressed by the later [temporary artifact-control milestone](joven-temporary-artifact-control.md). Its counter evidence and general mana-value limitations remain scoped.
 
 This milestone uses the complete selected MBC record, UUID `6e88e450-3e9c-575e-96b2-6b0ac6a9434d`, in the existing eight-name candidate fixture. The fixture's normalized-LF SHA256 is `5b4683db36f12c404e3b314b1d5d5fa85246c43582d95bd624d5b8917133f20b`. Its separate temporary artifact-control/untap/haste activation remains unread. This is scoped counter evidence, not a whole-card, commander or newest-printing certificate.

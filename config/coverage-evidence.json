@@ -9,17 +9,17 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "e15f55eaf07f8467e7128bf662b57ff8f4abb660",
+  "engineSource": "5c3f5a2ac9f21892412ee0717d85a9275e0a2fba",
   "validation": {
-    "source": "e15f55eaf07f8467e7128bf662b57ff8f4abb660",
-    "evidenceMeaning": "Scoped exact selected Joven temporary artifact-control activation; no save schema or practice initiation policy added. No aggregate functionality or whole-card claim.",
-    "local": "Baseline 8 tests /32 assertions /8 failures at be1ce6f. Focused 140 tests /2642 assertions in2.099sec; adjacent1148/20258 in19.458sec, five-file Pint and diff-check passed. Ledger18/37;181-pool inventory0.734sec wall:16scoped names/2gap names/1overlap/0whole-card certificates. Bounded8record scan0.613sec wall:7fullyreadable/1unread (Ich-Tekik Partner). Full offline at603b1f77ca36d932ad2b313b51304037067ea31d:1539tests47313assertions2expected imported-rental-data skips57.275sec202MiB (57.639secwall),120sec treecap512MiB/Xdebugoff/emptydata/tasklocaltemp fresh10.44GiB.",
-    "ci": "Tested-head CI40049986438 at603b1f77ca36d932ad2b313b51304037067ea31d:all PHP8.3/8.4/8.5 fullPint/PHPUnit passed. Final metadata-head CI checked separately before merge;all40runtime/testpins unchanged."
+    "source": "5c3f5a2ac9f21892412ee0717d85a9275e0a2fba",
+    "evidenceMeaning": "Scoped selected paid craft and Joven transformed-artifact burial; no parser/recognition change, whole-card or aggregate functional claim. Clay search ETB explicitly retained.",
+    "local": "Exact baseline test721f1f1042da6bc012e8771c6b5d02878a1172d2 against runtimeb03bf64b4f3f1692e9032dec5636673a7bb97895:8tests184assertions8failures,0.655sec30sectreecap; fixed20case family and adjacent1168tests20600assertions22.590sec passed;four-file Pint/diffcheck passed. Full/ledger/inventory pending.",
+    "ci": "Exact-head CI pending; final metadata head must pass separately."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "7c97e8a327d70f4e5a396c99d53a2aeceb86bb063e0265186bce7fb88563093c",
     "src/MTGPocket/Game/CardDefinition.php": "e0784e75332133c5634e7189afec1a292f58c3584bd87f96cf56f0e721de746f",
-    "src/MTGPocket/Game/Game.php": "79f3b3e02d1c90f5f6c4bc98f9c230d3fc77ae91d78488b9904b0f2198eaef57",
+    "src/MTGPocket/Game/Game.php": "fcf20eac22a88a0de5ec0f70ea114c3b7c7edcca462a8eb29d75f0bc504d2615",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -28,9 +28,9 @@
     "src/MTGPocket/Game/Mana/ManaCost.php": "bee132afe78bcce2f8eea54e0a98f05424cec0260ceea3d1085ee1135ae39f15",
     "src/MTGPocket/Game/GameRecord.php": "38d05c870a583a027d0a79daed6f88c97ee296c5de009c9e92913aa0837cab9a",
     "src/MTGPocket/Game/GamePlayer.php": "1bf496c79456d2b9d582e8001d93782ccb8d847805e428f52d65c3d747645b48",
-    "src/MTGPocket/Game/GameObject.php": "d0b646e52c8c0f8b3d0a610777b2ffe268aa973942227a4988f79f2351dc0c5a",
+    "src/MTGPocket/Game/GameObject.php": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
     "src/MTGPocket/Game/GameException.php": "76d8c70a4b8cfd9fb7818976e4c9faa8b9865a295d9ffc478ce852f7e50a0158",
-    "src/MTGPocket/Game/DepartureCharacteristics.php": "b7747b1b004e582e42e59c60c7cf3bade6d438a352df6b6f7f172a929ce73d2d",
+    "src/MTGPocket/Game/DepartureCharacteristics.php": "73d749b205af5fdb63d8cbd40fe7f6a467a73827de9383f39510597c274ce51c",
     "src/MTGPocket/Game/CreatureDeath.php": "4d39c10adce98d8e515b25ebcce712681d09dd7c89c8b2f42efa0778242c978f",
     "src/MTGPocket/Game/DeathObserverBatch.php": "6d12b9961b06e1b5c23edec123e3405ae9799eff85f46277e0b75d49eae06c04",
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
@@ -56,7 +56,8 @@
     "tests/Game/KrenkoRedGoblinChoiceTest.php": "a714bf6ac50aa6f4957bd04351ff011805527b4ddd749b7a77c4ce3fd7404057",
     "tests/Game/IchTekikBurialCountersTest.php": "5fbc5c2f9f285ca135329dbf627728bc501a2ee717c7f87c2574318f9b459667",
     "tests/Game/JovenBurialCountersTest.php": "760b251bc2c88b06636f8aee91e3f43e80ea0a4b105a83a30bfbe3727c3278bc",
-    "tests/Game/JovenArtifactControlTest.php": "1374fc7fb1d29419812cc1a85f8633aa394fde5e0a57539256988ef20f45593c"
+    "tests/Game/JovenArtifactControlTest.php": "1374fc7fb1d29419812cc1a85f8633aa394fde5e0a57539256988ef20f45593c",
+    "tests/Game/TransformedArtifactBurialValueTest.php": "e13f41a03e8e750a31e709f43619f73c3992eb92bf413c42a2d2f09ddd37143d"
   },
   "scopedEvidence": [
     {
@@ -413,6 +414,21 @@
         "tests/MatchesTest.php::testJovenArtifactActivationThroughPersistedPanel"
       ],
       "limits": "Scoped complete selected record, not a whole-card or newest-printing certificate. Reflection movement, type/controller changes and seeded panel board are supporting unit fixtures. Practice can resolve the activation but does not initiate general activated abilities. General layered/Aura control, continuous/replacement/APNAP, transformed/back-face/copied mana value and Partner/commander remain unverified."
+    },
+    {
+      "id": "transformed-artifact-departure-mana-value",
+      "cards": [
+        "Joven and Chandler",
+        "Clay-Fired Bricks // Cosmium Kiln"
+      ],
+      "scope": "Selected LCI full record, seeded front because its search ETB remains unread; actual paid craft, source and Smelt, both actors/observers/owners and JSON before/queued/after. Frozen pre-departure front mana value for unmerged transform layout, unchanged back printed cost. Paid Shatterstorm, direct sacrifice/exile/bounce unit routes, return-before-resolution; modal, face-down, copied single-face token, explicitly modeled transforming-token, merged-top and X unit controls.",
+      "tests": [
+        "tests/Game/TransformedArtifactBurialValueTest.php::testPaidCraftAndSmeltUseFrontManaValueOfDepartingTransformedArtifact",
+        "tests/Game/TransformedArtifactBurialValueTest.php::testPaidBurialPreservesModalCopiedFaceMergedTokenAndXDistinctions",
+        "tests/Game/TransformedArtifactBurialValueTest.php::testFaceDownManaValueIsZeroAndCreatureIsNotAnArtifact",
+        "tests/Game/TransformedArtifactBurialValueTest.php::testCraftedBackFaceValueIsFrozenAcrossDepartureRoutesAndJson"
+      ],
+      "limits": "No whole-card/newest-printing certificate. Clay front ETB remains unread and was not cast. Supporting characteristic fixtures, direct movements and both-face token flags do not prove actual copy creation or transforming-token lifecycle. Actual copy_token currently reads printed front; transformed token back definitions may lose token identity: separate source leads, not fixed here. General merged transforming, meld, copy/continuous/replacement/APNAP and other mana-value consumers remain unverified. No save schema, UI action or practice policy change."
     }
   ],
   "explicitUnsupported": [
@@ -423,22 +439,31 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
+    },
+    {
+      "id": "clay-fired-bricks-search-entry",
+      "cards": [
+        "Clay-Fired Bricks // Cosmium Kiln"
+      ],
+      "scope": "Pinned complete LCI record still has unread enters/search basic Plains/reveal/hand/shuffle/gain2 clause. Craft/back-face burial evidence seeds the front and does not claim its cast/entry path."
     }
   ],
   "nextFamily": {
-    "id": "joven-transformed-artifact-burial-mana-value",
+    "id": "transforming-token-identity-at-departure",
     "cards": [
       "Joven and Chandler"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Source-backed investigation only, not a reproduced failure: GameObject::definition selects a transformed back with no mana cost, while burial reads definition cost. Reproduce an actual transforming artifact and distinguish inherited front mana value from copy/token cases before editing.",
+    "scope": "Source-backed lead, not yet reproduced: CardDefinition back faces do not inherit the front token marker, while moveTo consults active definition isToken. Prove a real paid incubate/transform/burial path before editing. Actual copy_token reading printed rather than active face is a separate retained lead.",
     "acceptance": [
-      "Pin a complete existing-pool transforming artifact and exact Joven observer; reproduce departure mana value with actual transform/departure where supported.",
-      "Preserve modal double-face, face-down, copy/token and X distinctions with targeted negatives and per-incarnation JSON.",
-      "Keep general continuous/merged/copy models and whole-card claims separate; do not repeat the timed-out global parser walk."
+      "Pin a complete existing-pool incubate source and exact observer; pay source/transform/departure costs and reproduce the token destination/notification issue.",
+      "Preserve nontoken double-faced cards, modal/back costs, face-down/merged and single-face copied-token distinctions; test JSON and actual token cease-to-exist behavior.",
+      "Keep general copy/continuous models and whole-card certification separate; do not repeat the timed-out global parser walk."
     ],
     "deferred": [
+      "Clay-Fired Bricks search ETB",
       "Partner and commander deck rules",
+      "Actual copy creation from transformed or merged permanents",
       "General continuous/replacement/conditions/APNAP models",
       "Newest-printing and whole-card certification"
     ]
