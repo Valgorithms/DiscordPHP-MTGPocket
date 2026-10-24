@@ -7225,6 +7225,8 @@ final class Game
             'instant or sorcery' => $card->is('Instant') || $card->is('Sorcery'),
             'historic' => $card->is('Artifact') || in_array('Legendary', $card->supertypes, true) || in_array('Saga', $card->subtypes, true),
             'multicolored' => count($card->colors) > 1,
+            'legendary' => in_array('Legendary', $card->supertypes, true),
+            'colorless' => $card->colors === [],
             // `a spell that has an X in its mana cost`
             'x spell' => $card->cost->xCount > 0,
             // `Whenever an equipped creature you control attacks, …`
