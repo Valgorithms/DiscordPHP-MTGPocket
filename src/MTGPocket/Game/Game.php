@@ -9418,6 +9418,9 @@ final class Game
         $this->battlefield[] = $object->id;
         if ($triggers) {
             $this->trigger($object, 'enters', $controller);
+            if ($x >= 5) {
+                $this->trigger($object, 'ravenous', $controller);
+            }
             // `Whenever an artifact you control enters, …`, `… an opponent controls enters, …`, `Whenever a land enters, …`: itself included.
             foreach ($this->permanents() as $permanent) {
                 $this->trigger($permanent, 'permanent_enters_any', $permanent->controller, null, $object->id);
