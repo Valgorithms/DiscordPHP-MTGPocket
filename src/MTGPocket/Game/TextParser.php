@@ -4940,8 +4940,8 @@ final class TextParser
                 default => 'battlefield',
             }];
         }
-        // Rampant Growth: mandatory search with an explicit choice, including failure to find.
-        if (strcasecmp($s, 'Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle') === 0) {
+        // Rampant Growth / Evolving Wilds: mandatory search with a choice, including failure to find.
+        if (preg_match('/^search your library for a basic land card, put (?:it|that card) onto the battlefield tapped, then shuffle$/i', $s)) {
             return ['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped'];
         }
 

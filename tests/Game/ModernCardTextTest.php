@@ -6566,6 +6566,14 @@ final class ModernCardTextTest extends GameTestCase
         $game->activate(0, $lander->id, 0);
         $this->resolve();
         $this->assertSame(GameObject::GONE, $lander->zone);
+        $choice = $game->choiceAwaiting();
+        $this->assertSame('look', $choice['type']);
+        $this->assertSame(0, $choice['seat']);
+        $chosen = $choice['eligible'][0];
+        $shuffles = $game->toArray()['shuffles'];
+        $game->take(0, [$chosen]);
+        $this->assertTrue($game->objects[$chosen]->tapped);
+        $this->assertSame($shuffles + 1, $game->toArray()['shuffles']);
         $fetched = array_filter($game->permanents(0), fn (GameObject $o) => $o->definition()->isLand());
         $this->assertCount($lands + 1, $fetched);
 
@@ -8723,6 +8731,15 @@ final class ModernCardTextTest extends GameTestCase
         $game->cast(0, $this->put(0, 'Orchid Lite', GameObject::HAND));
         $this->resolve();
         $this->resolve();
+        $this->assertSame($before + 1, count($game->permanents(0)), 'Behind on lands: search waits for a selection.');
+        $choice = $game->choiceAwaiting();
+        $this->assertSame('look', $choice['type']);
+        $this->assertSame(0, $choice['seat']);
+        $chosen = $choice['eligible'][0];
+        $shuffles = $game->toArray()['shuffles'];
+        $game->take(0, [$chosen]);
+        $this->assertTrue($game->objects[$chosen]->tapped);
+        $this->assertSame($shuffles + 1, $game->toArray()['shuffles']);
         $this->assertSame($before + 2, count($game->permanents(0)), 'Behind on lands: a basic land enters too.');
     }
 
