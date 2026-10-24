@@ -4915,6 +4915,11 @@ final class Game
                         && ($effect['perAttacking'] === 'creature' || in_array($effect['perAttacking'], $this->objects[$id]->definition()->subtypes, true))));
                     $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
                 }
+                // `… for each Aura and Equipment attached to it.`, counted as it resolves.
+                if (isset($effect['perAttached'])) {
+                    $times = count(array_filter($this->attachments($source), fn (GameObject $o) => array_intersect(explode('|', $effect['perAttached']), $o->definition()->subtypes) !== []));
+                    $effect = ['power' => $effect['power'] * $times, 'toughness' => $effect['toughness'] * $times] + $effect;
+                }
                 // `… for each creature blocking it.`
                 if ($effect['perBlocking'] ?? false) {
                     $times = count(array_keys($this->blockers, $source->id, true));

@@ -4833,6 +4833,10 @@ final class TextParser
         if (preg_match('/^(?:CARDNAME|it) deals (\w+) damage to each creature blocking it$/', $s, $m) && is_int($n = self::amount($m[1]))) {
             return ['type' => 'damage', 'amount' => $n, 'each' => 'blocking_self'];
         }
+        // `Whenever CARDNAME attacks, it gets +1/+0 until end of turn for each Aura and Equipment attached to it.`
+        if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each (Aura|Equipment|Aura and Equipment) attached to it$/', $s, $m)) {
+            return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perAttached' => str_replace(' and ', '|', $m[3])];
+        }
         // `Whenever CARDNAME becomes blocked, it gets +1/+1 until end of turn for each creature blocking it.`
         if (preg_match('/^(?:CARDNAME|it) gets \+(\d+)\/\+(\d+) until end of turn for each creature blocking it$/', $s, $m)) {
             return ['type' => 'pump', 'power' => (int) $m[1], 'toughness' => (int) $m[2], 'keywords' => [], 'self' => true, 'perBlocking' => true];
