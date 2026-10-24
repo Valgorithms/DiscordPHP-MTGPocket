@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "a0ef724fb73e9a07f9bd9de9066b24dbd9fd9010",
+  "engineSource": "2c18f170b8a635b06542d61c537e20c927b19cab",
   "validation": {
-    "source": "a0ef724fb73e9a07f9bd9de9066b24dbd9fd9010",
-    "evidenceMeaning": "Complete pinned M12 Rampant Growth now uses explicit mandatory basic-land selection, tapped entry and shuffle, including failure to find. Exact wording only; existing tutor, state schema14, panels and practice policy reused. No whole-card certificate or fresh aggregate recognition measurement.",
-    "local": "Baseline2dc5874771266a23c012e6d75534af57c3ce491c:4paid cases20assertions4failures/no selection. Focused23tests312assertions0.428s36MiB; adjacent1008tests19320assertions29.138s148MiB29.549s wall. Three-file nonmutating Pint and diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Expanded harness corrected PracticeBot namespace, duplicate-ID normalization expectation and later-effect seeding (spell effects come from definition, not ability stack fields); no production changes for these harness failures. Ledger18tests37assertions and unchanged181-pool inventory passed:23scoped names2explicit-gap names1overlap0whole-card certificates;51normalized PHP pins verified. Fixture hash remains in the regression test and scope; sourcePins accepts PHP paths only. Full offline targetb1a236b72d6a1c9ab610f34d96f71226f325889d passed1831tests53692assertions2expected missing-imported-pool/rental skips51.453s246MiB51.760s wall,120s process-tree cap with same isolation and fresh13.60GiB at2026-10-24T09:43:15.4083366Z. All51normalized PHP pins match the full-tested target.",
-    "ci": "Testedb1a236b72d6a1c9ab610f34d96f71226f325889d exactCI40083069896 passed full Pint/PHPUnit PHP8.3/8.4/8.5;RESTrun/jobs/artifacts savedzeroartifacts expected. Finalmetadata requires its own passing exactCI before merge;51PHPpins identical to full-tested target."
+    "source": "2c18f170b8a635b06542d61c537e20c927b19cab",
+    "evidenceMeaning": "Test-only evidence for complete pinned M13 Farseek on existing runtime. Paid baseline already passed; no parser or engine defect/change is claimed. Subtype-based search includes a synthetic nonbasic Forest/Plains dual and snow Island while excluding Forest-only and Wastes. No whole-card certificate or fresh recognition measurement.",
+    "local": "Baselinea72e184:4paid cases52assertionsPASS. Focused23tests327assertions0.474s36MiB;adjacent650tests11439assertions21.824s106MiB22.150s wall. Two-file nonmutating Pint/diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Expanded-first harness had a cp1252-corrupted dash in snow-land type; corrected UTF8 test data only, no runtime change. Ledger18/37 and existing181-pool inventory passed:24scoped names2explicit-gap names1overlap0whole-card certificates;52normalized PHP pins verified.",
+    "ci": "Full offline and exact tested/final CI pending."
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "0e69b72eb08a294763b897d68f7f80e6d39e4f8f2710f8d2ae4498f34ca3e6ba",
@@ -41,7 +41,7 @@
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "e5b9efccb0e239ffc1ca0dc5444e4bcfd45219f05016b6a8f55139f86d47bd09",
+    "tests/MatchesTest.php": "cfa94e802218d90720cc1b6a530c8827eea49a25353c6cca58ded447b7e496a5",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -67,7 +67,8 @@
     "tests/Game/SolemnOptionalDrawTest.php": "949d627f1066f6f4a1105bc6325ae30bc5386af458d26746d4887b69a3648ec6",
     "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68",
     "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9",
-    "tests/Game/RampantGrowthSearchTest.php": "da056fdc2d3d47cc61147d6e9bc02d530ff2435a5f55cfd8bc98396e459af522"
+    "tests/Game/RampantGrowthSearchTest.php": "da056fdc2d3d47cc61147d6e9bc02d530ff2435a5f55cfd8bc98396e459af522",
+    "tests/Game/FarseekSearchTest.php": "4c68e3c8e11f88737f554403c08652aa2ec257263a3617f892e29b6993c3ac1b"
   },
   "scopedEvidence": [
     {
@@ -615,6 +616,23 @@
       ],
       "scope": "Complete M12 UUID28d848c2-ab24-5894-a8e9-2c1df4b854a0 normalized fixtureSHA256832ad0e5a3f2ae3abd5bf678974c26f216e385d5ee2836e99df553637ec2aba3: both seats paid1Gcast, explicit one-basic selection or failure to find and shuffle, actual Island/snow/Wastes tapped entry, nonbasic/basic-nonland/opposing-library/hand/wrong-seat/overselection/crossfamily/priority/repeated rejection, empty/noeligible shuffle, JSON/replay, original controller and synthetic later effect exactly once, paid Counterspell/unpaid/opposing controls, practice and persisted panels.",
       "limits": "Exact mandatory put-that-card wording only. Seeded mana/library exhaustion/control relocation and synthetic appended gain-life isolate continuation, not every enabling spell. Counterspell uses a shared semantic card. Existing duplicate-ID normalization remains unchanged; legacy put-it automatic search and optional/untapped wording are not newly supported. No general tutor/search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "farseek-subtype-search",
+      "cards": [
+        "Farseek"
+      ],
+      "tests": [
+        "tests/Game/FarseekSearchTest.php::testPaidSpellRequiresLegalSelectionAndShufflesOnFailureToFind",
+        "tests/Game/FarseekSearchTest.php::testSelectionEligibilityAndInvalidAnswersRemainAtomic",
+        "tests/Game/FarseekSearchTest.php::testEmptyAndIneligibleLibrariesStillShuffle",
+        "tests/Game/FarseekSearchTest.php::testOriginalControllerAndLaterEffectsSurviveSaveLoad",
+        "tests/Game/FarseekSearchTest.php::testUnpaidOpposingAndCounteredCastsNeverSearch",
+        "tests/Game/FarseekSearchTest.php::testPracticeUsesTheExistingLegalSubtypeSelection",
+        "tests/MatchesTest.php::testFarseekSearchPanelPersistsSelectionOrFailureToFind"
+      ],
+      "scope": "Complete M13 UUIDda73dc10-1286-5c38-a2d0-92ae64f49690 normalized fixtureSHA25658ea654a88c5ffc9aaca41229575447774102cc7e959f575baeb5c1cbb7dcffe: both seats paid1Gcast, explicit selection/failfind/shuffle, actual Island/snowIsland/nonbasicForestPlains-fixture tapped entry, excludes Forest/snowForest/Wastes/untypedland/nonland/opposinglibrary/hand, rejects wrongseat/overselection/crossfamily/priority/repeated actions, empty/noeligible shuffle, JSON/replay, original controller/syntheticlater effect exactly once, paid Counterspell/unpaid/opposing controls, practice and persisted panels.",
+      "limits": "Existing runtime passed baseline; this is test-only evidence. Selected Farseek record is complete; seeded lands, synthetic dual, Counterspell, library exhaustion, sourcecontrol and appended gain-life isolate contracts rather than certify other named cards/enabling spells. Existing duplicate-ID normalization unchanged. No general search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
     }
   ],
   "explicitUnsupported": [
