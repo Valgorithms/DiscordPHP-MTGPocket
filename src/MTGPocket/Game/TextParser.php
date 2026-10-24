@@ -2482,8 +2482,13 @@ final class TextParser
     private static function triggered(string $line, array &$result): bool
     {
         // Keep the optional search distinct from accepting and failing to find a land.
-        if ($line === 'When CARDNAME enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.') {
-            $result['triggered'][] = ['text' => $line, 'event' => 'enters', 'effects' => [['type' => 'optional_basic_land_search']]];
+        $optionalBasicSearch = match ($line) {
+            'When CARDNAME enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.' => 'enters',
+            'When CARDNAME dies, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.' => 'dies',
+            default => null,
+        };
+        if ($optionalBasicSearch !== null) {
+            $result['triggered'][] = ['text' => $line, 'event' => $optionalBasicSearch, 'effects' => [['type' => 'optional_basic_land_search']]];
 
             return true;
         }

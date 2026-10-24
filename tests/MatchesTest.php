@@ -606,6 +606,78 @@ final class MatchesTest extends PocketTestCase
     }
 
     /** @dataProvider optionalLifeOptions */
+    public function testOptionalDeathSearchPanelPersistsBothDecisions(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $source = $land = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$source, &$land): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            for ($n = 0; $n < 2; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Forest'), GameObject::BATTLEFIELD);
+            }
+            $land = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Island'), GameObject::LIBRARY)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/viridian-emissary-optional-search.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $source]);
+        for ($n = 0; $match->game->stack !== [] && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$source]->zone);
+        $this->assertNull($match->game->choiceAwaiting());
+        $shock = $mountain = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$shock, &$mountain): void {
+            $mountain = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/viridian-death-search-shock.json'), true, flags: JSON_THROW_ON_ERROR);
+            $shock = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $shock]);
+        [$match] = $panel->run($match->id, $player, 'tgt', [], ['o:'.$source]);
+        $this->assertTrue($match->game->objects[$mountain]->tapped);
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$source]->zone);
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_basic_land_search', $choice['type']);
+        $this->assertStringContainsString('choose whether to search for a basic land', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString('Search library', $json);
+        $this->assertStringContainsString('Decline search', $json);
+        $this->assertStringContainsString('decline without searching or shuffling', $json);
+        $this->assertStringContainsString('maysearch:'.$choice['id'].':accept', $json);
+        $this->assertStringNotContainsString('maysearch:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, (string) $choice['id'], $option], [$player, (string) ($choice['id'] + 1), $option], [$player, (string) $choice['id'], 'both']] as [$actor, $choiceId, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'maysearch', [$choiceId, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'maysearch', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        if ($option === 'accept') {
+            $this->assertSame('look', $match->game->choiceAwaiting()['type']);
+            $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+            [$match] = $panel->run($match->id, $player, 'take', [], [(string) $land]);
+            $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$land]->zone);
+            $this->assertTrue($match->game->objects[$land]->tapped);
+        } else {
+            $this->assertSame($before['players'][$seat]['library'], $match->game->players[$seat]->library);
+        }
+        $this->assertSame($before['shuffles'] + ($option === 'accept' ? 1 : 0), $match->game->toArray()['shuffles']);
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'maysearch', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    /** @dataProvider optionalLifeOptions */
     public function testOptionalEntrySearchPanelPersistsBothDecisions(string $option): void
     {
         $match = $this->startMatch();
