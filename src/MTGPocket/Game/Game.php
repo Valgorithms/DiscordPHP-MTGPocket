@@ -5507,8 +5507,8 @@ final class Game
                 // An unmerged transforming copy keeps both faces and enters on the same face.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $copyCard = $affected->printed()->card;
-                    if ($affected->faceDown && ($affected->printed()->morph['kind'] ?? null) === 'morph') {
-                        // Plain morph copies its nameless 2/2 characteristics, not the
+                    if ($affected->faceDown && in_array($affected->printed()->morph['kind'] ?? null, ['morph', 'megamorph'], true)) {
+                        // Morph and megamorph copy their nameless 2/2 characteristics, not the
                         // printed card or our synthetic turn-face-up action (708.2).
                         $copyCard = array_replace($affected->printed()->faceDownCard(), ['name' => '', 'text' => '']);
                     }
