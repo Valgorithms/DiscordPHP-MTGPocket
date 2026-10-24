@@ -4041,6 +4041,12 @@ final class TextParser
         if (preg_match('/^you draw (\w+) cards? and (?:you )?(gain|lose) (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[1])) !== null && ($life = self::amount($m[3])) !== null) {
             return [['type' => 'draw', 'amount' => $draw], strtolower($m[2]) === 'gain' ? ['type' => 'gain_life', 'amount' => $life] : ['type' => 'lose_life', 'amount' => $life, 'you' => true]];
         }
+        // `You and target opponent each draw a card.`, `You and target player each gain 2 life.`: you first.
+        if (preg_match('/^you and (target player|target opponent) each (draw|gain) (\w+) (cards?|life)$/i', $sentence, $m) && is_int($n = self::amount($m[3])) && (strtolower($m[2]) === 'draw') === str_starts_with(strtolower($m[4]), 'card')) {
+            $type = strtolower($m[2]) === 'draw' ? 'draw' : 'gain_life';
+
+            return [['type' => $type, 'amount' => $n], ['type' => $type, 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]]];
+        }
         if (preg_match('/^(target player|target opponent) draws (\w+) cards? and loses (\w+) life$/i', $sentence, $m) && ($draw = self::amount($m[2])) !== null && ($life = self::amount($m[3])) !== null) {
             return [['type' => 'draw', 'amount' => $draw, 'target' => self::TARGETS[strtolower($m[1])]], ['type' => 'lose_life', 'amount' => $life, 'sameTarget' => true]];
         }
@@ -4541,8 +4547,8 @@ final class TextParser
         if (preg_match('/^each (player|opponent|other player) (draws (\w+) cards?|gains (\w+) life)$/i', $s, $m) && ($n = self::amount($m[3] !== '' ? $m[3] : $m[4])) !== null) {
             return ['type' => $m[3] !== '' ? 'draw' : 'gain_life', 'amount' => $n, 'each' => strtolower($m[1]) === 'player' ? 'player' : 'opponent'];
         }
-        if (preg_match('/^target player draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
-            return ['type' => 'draw', 'amount' => $n, 'target' => 'player'];
+        if (preg_match('/^target (player|opponent) draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
+            return ['type' => 'draw', 'amount' => $n, 'target' => strtolower($m[1])];
         }
         // Baleful Mastery: `an opponent draws a card` (the next opponent; see Game::opponent()).
         if (preg_match('/^an opponent draws (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[1])) !== null) {
