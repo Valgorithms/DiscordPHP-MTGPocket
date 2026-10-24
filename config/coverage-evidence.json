@@ -9,15 +9,15 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "67d39fbc6d4344b2b06dd33615feeccb70cbb11e",
+  "engineSource": "a0ef724fb73e9a07f9bd9de9066b24dbd9fd9010",
   "validation": {
-    "source": "67d39fbc6d4344b2b06dd33615feeccb70cbb11e",
-    "evidenceMeaning": "Complete pinned MBS Viridian Emissary now offers its original death-trigger controller an explicit basic-land search/decline using the existing optional-search continuation. Decline skips search/shuffle; accepting, including failure to find, shuffles. Earlier Solemn entry/death evidence remains separate. No whole-card certification or fresh aggregate recognition measurement.",
-    "local": "Baseline d70f52208ed095c0234a980b0cdd4347e2b0a256: four paid cases/48 assertions/four failures (no optional decision). Focused114tests1752assertions1.894s48MiB;adjacent985tests19008assertions21.022s144MiB21.344s wall. Four-file nonmutating Pint and diff check passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Ledger18tests37assertions and existing181-pool inventory passed:22scoped names2explicit-gap names1overlap0whole-card certificates;50normalized PHP pins verified. Full offline target3bc73af882d04c4ce6ad5debd0ffbc98e1b00f1d passed1808tests53380assertions2expected missing-imported-pool/rental skips52.946s244MiB53.316s wall,120s process-tree cap with same isolation and fresh13.85GiB at2026-10-24T08:51:46.7227284Z. All50normalized PHP pins match the tested target.",
-    "ci": "Tested3bc73af882d04c4ce6ad5debd0ffbc98e1b00f1d exactCI40079686646 passed fullPint/PHPUnit PHP8.3/8.4/8.5;RESTrun/jobs/artifacts savedzeroartifacts expected. Finalmetadata requires its own passing exactCI before merge;50PHPpins identical to full-tested target."
+    "source": "a0ef724fb73e9a07f9bd9de9066b24dbd9fd9010",
+    "evidenceMeaning": "Complete pinned M12 Rampant Growth now uses explicit mandatory basic-land selection, tapped entry and shuffle, including failure to find. Exact wording only; existing tutor, state schema14, panels and practice policy reused. No whole-card certificate or fresh aggregate recognition measurement.",
+    "local": "Baseline2dc5874771266a23c012e6d75534af57c3ce491c:4paid cases20assertions4failures/no selection. Focused23tests312assertions0.428s36MiB; adjacent1008tests19320assertions29.138s148MiB29.549s wall. Three-file nonmutating Pint and diff passed. Serial30s process-tree caps512MiB/Xdebugoff/emptydata/tasklocalTEMP/TMP/sys_temp_dir. Expanded harness corrected PracticeBot namespace, duplicate-ID normalization expectation and later-effect seeding (spell effects come from definition, not ability stack fields); no production changes for these harness failures. Ledger18tests37assertions and unchanged181-pool inventory passed:23scoped names2explicit-gap names1overlap0whole-card certificates;51normalized PHP pins verified. Fixture hash remains in the regression test and scope; sourcePins accepts PHP paths only.",
+    "ci": "Full offline and exact tested/final CI pending."
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "03a5ad1156fc39c24f28752eaffe34b6da933dae90c86768e62534282d64116c",
+    "src/MTGPocket/Game/TextParser.php": "0e69b72eb08a294763b897d68f7f80e6d39e4f8f2710f8d2ae4498f34ca3e6ba",
     "src/MTGPocket/Game/CardDefinition.php": "0b83109f1fbb6e830324ad1e0127e422e85f00329d3267104e8a39008244ee03",
     "src/MTGPocket/Game/Game.php": "2693d0236c8a3c277a42b7ecc8d10f848d99ac4703410df78c78fa5b19fe8c67",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -41,7 +41,7 @@
     "src/MTGPocket/Tutorial/PracticeBot.php": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "6d0d3593b700bb6170a86362f7ff41f23707e64c579dd5835a199a7b4b4862f3",
+    "tests/MatchesTest.php": "e5b9efccb0e239ffc1ca0dc5444e4bcfd45219f05016b6a8f55139f86d47bd09",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -66,7 +66,8 @@
     "tests/Game/ClayFiredBricksSearchTest.php": "019b75f76fc2b1d2ad7d64bfc1c87ec4cc418c1b66db1998228428568a904225",
     "tests/Game/SolemnOptionalDrawTest.php": "949d627f1066f6f4a1105bc6325ae30bc5386af458d26746d4887b69a3648ec6",
     "tests/Game/SolemnEntrySearchTest.php": "8474dfd846a4bf511156905eeaeb74945d94683debfd1da216d1da574e971f68",
-    "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9"
+    "tests/Game/ViridianDeathSearchTest.php": "16c5f131f4c7d68efdcdeb85954f6d5e44beb801d104d41e7b5d6edd1b7d8ec9",
+    "tests/Game/RampantGrowthSearchTest.php": "da056fdc2d3d47cc61147d6e9bc02d530ff2435a5f55cfd8bc98396e459af522"
   },
   "scopedEvidence": [
     {
@@ -597,6 +598,23 @@
       ],
       "scope": "Complete MBS UUID2cc1026b-3dd1-5476-9b47-4c0b8b7a0eb1 fixtureSHA25668ed685d6e9366336d2f5a4688ca5857abb4820e381354a691bf601bd64c93f7 and complete M12 Shock UUIDdcd1bd29-140a-5dee-bc91-faa2079f54ba fixtureSHA256ca08cf03fb0e80b2ea483cb937667c64a87c545f76d4180927071b760a897530: both seats paid1Gcast/RShock, explicit original-controller accept/decline before library mutation, tapped Island/Forest selection, seeded control/zone relocation queued/pending, later continuation exactly once, wrong-seat/stale/future/invalid/repeated/cross-family/priority rejection, basic eligibility negatives, fail-to-find and empty/noeligible search versus decline, deterministic JSON replay, schema14 boundary, paid bounce/counterspell/unpaid/opposing cast controls, practice search policy and persisted public panel actions.",
       "limits": "Exact normalized self-death optional one-basic-land wording only. Seeded lands, library exhaustion, source control/zone relocation and appended continuation isolate lifecycle behavior rather than every enabling spell. Unsummon/Counterspell are shared semantic test cards; selected source and Shock fixtures are complete pinned records. Practice acceptance is tested here; its later selection policy has separate shared tests. No general death/search/optional/replacement/copy/continuous/APNAP/newest-printing or whole-card/live certificate."
+    },
+    {
+      "id": "rampant-growth-basic-search",
+      "cards": [
+        "Rampant Growth"
+      ],
+      "tests": [
+        "tests/Game/RampantGrowthSearchTest.php::testPaidSpellRequiresLegalSelectionAndShufflesOnFailureToFind",
+        "tests/Game/RampantGrowthSearchTest.php::testSelectionEligibilityAndInvalidAnswersRemainAtomic",
+        "tests/Game/RampantGrowthSearchTest.php::testEmptyAndIneligibleLibrariesStillShuffle",
+        "tests/Game/RampantGrowthSearchTest.php::testOriginalControllerAndLaterEffectsSurviveSaveLoad",
+        "tests/Game/RampantGrowthSearchTest.php::testUnpaidOpposingAndCounteredCastsNeverSearch",
+        "tests/Game/RampantGrowthSearchTest.php::testPracticeUsesExistingSelectionAndExactWordingDoesNotBroadenLegacySearches",
+        "tests/MatchesTest.php::testRampantGrowthSearchPanelPersistsSelectionOrFailureToFind"
+      ],
+      "scope": "Complete M12 UUID28d848c2-ab24-5894-a8e9-2c1df4b854a0 normalized fixtureSHA256832ad0e5a3f2ae3abd5bf678974c26f216e385d5ee2836e99df553637ec2aba3: both seats paid1Gcast, explicit one-basic selection or failure to find and shuffle, actual Island/snow/Wastes tapped entry, nonbasic/basic-nonland/opposing-library/hand/wrong-seat/overselection/crossfamily/priority/repeated rejection, empty/noeligible shuffle, JSON/replay, original controller and synthetic later effect exactly once, paid Counterspell/unpaid/opposing controls, practice and persisted panels.",
+      "limits": "Exact mandatory put-that-card wording only. Seeded mana/library exhaustion/control relocation and synthetic appended gain-life isolate continuation, not every enabling spell. Counterspell uses a shared semantic card. Existing duplicate-ID normalization remains unchanged; legacy put-it automatic search and optional/untapped wording are not newly supported. No general tutor/search/replacement/APNAP/continuous/copy/newest-printing or whole-card/live certificate."
     }
   ],
   "explicitUnsupported": [

@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Rampant Growth mandatory-search milestone](rampant-growth-basic-search.md) adds paid explicit basic-land selection, tapped entry and shuffle, including failure to find, using the existing tutor. Current ledger: 23 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier milestone counts below are historical.
+
 The [Viridian Emissary death-search milestone](viridian-optional-death-search.md) adds an explicit original-controller search/decline decision after a paid cast and Shock, reusing schema 14 optional-search continuations. Current ledger: 22 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier milestone counts below are historical.
 
 The [Solemn Simulacrum entry-search milestone](solemn-optional-entry-search.md) adds an explicit search/decline decision, basic-land eligibility, tapped entry and original-controller continuation. Declining does not search or shuffle; accepting and failing to find shuffles. Version 14 preserves version 13 death choices. Current ledger: 21 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical. Earlier milestone counts below are historical.
