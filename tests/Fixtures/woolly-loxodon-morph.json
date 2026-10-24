@@ -1,0 +1,35 @@
+{
+  "setCode": "KTK",
+  "source": "Existing KTK pool; bounded single-name data selection; no import or parser walk",
+  "card": {
+    "uuid": "58ad74dd-6e19-5f96-9694-f2cee61a442e",
+    "name": "Woolly Loxodon",
+    "number": "158",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 7,
+    "type": "Creature — Elephant Warrior",
+    "scryfallId": "a890c55a-8746-4233-b75a-19cc760c1e8e",
+    "manaCost": "{5}{G}{G}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Elephant",
+      "Warrior"
+    ],
+    "power": "6",
+    "toughness": "7",
+    "text": "Morph {5}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+    "keywords": [
+      "Morph"
+    ],
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

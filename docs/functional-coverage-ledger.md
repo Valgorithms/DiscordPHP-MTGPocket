@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [plain-morph copy milestone](plain-morph-token-copy.md) selects a nameless, colorless2/2 with no hidden turn-up action for the paid Woolly Loxodon morph/copy path. The ledger has19scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition remains unchanged; megamorph/disguise and broader copy layers remain separate.
+
 The [transforming-token copy milestone](transforming-token-copy-face.md) selects the active face before entry for unmerged transforming copies. Converter Beast remains scoped evidence: 18 names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. A separately selected Woolly Loxodon face-down-copy lead is unreproduced.
 
 The [Incubator token-identity milestone](incubator-token-identity.md) preserves token identity across transformation on the paid Converter Beast path. Current evidence covers 18 scoped names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. Recognition remains historical; active-face token copying is the next separate, unreproduced lead.

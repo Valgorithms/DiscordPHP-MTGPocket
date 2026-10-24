@@ -5506,8 +5506,14 @@ final class Game
             case 'copy_token':
                 // An unmerged transforming copy keeps both faces and enters on the same face.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
+                    $copyCard = $affected->printed()->card;
+                    if ($affected->faceDown && ($affected->printed()->morph['kind'] ?? null) === 'morph') {
+                        // Plain morph copies its nameless 2/2 characteristics, not the
+                        // printed card or our synthetic turn-face-up action (708.2).
+                        $copyCard = array_replace($affected->printed()->faceDownCard(), ['name' => '', 'text' => '']);
+                    }
                     $copy = $this->createToken(
-                        $affected->printed()->card,
+                        $copyCard,
                         $controller,
                         ['haste' => $effect['haste'] ?? false] + (isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []),
                         transformed: ! $affected->faceDown && $affected->mutations === [] && $affected->transformed && ($affected->card['layout'] ?? null) === 'transform'
