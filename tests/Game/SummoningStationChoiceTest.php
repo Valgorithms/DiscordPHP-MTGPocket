@@ -406,7 +406,10 @@ final class SummoningStationChoiceTest extends GameTestCase
         $this->resolveOne();
         $saved = $this->saved();
         $saved['schemaVersion'] = 10;
+        // Version 10 predates the named source-counter field.
+        unset($saved['pendingChoice']['counterKind']);
         $this->game = Game::fromArray($saved);
+        $this->assertSame('+1/+1', $this->game->choiceAwaiting()['counterKind']);
         $before = $this->saved();
         try {
             $this->game->chooseOptionalSourceUntap(0, $this->game->choiceAwaiting()['id'], 'accept');
