@@ -3211,6 +3211,11 @@ final class TextParser
             $event = $match[1] === 'one or more' ? 'you_create_tokens' : 'you_create_token';
             $extra = $match[2] !== '' ? ['objectKind' => $match[2]] : [];
             $text = $match[3];
+        } elseif (preg_match('/^Whenever one or more tokens you control enter(?: the battlefield)?, (.+)$/', $line, $match)
+            && ! preg_match('/\b(?:it|that token|they|them|those tokens)\b/', $match[1])) {
+            // Tokens enter only as they are created, so once per batch as `Whenever you create one or more tokens, …`; see Game::createToken().
+            $event = 'you_create_tokens';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever you mill one or more cards, (.+)$/', $line, $match)) {
             // See Game::mill(): once per mill that put any card into your graveyard.
             $event = 'you_mill';
