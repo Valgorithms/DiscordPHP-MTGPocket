@@ -1,5 +1,7 @@
 # Rampant Growth mandatory basic-land search
 
+Current companion note: the later [Evolving Wilds milestone](evolving-wilds-search-choice.md) extends explicit selection to mandatory put-it wording. Statements below about unchanged legacy put-it behavior describe the earlier Rampant Growth milestone; optional put-it wording remains unchanged.
+
 A paid one-generic/one-green Rampant Growth now asks its controller to choose at most one basic land from their library, puts the chosen land onto the battlefield tapped, then shuffles. Failing to find still shuffles. The baseline reproduced four paid cases/20 assertions/four failures because the spell resolved without a choice.
 
 The complete cached M12 record pins UUID `28d848c2-ab24-5894-a8e9-2c1df4b854a0`, MTGJSON `5.3.0+20261022`, normalized-LF fixture SHA-256 `832ad0e5a3f2ae3abd5bf678974c26f216e385d5ee2836e99df553637ec2aba3`. It was selected by name from an existing local pool. No network lookup or import occurred.
