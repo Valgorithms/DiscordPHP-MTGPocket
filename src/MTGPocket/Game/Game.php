@@ -5757,12 +5757,14 @@ final class Game
                 return true;
 
             case 'tutor':
-                // One card of each name that fits; the searcher picks (rule 701.19b: they may fail to find one with a stated quality).
-                $eligible = [];
+                // Keep enough copies of each name to fill this search without crowding out other names.
+                $count = (int) ($effect['count'] ?? 1);
+                $eligible = $names = [];
                 foreach (array_reverse($this->players[$controller]->library) as $id) {
                     $card = $this->objects[$id]->printed();
-                    if ($this->matchesFilter($card, $effect['filter']) && ! isset($eligible[$card->name])) {
-                        $eligible[$card->name] = $id;
+                    if ($this->matchesFilter($card, $effect['filter']) && ($names[$card->name] ?? 0) < $count) {
+                        $eligible[] = $id;
+                        $names[$card->name] = ($names[$card->name] ?? 0) + 1;
                     }
                 }
                 if ($eligible === []) {
@@ -5770,7 +5772,7 @@ final class Game
                     $this->shuffle($controller);
                     break;
                 }
-                $this->pendingChoice = ['type' => 'look', 'seat' => $controller, 'cards' => array_values($eligible), 'eligible' => array_values($eligible), 'take' => 1, 'may' => $effect['filter'] !== 'any', 'rest' => 'library', 'to' => $effect['to'], 'reveal' => (bool) ($effect['reveal'] ?? false)];
+                $this->pendingChoice = ['type' => 'look', 'seat' => $controller, 'cards' => $eligible, 'eligible' => $eligible, 'take' => min($count, count($eligible)), 'may' => $effect['filter'] !== 'any', 'rest' => 'library', 'to' => $effect['to'], 'reveal' => (bool) ($effect['reveal'] ?? false)];
 
                 return true;
 

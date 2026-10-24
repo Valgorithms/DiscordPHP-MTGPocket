@@ -4932,7 +4932,11 @@ final class TextParser
         if (preg_match('/^its controller may search their library for a basic land card, put (?:it|that card) (onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m)) {
             return ['type' => 'search', 'find' => 'basic land', 'to' => strtolower($m[1]) === 'onto the battlefield' ? 'battlefield' : 'tapped', 'theirs' => true, 'sameTarget' => true];
         }
-        // `Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.`
+        // Burnished Hart: an explicit choice of zero, one or two basics, followed by one shuffle.
+        if (strcasecmp($s, 'Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle') === 0) {
+            return ['type' => 'tutor', 'filter' => 'basic_land', 'count' => 2, 'to' => 'tapped', 'reveal' => false];
+        }
+        // Other legacy up-to searches retain their existing policy.
         if (preg_match('/^(?:you may )?search your library for up to (\w+) basic land cards, (?:reveal them, )?put them (into your hand|onto the battlefield tapped|onto the battlefield), then shuffle$/i', $s, $m) && is_int($n = self::amount($m[1])) && $n > 0) {
             return ['type' => 'search', 'find' => 'basic land', 'count' => $n, 'to' => match (strtolower($m[2])) {
                 'into your hand' => 'hand',

@@ -939,7 +939,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 : ($game->choiceAwaiting()['rest'] === 'split'
                     ? 'Choose one of the two revealed lands to put onto the battlefield tapped. The other goes into your hand. Then shuffle your library.'
                     : ($game->choiceAwaiting()['rest'] === 'library'
-                ? 'Search your library: choose a card to put '.(($game->choiceAwaiting()['to'] ?? 'hand') === 'hand' ? 'into your hand' : 'onto the battlefield').'. Then your library is shuffled.'
+                ? 'Search your library: choose '.($game->choiceAwaiting()['take'] > 1 ? 'up to '.$game->choiceAwaiting()['take'].' cards' : 'a card').' to put '.(($game->choiceAwaiting()['to'] ?? 'hand') === 'hand' ? 'into your hand' : 'onto the battlefield'.(($game->choiceAwaiting()['to'] ?? null) === 'tapped' ? ' tapped' : '')).'. Then your library is shuffled.'
                 : 'From the top of your library, these are'."\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\n".match (true) {
