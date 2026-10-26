@@ -9,11 +9,11 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "e2516988575a773cded5597bb20c16ec8f831d33",
+  "engineSource": "58060b0d7d8eb86869a6ceed169ebf53f7bb72c5",
   "validation": {
-    "source": "e2516988575a773cded5597bb20c16ec8f831d33",
-    "evidenceMeaning": "Quest for the Gravelord scoped optional creature-death quest counters. The source was already readable while gameplay wrongly forced the may-counter; recognition and whole-card certification remain separate.",
-    "local": "Executable baseline atd0431f1with new complete fixture/test:4tests40assertions4FAIL,actualBcastandBDisfiguredeaths;questcounterforcedinall4seat/controllerpairs. Local red commitf0e6426preserved. Narrow10-linetriggerroute reuses optional_source_counterquest plus existing creature-death events. Expanded27tests372assertionsPASS0.127s36MiB;two-filePintPASS. Initial expanded helper wrongly skipped spellresolution forqueuedcases;corrected harness without productionworkaround. Full/adjacent/ledger validation pending. PHP8.5.12/512MiB/Xdebugoff/isolateddata/tasktemp,existingvendordependencies with explicit PSR4testbootstrap.",
+    "source": "58060b0d7d8eb86869a6ceed169ebf53f7bb72c5",
+    "evidenceMeaning": "Quest for the Gravelord scoped optional creature-death quest counters. This cached older ZEN record parsed atd0431f1while gameplay forced its may-counter. The older aggregate newest-name report does not list Quest recognized and remains unchanged;noaggregate/newest-printing/whole-cardclaim.",
+    "local": "Executable baseline atd0431f1with new complete fixture/test:4tests40assertions4FAIL,actualBcastandBDisfiguredeaths;questcounterforcedinall4seat/controllerpairs. Local red commitf0e6426preserved. Narrow9-linetriggerroute reuses optional_source_counterquest plus existing creature-death events. Expanded27tests372assertionsPASS0.127s36MiB;two-filePintPASS. Initial expanded helper wrongly skipped spellresolution forqueuedcases;corrected harness without productionworkaround.  PHP8.5.12/512MiB/Xdebugoff/isolateddata/tasktemp,existingvendordependencies with explicit PSR4testbootstrap. Full offline source `58060b0d7d8eb86869a6ceed169ebf53f7bb72c5` passed 2,102 tests/57,778 assertions with2expected missing-pool/rental skips;PHPUnit01:04.004/294.00 MB,wall64.276s/120scap. Adjacent ledger/Khalni/Moriok/Quest124tests2323assertionsPASS;Quest27tests372assertionsPASS;fullnonmutatingPintPASS. All59normalizedPHPpins match. PHP8.5.12/512MiB/Xdebugoff/isolated data+temp;ignoredtask-localautoloadbridge reusesexistingvendorread-onlyandallowsCLItests. No dependencyorenvcontractchange;nohostedCI/publication. Earlier adjacent124runfailedonlybecauseCLIcouldnotfindnewworktreevendor/autoload.php;ignoreddependencybridgecorrectedsetupwithoutproductionchangesandtargetedCLI1test6assertionspassed.",
     "ci": "NOT RUN: local patch is awaiting main review before publication; no hosted acceptance claim. PR406 was subsequently merged as85d85418cee2244cf8e6eb9dc3dac70a9646bb6b;this independent patch has not synced or changed it.",
     "historicalValidation": {
       "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
@@ -873,5 +873,6 @@
         "Newest-printing and whole-card certification"
       ]
     }
-  ]
+  ],
+  "engineSourceMeaning": "Immutable locally full-tested independent Gravelord tree based ond0431f1,withoutPR406source. FinalmetadatafollowupchangesnoPHP;allpriorreceiptsretaintheiroriginalanchors."
 }
