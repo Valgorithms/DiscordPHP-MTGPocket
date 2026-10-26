@@ -4026,6 +4026,10 @@ final class TextParser
         if (preg_match('/^[Dd]raw (\w+ cards?) and lose (\w+) life$/', $sentence, $m)) {
             return self::sentenceEffects("You draw {$m[1]} and you lose {$m[2]} life");
         }
+        // `You gain 1 life and you scry 1.`: as `You gain 1 life and scry 1.`
+        if (preg_match('/^((?:[Yy]ou )?(?:gain|lose) \w+ life) and you (scry|surveil|draw) (.+)$/', $sentence, $m)) {
+            return self::sentenceEffects("{$m[1]} and {$m[2]} {$m[3]}");
+        }
         // `Each opponent discards a card and loses 2 life.`: one action, then the other, by the same players.
         if (preg_match('/^([Ee]ach (?:opponent|player)) (discards|loses|mills|draws|sacrifices|gains) (.+?) and (discards|loses|mills|draws|sacrifices|gains) (.+)$/', $sentence, $m)
             && ($first = self::sentenceEffects("{$m[1]} {$m[2]} {$m[3]}")) !== null && ($second = self::sentenceEffects("{$m[1]} {$m[4]} {$m[5]}")) !== null) {
