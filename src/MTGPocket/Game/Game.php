@@ -766,7 +766,7 @@ final class Game
                             'blitz' => $this->sacrifice($object),
                             'warp' => $this->moveTo($object, GameObject::EXILE),
                             'temporary' => $this->sacrifice($object),
-                            'end_exile' => $this->moveTo($object, GameObject::EXILE),
+                            'end_exile' => $this->queueEndStepExile($object),
                             default => null,
                         };
                         // Impending: a time counter off at the beginning of its controller's end step.
@@ -4506,7 +4506,8 @@ final class Game
         }
         $opponents = array_filter(array_keys($this->players), fn (int $seat) => $seat !== $controller);
         $affected = match (true) {
-            isset($effect['thatObject']) => ($that = $this->objects[$effect['thatObject']] ?? null)?->zone === GameObject::BATTLEFIELD ? $that : null,
+            isset($effect['thatObject']) => ($that = $this->objects[$effect['thatObject']] ?? null)?->zone === GameObject::BATTLEFIELD
+                && (! isset($effect['thatIncarnation']) || $that->incarnation === $effect['thatIncarnation']) ? $that : null,
             isset($effect['graveyardSelf']) => $source->zone === GameObject::GRAVEYARD && $source->incarnation === $effect['graveyardSelf'] ? $source : null,
             (bool) ($effect['self'] ?? false) => $self,
             (bool) ($effect['enchanted'] ?? false) => $self?->attachedTo === null ? null : ($this->objects[$self->attachedTo] ?? null),
@@ -5134,8 +5135,8 @@ final class Game
                     if ($effect['haste'] ?? false) {
                         $token->untilEndOfTurn[] = ['power' => 0, 'toughness' => 0, 'keywords' => ['haste']];
                     }
-                    if (isset($effect['endStep'])) {
-                        $token->alt = $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary';
+                    foreach ($this->endStepState($effect, $source, $controller, $sourceIncarnation) as $key => $value) {
+                        $token->$key = $value;
                     }
                     if ($effect['tapped'] ?? false) {
                         $token->tapped = true;
@@ -5304,7 +5305,7 @@ final class Game
 
             case 'reanimate':
                 if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($affected, $controller, tapped: $effect['tapped'] ?? false, entryState: isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []);
+                    $this->putOntoBattlefield($affected, $controller, tapped: $effect['tapped'] ?? false, entryState: $this->endStepState($effect, $source, $controller, $sourceIncarnation));
                     $this->log("{$affected->name()} returns to the battlefield.");
                     $this->followed = [(string) $target => "o:{$affected->id}:{$affected->incarnation}"];
                 }
@@ -5623,7 +5624,7 @@ final class Game
                     $copy = $this->createToken(
                         $copyCard,
                         $controller,
-                        ['haste' => $effect['haste'] ?? false] + (isset($effect['endStep']) ? ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary'] : []),
+                        ['haste' => $effect['haste'] ?? false] + $this->endStepState($effect, $source, $controller, $sourceIncarnation),
                         transformed: ! $affected->faceDown && $affected->mutations === [] && $affected->transformed && ($affected->card['layout'] ?? null) === 'transform'
                     );
                     $this->log("{$this->players[$controller]->name} creates a token copy of {$copy->name()}.");
@@ -9362,7 +9363,7 @@ final class Game
      * @param bool       $triggers   Whether its "enters" abilities trigger.
      * @param bool       $faceDown
      * @param bool       $kicked
-     * @param array{alt?: string, cast?: string, unearthed?: bool, haste?: bool, counters?: array<string, int>, attacking?: bool} $entryState State applied after entering, including after a saved decision.
+     * @param array{alt?: string, endExileContext?: array{source: int, incarnation: int, controller: int}, cast?: string, unearthed?: bool, haste?: bool, counters?: array<string, int>, attacking?: bool} $entryState State applied after entering, including after a saved decision.
      *
      * @return void
      */
@@ -9466,6 +9467,7 @@ final class Game
             }
         }
         $object->alt = $entryState['alt'] ?? null;
+        $object->endExileContext = $entryState['endExileContext'] ?? null;
         $object->cast = $entryState['cast'] ?? '';
         $object->unearthed = $entryState['unearthed'] ?? false;
         if ($object->unearthed || ($entryState['haste'] ?? false)) {
@@ -10239,6 +10241,30 @@ final class Game
             array_unshift($player->library, $id);
         }
         $this->log("{$player->name} exiles a card face down with {$source->name()} (hideaway).");
+    }
+
+    /** State for an effect's delayed end-step instruction, captured as that effect resolves. */
+    private function endStepState(array $effect, GameObject $source, int $controller, ?int $sourceIncarnation): array
+    {
+        if (! isset($effect['endStep'])) {
+            return [];
+        }
+
+        return ['alt' => $effect['endStep'] === 'exile' ? 'end_exile' : 'temporary']
+            + ($effect['endStep'] === 'exile' ? ['endExileContext' => ['source' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation, 'controller' => $controller]] : []);
+    }
+
+    private function queueEndStepExile(GameObject $object): void
+    {
+        $context = $object->endExileContext ?? ['source' => $object->id, 'incarnation' => $object->incarnation, 'controller' => $object->controller];
+        $this->pendingTriggers[] = [
+            'source' => $context['source'], 'incarnation' => $context['incarnation'], 'controller' => $context['controller'],
+            'effects' => [['type' => 'exile', 'thatObject' => $object->id, 'thatIncarnation' => $object->incarnation]], 'kinds' => [],
+            'label' => "{$object->name()}'s delayed exile", 'text' => 'Exile it.',
+        ];
+        // Consume the schedule when it triggers, even if that ability is countered.
+        $object->alt = null;
+        $object->endExileContext = null;
     }
 
     /**
@@ -11423,6 +11449,12 @@ final class Game
             }
             $object = GameObject::fromArray((array) $object);
             $game->objects[$object->id] = $object;
+        }
+        foreach ($game->objects as $object) {
+            if (($context = $object->endExileContext) !== null && ($object->alt !== 'end_exile'
+                || ! isset($game->objects[$context['source']]) || $context['incarnation'] > $game->objects[$context['source']]->incarnation)) {
+                throw new GameException('Invalid saved end-step exile source.');
+            }
         }
         $game->battlefield = array_map('intval', (array) $data['battlefield']);
         $game->stack = array_values(array_map(fn ($item) => [

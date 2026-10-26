@@ -167,4 +167,164 @@ final class ZektarShrineExpeditionTest extends GameTestCase
     {
         return [[0], [1]];
     }
+
+    private function saved(): array
+    {
+        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /** @dataProvider actors */
+    public function testDelayedExileRetainsOriginalSourceControllerAndJsonReplay(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $sourceIncarnation = $this->game->objects[$source]->incarnation;
+        $token = $this->token($actor, $source);
+        $context = ['source' => $source, 'incarnation' => $sourceIncarnation, 'controller' => $actor];
+        $this->assertSame($context, $this->game->objects[$token]->endExileContext);
+        // A control-transfer probe, not evidence for an enabling theft spell.
+        $this->game->objects[$token]->controller = 1 - $actor;
+        $before = $this->saved();
+        $this->game = Game::fromArray($before);
+        $this->passUntil(Step::End);
+        $ability = $this->game->stack[0];
+        $this->assertSame([$source, $sourceIncarnation, $actor, []], [$ability['object'], $ability['incarnation'], $ability['controller'], $ability['targets']]);
+        $this->assertSame([['type' => 'exile', 'thatObject' => $token, 'thatIncarnation' => $this->game->objects[$token]->incarnation]], $ability['effects']);
+        $queued = $this->saved();
+        $this->resolveOne();
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+        $expected = $this->saved();
+        foreach ([$before, $queued] as $saved) {
+            $this->game = Game::fromArray($saved);
+            if ($this->game->step !== Step::End) {
+                $this->passUntil(Step::End);
+            }
+            $this->resolveOne();
+            $this->assertSame($expected, $this->saved());
+        }
+    }
+
+    /** @dataProvider actors */
+    public function testActivationDuringEndStepWaitsForNextTurnsEndStep(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $this->passUntil(Step::End);
+        $turn = $this->game->turn;
+        $token = $this->token($actor, $source);
+        $this->assertSame([], $this->game->stack);
+        $this->passUntil(Step::PrecombatMain, $turn + 1);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($token));
+        $this->passUntil(Step::End, $turn + 1);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($token));
+        $this->assertCount(1, $this->game->stack);
+        $this->resolveOne();
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+    }
+
+    /** @dataProvider actors */
+    public function testRemovingQueuedExileDoesNotScheduleItAgain(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $token = $this->token($actor, $source);
+        $this->passUntil(Step::End);
+        // Isolate a countered triggered ability; no supporting-card claim.
+        array_pop($this->game->stack);
+        $this->game = Game::fromArray($this->saved());
+        $this->passUntil(Step::End, $this->game->turn + 1);
+        $this->assertSame([], $this->game->stack);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($token));
+        $this->assertNull($this->game->objects[$token]->alt);
+        $this->assertNull($this->game->objects[$token]->endExileContext);
+    }
+
+    /** @dataProvider actors */
+    public function testActualBounceResponseMovesTokenBeforeDelayedExileResolves(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $token = $this->token($actor, $source);
+        $this->passUntil(Step::End);
+        $mana = $this->lands($actor, 'Island', 1)[0];
+        $spell = $this->hand($actor, 'Unsummon');
+        $this->game->cast($actor, $spell, 0, ["o:{$token}"]);
+        $this->assertTrue($this->game->objects[$mana]->tapped);
+        $this->assertCount(2, $this->game->stack);
+        $this->resolveOne();
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+        $this->resolveOne();
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+        $this->assertSame([], $this->game->stack);
+    }
+
+    /** @dataProvider actors */
+    public function testLegacyScheduleWithoutContextUsesExplicitFallback(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $token = $this->token($actor, $source);
+        $saved = $this->saved();
+        foreach ($saved['objects'] as &$object) {
+            if ($object['id'] === $token) {
+                unset($object['endExileContext']);
+            }
+        }
+        unset($object);
+        $this->game = Game::fromArray($saved);
+        $this->assertNull($this->game->objects[$token]->endExileContext);
+        $this->passUntil(Step::End);
+        $this->assertSame([$token, $actor], [$this->game->stack[0]['object'], $this->game->stack[0]['controller']]);
+        $this->resolveOne();
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+    }
+
+    /** @dataProvider invalidContexts */
+    public function testMalformedSavedContextRejects(string $key, mixed $value): void
+    {
+        $source = $this->expedition(0);
+        $this->charge(0, $source);
+        $token = $this->token(0, $source);
+        $saved = $this->saved();
+        foreach ($saved['objects'] as &$object) {
+            if ($object['id'] === $token) {
+                if ($key === 'whole') {
+                    $object['endExileContext'] = $value;
+                } elseif ($key === 'alt') {
+                    $object['alt'] = $value;
+                } else {
+                    $object['endExileContext'][$key] = $value;
+                }
+            }
+        }
+        unset($object);
+        $this->expectException(GameException::class);
+        Game::fromArray($saved);
+    }
+
+    public static function invalidContexts(): array
+    {
+        return [
+            ['whole', false], ['whole', []], ['controller', 2], ['controller', '0'],
+            ['source', 0], ['source', 99999], ['incarnation', -1], ['incarnation', 99999],
+            ['extra', true], ['alt', null],
+        ];
+    }
+
+    /** @dataProvider actors */
+    public function testCreatedTokenAttacksImmediatelyAndTramplesOverABlocker(int $actor): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $token = $this->token($actor, $source);
+        $blocker = $this->battlefield(1 - $actor, 'Grizzly Bears');
+        $this->passUntil(Step::DeclareAttackers);
+        $this->game->declareAttackers($actor, [$token]);
+        $this->resolveOne();
+        $this->game->declareBlockers(1 - $actor, [$blocker => $token]);
+        $this->passUntil(Step::PostcombatMain);
+        $this->assertSame(15, $this->life(1 - $actor));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($blocker));
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+    }
 }
