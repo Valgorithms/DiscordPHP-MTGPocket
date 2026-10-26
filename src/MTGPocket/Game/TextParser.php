@@ -2619,6 +2619,13 @@ final class TextParser
 
             return true;
         }
+        // Quest for the Gemblades: only actual combat damage by a controlled creature counts.
+        if ($line === 'Whenever a creature you control deals combat damage to a creature, you may put a quest counter on CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'your_creature_combat_damages_creature',
+                'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+
+            return true;
+        }
         // Quest for the Gravelord: each player's creature deaths offer a separate optional counter.
         if ($line === 'Whenever a creature dies, you may put a quest counter on CARDNAME.') {
             foreach (['creature_dies_other', 'creature_dies_any'] as $event) {
@@ -3552,8 +3559,8 @@ final class TextParser
                 [$cost['mana'], $cost['waterbend']] = [$water[1], true];
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
-            } elseif (preg_match('/^Remove (three|five) quest counters from CARDNAME and sacrifice it$/', $part, $quest)) {
-                $cost += ['remove' => ['quest', self::amount($quest[1])], 'sacrifice' => true];
+            } elseif (preg_match('/^Remove (a quest counter|(?:three|five) quest counters) from CARDNAME and sacrifice it$/', $part, $quest)) {
+                $cost += ['remove' => ['quest', self::amount(explode(' ', $quest[1])[0])], 'sacrifice' => true];
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
             } elseif ($part === 'Exile CARDNAME') {
