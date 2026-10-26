@@ -2612,6 +2612,13 @@ final class TextParser
 
             return true;
         }
+        // Quest for Ancient Secrets: count each card, not tokens or just mill events.
+        if ($line === 'Whenever a card is put into your graveyard from anywhere, you may put a quest counter on CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'card_to_graveyard_yours',
+                'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+
+            return true;
+        }
         // Quest for the Gravelord: each player's creature deaths offer a separate optional counter.
         if ($line === 'Whenever a creature dies, you may put a quest counter on CARDNAME.') {
             foreach (['creature_dies_other', 'creature_dies_any'] as $event) {
@@ -3545,8 +3552,8 @@ final class TextParser
                 [$cost['mana'], $cost['waterbend']] = [$water[1], true];
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
-            } elseif ($part === 'Remove three quest counters from CARDNAME and sacrifice it') {
-                $cost += ['remove' => ['quest', 3], 'sacrifice' => true];
+            } elseif (preg_match('/^Remove (three|five) quest counters from CARDNAME and sacrifice it$/', $part, $quest)) {
+                $cost += ['remove' => ['quest', self::amount($quest[1])], 'sacrifice' => true];
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
             } elseif ($part === 'Exile CARDNAME') {
@@ -5068,7 +5075,7 @@ final class TextParser
             return ['type' => 'gy_shuffle', 'amount' => $n];
         }
         if (preg_match('/^(?:(?:then )?shuffle your graveyard into your library|target player shuffles their graveyard into their library)$/i', $s)) {
-            return ['type' => 'gy_shuffle', 'amount' => null];
+            return ['type' => 'gy_shuffle', 'amount' => null] + (str_starts_with(strtolower($s), 'target player') ? ['target' => 'player'] : []);
         }
         if (preg_match('/^(target player|target opponent) mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
             return ['type' => 'mill', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]];
