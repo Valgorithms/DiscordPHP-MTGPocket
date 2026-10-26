@@ -38,3 +38,9 @@ Other cards lose only their unsupported fading line. Ancient Hydra, Parallax Dem
 - A distinct existing vanishing lifecycle regression; this is not a claim of complete vanishing rules support.
 
 The final integrated full suite passes against the existing local corpus: **713 tests / 102,978 assertions, zero skips**, including all imported-card parsing and 50 official-deck simulations. Pint and whitespace checks pass. No live bot, Discord acceptance, release, deployment or token-bearing build was run.
+
+## Current main reconciliation (2026-10-26)
+
+Published PR parent `75e2ab6f6a99236460632b8f00c9e0efb96c6195` is preserved as a merge parent with main `bd96559c492f6ae032a8a29898105e018f2020f1`; no published history is rewritten. Actual conflict: `docs/rules-engine-continuation.md`. Both documentation/evidence sets are retained. Source pins are refreshed for the automatic combined engine/test tree; all previous scoped claims remain unchanged at37names/zero whole-card certificates. Original recognition reports and validation are historical, not an aggregate update. Focused/full offline validation and exact-head hosted CI remain pending. No live bot, credential/security changes, deployment or independent merge.
+
+Full-tested integrated source 2e0dcb18036d69b081c431a1e03710903b565361: 2384 tests/63030 assertions,2expected missing-pool/rental skips,no risky tests;PHPUnit01:05.773/334.00 MB. Focused638tests/8188assertions,fullnonmutatingPint,all67normalizedPHPpinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;production/testbytes match. Hosted acceptance requires the final exact PR head.

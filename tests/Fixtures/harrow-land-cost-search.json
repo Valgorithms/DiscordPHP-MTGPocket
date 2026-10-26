@@ -1,0 +1,74 @@
+{
+  "setCode": "ZEN",
+  "setName": "Zendikar",
+  "releaseDate": "2009-10-02",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "importedAt": 1792723094,
+  "counts": {
+    "W": {
+      "common": 18,
+      "uncommon": 10,
+      "rare": 9,
+      "mythic": 2
+    },
+    "U": {
+      "common": 18,
+      "uncommon": 10,
+      "rare": 9,
+      "mythic": 2
+    },
+    "B": {
+      "common": 18,
+      "uncommon": 10,
+      "rare": 8,
+      "mythic": 3
+    },
+    "R": {
+      "common": 18,
+      "uncommon": 10,
+      "rare": 7,
+      "mythic": 3
+    },
+    "G": {
+      "common": 18,
+      "uncommon": 10,
+      "rare": 8,
+      "mythic": 3
+    },
+    "M": {
+      "common": 0,
+      "uncommon": 0,
+      "rare": 0,
+      "mythic": 0
+    },
+    "C": {
+      "common": 11,
+      "uncommon": 10,
+      "rare": 12,
+      "mythic": 2
+    }
+  },
+  "card": {
+    "uuid": "62454305-aa7f-5dce-9048-7b8af6ed09db",
+    "name": "Harrow",
+    "number": "165",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 3,
+    "type": "Instant",
+    "scryfallId": "e309c1fc-3a7c-4624-8b48-9b152c2590ae",
+    "manaCost": "{2}{G}",
+    "types": [
+      "Instant"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "As an additional cost to cast this spell, sacrifice a land.\nSearch your library for up to two basic land cards, put them onto the battlefield, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "setCode": "M11",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "5f27bb0b-7c59-5b0c-9673-17db759e0076",
+    "name": "Cultivate",
+    "number": "168",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 3,
+    "type": "Sorcery",
+    "scryfallId": "2ef3dbe4-5c03-4be4-ab48-45b6689b6712",
+    "manaCost": "{2}{G}",
+    "types": [
+      "Sorcery"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

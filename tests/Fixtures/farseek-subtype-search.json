@@ -1,0 +1,27 @@
+{
+  "setCode": "M13",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "da73dc10-1286-5c38-a2d0-92ae64f49690",
+    "name": "Farseek",
+    "number": "170",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 2,
+    "type": "Sorcery",
+    "scryfallId": "f9b69d33-96dd-4844-aefa-27a885cb2ffc",
+    "manaCost": "{1}{G}",
+    "types": [
+      "Sorcery"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

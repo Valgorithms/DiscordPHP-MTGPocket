@@ -1,0 +1,35 @@
+{
+  "setCode": "DTK",
+  "source": "Existing DTK pool; bounded single-name data selection; no import or parser walk",
+  "card": {
+    "uuid": "e0c322a9-4486-5282-9d62-4a1bf6d49453",
+    "name": "Den Protector",
+    "number": "181",
+    "rarity": "rare",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 2,
+    "type": "Creature — Human Warrior",
+    "scryfallId": "bd90d5ea-c586-4afd-be75-1c821e48df0c",
+    "manaCost": "{1}{G}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Human",
+      "Warrior"
+    ],
+    "power": "2",
+    "toughness": "1",
+    "text": "Creatures with power less than this creature's power can't block it.\nMegamorph {1}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its megamorph cost and put a +1/+1 counter on it.)\nWhen this creature is turned face up, return target card from your graveyard to your hand.",
+    "keywords": [
+      "Megamorph"
+    ],
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

@@ -1,5 +1,55 @@
 # Rules-engine architecture and continuation
 
+The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
+The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.
+
+The [Expedition draw/life evidence batch](expedition-draw-life-evidence.md) verifies paid Ior Ruin and Sunspring gameplay against an already passing engine, including cost/negative/queued replay controls. No runtime correction is claimed. Current ledger: 35 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
+The [local Zektar Shrine milestone](zektar-shrine-expedition.md) routes explicit next-end-step exile through the ordinary trigger queue with original effect context and a pinned affected incarnation. Actual paid gameplay and response controls replace assumptions about recognition. Current scoped ledger: 33 names, two Partner gaps, one overlap and zero whole-card certificates; recognition stays historical.
+
+The [Quest for the Gravelord slice](quest-gravelord-death-counters.md) reuses existing optional quest-counter choices and creature-death events. Its evidence has been reconciled with merged Soul Stair: 32 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical. Publication awaits main review of this local integrated patch; the refreshed next cached candidate remains unexecuted.
+
+The [Soul Stair Expedition milestone](soul-stair-expedition-returns.md) verifies paid quest-counter graveyard returns and fixes repeated selections within one target clause before costs are spent. Separate clauses may still select the same object. Current ledger: 31 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
+The [Khalni Heart Expedition milestone](khalni-expedition-quest-search.md) adds optional quest-counter landfall and paid three-counter/self-sacrifice searches for up to two tapped basics. Schema 16 records named optional counters and migrates legacy +1/+1 choices. Current scoped ledger: 30 names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
+The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.
+
+The [Burnished Hart search milestone](burnished-hart-land-search.md) adds explicit selection of zero, one or two basics after a paid cast and paid self-sacrifice, with tapped entry and one final shuffle. The ledger now has 28 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
+
+The [Diabolic Tutor reveal-policy milestone](diabolic-tutor-unrestricted-search.md) verifies paid unrestricted searches and keeps an unrevealed find off the public board while preserving explicit reveal controls. The ledger now has 27 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition remains historical; pending legacy choices without the optional flag retain their old logging policy.
+
+The [Cultivate split-search milestone](cultivate-split-search.md) adds paid selection of up to two basics, reveal, a destination choice for two, tapped battlefield/hand split and one final shuffle. Schema15 validates both split stages while ordinary13/14 look saves remain readable; optional legacy wording is unchanged. Current ledger: 26 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
+
+The [Evolving Wilds search-choice milestone](evolving-wilds-search-choice.md) adds explicit selection or failure to find after actual land play and tap/self-sacrifice activation, including tapped entry, shuffle, save/load and persisted panels. Only mandatory put-it/put-that-card wording changes; optional legacy wording remains unchanged. Current ledger: 25 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition and earlier milestone counts remain historical.
+
+The [Farseek subtype-search milestone](farseek-subtype-search.md) records paid evidence for existing explicit normal/snow/nonbasic-dual subtype selection, tapped entry, failure to find and shuffle. It changes tests, not runtime. Current ledger: 24 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier counts below are historical.
+
+The [Rampant Growth mandatory-search milestone](rampant-growth-basic-search.md) adds paid explicit basic-land selection, tapped entry and shuffle, including failure to find, using the existing tutor. Current ledger: 23 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier milestone counts below are historical.
+
+The [Viridian Emissary death-search milestone](viridian-optional-death-search.md) adds an explicit original-controller search/decline decision after a paid cast and Shock, reusing schema 14 optional-search continuations. Current ledger: 22 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical; earlier milestone counts below are historical.
+
+The [Solemn Simulacrum entry-search milestone](solemn-optional-entry-search.md) adds an explicit search/decline decision, basic-land eligibility, tapped entry and original-controller continuation. Declining does not search or shuffle; accepting and failing to find shuffles. Version 14 preserves version 13 death choices. Current ledger: 21 scoped names, two explicit-gap names, one overlap and zero whole-card certificates. Aggregate recognition remains historical. Earlier milestone counts below are historical.
+
+The [Solemn Simulacrum death-draw milestone](solemn-optional-death-draw.md) adds explicit accept/decline, original-controller continuation, version13 save validation, persisted panels and practice empty-library policy. Its entry basic-land search remains unread. The ledger has21scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; aggregate recognition remains historical.
+
+The [Clay-Fired Bricks entry milestone](clay-fired-bricks-search-entry.md) removes its explicit unread search gap and adds paid front search/reveal/shuffle/gain, negative choices, JSON and front-to-craft evidence. The ledger remains20unique scoped names, with2explicit-gap names,1overlap and zero whole-card certificates. Historical aggregate recognition is unchanged; the selected complete LCI record now parses without unread clauses.
+
+The [Den Protector combat milestone](den-protector-combat-power.md) adds test-only evidence for paid current-power blocking boundaries, response timing, damage and JSON replay. Existing production behavior passed; no engine defect or runtime change is claimed. The ledger remains20scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition is unchanged.
+
+The [megamorph copy milestone](megamorph-token-copy.md) adds the paid Den Protector face-down copy and original turn-up/counter/targeted-return path. The ledger has20scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition remains unchanged; disguise/ward and broader copying remain separate.
+
+The [plain-morph copy milestone](plain-morph-token-copy.md) selects a nameless, colorless2/2 with no hidden turn-up action for the paid Woolly Loxodon morph/copy path. The ledger has19scoped names,3explicit-gap names,2overlaps and zero whole-card certificates. Historical recognition remains unchanged; megamorph/disguise and broader copy layers remain separate.
+
+The [transforming-token copy milestone](transforming-token-copy-face.md) selects the active face before entry for unmerged transforming copies. Converter Beast remains scoped evidence: 18 names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. A separately selected Woolly Loxodon face-down-copy lead is unreproduced.
+
+The [Incubator token-identity milestone](incubator-token-identity.md) preserves token identity across transformation on the paid Converter Beast path. Current evidence covers 18 scoped names, 3 explicit-gap names, 2 overlaps and zero whole-card certificates. Recognition remains historical; active-face token copying is the next separate, unreproduced lead.
+
+The [transformed-artifact burial milestone](transformed-artifact-burial-mana-value.md) freezes the selected crafted back face's front mana value before departure. The ledger now has17scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; Clay's search ETB and broader copy/transforming-token lifecycle remain explicit. Historical recognition is unchanged.
+
+The [Joven temporary artifact-control milestone](joven-temporary-artifact-control.md) adds scoped paid activation, identity, cleanup/restoration, JSON, persisted panel and existing practice-resolution evidence. It removes Joven's explicit unread activation gap: the ledger now has 16 unique scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Historical aggregate recognition remains unchanged; a bounded eight-record scan is measured separately. Next is a regression-first transformed-artifact burial mana-value investigation, retaining broader model and Partner/commander limits.
+
 Reviewed 2026-10-13 against merge `1b81558adaabae16a54cf865cd87c37019aa1461` (PR #125). This is a source review and continuation plan, not a claim of complete Magic rules support or authorization to deploy.
 
 ## Foundation to preserve
@@ -60,8 +110,36 @@ Use descriptive branches and open PRs, preserve unrelated local files, and disti
 
 ## Current coverage continuation
 
+The [resumable creature-sacrifice milestone](resumable-edict-choices.md) adds validated, persisted each-player choices and Discord/practice companions. New saves now use schema version 7 after the [Fabricate choice milestone](fabricate-resolution-choices.md); earlier version notes retain their historical migration context.
+
+The [functional coverage ledger](functional-coverage-ledger.md) pins the October 22 corpus at 28,729 names and separates recognition, explicit gaps, scoped behavior evidence and whole-card review backlog. It supplies the measurable continuation baseline; historical recognition tables below retain their original dates and scopes.
+
 The [2026-10-20 coverage checkpoint](card-coverage-progress.md) records a fresh, hashed public corpus, the current recognition baseline, tested graveyard-cast behavior, and remaining scope. It also refreshes the older ownership status above: #124 is merged, while #327 covers enchanted/equipped conditional bonuses and keywords. Recognition percentages remain separate from gameplay support.
 
 The next [delayed-upkeep-draw milestone](delayed-upkeep-draw.md) adds an exact one-card delayed-draw family through the ordinary trigger queue. It advances saved-state format to version 3, with legacy migration and rejection of missing delayed state. See that note for the tested behavior, compatibility boundary, recognition delta, and remaining limits.
 
 The [fading milestone](fading-coverage.md) adds numbered fade counters and the distinct upkeep sacrifice timing, with source/control-change and save/resume tests. It reuses the existing persisted counters and trigger records without changing the state schema introduced by delayed draws.
+
+## Sacrifice-specific observer follow-up (2026-10-23)
+
+The [Mayhem Devil milestone](sacrifice-observer-lookback.md) now preserves selected-group sacrifice callbacks and ordinary single-sacrifice source context, distinct from actual creature deaths. Its pinned WAR printing has scoped evidence only: recognition remains 11,282/28,729 and whole-card certificates remain zero. The next source-backed seed is Disciple of the Vault: determine all-player artifact-graveyard recognition and observer visibility before claiming runtime coverage. Broader replacement/continuous-condition/choice/APNAP limits remain explicit.
+
+The [artifact-graveyard observer milestone](artifact-graveyard-observer-lookback.md) extends selected-group lookback to same-controller artifact/permanent burial callbacks, with exact Marionette Master tests at printed power. The complete Disciple ability remains unread and is tracked separately. Next, explicitly test modified source power after departure and reincarnation; the printed-power fallback is not a last-known-power certificate. Fabricate decisions, all-player optional callbacks and whole-card certification remain outside this slice.
+
+The [departed-source statistics milestone](departed-source-statistics.md) now reproduces and fixes modified Marionette power, per-incarnation last-known statistics and surviving-source current power. Legacy saves cannot reconstruct missing departed statistics; this remains explicit. Next, implement the separately unread Disciple optional/all-player artifact ability with real resolution choices and negative controls, without changing recognition claims before measurement.
+
+The [Fabricate choice milestone](fabricate-resolution-choices.md) follows the same exact Marionette through paid entry, counters/Servos, departed-source fallback, persisted resolution and Discord/practice decisions. Admission is unchanged; earlier automatic-counter saves retain their encoded effects. Disciple remains a separate unread candidate; scoped Marionette evidence does not certify its newest printing or every interaction.
+
+The [Disciple optional-burial milestone](disciple-optional-artifact-burial.md) adds all-player artifact burial and explicit target-opponent accept/decline at resolution, persisted schema 8, Discord/practice routes and a targeted eight-name candidate superset. The original overall recognition report remains historical; Fangren Marauder is the next separately measured optional controller-life-gain candidate.
+
+The [Fangren optional-life-gain milestone](fangren-optional-artifact-burial.md) follows the same all-player burial event with a separate untargeted controller decision, persisted schema 9 and Discord/practice controls. It verifies ordinary gain prevention, modifiers and life-gain observers without changing Disciple targets. Ten names now have scoped evidence; whole-card certificates remain zero and aggregate recognition remains historical. The next measured unread seed is Molder Beast's temporary source buff, requiring incarnation and turn-expiry proof before support claims.
+
+The [Molder Beast milestone](molder-beast-artifact-burial.md) proves the exact all-player burial +2/+0 boost through existing source-incarnation, persistence and cleanup behavior. It changes no engine state schema or optional decision. Eleven names now have scoped evidence; aggregate recognition stays historical and whole-card certificates stay zero. Next is the separately unread complete 5DN Moriok Rigger optional +1/+1-counter ability, requiring explicit resolution choices, persistence, source identity and Discord/practice controls.
+
+The [Moriok Rigger milestone](moriok-rigger-optional-counter.md) implements the exact optional permanent source counter with original-controller decisions, persisted schema 10, old-incarnation isolation and Discord/practice routes. It retains older optional life choices and Molder cleanup behavior. Twelve names now have scoped evidence, no whole-card certificates are issued, and aggregate recognition stays historical. Next is the measured unread Summoning Station optional source-untap clause; its complete tap-token activation also needs paid runtime evidence.
+
+The [Summoning Station milestone](summoning-station-optional-untap.md) verifies paid tap-token activation, optional original-source untap and another activation, schema11 choices/legacy migration and Discord/practice routes. Its new stun control fixes the shared single-permanent untap path; mass untap and untap costs remain outside that evidence. Thirteen scoped names still confer no whole-card certificates. Next is complete Krenko's separately unread optional red-payment/temporary-haste token clause.
+
+The [Krenko milestone](krenko-optional-red-goblin.md) adds explicit original-controller red payment, temporary-haste Goblin creation, schema 12 and Discord/practice routes. It verifies complete paid cast and activation, colored mana/decline controls, departure/save/cleanup and simultaneous Damnation callbacks. Fourteen scoped names confer no whole-card certificates; aggregate recognition remains historical. Next is Ich-Tekik source/Golem counters, retaining its unread Partner clause.
+
+The [Ich-Tekik milestone](ich-tekik-artifact-burial-counters.md) verifies exact source/Golem counters through existing effects and fixes subtype counters excluding noncreature Kindred. Paid entry/Smelt/Damnation/Shatterstorm, source identity, original controller, current Golems, persistence and cleanup are scoped evidence. Partner remains explicitly unread; no schema or choice route changes. Fifteen scoped names/two gaps/one overlap still issue zero whole-card certificates. Next: Joven and Chandler artifact-mana-value counters, retaining its unread temporary-control activation.
