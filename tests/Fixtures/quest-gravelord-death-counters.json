@@ -1,0 +1,57 @@
+{
+  "setCode": "ZEN",
+  "setName": "Zendikar",
+  "releaseDate": "2009-10-02",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "importedAt": 1792723094,
+  "sourcePoolSha256": "7e79b10521b27e2ea4aa0b5951f3fd77e531a2c086588b640634dee0095e903e",
+  "scope": "Two complete existing cached ZEN records; no fetch/import. Disfigure enables actual paid death events and is not independently certified.",
+  "cards": [
+    {
+      "uuid": "15269cf5-9eb9-5b7d-8c79-42154e8ece24",
+      "name": "Disfigure",
+      "number": "87",
+      "rarity": "common",
+      "colors": [
+        "B"
+      ],
+      "manaValue": 1,
+      "type": "Instant",
+      "scryfallId": "b3842ad2-a449-4963-8c96-276554125757",
+      "manaCost": "{B}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Target creature gets -2/-2 until end of turn.",
+      "layout": "normal",
+      "colorIdentity": [
+        "B"
+      ]
+    },
+    {
+      "uuid": "3c15b10c-d09c-5c93-be42-98ff3515262a",
+      "name": "Quest for the Gravelord",
+      "number": "108",
+      "rarity": "uncommon",
+      "colors": [
+        "B"
+      ],
+      "manaValue": 1,
+      "type": "Enchantment",
+      "scryfallId": "821b3d28-fe57-4d6a-a5d2-cc7cc44973d9",
+      "manaCost": "{B}",
+      "types": [
+        "Enchantment"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Whenever a creature dies, you may put a quest counter on this enchantment.\nRemove three quest counters from this enchantment and sacrifice it: Create a 5/5 black Zombie Giant creature token.",
+      "layout": "normal",
+      "colorIdentity": [
+        "B"
+      ]
+    }
+  ]
+}

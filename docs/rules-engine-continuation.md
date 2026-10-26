@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Quest for the Gravelord slice](quest-gravelord-death-counters.md) reuses existing optional quest-counter choices and creature-death events. Its evidence has been reconciled with merged Soul Stair: 32 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical. Publication awaits main review of this local integrated patch; the refreshed next cached candidate remains unexecuted.
+
 The [Soul Stair Expedition milestone](soul-stair-expedition-returns.md) verifies paid quest-counter graveyard returns and fixes repeated selections within one target clause before costs are spent. Separate clauses may still select the same object. Current ledger: 31 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Khalni Heart Expedition milestone](khalni-expedition-quest-search.md) adds optional quest-counter landfall and paid three-counter/self-sacrifice searches for up to two tapped basics. Schema 16 records named optional counters and migrates legacy +1/+1 choices. Current scoped ledger: 30 names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
