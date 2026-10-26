@@ -2366,15 +2366,10 @@ final class Game
 
         $kinds = $this->castKinds($card, $options);
         $targets = array_values($targets);
-        if (count($targets) !== count($kinds)) {
-            throw new GameException("{$card->name} needs ".count($kinds).' target'.(count($kinds) === 1 ? '' : 's').'.');
-        }
-        foreach ($kinds as $slot => $kind) {
-            if (! $this->isLegalTarget($kind, $targets[$slot], $seat) || $this->protectedFrom($this->targetObject($targets[$slot]), $object)) {
-                throw new GameException('That is not a legal target for '.$card->name.'.');
-            }
-            $targets[$slot] = $this->pinTarget($targets[$slot]);
-        }
+        $effects = $options['faceDown'] || $options['bestowed'] || $options['alt'] === 'mutate' || $card->aura !== null ? []
+            : [...$card->spellEffects($options['modes'], $options['kicked']), ...$this->splicedEffects($options['splice'])];
+        $this->checkTargets($kinds, $targets, $seat, $card->name, $object, $effects);
+        $targets = array_map(fn (string $target) => $this->pinTarget($target), $targets);
 
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($targets, $seat);
         if ($wardDiscard > count($this->players[$seat]->hand) - (in_array($id, $this->players[$seat]->hand, true) ? 1 : 0)) {
@@ -6478,6 +6473,33 @@ final class Game
     }
 
     /**
+     * First slot of each target clause, indexed by target slot. Repeated
+     * targets within a clause must differ; separate clauses may reuse them.
+     *
+     * @param array[] $effects
+     *
+     * @return int[]
+     */
+    public static function targetGroups(array $effects): array
+    {
+        $groups = [];
+        $start = $end = 0;
+        foreach ($effects as $effect) {
+            if (! isset($effect['target'])) {
+                continue;
+            }
+            $slot = count($groups);
+            if ($slot >= $end) {
+                $start = $slot;
+                $end = $slot + max(1, (int) ($effect['distinctTargets'] ?? 1));
+            }
+            $groups[] = $start;
+        }
+
+        return $groups;
+    }
+
+    /**
      * A triggered ability's intervening "if" clause (rule 603.4).
      *
      * @param string     $condition  See TextParser::triggered().
@@ -6813,7 +6835,7 @@ final class Game
     {
         $this->expect($seat, 'trigger');
         $trigger = $this->pendingTriggers[0];
-        $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label'], $this->objects[$trigger['source']] ?? null);
+        $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label'], $this->objects[$trigger['source']] ?? null, $trigger['effects']);
         array_shift($this->pendingTriggers);
         $this->pushTriggered($trigger, array_values($targets));
         $this->settle();
@@ -6896,14 +6918,25 @@ final class Game
      *
      * @return void
      */
-    private function checkTargets(array $kinds, array $targets, int $seat, string $name, ?GameObject $source = null): void
+    private function checkTargets(array $kinds, array $targets, int $seat, string $name, ?GameObject $source = null, array $effects = []): void
     {
         if (count($targets) !== count($kinds)) {
             throw new GameException("{$name} needs ".count($kinds).' target'.(count($kinds) === 1 ? '' : 's').'.');
         }
+        $groups = self::targetGroups($effects);
+        $chosen = [];
         foreach ($kinds as $slot => $kind) {
             if (! $this->isLegalTarget($kind, (string) $targets[$slot], $seat) || $this->protectedFrom($this->targetObject((string) $targets[$slot]), $source)) {
                 throw new GameException("That is not a legal target for {$name}.");
+            }
+            if ($targets[$slot] !== '-') {
+                $parts = explode(':', (string) $targets[$slot]);
+                $identity = $parts[0].':'.(int) $parts[1];
+                $group = $groups[$slot] ?? $slot;
+                if (isset($chosen[$group][$identity])) {
+                    throw new GameException("Choose distinct targets within each target clause of {$name}.");
+                }
+                $chosen[$group][$identity] = true;
             }
         }
     }
@@ -7513,7 +7546,7 @@ final class Game
         $kinds = self::targetKindsOf($ability['effects']);
         $targets = array_values($targets);
         $label = "{$object->name()}'s ability";
-        $this->checkTargets($kinds, $targets, $seat, $label, $object);
+        $this->checkTargets($kinds, $targets, $seat, $label, $object, $ability['effects']);
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat, false);
         if ($wardDiscard + ($ability['cost']['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             throw new GameException('You need a card in your hand to discard for ward.');
