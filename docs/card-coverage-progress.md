@@ -1,5 +1,7 @@
 # Card coverage checkpoint — 2026-10-20
 
+The [Soul Stair Expedition milestone](soul-stair-expedition-returns.md) verifies paid quest-counter graveyard returns and fixes repeated selections within one target clause before costs are spent. Separate clauses may still select the same object. Current ledger: 31 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
 This checkpoint distinguishes **recognized text** from **behavior tested in the engine**. It is not a claim that every recognized card is fully playable or that the card-coverage task is complete. See [the continuation plan](rules-engine-continuation.md) for architectural limits and ownership boundaries.
 
 ## Reproducible corpus

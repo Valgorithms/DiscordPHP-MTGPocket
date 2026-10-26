@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Soul Stair Expedition milestone](soul-stair-expedition-returns.md) verifies paid quest-counter graveyard returns and fixes repeated selections within one target clause before costs are spent. Separate clauses may still select the same object. Current ledger: 31 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
 The [Khalni Heart Expedition milestone](khalni-expedition-quest-search.md) adds optional quest-counter landfall and paid three-counter/self-sacrifice searches for up to two tapped basics. Schema 16 records named optional counters and migrates legacy +1/+1 choices. Current scoped ledger: 30 names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.
