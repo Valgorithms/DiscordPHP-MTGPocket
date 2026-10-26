@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "86dd45fd6069a1382381095bd160c57b15acfdcc",
+  "engineSource": "51bf5132f5313959d3deead373f094f902739417",
   "validation": {
-    "source": "86dd45fd6069a1382381095bd160c57b15acfdcc",
+    "source": "51bf5132f5313959d3deead373f094f902739417",
     "evidenceMeaning": "Soul Stair Expedition paid quest/sacrifice graveyard returns plus synthetic per-target-clause announcement/practice controls. Recognition remains historical; no whole-card certification.",
-    "local": "Corrected ordinary paid baseline00262fe:2tests32assertionsPASS; initial Memnite harness error excluded. Actual duplicate-target negative baselineb6287c5:2tests28assertions2FAIL, both actors paid B and earned three quest counters, duplicate accepted before fix. Fixed fcc3837:22tests302assertionsPASS. Adjacent a55fc5d:492tests9439assertionsPASS28.986sPHPUnit/30scap/92MiB. Latest source636dec8:28tests338assertionsPASS0.222s/38MiB, adding modal/support/forced-practice and legal separate activated-clause controls. Serial,512MiB,Xdebugoff,isolated data/temp. Full suite and exact final hosted full Pint/PHPUnit8.3/8.4/8.5 pending. No environment contract changes or corpus/parser scan/import/live/build/restart/deploy. Resume2026-10-26: Full offline PHPUnit at `86dd45fd6069a1382381095bd160c57b15acfdcc` passed: 2,079 tests, 57,860 assertions, two expected missing-imported-pool/rental skips; 63.716s PHPUnit/280MiB, 64.29s wall under a 120s process-tree cap. Focused checks passed 48 tests/391 assertions in 0.576s/36MiB. Five-file nonmutating Pint passed. PHP8.5.12, 512MiB, Xdebug off, isolated data and task-local temp. All 60 normalized PHP pins verified. No new parser recognition scan or whole-card certificates. Exact final hosted matrix remains pending.",
-    "ci": "PENDING: updated draft head requires its own Tests workflow full Pint/PHPUnit on PHP8.3/8.4/8.5; remote998a3e6 failed formatting before running PHPUnit and is historical only.",
+    "local": "Corrected ordinary paid baseline00262fe:2tests32assertionsPASS; initial Memnite harness error excluded. Actual duplicate-target negative baselineb6287c5:2tests28assertions2FAIL, both actors paid B and earned three quest counters, duplicate accepted before fix. Fixed fcc3837:22tests302assertionsPASS. Adjacent a55fc5d:492tests9439assertionsPASS28.986sPHPUnit/30scap/92MiB. Latest source636dec8:28tests338assertionsPASS0.222s/38MiB, adding modal/support/forced-practice and legal separate activated-clause controls. Serial,512MiB,Xdebugoff,isolated data/temp. Full suite and exact final hosted full Pint/PHPUnit8.3/8.4/8.5 pending. No environment contract changes or corpus/parser scan/import/live/build/restart/deploy. Resume2026-10-26: Full offline PHPUnit at `86dd45fd6069a1382381095bd160c57b15acfdcc` passed: 2,079 tests, 57,860 assertions, two expected missing-imported-pool/rental skips; 63.716s PHPUnit/280MiB, 64.29s wall under a 120s process-tree cap. Focused checks passed 48 tests/391 assertions in 0.576s/36MiB. Five-file nonmutating Pint passed. PHP8.5.12, 512MiB, Xdebug off, isolated data and task-local temp. All 60 normalized PHP pins verified. No new parser recognition scan or whole-card certificates. Exact final hosted matrix remains pending. Authorized metadata-conflict integration2026-10-26: Integrated offline full suite at `51bf5132f5313959d3deead373f094f902739417` passed 2,105 tests/57,760 assertions with 2 expected missing-data skips; PHPUnit 00:54.239, 296.00 MB, 54.488s wall/120s cap. Focused ledger/Soul Stair/clause/Khalni schema checks passed 66 tests/1,041 assertions; full nonmutating Pint passed. PHP8.5.12,512MiB,Xdebugoff,isolated data/temp. All60normalizedPHPpins verified. Exact final hosted PHP8.3/8.4/8.5 matrix remains pending.",
+    "ci": "PENDING: exact final integrated draft requires its own Tests workflow full Pint/PHPUnit8.3/8.4/8.5. Earlier source/CI receipts are historical and do not establish final hosted acceptance.",
     "historicalValidation": {
       "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
       "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
@@ -65,7 +65,7 @@
       "mergeBase": "7101b553ff3a71dc5b84f35928eac43e78789aae",
       "prParent": "d258380aec4a80d6a9e29e4ccbd1453266fd59d3",
       "mainParent": "d0431f1d834ba9365c159c9e341d9ac33905a903",
-      "evidenceMeaning": "One explicitly authorized conflict integration. Prior local/CI receipts retain their original source anchors; combined runtime validation is pending. Historical recognition, scoped gameplay and whole-card certification remain separate.",
+      "evidenceMeaning": "One explicitly authorized conflict integration. Both parent evidence sets and historical source anchors are preserved; current combined source pins were locally full-tested. Historical recognition, scoped gameplay and whole-card certification remain separate. Exact final hosted CI is pending.",
       "upstreamEvidenceChanges": [
         {
           "path": "/validation/integration/changedSourcePins/src/MTGPocket/Game/TextParser.php/integrated",
@@ -150,7 +150,8 @@
           "integrated": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
         }
       },
-      "preservation": "PR scopedEvidence, explicitUnsupported, nextFamily and historical validation remain intact. Main adds no scoped names; all upstream evidence changes are retained above with before/after provenance. All current pins describe the combined tree."
+      "preservation": "PR scopedEvidence, explicitUnsupported, nextFamily and historical validation remain intact. Main adds no scoped names; all upstream evidence changes are retained above with before/after provenance. All current pins describe the combined tree.",
+      "fullTestedSource": "51bf5132f5313959d3deead373f094f902739417"
     }
   },
   "sourcePins": {
@@ -954,5 +955,5 @@
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Immutable locally full-tested Soul Stair source and tests; metadata-only final follow-up preserves all normalized PHP pins."
+  "engineSourceMeaning": "Immutable full-tested combined PR406/pinned-main tree. Final metadata-only follow-up preserves all60normalizedPHPpins; prior receipts retain their original source anchors."
 }
