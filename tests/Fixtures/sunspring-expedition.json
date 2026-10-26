@@ -1,0 +1,36 @@
+{
+  "setCode": "ZEN",
+  "setName": "Zendikar",
+  "releaseDate": "2009-10-02",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "importedAt": 1792723094,
+  "sourcePoolSha256": "7e79b10521b27e2ea4aa0b5951f3fd77e531a2c086588b640634dee0095e903e",
+  "cards": [
+    {
+      "uuid": "46769dfe-05a9-55d4-b43e-7b3e7f1bc789",
+      "name": "Sunspring Expedition",
+      "number": "37",
+      "rarity": "common",
+      "colors": [
+        "W"
+      ],
+      "manaValue": 1,
+      "type": "Enchantment",
+      "scryfallId": "b0811c4c-9e91-4785-b3d2-e4221c5d92d8",
+      "manaCost": "{W}",
+      "types": [
+        "Enchantment"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Landfall — Whenever a land you control enters, you may put a quest counter on this enchantment.\nRemove three quest counters from this enchantment and sacrifice it: You gain 8 life.",
+      "keywords": [
+        "Landfall"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "W"
+      ]
+    }
+  ]
+}
