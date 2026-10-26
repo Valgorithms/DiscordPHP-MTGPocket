@@ -8879,7 +8879,7 @@ final class Game
         $this->combatDealt = [];
         foreach ($assignments as [$source, $target, $amount]) {
             $hurt = $target[0] === 'o' ? $this->objects[(int) substr($target, 2)] : null;
-            $this->dealDamage($source, $target, $amount);
+            $this->dealDamage($source, $target, $amount, combat: true);
             $lines[] = "{$source->name()} deals {$amount} to ".$this->describeTarget($target);
             // `Whenever CARDNAME deals combat damage to a creature, tap that creature …`: that creature, not targeted.
             foreach ($hurt !== null ? $source->definition()->triggersOn('combat_damage_creature') : [] as $ability) {
@@ -8991,10 +8991,11 @@ final class Game
      * @param GameObject $source
      * @param string     $target `p:{seat}` or `o:{id}`.
      * @param int        $amount
+     * @param bool       $combat Whether this is combat damage, rather than a spell or ability.
      *
      * @return void
      */
-    private function dealDamage(GameObject $source, string $target, int $amount): void
+    private function dealDamage(GameObject $source, string $target, int $amount, bool $combat = false): void
     {
         if ($amount <= 0) {
             return;
@@ -9071,6 +9072,12 @@ final class Game
                 $object->damage += $amount;
                 if ($this->hasKeyword($source, 'deathtouch')) {
                     $object->deathtouched = true;
+                }
+            }
+            // Observe actual combat damage after all prevention, before state-based deaths.
+            if ($combat && $this->isCreature($source) && $this->isCreature($object)) {
+                foreach ($this->permanents($source->controller) as $permanent) {
+                    $this->trigger($permanent, 'your_creature_combat_damages_creature', $source->controller);
                 }
             }
             // Boros Reckoner: `Whenever CARDNAME is dealt damage, it deals that much damage to any target.`: the amount is the context.
