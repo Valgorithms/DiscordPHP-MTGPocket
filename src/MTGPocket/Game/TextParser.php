@@ -4022,6 +4022,10 @@ final class TextParser
             && count($found) === 1 && ($found[0]['per'] ?? null) === 'yours:creature') {
             return [['per' => 'yours:countered creature'] + $found[0]];
         }
+        // `Draw a card and lose 1 life.`: as `You draw a card and you lose 1 life.`
+        if (preg_match('/^[Dd]raw (\w+ cards?) and lose (\w+) life$/', $sentence, $m)) {
+            return self::sentenceEffects("You draw {$m[1]} and you lose {$m[2]} life");
+        }
         // `Each opponent discards a card and loses 2 life.`: one action, then the other, by the same players.
         if (preg_match('/^([Ee]ach (?:opponent|player)) (discards|loses|mills|draws|sacrifices|gains) (.+?) and (discards|loses|mills|draws|sacrifices|gains) (.+)$/', $sentence, $m)
             && ($first = self::sentenceEffects("{$m[1]} {$m[2]} {$m[3]}")) !== null && ($second = self::sentenceEffects("{$m[1]} {$m[4]} {$m[5]}")) !== null) {
