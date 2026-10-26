@@ -8285,6 +8285,12 @@ final class Game
                 }
             }
         }
+        // `Whenever an opponent attacks, …`: once for each attack, by each of its opponents' permanents.
+        foreach ($ids === [] ? [] : $this->players as $player) {
+            foreach ($player->seat === $seat ? [] : $this->permanents($player->seat) as $permanent) {
+                $this->trigger($permanent, 'opponent_attack', $player->seat);
+            }
+        }
         // Battle cry (rule 702.91): each other attacking creature gets +1/+0.
         foreach ($ids as $id) {
             if ($this->hasKeyword($this->objects[$id], 'battle cry') && count($ids) > 1) {

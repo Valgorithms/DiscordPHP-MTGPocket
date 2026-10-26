@@ -3089,6 +3089,10 @@ final class TextParser
             $extra = ['objectKind' => $kind];
             $text = $match[3];
             $match = [$match[0], $text];
+        } elseif (preg_match('/^Whenever an opponent attacks(?: with one or more creatures)?, (.+)$/', $line, $match) && ! preg_match('/\b(?:it|its|they|them|their|that player|those creatures)\b/', $match[1])) {
+            // Whichever player they attack; see Game::declareAttackers().
+            $event = 'opponent_attack';
+            $text = $match[1];
         } elseif (preg_match('/^Whenever (?:you attack|one or more creatures you control attack), (.+)$/', $line, $match)) {
             $event = 'you_attack';
             $text = (string) preg_replace('/^they (get|gain)/', 'attacking creatures you control $1', $match[1]);
