@@ -122,7 +122,7 @@
     "tests/Game/HarrowSearchTest.php": "03d51933849cbd2cb2e47d81dc40bdbfb7bde006d05a53d3c3780785587b1172",
     "tests/Game/KhalniExpeditionSearchTest.php": "cbb55dda0dbe3982bf0cdb9c10fd805c01a73453387e1bcfc41b3b667331d103",
     "tests/Game/SoulStairExpeditionReturnsTest.php": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
-    "tests/Game/TargetClauseDistinctnessTest.php": "40c9854cb0b5cd1d2722e9c9e6ce1103bb09491be4336dc1fe96e5200fb14e6e"
+    "tests/Game/TargetClauseDistinctnessTest.php": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
   },
   "scopedEvidence": [
     {
@@ -827,9 +827,10 @@
         "tests/Game/TargetClauseDistinctnessTest.php::testPracticeSelectsDifferentTargetsOnlyWithinTheirClause",
         "tests/Game/TargetClauseDistinctnessTest.php::testSelectedModesKeepSeparateGroupsAndAllowCrossClauseReuse",
         "tests/Game/TargetClauseDistinctnessTest.php::testSupportClauseUsesDistinctTargetsAndPracticeForcedFallbackDoesToo",
-        "tests/Game/TargetClauseDistinctnessTest.php::testSeparateActivatedClausesMayTargetSameObjectAndPayCosts"
+        "tests/Game/TargetClauseDistinctnessTest.php::testSeparateActivatedClausesMayTargetSameObjectAndPayCosts",
+        "tests/Game/TargetClauseDistinctnessTest.php::testCleaveUsesItsOwnTargetClauseBeforePaying"
       ],
-      "scope": "Complete cached ZEN UUID22b41c42-6a08-5efd-9959-b125f48535cf, normalized fixtureSHA25661a718050f3e11e158c08640c538218d38dda28135337bedb0d44d11959e231f. Both seats pay B, play three lands and accept three quest counters; remove-three/self-sacrifice before zero/one/two own grave-creature returns. Same-clause raw/pinned/zero-padded duplicate, wrong seat/type/zone/count, undercharged and repeated activation reject atomically. Partial/all-invalid reincarnation and queued JSON replay. Synthetic cast/trigger/modal/support/activated/practice controls retain distinctness per occurrence of target and legal reuse across separate clauses; practice skips already chosen members only within a clause.",
+      "scope": "Complete cached ZEN UUID22b41c42-6a08-5efd-9959-b125f48535cf, normalized fixtureSHA25661a718050f3e11e158c08640c538218d38dda28135337bedb0d44d11959e231f. Both seats pay B, play three lands and accept three quest counters; remove-three/self-sacrifice before zero/one/two own grave-creature returns. Same-clause raw/pinned/zero-padded duplicate, wrong seat/type/zone/count, undercharged and repeated activation reject atomically. Partial/all-invalid reincarnation and queued JSON replay. Synthetic cast/trigger/modal/support/activated/practice controls retain distinctness per occurrence of target and legal reuse across separate clauses; practice skips already chosen members only within a clause. Alternative-cost cleave control verifies the chosen text uses the correct target-clause groups before mana payment and resolves distinct targets in both seats; it passes without another production change.",
       "limits": "Source is one complete cached older printing; no new recognition measurement, newest-printing or whole-card certificate. Mana sources/starting grave creatures are seeded; zone relocation and mandatory forced-practice inputs isolate contracts rather than proving enabling spells. Existing queued abilities serialized before clause metadata retain historical semantics; new announcements use freshly parsed groups. General targets split across separately parsed mixed-verb clauses, arbitrary forged saves, variable any-number target counts (still approximated as up to three), general copy/replacement/APNAP/continuous interactions and Discord panel rendering remain unverified. No sourcefetch/corpusscan/import/live/bot/Gaia/build/restart/deploy."
     }
   ],

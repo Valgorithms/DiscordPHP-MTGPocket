@@ -173,4 +173,26 @@ final class TargetClauseDistinctnessTest extends GameTestCase
         $this->game->pass($this->game->priority);
         $this->assertFalse($this->game->objects[$a]->tapped);
     }
+
+    /** @dataProvider actors */
+    public function testCleaveUsesItsOwnTargetClauseBeforePaying(int $actor): void
+    {
+        $a = $this->start($actor);
+        $b = $this->game->addCard($actor, self::card('Ornithopter'), GameObject::BATTLEFIELD)->id;
+        $mana = $this->lands($actor, 'Island', 1)[0];
+        $data = $this->definition("Cleave {U}\nUntap [target creature. Untap] up to two target creatures.");
+        $card = new CardDefinition($data);
+        $this->assertSame([], $card->unsupported);
+        $this->assertSame([0, 0], Game::targetGroups($card->spellEffects([], true)));
+        $source = $this->game->addCard($actor, $data, GameObject::HAND)->id;
+        $this->unchanged(fn () => $this->game->cast($actor, $source, 0, ["o:{$a}", "o:{$a}"], 'cleave'));
+        $this->assertFalse($this->game->objects[$mana]->tapped);
+        $this->game->objects[$a]->tapped = $this->game->objects[$b]->tapped = true;
+        $this->game->cast($actor, $source, 0, ["o:{$a}", "o:{$b}"], 'cleave');
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertFalse($this->game->objects[$a]->tapped);
+        $this->assertFalse($this->game->objects[$b]->tapped);
+        $this->assertTrue($this->game->objects[$mana]->tapped);
+    }
 }
