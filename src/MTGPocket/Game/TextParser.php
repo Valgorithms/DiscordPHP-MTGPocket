@@ -2612,6 +2612,15 @@ final class TextParser
 
             return true;
         }
+        // Quest for the Gravelord: each player's creature deaths offer a separate optional counter.
+        if ($line === 'Whenever a creature dies, you may put a quest counter on CARDNAME.') {
+            foreach (['creature_dies_other', 'creature_dies_any'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event,
+                    'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+            }
+
+            return true;
+        }
         // The quest counter is optional at resolution, like the existing source counter.
         if (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), you may put a quest counter on CARDNAME\.$/', $line)) {
             $result['triggered'][] = ['text' => $line, 'event' => 'landfall',
