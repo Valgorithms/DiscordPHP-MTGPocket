@@ -1983,6 +1983,9 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertContains('haste', $game->keywords($game->objects[$dead]));
         $game = $this->game = Game::fromArray(json_decode(json_encode($game->toArray()), true));
         $this->passUntil(Step::End, 1);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($dead), 'The delayed exile waits on the stack.');
+        $this->assertCount(1, $game->stack);
+        $this->resolve();
         $this->assertSame(GameObject::EXILE, $this->zone($dead));
     }
 
@@ -6786,6 +6789,9 @@ final class ModernCardTextTest extends GameTestCase
         $this->assertSame(GameObject::LIBRARY, $game->objects[$graveyard['Hill Giant']]->zone);
 
         $this->passUntil(Step::End, 1);
+        $this->assertSame(GameObject::BATTLEFIELD, $copies[0]->zone, 'The delayed exile waits on the stack.');
+        $this->assertCount(1, $game->stack);
+        $this->resolve();
         $this->assertNotContains($copies[0]->id, array_map(fn (GameObject $o) => $o->id, $game->permanents(0)), 'Exiled at the end step.');
     }
 
