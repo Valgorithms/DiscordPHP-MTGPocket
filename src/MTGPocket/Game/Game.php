@@ -5602,13 +5602,14 @@ final class Game
 
             case 'gy_shuffle':
                 // The best cards back: highest mana value nonlands first.
-                $player = $this->players[$controller];
+                $seat = ($effect['target'] ?? null) === 'player' && $target !== null ? (int) substr($target, 2) : $controller;
+                $player = $this->players[$seat];
                 $cards = $player->graveyard;
                 usort($cards, fn (int $a, int $b) => [$this->objects[$a]->printed()->isLand(), $this->objects[$b]->definition()->cost->manaValue()] <=> [$this->objects[$b]->printed()->isLand(), $this->objects[$a]->definition()->cost->manaValue()]);
                 foreach (array_slice($cards, 0, $effect['amount'] ?? count($cards)) as $id) {
                     $this->moveTo($this->objects[$id], GameObject::LIBRARY);
                 }
-                $this->shuffle($controller);
+                $this->shuffle($seat);
                 $this->log("{$player->name} shuffles cards from their graveyard into their library.");
                 break;
 
@@ -9999,6 +10000,7 @@ final class Game
         }
         $controller = $object->controller;
         $incarnation = $object->incarnation;
+        $from = $object->zone;
         // Keep this selected group's registry before record() consumes its death entry.
         $selectedCharacteristics = $this->deathObserverBatch?->characteristicsOf($object);
         $departureObservers = $selectedCharacteristics !== null ? $this->deathObserverBatch->observers : null;
@@ -10044,14 +10046,18 @@ final class Game
             default => null,
         };
         $earthbent = $object->earthbent && $object->zone === GameObject::BATTLEFIELD && in_array($zone, [GameObject::GRAVEYARD, GameObject::EXILE], true);
+        // Capture physical component identity before routing and clearing the merged state.
+        $merged = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? array_column($object->mutations, 'id') : [];
+        $cardIdentities = [];
+        foreach ([$object->id, ...$merged] as $id) {
+            $cardIdentities[$id] = ! $this->objects[$id]->printed()->isToken();
+        }
         $intended = $zone;
-        if ($object->definition()->isToken()) {
+        if (! $cardIdentities[$object->id]) {
             $zone = GameObject::GONE;
         }
 
         $held = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? $object->holding : [];
-        // A mutated permanent's other cards go with it (rule 721.3).
-        $merged = $object->zone === GameObject::BATTLEFIELD && $zone !== GameObject::BATTLEFIELD ? array_column($object->mutations, 'id') : [];
         // The Auras on it as it dies, before they come off.
         $enchanters = $dies ? array_filter($this->permanents(), fn (GameObject $aura) => $aura->attachedTo === $object->id) : [];
         $this->removeFromZone($object);
@@ -10067,7 +10073,7 @@ final class Game
         };
         foreach ($merged as $id) {
             $card = $this->objects[$id];
-            $to = $card->printed()->isToken() ? GameObject::GONE : $intended;
+            $to = $cardIdentities[$id] ? $intended : GameObject::GONE;
             $card->moveTo($to);
             match ($to) {
                 GameObject::HAND => $this->players[$card->owner]->hand[] = $id,
@@ -10077,6 +10083,17 @@ final class Game
                 GameObject::COMMAND => $this->command[] = $id,
                 default => null,
             };
+        }
+        foreach ($cardIdentities as $id => $isCard) {
+            $card = $this->objects[$id];
+            if ($isCard && $card->zone === GameObject::GRAVEYARD && $from !== GameObject::GRAVEYARD) {
+                // From-anywhere abilities use post-event sources, not departure lookback.
+                foreach ($this->permanents($card->owner) as $observer) {
+                    if ($this->deathObserverBatch?->characteristicsOf($observer) === null) {
+                        $this->trigger($observer, 'card_to_graveyard_yours', $observer->controller);
+                    }
+                }
+            }
         }
         if ($dies) {
             [$this->died, $this->diedTurn] = [$this->diedTurn === $this->turn ? $this->died + 1 : 1, $this->turn];

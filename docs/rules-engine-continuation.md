@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.
+
 The [Expedition draw/life evidence batch](expedition-draw-life-evidence.md) verifies paid Ior Ruin and Sunspring gameplay against an already passing engine, including cost/negative/queued replay controls. No runtime correction is claimed. Current ledger: 35 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [local Zektar Shrine milestone](zektar-shrine-expedition.md) routes explicit next-end-step exile through the ordinary trigger queue with original effect context and a pinned affected incarnation. Actual paid gameplay and response controls replace assumptions about recognition. Current scoped ledger: 33 names, two Partner gaps, one overlap and zero whole-card certificates; recognition stays historical.
