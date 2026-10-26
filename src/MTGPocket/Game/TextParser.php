@@ -2612,6 +2612,29 @@ final class TextParser
 
             return true;
         }
+        // Quest for Ancient Secrets: count each card, not tokens or just mill events.
+        if ($line === 'Whenever a card is put into your graveyard from anywhere, you may put a quest counter on CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'card_to_graveyard_yours',
+                'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+
+            return true;
+        }
+        // Quest for the Gemblades: only actual combat damage by a controlled creature counts.
+        if ($line === 'Whenever a creature you control deals combat damage to a creature, you may put a quest counter on CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'your_creature_combat_damages_creature',
+                'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+
+            return true;
+        }
+        // Quest for the Gravelord: each player's creature deaths offer a separate optional counter.
+        if ($line === 'Whenever a creature dies, you may put a quest counter on CARDNAME.') {
+            foreach (['creature_dies_other', 'creature_dies_any'] as $event) {
+                $result['triggered'][] = ['text' => $line, 'event' => $event,
+                    'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+            }
+
+            return true;
+        }
         // The quest counter is optional at resolution, like the existing source counter.
         if (preg_match('/^(?:Landfall — )?Whenever a land (?:you control enters|enters the battlefield under your control|enters under your control), you may put a quest counter on CARDNAME\.$/', $line)) {
             $result['triggered'][] = ['text' => $line, 'event' => 'landfall',
@@ -3536,8 +3559,8 @@ final class TextParser
                 [$cost['mana'], $cost['waterbend']] = [$water[1], true];
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
-            } elseif ($part === 'Remove three quest counters from CARDNAME and sacrifice it') {
-                $cost += ['remove' => ['quest', 3], 'sacrifice' => true];
+            } elseif (preg_match('/^Remove (a quest counter|(?:three|five) quest counters) from CARDNAME and sacrifice it$/', $part, $quest)) {
+                $cost += ['remove' => ['quest', self::amount(explode(' ', $quest[1])[0])], 'sacrifice' => true];
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
             } elseif ($part === 'Exile CARDNAME') {
@@ -3968,6 +3991,23 @@ final class TextParser
     }
 
     /**
+     * Expand one target clause, retaining its distinct-target boundary.
+     *
+     * @param array $effect
+     * @param int   $count
+     *
+     * @return array[]
+     */
+    private static function repeatedTargets(array $effect, int $count): array
+    {
+        $effects = array_fill(0, $count, $effect);
+        // One occurrence of "target" chooses distinct objects, unlike separate clauses.
+        $effects[0]['distinctTargets'] = $count;
+
+        return $effects;
+    }
+
+    /**
      * One sentence as effects: one, or two joined by `, then` (`Draw two
      * cards, then discard a card`).
      *
@@ -4110,7 +4150,7 @@ final class TextParser
         }
         // Support N (rule 701.41): a +1/+1 counter on each of up to N other target creatures.
         if (preg_match('/^support (\w+)$/i', $sentence, $m) && is_int($n = self::amount($m[1])) && $n >= 1 && $n <= 5) {
-            return array_fill(0, $n, ['type' => 'counters', 'amount' => 1, 'target' => '?creature_other']);
+            return self::repeatedTargets(['type' => 'counters', 'amount' => 1, 'target' => '?creature_other'], $n);
         }
         // A bounce land's `When this land enters, return a land you control to its owner's hand.`
         if (preg_match("/^return an? (land|creature|nonland permanent) you control to its owner's hand$/i", $sentence, $m)) {
@@ -4132,7 +4172,7 @@ final class TextParser
         // "Tap up to two target creatures": optional targets, `?kind` (see Game::isLegalTarget()).
         if (preg_match('/^(tap|untap) up to (\w+) target (.+)$/i', $sentence, $m) && is_int($n = self::amount($m[2])) && $n >= 1 && $n <= 5
             && isset(self::TARGETS[$phrase = 'target '.preg_replace('/s\b/', '', strtolower($m[3]))]) && self::isPermanentTarget($phrase)) {
-            return array_fill(0, $n, ['type' => strtolower($m[1]), 'target' => '?'.self::TARGETS[$phrase]]);
+            return self::repeatedTargets(['type' => strtolower($m[1]), 'target' => '?'.self::TARGETS[$phrase]], $n);
         }
         // `Up to two target creatures (each) get +2/+2 until end of turn.`: as `… target creatures gets …`.
         if (preg_match('/^(up to \w+ target creatures(?: [^.]*?)??) (?:each )?get (.+)$/i', $sentence, $m)) {
@@ -4144,7 +4184,7 @@ final class TextParser
             && count($withTarget = array_keys(array_filter($found, fn (array $effect) => isset($effect['target'])))) === 1) {
             $effect = $found[$withTarget[0]];
             $effect['target'] = '?'.$effect['target'];
-            array_splice($found, $withTarget[0], 1, array_fill(0, $n, $effect));
+            array_splice($found, $withTarget[0], 1, self::repeatedTargets($effect, $n));
 
             return $found;
         }
@@ -5046,7 +5086,7 @@ final class TextParser
             return ['type' => 'gy_shuffle', 'amount' => $n];
         }
         if (preg_match('/^(?:(?:then )?shuffle your graveyard into your library|target player shuffles their graveyard into their library)$/i', $s)) {
-            return ['type' => 'gy_shuffle', 'amount' => null];
+            return ['type' => 'gy_shuffle', 'amount' => null] + (str_starts_with(strtolower($s), 'target player') ? ['target' => 'player'] : []);
         }
         if (preg_match('/^(target player|target opponent) mills (\w+) cards?$/i', $s, $m) && ($n = self::amount($m[2])) !== null) {
             return ['type' => 'mill', 'amount' => $n, 'target' => self::TARGETS[strtolower($m[1])]];

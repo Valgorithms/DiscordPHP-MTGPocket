@@ -1,5 +1,17 @@
 # Functional coverage evidence ledger
 
+The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
+The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.
+
+The [Expedition draw/life evidence batch](expedition-draw-life-evidence.md) verifies paid Ior Ruin and Sunspring gameplay against an already passing engine, including cost/negative/queued replay controls. No runtime correction is claimed. Current ledger: 35 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
+The [local Zektar Shrine milestone](zektar-shrine-expedition.md) verifies paid landfall/token gameplay and fixes a reproduced missing end-step response window. It preserves merged Quest and Soul Stair evidence: 33 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical; publication awaits main review.
+
+The [Quest for the Gravelord slice](quest-gravelord-death-counters.md) fixes a reproduced forced optional counter after paid creature deaths. This integrated branch preserves merged Soul Stair evidence: 32 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical. Both parent validation histories are retained with their original source anchors; combined validation is recorded separately.
+
+The [Soul Stair Expedition milestone](soul-stair-expedition-returns.md) verifies paid quest-counter graveyard returns and fixes repeated selections within one target clause before costs are spent. Separate clauses may still select the same object. Current ledger: 31 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
 The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.
 
 The [Burnished Hart search milestone](burnished-hart-land-search.md) adds explicit selection of zero, one or two basics after a paid cast and paid self-sacrifice, with tapped entry and one final shuffle. The ledger now has 28 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.

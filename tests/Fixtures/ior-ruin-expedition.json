@@ -1,0 +1,36 @@
+{
+  "setCode": "ZEN",
+  "setName": "Zendikar",
+  "releaseDate": "2009-10-02",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "importedAt": 1792723094,
+  "sourcePoolSha256": "7e79b10521b27e2ea4aa0b5951f3fd77e531a2c086588b640634dee0095e903e",
+  "cards": [
+    {
+      "uuid": "82c2fdfb-c6f6-591a-9c85-8913e559a5de",
+      "name": "Ior Ruin Expedition",
+      "number": "49",
+      "rarity": "common",
+      "colors": [
+        "U"
+      ],
+      "manaValue": 2,
+      "type": "Enchantment",
+      "scryfallId": "2acdba29-3a09-42d4-bce2-ce615c36bb3c",
+      "manaCost": "{1}{U}",
+      "types": [
+        "Enchantment"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Landfall — Whenever a land you control enters, you may put a quest counter on this enchantment.\nRemove three quest counters from this enchantment and sacrifice it: Draw two cards.",
+      "keywords": [
+        "Landfall"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "U"
+      ]
+    }
+  ]
+}

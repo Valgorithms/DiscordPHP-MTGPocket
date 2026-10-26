@@ -111,6 +111,9 @@ final class GameObject
     /** How it was cast, when that matters later: `dash`, `evoke` or `warp`; `temporary` for a Mobilize token. */
     public ?string $alt = null;
 
+    /** @var array{source: int, incarnation: int, controller: int}|null Original effect context; absent in legacy saves. */
+    public ?array $endExileContext = null;
+
     /** Cipher: the exiled spell cards encoded on this creature. */
     public array $encoded = [];
 
@@ -333,6 +336,7 @@ final class GameObject
         $this->exileIfDies = 0;
         $this->preventDealing = 0;
         $this->alt = null;
+        $this->endExileContext = null;
         $this->exiledOn = 0;
         $this->attackedTurn = 0;
         $this->playableFrom = 0;
@@ -421,6 +425,9 @@ final class GameObject
         if ($this->borrowedFrom !== null) {
             $data['borrowedFrom'] = $this->borrowedFrom;
         }
+        if ($this->endExileContext !== null) {
+            $data['endExileContext'] = $this->endExileContext;
+        }
         if ($this->enchantedPlayer !== null) {
             $data['enchantedPlayer'] = $this->enchantedPlayer;
         }
@@ -485,6 +492,14 @@ final class GameObject
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
         $object->preventDealing = (int) ($data['preventDealing'] ?? 0);
         $object->alt = isset($data['alt']) ? (string) $data['alt'] : null;
+        $context = $data['endExileContext'] ?? null;
+        if ($context !== null && (! is_array($context) || count($context) !== 3 ||
+            ! is_int($context['source'] ?? null) || $context['source'] < 1 ||
+            ! is_int($context['incarnation'] ?? null) || $context['incarnation'] < 0 ||
+            ! in_array($context['controller'] ?? null, [0, 1], true))) {
+            throw new GameException('Invalid saved end-step exile context.');
+        }
+        $object->endExileContext = $context;
         $object->exiledOn = (int) ($data['exiledOn'] ?? 0);
         $object->attackedTurn = (int) ($data['attackedTurn'] ?? 0);
         $object->playableFrom = (int) ($data['playableFrom'] ?? 0);

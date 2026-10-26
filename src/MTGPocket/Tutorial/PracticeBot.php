@@ -284,10 +284,20 @@ final class PracticeBot
             || array_filter($effects, fn (array $effect) => ($effect['type'] === 'pump' && ($effect['toughness'] ?? 0) < 0) || ($effect['type'] === 'counters' && ($effect['kind'] ?? '') === '-1/-1')) !== [];
         $damage = array_values(array_filter($effects, fn (array $effect) => $effect['type'] === 'damage'))[0]['amount'] ?? null;
         $targets = [];
-        foreach ($kinds as $kind) {
+        $groups = Game::targetGroups($effects);
+        foreach ($kinds as $slot => $kind) {
             $best = null;
             $bestScore = PHP_INT_MIN;
-            foreach ($game->targetOptions($seat, $kind, null, $self) as $option) {
+            $options = array_values(array_filter($game->targetOptions($seat, $kind, null, $self), function (string $option) use ($targets, $groups, $slot): bool {
+                foreach ($targets as $previous => $target) {
+                    if (($groups[$previous] ?? $previous) === ($groups[$slot] ?? $slot) && $target === $option && $option !== '-') {
+                        return false;
+                    }
+                }
+
+                return true;
+            }));
+            foreach ($options as $option) {
                 [$type, $id] = explode(':', $option) + [1 => ''];
                 $score = null;
                 if ($type === 'p' && $harmful !== ((int) $id === $seat)) {
@@ -310,7 +320,7 @@ final class PracticeBot
                 $best = '-';
             }
             if ($best === null && $forced) {
-                $best = $game->targetOptions($seat, $kind, null, $self)[0] ?? null;
+                $best = $options[0] ?? null;
             }
             if ($best === null) {
                 return null;
