@@ -1,0 +1,36 @@
+{
+  "setCode": "ZEN",
+  "setName": "Zendikar",
+  "releaseDate": "2009-10-02",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "importedAt": 1792723094,
+  "sourcePoolSha256": "7e79b10521b27e2ea4aa0b5951f3fd77e531a2c086588b640634dee0095e903e",
+  "cards": [
+    {
+      "uuid": "d2525841-d3a3-55ea-99bf-ea8d2f2dfda6",
+      "name": "Zektar Shrine Expedition",
+      "number": "155",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 2,
+      "type": "Enchantment",
+      "scryfallId": "f12d2c01-0ef2-40e6-8c7d-8512e2c8c074",
+      "manaCost": "{1}{R}",
+      "types": [
+        "Enchantment"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Landfall — Whenever a land you control enters, you may put a quest counter on this enchantment.\nRemove three quest counters from this enchantment and sacrifice it: Create a 7/1 red Elemental creature token with trample and haste. Exile it at the beginning of the next end step.",
+      "keywords": [
+        "Landfall"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    }
+  ]
+}
