@@ -204,6 +204,80 @@ final class ZektarShrineExpeditionTest extends GameTestCase
         }
     }
 
+    private function moveAndReturn(int $id, string $zone, int $controller): void
+    {
+        // Isolate zone/incarnation behavior; no enabling-card support claim.
+        $object = $this->game->objects[$id];
+        (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $object, $zone);
+        (new \ReflectionMethod(Game::class, 'putOntoBattlefield'))->invoke($this->game, $object, $controller);
+    }
+
+    /** @dataProvider sourceReturnCases */
+    public function testSacrificedSourceReturningPreservesOriginalDelayedIdentity(int $actor, bool $afterQueue): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $incarnation = $this->game->objects[$source]->incarnation;
+        $token = $this->token($actor, $source);
+        if ($afterQueue) {
+            $this->passUntil(Step::End);
+        }
+        $this->moveAndReturn($source, GameObject::EXILE, 1 - $actor);
+        $this->assertGreaterThan($incarnation, $this->game->objects[$source]->incarnation);
+        $this->game = Game::fromArray($this->saved());
+        if (! $afterQueue) {
+            $this->passUntil(Step::End);
+        }
+        $this->assertCount(1, $this->game->stack);
+        $ability = $this->game->stack[0];
+        $this->assertSame([$source, $incarnation, $actor], [$ability['object'], $ability['incarnation'], $ability['controller']]);
+        $this->resolveOne();
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($source));
+        $this->assertSame(1 - $actor, $this->game->objects[$source]->controller);
+    }
+
+    public static function sourceReturnCases(): array
+    {
+        return [[0, false], [0, true], [1, false], [1, true]];
+    }
+
+    /** @dataProvider recipientReturnCases */
+    public function testQueuedExileDoesNotAffectReturnedRecipientIncarnation(int $actor, string $zone): void
+    {
+        $source = $this->expedition($actor);
+        $this->charge($actor, $source);
+        $incarnation = $this->game->objects[$source]->incarnation;
+        $token = $this->token($actor, $source);
+        // Non-token fixture probes the shared schedule; a departed token cannot return.
+        $recipient = $this->battlefield($actor, 'Grizzly Bears');
+        $this->game->objects[$recipient]->alt = 'end_exile';
+        $this->game->objects[$recipient]->endExileContext = ['source' => $source, 'incarnation' => $incarnation, 'controller' => $actor];
+        $oldIncarnation = $this->game->objects[$recipient]->incarnation;
+        $this->passUntil(Step::End);
+        $this->assertCount(2, $this->game->stack);
+        $effects = array_merge(...array_column($this->game->stack, 'effects'));
+        $this->assertContains(['type' => 'exile', 'thatObject' => $recipient, 'thatIncarnation' => $oldIncarnation], $effects);
+        $this->moveAndReturn($recipient, $zone, $actor);
+        $newIncarnation = $this->game->objects[$recipient]->incarnation;
+        $this->assertGreaterThan($oldIncarnation, $newIncarnation);
+        $this->assertNull($this->game->objects[$recipient]->alt);
+        $this->assertNull($this->game->objects[$recipient]->endExileContext);
+        $this->game = Game::fromArray($this->saved());
+        $this->assertCount(2, $this->game->stack);
+        while ($this->game->stack !== []) {
+            $this->resolveOne();
+        }
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($recipient));
+        $this->assertSame($newIncarnation, $this->game->objects[$recipient]->incarnation);
+        $this->assertSame(GameObject::GONE, $this->zone($token));
+    }
+
+    public static function recipientReturnCases(): array
+    {
+        return [[0, GameObject::EXILE], [0, GameObject::GRAVEYARD], [1, GameObject::EXILE], [1, GameObject::GRAVEYARD]];
+    }
+
     /** @dataProvider actors */
     public function testActivationDuringEndStepWaitsForNextTurnsEndStep(int $actor): void
     {

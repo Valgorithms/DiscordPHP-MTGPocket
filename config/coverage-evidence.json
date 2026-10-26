@@ -326,7 +326,7 @@
     "tests/Game/SoulStairExpeditionReturnsTest.php": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
     "tests/Game/TargetClauseDistinctnessTest.php": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
     "tests/Game/QuestGravelordDeathCountersTest.php": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c",
-    "tests/Game/ZektarShrineExpeditionTest.php": "61f0f0e63501817a5dff3f7f0ce96e4bc5575a41e0c32baa17913ba8593874de"
+    "tests/Game/ZektarShrineExpeditionTest.php": "a58f39e81579fda4e210b01c76e75e1567bdf166a213be5e92487e9f97597cba"
   },
   "scopedEvidence": [
     {
@@ -1067,10 +1067,12 @@
         "tests/Game/ZektarShrineExpeditionTest.php::testActualBounceResponseMovesTokenBeforeDelayedExileResolves",
         "tests/Game/ZektarShrineExpeditionTest.php::testLegacyScheduleWithoutContextUsesExplicitFallback",
         "tests/Game/ZektarShrineExpeditionTest.php::testMalformedSavedContextRejects",
-        "tests/Game/ZektarShrineExpeditionTest.php::testCreatedTokenAttacksImmediatelyAndTramplesOverABlocker"
+        "tests/Game/ZektarShrineExpeditionTest.php::testCreatedTokenAttacksImmediatelyAndTramplesOverABlocker",
+        "tests/Game/ZektarShrineExpeditionTest.php::testSacrificedSourceReturningPreservesOriginalDelayedIdentity",
+        "tests/Game/ZektarShrineExpeditionTest.php::testQueuedExileDoesNotAffectReturnedRecipientIncarnation"
       ],
-      "scope": "Complete cached ZEN UUIDd2525841-d3a3-55ea-99bf-ea8d2f2dfda6,fixtureSHA25611d1193f0c0f2984020ab759075ec8cee3a6a06d1cb4d5ae3a5a01ad0b7a7357. Both seats pay1R,play3lands/acceptquestcounters,payremove3+selfsacrifice,create7/1redElemental withhaste/trample,attackimmediately/trample2toughnessblocker,andexpireatnextendstepthroughrespondableuntargetedtrigger. Includesundercharge/opponentland/decline/repeatactivationatomiccontrols,actualpaidUnsummonresponse,JSONreplay,source/controlleridentity,after-end-beganactivation,nextturntiming,one-shotcountered-triggerprobe,legacyfallbackandmalformedschedulechecks.",
-      "limits": "Scopedcachedolderprintingonly;noaggregateparserwalk,newestprinting,wholecardcertificateorgeneralfunctionalpercentage. Mana/basiclands/GrizzlyBearsandUnsummonareunitcatalogenablers;syntheticcontroltransfer/removed-triggerprobesdonotcertifysupportingcards. Schedulesremainonaffectedbattlefieldobjects;afteranobjectleavesbeforetriggering,harmlessdelayedtriggeremissionandobserversarenotmodeled. Legacyend_exilewithoutcontextcannotrecoverhistoricalsource/controllerandusesdocumentedcurrent-objectfallback. Broaderdelayedability/replacement/APNAP/continuous/copylayersandliveDiscordrenderingremainoutside. NoPRpublication/merge/live/bot/build/deploy/import."
+      "scope": "Complete cached ZEN UUIDd2525841-d3a3-55ea-99bf-ea8d2f2dfda6,fixtureSHA25611d1193f0c0f2984020ab759075ec8cee3a6a06d1cb4d5ae3a5a01ad0b7a7357. Both seats pay1R,play3lands/acceptquestcounters,payremove3+selfsacrifice,create7/1redElemental withhaste/trample,attackimmediately/trample2toughnessblocker,andexpireatnextendstepthroughrespondableuntargetedtrigger. Includesundercharge/opponentland/decline/repeatactivationatomiccontrols,actualpaidUnsummonresponse,JSONreplay,source/controlleridentity,after-end-beganactivation,nextturntiming,one-shotcountered-triggerprobe,legacyfallbackandmalformedschedulechecks. Maintainedboth-seatidentityregressionsreturnthesacrificedsourcebefore/afterqueueingunderopponentcontrolandreturnanon-tokenrecipientfromexile/graveyardafterqueueing;JSONreplaypreservestheoriginalsourceandaffectedincarnations.",
+      "limits": "Scopedcachedolderprintingonly;noaggregateparserwalk,newestprinting,wholecardcertificateorgeneralfunctionalpercentage. Mana/basiclands/GrizzlyBearsandUnsummonareunitcatalogenablers;syntheticcontroltransfer/removed-triggerprobesdonotcertifysupportingcards. Schedulesremainonaffectedbattlefieldobjects;afteranobjectleavesbeforetriggering,harmlessdelayedtriggeremissionandobserversarenotmodeled. Legacyend_exilewithoutcontextcannotrecoverhistoricalsource/controllerandusesdocumentedcurrent-objectfallback. Broaderdelayedability/replacement/APNAP/continuous/copylayersandliveDiscordrenderingremainoutside. DraftPRpublicationauthorizedafterlocalverification;nomerge/live/bot/build/deploy/import. Syntheticrecipientzonechangesdonotcertifyblink/reanimationenablers."
     }
   ],
   "explicitUnsupported": [
