@@ -2559,6 +2559,18 @@ final class TextParser
      */
     private static function triggered(string $line, array &$result): bool
     {
+        // `Whenever you cast a noncreature spell during an opponent's turn, …`: the same trigger, checked against whose turn it is.
+        if (preg_match("/^(Whenever you cast an? (?!spell\b)[\w ]+? spell) during (your|an opponent's) turn, (.+)$/", $line, $m)) {
+            $found = $result;
+            if (! self::triggered("{$m[1]}, {$m[3]}", $found) || ($last = array_key_last($found['triggered'] ?? [])) === null || isset($found['triggered'][$last]['if'])
+                || count($found['triggered']) !== count($result['triggered'] ?? []) + 1) {
+                return false;
+            }
+            $found['triggered'][$last] = ['text' => $line, 'if' => $m[2] === 'your' ? 'your_turn' : 'opponent_turn'] + $found['triggered'][$last];
+            $result = $found;
+
+            return true;
+        }
         // Keep the optional search distinct from accepting and failing to find a land.
         $optionalBasicSearch = match ($line) {
             'When CARDNAME enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.' => 'enters',
