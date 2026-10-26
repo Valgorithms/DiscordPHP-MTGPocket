@@ -118,6 +118,8 @@ The [2026-10-20 coverage checkpoint](card-coverage-progress.md) records a fresh,
 
 The next [delayed-upkeep-draw milestone](delayed-upkeep-draw.md) adds an exact one-card delayed-draw family through the ordinary trigger queue. It advances saved-state format to version 3, with legacy migration and rejection of missing delayed state. See that note for the tested behavior, compatibility boundary, recognition delta, and remaining limits.
 
+The [2026-10-23 controller-damage checkpoint](controller-damage-coverage.md) refreshes current main and open-PR ownership, adds an offline JSON recognition audit, and separates its fixed-controller damage contract from whole-card certification. It records exact corpus fingerprints, bounded gameplay checks, unresolved validation limits, and the full-corpus completion definition.
+
 The [fading milestone](fading-coverage.md) adds numbered fade counters and the distinct upkeep sacrifice timing, with source/control-change and save/resume tests. It reuses the existing persisted counters and trigger records without changing the state schema introduced by delayed draws.
 
 ## Sacrifice-specific observer follow-up (2026-10-23)
