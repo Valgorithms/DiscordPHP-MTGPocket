@@ -25,3 +25,9 @@ Both prior Quest and Soul Stair entries and their complete validation object rem
 ## Maintained identity regressions after focused review
 
 Eight maintained cases cover both seats: the sacrificed source returns under opposing control before or after queueing, and a synthetic non-token recipient returns from exile or graveyard after queueing. JSON round trips retain the original queued source and affected incarnation. These isolate zone identity rather than certify enabling blink/reanimation cards. Production source is unchanged from reviewed candidate `ad2d948792cf852879b903af5c77039530864925`. The one-slot and pre-trigger-departure limitations remain. Fresh focused/full offline checks and source pins are required before the authorized draft publication. Historical failed and passing full-run receipts remain intact.
+
+## Publication validation with maintained identity tests
+
+Publication source eb481a668c3faaf8a2f13f70b686592ad452a725: full offline 2168 tests / 59084 assertions / 2 expected missing-data skips; focused 148 tests / 2519 assertions PASS; full nonmutating Pint PASS; all 62 normalized PHP pins match. Maintained identity: 8 cases / 244 assertions PASS. PHP 8.5.12, 512 MiB, Xdebug off, isolated data/temp; production unchanged since ad2d948. The sandboxed full attempt reported six risky importer tests from null WMIC output in React DNS; targeted importer tests and the full suite passed with Windows configuration reads available. All historical failed full receipts are retained. Hosted CI pending draft PR publication.
+
+The earlier full pass and initial failed full run above remain historical evidence. Main approved the scoped production patch and requested these maintained identity regressions before draft publication. Hosted PHP 8.3/8.4/8.5 acceptance remains pending. Recognition, scoped evidence and whole-card certificates remain separate; 33 scoped names and zero whole-card certificates.
