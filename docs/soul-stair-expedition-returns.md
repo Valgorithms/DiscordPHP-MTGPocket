@@ -13,3 +13,9 @@ Coverage includes atomic rejection of duplicate/wrong-seat/wrong-type/wrong-zone
 Existing queued abilities serialized before clause metadata retain their historical semantics. New announcements use freshly parsed clause groups; no new save schema or environment contract is introduced, so `env.example` needs no new entries. The metadata is not authentication of arbitrary forged saves. Broader mixed-verb target grammar, unrestricted any-number counts (historically approximated as up to three), general copy/replacement/APNAP/continuous rules and Discord panel rendering remain outside this slice.
 
 The ledger now contains 31 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition counts remain historical; this is not 100% functional coverage. No corpus scan, live service, bot, Gaia, build, restart or deployment was performed.
+
+## Resumed verification, 2026-10-26
+
+Full offline PHPUnit at `86dd45fd6069a1382381095bd160c57b15acfdcc` passed: 2,079 tests, 57,860 assertions, two expected missing-imported-pool/rental skips; 63.716s PHPUnit/280MiB, 64.29s wall under a 120s process-tree cap. Focused checks passed 48 tests/391 assertions in 0.576s/36MiB. Five-file nonmutating Pint passed. PHP8.5.12, 512MiB, Xdebug off, isolated data and task-local temp. All 60 normalized PHP pins verified. No new parser recognition scan or whole-card certificates. Exact final hosted matrix remains pending.
+
+The additional synthetic cleave control changes which text supplies target groups and verifies duplicate rejection before payment plus distinct-target resolution in both seats. It passed without a production change. The six paused local commits are preserved; the existing draft PR remains the review vehicle. Main advanced independently and was not merged into this slice.

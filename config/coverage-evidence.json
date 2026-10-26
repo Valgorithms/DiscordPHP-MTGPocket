@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "636dec8356d82e845167f40a965a718b595dc166",
+  "engineSource": "86dd45fd6069a1382381095bd160c57b15acfdcc",
   "validation": {
-    "source": "636dec8356d82e845167f40a965a718b595dc166",
+    "source": "86dd45fd6069a1382381095bd160c57b15acfdcc",
     "evidenceMeaning": "Soul Stair Expedition paid quest/sacrifice graveyard returns plus synthetic per-target-clause announcement/practice controls. Recognition remains historical; no whole-card certification.",
-    "local": "Corrected ordinary paid baseline00262fe:2tests32assertionsPASS; initial Memnite harness error excluded. Actual duplicate-target negative baselineb6287c5:2tests28assertions2FAIL, both actors paid B and earned three quest counters, duplicate accepted before fix. Fixed fcc3837:22tests302assertionsPASS. Adjacent a55fc5d:492tests9439assertionsPASS28.986sPHPUnit/30scap/92MiB. Latest source636dec8:28tests338assertionsPASS0.222s/38MiB, adding modal/support/forced-practice and legal separate activated-clause controls. Serial,512MiB,Xdebugoff,isolated data/temp. Full suite and exact final hosted full Pint/PHPUnit8.3/8.4/8.5 pending. No environment contract changes or corpus/parser scan/import/live/build/restart/deploy.",
-    "ci": "PENDING: final head must pass its own Tests workflow full Pint and PHPUnit on PHP8.3/8.4/8.5; earlier heads do not establish final acceptance.",
+    "local": "Corrected ordinary paid baseline00262fe:2tests32assertionsPASS; initial Memnite harness error excluded. Actual duplicate-target negative baselineb6287c5:2tests28assertions2FAIL, both actors paid B and earned three quest counters, duplicate accepted before fix. Fixed fcc3837:22tests302assertionsPASS. Adjacent a55fc5d:492tests9439assertionsPASS28.986sPHPUnit/30scap/92MiB. Latest source636dec8:28tests338assertionsPASS0.222s/38MiB, adding modal/support/forced-practice and legal separate activated-clause controls. Serial,512MiB,Xdebugoff,isolated data/temp. Full suite and exact final hosted full Pint/PHPUnit8.3/8.4/8.5 pending. No environment contract changes or corpus/parser scan/import/live/build/restart/deploy. Resume2026-10-26: Full offline PHPUnit at `86dd45fd6069a1382381095bd160c57b15acfdcc` passed: 2,079 tests, 57,860 assertions, two expected missing-imported-pool/rental skips; 63.716s PHPUnit/280MiB, 64.29s wall under a 120s process-tree cap. Focused checks passed 48 tests/391 assertions in 0.576s/36MiB. Five-file nonmutating Pint passed. PHP8.5.12, 512MiB, Xdebug off, isolated data and task-local temp. All 60 normalized PHP pins verified. No new parser recognition scan or whole-card certificates. Exact final hosted matrix remains pending.",
+    "ci": "PENDING: updated draft head requires its own Tests workflow full Pint/PHPUnit on PHP8.3/8.4/8.5; remote998a3e6 failed formatting before running PHPUnit and is historical only.",
     "historicalValidation": {
       "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
       "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
@@ -862,5 +862,6 @@
       "Newest-printing and whole-card certification"
     ]
   },
-  "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad"
+  "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
+  "engineSourceMeaning": "Immutable locally full-tested Soul Stair source and tests; metadata-only final follow-up preserves all normalized PHP pins."
 }
