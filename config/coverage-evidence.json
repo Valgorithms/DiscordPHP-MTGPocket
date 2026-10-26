@@ -60,12 +60,103 @@
         ],
         "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
       }
+    },
+    "integration": {
+      "mergeBase": "7101b553ff3a71dc5b84f35928eac43e78789aae",
+      "prParent": "d258380aec4a80d6a9e29e4ccbd1453266fd59d3",
+      "mainParent": "d0431f1d834ba9365c159c9e341d9ac33905a903",
+      "evidenceMeaning": "One explicitly authorized conflict integration. Prior local/CI receipts retain their original source anchors; combined runtime validation is pending. Historical recognition, scoped gameplay and whole-card certification remain separate.",
+      "upstreamEvidenceChanges": [
+        {
+          "path": "/validation/integration/changedSourcePins/src/MTGPocket/Game/TextParser.php/integrated",
+          "before": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
+          "after": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+        },
+        {
+          "path": "/validation/integration/changedSourcePins/tests/Game/ModernCardTextTest.php/main",
+          "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+          "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+        },
+        {
+          "path": "/validation/integration/changedSourcePins/tests/Game/ModernCardTextTest.php/integrated",
+          "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+          "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+        },
+        {
+          "path": "/sourcePins/src/MTGPocket/Game/TextParser.php",
+          "before": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
+          "after": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+        },
+        {
+          "path": "/sourcePins/src/MTGPocket/Game/Game.php",
+          "before": "122a7a4b7a93d4352da10cdd4f3301c292baf6809619b1e73e029c097252938d",
+          "after": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3"
+        },
+        {
+          "path": "/sourcePins/src/MTGPocket/Game/GamePlayer.php",
+          "before": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
+          "after": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3"
+        },
+        {
+          "path": "/sourcePins/src/MTGPocket/Game/GameObject.php",
+          "before": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
+          "after": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe"
+        },
+        {
+          "path": "/sourcePins/tests/Game/ModernCardTextTest.php",
+          "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+          "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+        }
+      ],
+      "changedSourcePins": {
+        "src/MTGPocket/Game/TextParser.php": {
+          "pr": "73c2d6d481d9b23a019c2cf9a9531cf45560f30ae5c4499763988bb4d017baef",
+          "main": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb",
+          "integrated": "eec03dd76a8cd6206ad2b30d3f192c64dd47dc8ea3b3b0de95763bb8dc0028c6"
+        },
+        "src/MTGPocket/Game/Game.php": {
+          "pr": "e336b27f51d99eee5371a854c9c40bdb08ea278f77fc37e4fd295c749d03b3f8",
+          "main": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3",
+          "integrated": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014"
+        },
+        "src/MTGPocket/Game/GamePlayer.php": {
+          "pr": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
+          "main": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3",
+          "integrated": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3"
+        },
+        "src/MTGPocket/Game/GameObject.php": {
+          "pr": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
+          "main": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe",
+          "integrated": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe"
+        },
+        "src/MTGPocket/Tutorial/PracticeBot.php": {
+          "pr": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9",
+          "main": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
+          "integrated": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9"
+        },
+        "tests/Game/ModernCardTextTest.php": {
+          "pr": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+          "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
+          "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+        },
+        "tests/Game/SoulStairExpeditionReturnsTest.php": {
+          "pr": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
+          "main": null,
+          "integrated": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc"
+        },
+        "tests/Game/TargetClauseDistinctnessTest.php": {
+          "pr": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
+          "main": null,
+          "integrated": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
+        }
+      },
+      "preservation": "PR scopedEvidence, explicitUnsupported, nextFamily and historical validation remain intact. Main adds no scoped names; all upstream evidence changes are retained above with before/after provenance. All current pins describe the combined tree."
     }
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "73c2d6d481d9b23a019c2cf9a9531cf45560f30ae5c4499763988bb4d017baef",
+    "src/MTGPocket/Game/TextParser.php": "eec03dd76a8cd6206ad2b30d3f192c64dd47dc8ea3b3b0de95763bb8dc0028c6",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "e336b27f51d99eee5371a854c9c40bdb08ea278f77fc37e4fd295c749d03b3f8",
+    "src/MTGPocket/Game/Game.php": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -73,8 +164,8 @@
     "src/MTGPocket/Game/Mana/ManaPayer.php": "87cec76d245f1418ee66cb3c7212f83c9baf9982f50632365e0d8ef9cab41c68",
     "src/MTGPocket/Game/Mana/ManaCost.php": "bee132afe78bcce2f8eea54e0a98f05424cec0260ceea3d1085ee1135ae39f15",
     "src/MTGPocket/Game/GameRecord.php": "38d05c870a583a027d0a79daed6f88c97ee296c5de009c9e92913aa0837cab9a",
-    "src/MTGPocket/Game/GamePlayer.php": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
-    "src/MTGPocket/Game/GameObject.php": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
+    "src/MTGPocket/Game/GamePlayer.php": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3",
+    "src/MTGPocket/Game/GameObject.php": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe",
     "src/MTGPocket/Game/GameException.php": "76d8c70a4b8cfd9fb7818976e4c9faa8b9865a295d9ffc478ce852f7e50a0158",
     "src/MTGPocket/Game/DepartureCharacteristics.php": "73d749b205af5fdb63d8cbd40fe7f6a467a73827de9383f39510597c274ce51c",
     "src/MTGPocket/Game/CreatureDeath.php": "4d39c10adce98d8e515b25ebcce712681d09dd7c89c8b2f42efa0778242c978f",
@@ -92,7 +183,7 @@
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+    "tests/Game/ModernCardTextTest.php": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",

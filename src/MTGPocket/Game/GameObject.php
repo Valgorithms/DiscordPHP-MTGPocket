@@ -167,6 +167,9 @@ final class GameObject
     /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
     public array $used = [];
 
+    /** @var array<int, int> Activated ability index => how often it was activated in the turn {@see $used} records, for `Activate no more than twice each turn.` */
+    public array $activations = [];
+
     /**
      * The cards merged with it by mutate (rule 721), each on top or under
      * it: `['id' => int, 'card' => array, 'over' => bool]`.
@@ -306,6 +309,7 @@ final class GameObject
         $this->attachedTo = null;
         $this->untilEndOfTurn = [];
         $this->used = [];
+        $this->activations = [];
         $this->faceDown = false;
         $this->transformed = false;
         $this->kicked = false;
@@ -381,6 +385,7 @@ final class GameObject
             'untilEndOfTurn' => $this->untilEndOfTurn,
             'incarnation' => $this->incarnation,
             'used' => $this->used,
+            'activations' => $this->activations,
             'faceDown' => $this->faceDown,
             'transformed' => $this->transformed,
             'kicked' => $this->kicked,
@@ -493,6 +498,9 @@ final class GameObject
         $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;
+        }
+        foreach ((array) ($data['activations'] ?? []) as $index => $count) {
+            $object->activations[(int) $index] = (int) $count;
         }
 
         return $object;
