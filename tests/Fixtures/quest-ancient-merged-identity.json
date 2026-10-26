@@ -1,0 +1,111 @@
+{
+  "sources": {
+    "IKO": {
+      "setCode": "IKO",
+      "setName": "Ikoria: Lair of Behemoths",
+      "releaseDate": "2020-04-24",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723096,
+      "sourcePoolSha256": "4ab1fcc7f4fdfd87b01f868a65271544e983bba5e3aed8472e6e5403ea14c63c"
+    },
+    "M10": {
+      "setCode": "M10",
+      "setName": "Magic 2010",
+      "releaseDate": "2009-07-17",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723094,
+      "sourcePoolSha256": "8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0"
+    }
+  },
+  "cards": [
+    {
+      "uuid": "ffed3087-c310-5a19-a05c-f87c9e8a0d26",
+      "name": "Sea-Dasher Octopus",
+      "number": "66",
+      "rarity": "rare",
+      "colors": [
+        "U"
+      ],
+      "manaValue": 3,
+      "type": "Creature — Octopus",
+      "scryfallId": "a6f59d9e-6c1b-437a-934c-7c776c8dd1d5",
+      "manaCost": "{1}{U}{U}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Octopus"
+      ],
+      "power": "2",
+      "toughness": "2",
+      "text": "Mutate {1}{U} (If you cast this spell for its mutate cost, put it over or under target non-Human creature you own. They mutate into the creature on top plus all abilities from under it.)\nFlash\nWhenever this creature deals combat damage to a player, draw a card.",
+      "keywords": [
+        "Mutate",
+        "Flash"
+      ],
+      "layout": "mutate",
+      "colorIdentity": [
+        "U"
+      ]
+    },
+    {
+      "uuid": "fd74a5d3-beea-5ca2-b590-0282dac572f1",
+      "name": "Raging Goblin",
+      "number": "153",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Creature — Goblin Berserker",
+      "scryfallId": "aa318c3a-70ae-499a-8022-b380f03fd53f",
+      "manaCost": "{R}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Goblin",
+        "Berserker"
+      ],
+      "power": "1",
+      "toughness": "1",
+      "text": "Haste (This creature can attack and {T} as soon as it comes under your control.)",
+      "keywords": [
+        "Haste"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "a5cf3057-7e30-51ca-884c-7598b045e0eb",
+      "name": "Centaur Courser",
+      "number": "172",
+      "rarity": "common",
+      "colors": [
+        "G"
+      ],
+      "manaValue": 3,
+      "type": "Creature — Centaur Warrior",
+      "scryfallId": "03354b67-7df2-4b4b-a996-a37550e58561",
+      "manaCost": "{2}{G}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Centaur",
+        "Warrior"
+      ],
+      "power": "3",
+      "toughness": "3",
+      "layout": "normal",
+      "colorIdentity": [
+        "G"
+      ]
+    }
+  ]
+}

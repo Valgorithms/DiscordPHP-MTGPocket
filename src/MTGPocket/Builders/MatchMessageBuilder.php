@@ -359,6 +359,15 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'scry', 'surveil' => $game->decision($seat),
                 'look' => 'choose from the top of their library',
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
+                'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
+                'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
+                'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
+                'optional_source_counter' => 'choose whether to put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on '.$game->choiceAwaiting()['label'],
+                'optional_death_draw' => 'choose whether to draw a card',
+                'optional_basic_land_search' => 'choose whether to search for a basic land',
+                'optional_life_gain' => 'choose whether to gain 5 life',
+                'optional_life_loss' => 'choose whether the targeted opponent loses 1 life',
+                'sacrifice' => 'choose creatures to sacrifice',
                 'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
@@ -531,6 +540,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $player = $game->players[$seat];
         $decision = $game->decision($seat);
         $choice = $match->choice($playerId);
+        if ($decision === 'sacrifice' && ($choice['sacrifice']['id'] ?? null) !== $game->choiceAwaiting()['id']) {
+            $choice['sacrifice'] = ['id' => $game->choiceAwaiting()['id'], 'page' => 0, 'selected' => []];
+        }
         $playable = $decision === 'priority' ? $game->playableCards($seat) : [];
 
         $container = Container::new()->setAccentColor(CardMessageBuilder::ACCENTS['colorless']);
@@ -647,11 +659,101 @@ class MatchMessageBuilder extends PocketMessageBuilder
             case 'look':
                 $look = $game->choiceAwaiting();
                 if ($look['eligible'] !== [] && $look['take'] > 0) {
-                    $message->addComponent(self::cardSelect($id('take'), ($look['to'] ?? 'hand') === 'hand' ? 'Put into your hand…' : 'Put onto the battlefield…', $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
+                    $placeholder = match ($look['to'] ?? 'hand') {
+                        'split' => 'Find up to two basic lands…',
+                        'hand' => 'Put into your hand…',
+                        default => 'Put onto the battlefield…',
+                    };
+                    $message->addComponent(self::cardSelect($id('take'), $placeholder, $look['eligible'], $cardOption, $look['may'] ? 1 : $look['take'], $look['take']));
                 }
                 if ($look['may'] || $look['take'] === 0) {
                     $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('takenone'))->setLabel($look['take'] === 0 ? 'Continue' : 'Take none')));
                 }
+                break;
+
+            case 'sacrifice':
+                $sacrifice = $game->choiceAwaiting();
+                $picks = $choice['sacrifice'];
+                $page = $picks['page'];
+                $pages = (int) ceil(count($sacrifice['cards']) / 25);
+                $visible = array_slice($sacrifice['cards'], $page * 25, 25);
+                $message->addComponent(self::cardSelect(
+                    $id('sacpick', (string) $sacrifice['id'], (string) $page),
+                    "Choose {$sacrifice['count']} creatures total (page ".($page + 1)."/{$pages})",
+                    $visible,
+                    fn (int $object) => $cardOption($object)->setDefault(in_array($object, $picks['selected'], true)),
+                    0,
+                    $sacrifice['count']
+                ));
+                $row = ActionRow::new();
+                if ($page > 0) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacpage', (string) $sacrifice['id'], (string) ($page - 1)))->setLabel('Previous page'));
+                }
+                if ($page + 1 < $pages) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacpage', (string) $sacrifice['id'], (string) ($page + 1)))->setLabel('Next page'));
+                }
+                $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacreset', (string) $sacrifice['id']))->setLabel('Clear selections'));
+                $row->addComponent(Button::new(Button::STYLE_DANGER, $id('sacgo', (string) $sacrifice['id']))->setLabel('Confirm sacrifices')->setDisabled(count($picks['selected']) !== $sacrifice['count']));
+                $message->addComponent($row);
+                break;
+
+            case 'optional_red_goblin':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygoblin', (string) $optional['id'], 'accept'))->setLabel('Pay {R}: create a Goblin')->setDisabled(! $game->canPayOptionalRedGoblin($seat)))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygoblin', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
+            case 'optional_source_untap':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mayuntap', (string) $optional['id'], 'accept'))->setLabel('Untap'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mayuntap', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
+            case 'optional_source_counter':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'accept'))->setLabel('Put a '.($optional['counterKind'] ?? '+1/+1').' counter'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
+            case 'optional_basic_land_search':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maysearch', (string) $optional['id'], 'accept'))->setLabel('Search library'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maysearch', (string) $optional['id'], 'decline'))->setLabel('Decline search')));
+                break;
+
+            case 'optional_death_draw':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maydraw', (string) $optional['id'], 'accept'))->setLabel('Draw a card'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maydraw', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
+            case 'optional_life_gain':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygain', (string) $optional['id'], 'accept'))->setLabel('Gain 5 life'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygain', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
+            case 'optional_life_loss':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maylife', (string) $optional['id'], 'accept'))->setLabel('Opponent loses 1 life'))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maylife', (string) $optional['id'], 'decline'))->setLabel('Decline')));
+                break;
+
+            case 'fabricate':
+                $fabricate = $game->choiceAwaiting();
+                $row = ActionRow::new();
+                foreach ($fabricate['options'] as $option) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('fabricate', (string) $fabricate['id'], $option))
+                        ->setLabel($option === 'counters' ? "Put {$fabricate['count']} +1/+1 counters" : "Create {$fabricate['count']} Servos"));
+                }
+                $message->addComponent($row);
                 break;
 
             case 'entry_life':
@@ -806,7 +908,16 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $player = $game->players[$seat];
 
         return match ($decision) {
+            'sacrifice' => self::sacrificePrompt($game, $choice),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
+            'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
+            'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
+            'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
+            'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on this permanent. Only the original battlefield incarnation can receive it; this does not target.',
+            'optional_death_draw' => '**'.$game->choiceAwaiting()['label'].'**: you may draw a card. This does not target a player; declining does not draw.',
+            'optional_basic_land_search' => '**'.$game->choiceAwaiting()['label'].'**: search for a basic land to enter tapped, then shuffle, or decline without searching or shuffling. If you search, you may fail to find.',
+            'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',
+            'optional_life_loss' => '**'.$game->choiceAwaiting()['label'].'**: you may have **'.$game->players[(int) substr($game->choiceAwaiting()['target'], 2)]->name.'** lose 1 life.',
             'mulligan' => $player->mulligans === 0
                 ? 'Keep this hand, or shuffle it away and draw a new seven?'
                 : "Mulligan {$player->mulligans}: if you keep, you put {$player->mulligans} card".($player->mulligans === 1 ? '' : 's').' on the bottom.',
@@ -823,8 +934,12 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'scry', 'surveil' => ucfirst($decision).' '.count($game->choiceAwaiting()['cards']).": from the top of your library, these are\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\nChoose any to put ".($decision === 'scry' ? 'on the bottom' : 'into your graveyard').', or keep them all on top.',
-            'look' => $game->choiceAwaiting()['rest'] === 'library'
-                ? 'Search your library: choose a card to put '.(($game->choiceAwaiting()['to'] ?? 'hand') === 'hand' ? 'into your hand' : 'onto the battlefield').'. Then your library is shuffled.'
+            'look' => ($game->choiceAwaiting()['to'] ?? null) === 'split'
+                ? 'Search your library: find up to two basic lands and reveal them. Choose which enters tapped; the other goes into your hand. Then shuffle once.'
+                : ($game->choiceAwaiting()['rest'] === 'split'
+                    ? 'Choose one of the two revealed lands to put onto the battlefield tapped. The other goes into your hand. Then shuffle your library.'
+                    : ($game->choiceAwaiting()['rest'] === 'library'
+                ? 'Search your library: choose '.($game->choiceAwaiting()['take'] > 1 ? 'up to '.$game->choiceAwaiting()['take'].' cards' : 'a card').' to put '.(($game->choiceAwaiting()['to'] ?? 'hand') === 'hand' ? 'into your hand' : 'onto the battlefield'.(($game->choiceAwaiting()['to'] ?? null) === 'tapped' ? ' tapped' : '')).'. Then your library is shuffled.'
                 : 'From the top of your library, these are'."\n"
                 .implode("\n", array_map(fn (int $id) => '- '.self::cardLabel($game->objects[$id]), $game->choiceAwaiting()['cards']))
                 ."\n".match (true) {
@@ -835,7 +950,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                     'graveyard' => 'The rest go into your graveyard.',
                     'top' => 'They stay on top.',
                     default => 'The rest go on the bottom in a random order.',
-                },
+                })),
             'mode' => 'Choose the mode for **'.$game->choiceAwaiting()['label'].'**, which just triggered.',
             'priority' => match (true) {
                 isset($choice['cast']) => 'Finish casting your spell, or cancel.',
@@ -845,6 +960,22 @@ class MatchMessageBuilder extends PocketMessageBuilder
             },
             default => $game->stage === Game::OVER ? 'The game is over.' : 'Nothing to do right now; the game is waiting on your opponent.',
         };
+    }
+
+    /** Describes the pending choice and earlier public battlefield selections. */
+    private static function sacrificePrompt(Game $game, array $choice): string
+    {
+        $pending = $game->choiceAwaiting();
+        $names = fn (array $ids) => implode(', ', array_map(fn (int $id) => $game->objects[$id]->name(), $ids));
+        $lines = ['Choose exactly '.$pending['count'].' creatures to sacrifice. All selections wait until every player has chosen.',
+            'Selected: '.(($choice['sacrifice']['selected'] ?? []) === [] ? 'none' : $names($choice['sacrifice']['selected']))];
+        foreach ($pending['groups'] as $group) {
+            if ($group['selected'] !== null && $group['selected'] !== []) {
+                $lines[] = 'Already chosen by '.$game->players[$group['seat']]->name.': '.$names($group['selected']);
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     /**

@@ -1,0 +1,28 @@
+{
+  "setCode": "THS",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "62e2bb8a-2c0a-505c-8c47-7f0c2d08f49d",
+    "name": "Burnished Hart",
+    "number": "213",
+    "rarity": "uncommon",
+    "colors": [],
+    "manaValue": 3,
+    "type": "Artifact Creature — Elk",
+    "scryfallId": "772cbcba-9efa-4894-9b57-e73fd296333d",
+    "manaCost": "{3}",
+    "types": [
+      "Artifact",
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Elk"
+    ],
+    "power": "2",
+    "toughness": "2",
+    "text": "{3}, Sacrifice this creature: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": []
+  }
+}

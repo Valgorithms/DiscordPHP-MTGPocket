@@ -1,0 +1,35 @@
+{
+  "corpus": {
+    "pools": 181,
+    "mtgjsonVersions": [
+      "5.3.0+20261022"
+    ],
+    "selectedCardsSha256": "5583556fcc237fcaa5ebbf03c598644c4657773bd3bd415acb176ef779ed9fe1"
+  },
+  "selectedNames": 28729,
+  "fragment": "Destroy all artifacts.",
+  "setCode": "PLST",
+  "card": {
+    "uuid": "906afe47-bdfc-58e5-9a58-bc6b03ad242b",
+    "name": "Shatterstorm",
+    "number": "10E-229",
+    "rarity": "uncommon",
+    "colors": [
+      "R"
+    ],
+    "manaValue": 4,
+    "type": "Sorcery",
+    "scryfallId": "4b884c4a-a0a7-4f6b-bea6-8095ffb05183",
+    "manaCost": "{2}{R}{R}",
+    "types": [
+      "Sorcery"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Destroy all artifacts. They can't be regenerated.",
+    "layout": "normal",
+    "colorIdentity": [
+      "R"
+    ]
+  }
+}

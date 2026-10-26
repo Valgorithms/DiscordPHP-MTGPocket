@@ -1,0 +1,23 @@
+{
+  "setCode": "M13",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "132d60ff-6620-5cd5-a861-d57d72ef5ab0",
+    "name": "Evolving Wilds",
+    "number": "224",
+    "rarity": "common",
+    "colors": [],
+    "manaValue": 0,
+    "type": "Land",
+    "scryfallId": "d9d107e1-8293-4486-9b68-4897b8b7043c",
+    "types": [
+      "Land"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [],
+    "manaCost": null
+  }
+}

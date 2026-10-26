@@ -1,0 +1,35 @@
+{
+  "source": "existing read-only imported pool",
+  "setCode": "WAR",
+  "releaseDate": "2019-05-03",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "489b4151-9369-5706-9de2-10327e6b6f46",
+    "name": "Mayhem Devil",
+    "number": "204",
+    "rarity": "uncommon",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "manaValue": 3,
+    "type": "Creature — Devil",
+    "scryfallId": "17416926-168b-49b3-9231-acbb8f8a1d13",
+    "manaCost": "{1}{B}{R}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Devil"
+    ],
+    "power": "3",
+    "toughness": "3",
+    "text": "Whenever a player sacrifices a permanent, this creature deals 1 damage to any target.",
+    "layout": "normal",
+    "colorIdentity": [
+      "B",
+      "R"
+    ]
+  }
+}

@@ -55,6 +55,9 @@ final class GameObject
     /** @var array<string, int> Counter kind => how many, e.g. `+1/+1`, `-1/-1`, `loyalty`. */
     public array $counters = [];
 
+    /** @var array<int, array{power: int, toughness: int}> Battlefield departure statistics keyed by the source incarnation; not permanent state. */
+    public array $lastKnownStatistics = [];
+
     public ?int $attachedTo = null;
 
     /** @var array<int, array{power: int, toughness: int, keywords: string[], creature?: bool}> Effects that last until end of turn; `creature` makes a crewed Vehicle one. */
@@ -107,6 +110,9 @@ final class GameObject
 
     /** How it was cast, when that matters later: `dash`, `evoke` or `warp`; `temporary` for a Mobilize token. */
     public ?string $alt = null;
+
+    /** @var array{source: int, incarnation: int, controller: int}|null Original effect context; absent in legacy saves. */
+    public ?array $endExileContext = null;
 
     /** Cipher: the exiled spell cards encoded on this creature. */
     public array $encoded = [];
@@ -164,6 +170,9 @@ final class GameObject
     /** @var array<int, int> Activated ability index => the turn it was last activated, for once-a-turn limits. */
     public array $used = [];
 
+    /** @var array<int, int> Activated ability index => how often it was activated in the turn {@see $used} records, for `Activate no more than twice each turn.` */
+    public array $activations = [];
+
     /**
      * The cards merged with it by mutate (rule 721), each on top or under
      * it: `['id' => int, 'card' => array, 'over' => bool]`.
@@ -214,6 +223,24 @@ final class GameObject
         }
 
         return $this->printed();
+    }
+
+    /**
+     * Mana value before a battlefield departure; X is zero off the stack.
+     * An unmerged transforming card uses its front cost on either face, while
+     * face-down, modal and copied single-face definitions retain their own cost.
+     * This does not model meld or general copy/continuous-effect layers.
+     *
+     * @return int
+     */
+    public function battlefieldManaValue(): int
+    {
+        if (! $this->faceDown && $this->mutations === [] && $this->transformed
+            && ($this->card['layout'] ?? null) === 'transform' && $this->printed()->back !== null) {
+            return $this->printed()->cost->manaValue();
+        }
+
+        return $this->definition()->cost->manaValue();
     }
 
     /**
@@ -285,6 +312,7 @@ final class GameObject
         $this->attachedTo = null;
         $this->untilEndOfTurn = [];
         $this->used = [];
+        $this->activations = [];
         $this->faceDown = false;
         $this->transformed = false;
         $this->kicked = false;
@@ -308,6 +336,7 @@ final class GameObject
         $this->exileIfDies = 0;
         $this->preventDealing = 0;
         $this->alt = null;
+        $this->endExileContext = null;
         $this->exiledOn = 0;
         $this->attackedTurn = 0;
         $this->playableFrom = 0;
@@ -346,6 +375,7 @@ final class GameObject
             'controller' => $this->controller,
             'zone' => $this->zone,
             'card' => $this->card,
+            'lastKnownStatistics' => $this->lastKnownStatistics,
         ];
         // Only state that differs from a fresh object, to keep saved games small.
         $state = [
@@ -359,6 +389,7 @@ final class GameObject
             'untilEndOfTurn' => $this->untilEndOfTurn,
             'incarnation' => $this->incarnation,
             'used' => $this->used,
+            'activations' => $this->activations,
             'faceDown' => $this->faceDown,
             'transformed' => $this->transformed,
             'kicked' => $this->kicked,
@@ -394,6 +425,9 @@ final class GameObject
         if ($this->borrowedFrom !== null) {
             $data['borrowedFrom'] = $this->borrowedFrom;
         }
+        if ($this->endExileContext !== null) {
+            $data['endExileContext'] = $this->endExileContext;
+        }
         if ($this->enchantedPlayer !== null) {
             $data['enchantedPlayer'] = $this->enchantedPlayer;
         }
@@ -421,6 +455,17 @@ final class GameObject
         $object->deathtouched = (bool) ($data['deathtouched'] ?? false);
         $object->damagedBy = array_map('intval', (array) ($data['damagedBy'] ?? []));
         $object->counters = array_map('intval', (array) ($data['counters'] ?? []));
+        $statistics = array_key_exists('lastKnownStatistics', $data) ? $data['lastKnownStatistics'] : [];
+        if (! is_array($statistics)) {
+            throw new GameException('Invalid saved source statistics.');
+        }
+        foreach ($statistics as $incarnation => $values) {
+            if (! is_int($incarnation) || $incarnation < 0 || $incarnation >= (int) ($data['incarnation'] ?? 0)
+                || ! is_array($values) || count($values) !== 2 || ! is_int($values['power'] ?? null) || ! is_int($values['toughness'] ?? null)) {
+                throw new GameException('Invalid saved source statistics.');
+            }
+        }
+        $object->lastKnownStatistics = $statistics;
         $object->attachedTo = isset($data['attachedTo']) ? (int) $data['attachedTo'] : null;
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
         $object->incarnation = (int) ($data['incarnation'] ?? 0);
@@ -447,6 +492,14 @@ final class GameObject
         $object->exileIfDies = (int) ($data['exileIfDies'] ?? 0);
         $object->preventDealing = (int) ($data['preventDealing'] ?? 0);
         $object->alt = isset($data['alt']) ? (string) $data['alt'] : null;
+        $context = $data['endExileContext'] ?? null;
+        if ($context !== null && (! is_array($context) || count($context) !== 3 ||
+            ! is_int($context['source'] ?? null) || $context['source'] < 1 ||
+            ! is_int($context['incarnation'] ?? null) || $context['incarnation'] < 0 ||
+            ! in_array($context['controller'] ?? null, [0, 1], true))) {
+            throw new GameException('Invalid saved end-step exile context.');
+        }
+        $object->endExileContext = $context;
         $object->exiledOn = (int) ($data['exiledOn'] ?? 0);
         $object->attackedTurn = (int) ($data['attackedTurn'] ?? 0);
         $object->playableFrom = (int) ($data['playableFrom'] ?? 0);
@@ -460,6 +513,9 @@ final class GameObject
         $object->borrowedFrom = isset($data['borrowedFrom']) ? (int) $data['borrowedFrom'] : null;
         foreach ((array) ($data['used'] ?? []) as $index => $turn) {
             $object->used[(int) $index] = (int) $turn;
+        }
+        foreach ((array) ($data['activations'] ?? []) as $index => $count) {
+            $object->activations[(int) $index] = (int) $count;
         }
 
         return $object;

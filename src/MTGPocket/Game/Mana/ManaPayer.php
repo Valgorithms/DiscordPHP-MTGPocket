@@ -138,7 +138,7 @@ final class ManaPayer
 
         return ['pool' => $fromPool, 'tap' => array_keys($tap), 'float' => $float, 'made' => $made,
             // Mana spent, for expend: convoked creatures pay without making mana.
-            'count' => count(array_filter(array_keys($used), fn (int $unit) => ! ($sources[$units[$unit]['source']]['convoke'] ?? false)))];
+            'count' => count(array_filter(array_keys($used), fn (int $unit) => $units[$unit]['source'] === null || ! ($sources[$units[$unit]['source']]['convoke'] ?? false)))];
     }
 
     /**

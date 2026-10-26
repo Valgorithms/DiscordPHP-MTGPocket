@@ -1,0 +1,33 @@
+{
+  "setCode": "MBS",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "2cc1026b-3dd1-5476-9b47-4c0b8b7a0eb1",
+    "name": "Viridian Emissary",
+    "number": "95",
+    "rarity": "common",
+    "colors": [
+      "G"
+    ],
+    "manaValue": 2,
+    "type": "Creature — Phyrexian Elf Scout",
+    "scryfallId": "129fa334-f561-4fbd-9f51-2fa044b674e1",
+    "manaCost": "{1}{G}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Phyrexian",
+      "Elf",
+      "Scout"
+    ],
+    "power": "2",
+    "toughness": "1",
+    "text": "When this creature dies, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    "layout": "normal",
+    "colorIdentity": [
+      "G"
+    ]
+  }
+}

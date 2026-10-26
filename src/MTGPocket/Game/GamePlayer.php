@@ -43,6 +43,9 @@ final class GamePlayer
     /** The last turn they attacked with a creature, for raid. */
     public int $attackedTurn = 0;
 
+    /** The last turn they committed a crime (rule 700.13). */
+    public int $crimeTurn = 0;
+
     /** The city's blessing (rule 702.131): kept for the rest of the game. */
     public bool $blessed = false;
 
@@ -66,6 +69,11 @@ final class GamePlayer
     public int $expended = 0;
 
     public int $expendedTurn = 0;
+
+    /** Nonland permanents that entered under their control this turn, for celebration, and the turn that was. */
+    public int $nonlandEntered = 0;
+
+    public int $nonlandEnteredTurn = 0;
 
     /** Cards drawn this turn, and the turn that was. */
     public int $drawn = 0;
@@ -137,6 +145,7 @@ final class GamePlayer
             'speed' => $this->speed,
             'ring' => $this->ring,
             'attackedTurn' => $this->attackedTurn,
+            'crimeTurn' => $this->crimeTurn,
             'ringBearer' => $this->ringBearer,
             'blessed' => $this->blessed,
             'speedTurn' => $this->speedTurn,
@@ -150,6 +159,8 @@ final class GamePlayer
             'drawnTurn' => $this->drawnTurn,
             'expended' => $this->expended,
             'expendedTurn' => $this->expendedTurn,
+            'nonlandEntered' => $this->nonlandEntered,
+            'nonlandEnteredTurn' => $this->nonlandEnteredTurn,
             'library' => $this->library,
             'hand' => $this->hand,
             'graveyard' => $this->graveyard,
@@ -176,6 +187,7 @@ final class GamePlayer
         $player->speed = (int) ($data['speed'] ?? 0);
         $player->ring = (int) ($data['ring'] ?? 0);
         $player->attackedTurn = (int) ($data['attackedTurn'] ?? 0);
+        $player->crimeTurn = (int) ($data['crimeTurn'] ?? 0);
         $player->ringBearer = isset($data['ringBearer']) ? (string) $data['ringBearer'] : null;
         $player->blessed = (bool) ($data['blessed'] ?? false);
         $player->speedTurn = (int) ($data['speedTurn'] ?? 0);
@@ -184,6 +196,8 @@ final class GamePlayer
         $player->drawnTurn = (int) ($data['drawnTurn'] ?? 0);
         $player->expended = (int) ($data['expended'] ?? 0);
         $player->expendedTurn = (int) ($data['expendedTurn'] ?? 0);
+        $player->nonlandEntered = (int) ($data['nonlandEntered'] ?? 0);
+        $player->nonlandEnteredTurn = (int) ($data['nonlandEnteredTurn'] ?? 0);
         $player->gained = (int) ($data['gained'] ?? 0);
         $player->gainedTurn = (int) ($data['gainedTurn'] ?? 0);
         $player->cast = (int) ($data['cast'] ?? 0);

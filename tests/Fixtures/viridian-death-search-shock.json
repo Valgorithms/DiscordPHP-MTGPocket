@@ -1,0 +1,27 @@
+{
+  "setCode": "M12",
+  "mtgjsonVersion": "5.3.0+20261022",
+  "card": {
+    "uuid": "dcd1bd29-140a-5dee-bc91-faa2079f54ba",
+    "name": "Shock",
+    "number": "154",
+    "rarity": "common",
+    "colors": [
+      "R"
+    ],
+    "manaValue": 1,
+    "type": "Instant",
+    "scryfallId": "b8fed52c-e84e-41c9-b683-d8b26fa03c5f",
+    "manaCost": "{R}",
+    "types": [
+      "Instant"
+    ],
+    "supertypes": [],
+    "subtypes": [],
+    "text": "Shock deals 2 damage to any target.",
+    "layout": "normal",
+    "colorIdentity": [
+      "R"
+    ]
+  }
+}
