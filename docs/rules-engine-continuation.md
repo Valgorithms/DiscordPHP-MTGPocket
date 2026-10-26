@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [local Quest for the Gravelord slice](quest-gravelord-death-counters.md) reproduces automatic quest counters where the complete cached card says “may,” then reuses existing optional counter choices and creature-death events. It is independent of #406 and awaits main review before publication. Recognition, scoped behavior and whole-card certification stay separate; see the slice's refreshed bounded priorities.
+
 The [Khalni Heart Expedition milestone](khalni-expedition-quest-search.md) adds optional quest-counter landfall and paid three-counter/self-sacrifice searches for up to two tapped basics. Schema 16 records named optional counters and migrates legacy +1/+1 choices. Current scoped ledger: 30 names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.

@@ -9,55 +9,61 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
+  "engineSource": "e2516988575a773cded5597bb20c16ec8f831d33",
   "validation": {
-    "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
-    "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
-    "local": "Sole-owner validation of the preserved integration with main27189a71df613c26846c92c997e8accb435cf64e. Focused40tests731assertionsPASS6.761s wall/30s cap: Khalni, opponent-discard recipient, legacy counter migration, persisted panels and ledger. All58normalizedPHPpins verified. Full offline source `336fabb6621c810096164b18f7dc69ac86dd0bc8` passed 2,049 tests and 57,506 assertions with two expected missing-imported-pool/rental skips. PHPUnit 73.900s/276MiB; 74.810s wall under the 120s process-tree cap, 512MiB, Xdebug off, empty data and task-local temporary storage. Fresh 9.02GiB/no other PHP tests at 2026-10-24T18:59:08.8000221Z. Local two-file Pint produced no output and timed out124 at34.853s wall/30s cap; owned process tree stopped, NOT accepted. Previous input-head passes remain historical under integration.historicalValidation. No corpus scan/import/live/bot/build/restart/deploy. Schema16/noenvchange.",
-    "ci": "NOT RUN at this metadata commit creation. Final head must pass its own exact Tests workflow with full Pint and PHPUnit on PHP8.3/8.4/8.5 before merge. Local Pint timeout is not a pass. CI40118185025 is historical and predates PR404/405.",
-    "integration": {
-      "prHead": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
-      "mainHead": "27189a71df613c26846c92c997e8accb435cf64e",
-      "status": "combined source passed current focused and full offline PHPUnit; final hosted CI pending",
-      "changedSourcePins": {
-        "src/MTGPocket/Game/TextParser.php": {
-          "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
-          "main": "cb56be75277087578ee54849c1cf65003980604be27a7e161c30ba2433ac5d86",
-          "integrated": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
-        },
-        "tests/Game/ModernCardTextTest.php": {
-          "pr375": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
-          "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
-          "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
-        }
-      },
-      "historicalValidation": [
-        {
-          "head": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
-          "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
-          "validation": {
-            "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
-            "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
-            "local": "Original paid baselines2/14/2fail and2/22/2errors; followups2/16 and2/28PASS. Integrated main355a84f through PR404 preserving upstream runtime. Current Khalni+Modern442tests6386assertions/Pint3PASS; earlier integratedfocused23/732,Modern423/5900,adjacent312/6924/Pint7 passed. Ledger18/37 and existing181-pool inventory30scopenames2Partnergaps1overlap0wholecert. Initialfull071f0c4fixtureerror corrected by faithful old-schema fixture, not runtime workaround. Full offline target `71db2da86085b881ae6918487c1cc9f8be770b96` after PR404/main355a84f passed 2048tests/57419assertions/2expected missing-imported-pool/rental skips. PHPUnit01:04.286,276.00MiB;64.690s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh7.93GiB/nootherPHP at2026-10-24T17:57:16.2601596Z. All58normalizedPHPpins match this target. Schema16/noenvchange.",
-            "ci": "Previous source65faf3b passed CI40118185025 (full Pint/PHPUnit8.3/8.4/8.5). It predates PR404 and is historical. Final metadata commit with all58 PHP source pins unchanged from the current local full target requires its own exact full Pint/PHPUnit8.3/8.4/8.5 before merge."
+    "source": "e2516988575a773cded5597bb20c16ec8f831d33",
+    "evidenceMeaning": "Quest for the Gravelord scoped optional creature-death quest counters. The source was already readable while gameplay wrongly forced the may-counter; recognition and whole-card certification remain separate.",
+    "local": "Executable baseline atd0431f1with new complete fixture/test:4tests40assertions4FAIL,actualBcastandBDisfiguredeaths;questcounterforcedinall4seat/controllerpairs. Local red commitf0e6426preserved. Narrow10-linetriggerroute reuses optional_source_counterquest plus existing creature-death events. Expanded27tests372assertionsPASS0.127s36MiB;two-filePintPASS. Initial expanded helper wrongly skipped spellresolution forqueuedcases;corrected harness without productionworkaround. Full/adjacent/ledger validation pending. PHP8.5.12/512MiB/Xdebugoff/isolateddata/tasktemp,existingvendordependencies with explicit PSR4testbootstrap.",
+    "ci": "NOT RUN: local patch is awaiting main review before publication; no hosted acceptance claim. PR406 was subsequently merged as85d85418cee2244cf8e6eb9dc3dac70a9646bb6b;this independent patch has not synced or changed it.",
+    "historicalValidation": {
+      "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
+      "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
+      "local": "Sole-owner validation of the preserved integration with main27189a71df613c26846c92c997e8accb435cf64e. Focused40tests731assertionsPASS6.761s wall/30s cap: Khalni, opponent-discard recipient, legacy counter migration, persisted panels and ledger. All58normalizedPHPpins verified. Full offline source `336fabb6621c810096164b18f7dc69ac86dd0bc8` passed 2,049 tests and 57,506 assertions with two expected missing-imported-pool/rental skips. PHPUnit 73.900s/276MiB; 74.810s wall under the 120s process-tree cap, 512MiB, Xdebug off, empty data and task-local temporary storage. Fresh 9.02GiB/no other PHP tests at 2026-10-24T18:59:08.8000221Z. Local two-file Pint produced no output and timed out124 at34.853s wall/30s cap; owned process tree stopped, NOT accepted. Previous input-head passes remain historical under integration.historicalValidation. No corpus scan/import/live/bot/build/restart/deploy. Schema16/noenvchange.",
+      "ci": "NOT RUN at this metadata commit creation. Final head must pass its own exact Tests workflow with full Pint and PHPUnit on PHP8.3/8.4/8.5 before merge. Local Pint timeout is not a pass. CI40118185025 is historical and predates PR404/405.",
+      "integration": {
+        "prHead": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
+        "mainHead": "27189a71df613c26846c92c997e8accb435cf64e",
+        "status": "combined source passed current focused and full offline PHPUnit; final hosted CI pending",
+        "changedSourcePins": {
+          "src/MTGPocket/Game/TextParser.php": {
+            "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
+            "main": "cb56be75277087578ee54849c1cf65003980604be27a7e161c30ba2433ac5d86",
+            "integrated": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+          },
+          "tests/Game/ModernCardTextTest.php": {
+            "pr375": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
+            "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
+            "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
           }
         },
-        {
-          "head": "27189a71df613c26846c92c997e8accb435cf64e",
-          "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
-          "validation": {
-            "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
-            "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
-            "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target `1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb` passed 1,998 tests and 56,374 assertions, with two expected missing-imported-pool/rental skips. PHPUnit57.955s270MiB;58.327s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh11.76GiB/no other test processes at2026-10-24T14:42:03.4480779Z. All57normalizedPHPpins match this target. Exact tested/final CI required before merge. Noenv/schema15change.",
-            "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+        "historicalValidation": [
+          {
+            "head": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
+            "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
+            "validation": {
+              "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
+              "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
+              "local": "Original paid baselines2/14/2fail and2/22/2errors; followups2/16 and2/28PASS. Integrated main355a84f through PR404 preserving upstream runtime. Current Khalni+Modern442tests6386assertions/Pint3PASS; earlier integratedfocused23/732,Modern423/5900,adjacent312/6924/Pint7 passed. Ledger18/37 and existing181-pool inventory30scopenames2Partnergaps1overlap0wholecert. Initialfull071f0c4fixtureerror corrected by faithful old-schema fixture, not runtime workaround. Full offline target `71db2da86085b881ae6918487c1cc9f8be770b96` after PR404/main355a84f passed 2048tests/57419assertions/2expected missing-imported-pool/rental skips. PHPUnit01:04.286,276.00MiB;64.690s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh7.93GiB/nootherPHP at2026-10-24T17:57:16.2601596Z. All58normalizedPHPpins match this target. Schema16/noenvchange.",
+              "ci": "Previous source65faf3b passed CI40118185025 (full Pint/PHPUnit8.3/8.4/8.5). It predates PR404 and is historical. Final metadata commit with all58 PHP source pins unchanged from the current local full target requires its own exact full Pint/PHPUnit8.3/8.4/8.5 before merge."
+            }
+          },
+          {
+            "head": "27189a71df613c26846c92c997e8accb435cf64e",
+            "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
+            "validation": {
+              "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
+              "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
+              "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target `1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb` passed 1,998 tests and 56,374 assertions, with two expected missing-imported-pool/rental skips. PHPUnit57.955s270MiB;58.327s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh11.76GiB/no other test processes at2026-10-24T14:42:03.4480779Z. All57normalizedPHPpins match this target. Exact tested/final CI required before merge. Noenv/schema15change.",
+              "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+            }
           }
-        }
-      ],
-      "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
+        ],
+        "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
+      }
     }
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb",
+    "src/MTGPocket/Game/TextParser.php": "8a2ab70148664bd2249b5688ef7bc9b86ac7df37acce51996c291ad4a71b9fdb",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
     "src/MTGPocket/Game/Game.php": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -114,7 +120,8 @@
     "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446",
     "tests/Game/BurnishedHartSearchTest.php": "f1746faee47f219a2a872d863f18803bb03f7afbcd0d3477cb1aed8d16862c59",
     "tests/Game/HarrowSearchTest.php": "03d51933849cbd2cb2e47d81dc40bdbfb7bde006d05a53d3c3780785587b1172",
-    "tests/Game/KhalniExpeditionSearchTest.php": "cbb55dda0dbe3982bf0cdb9c10fd805c01a73453387e1bcfc41b3b667331d103"
+    "tests/Game/KhalniExpeditionSearchTest.php": "cbb55dda0dbe3982bf0cdb9c10fd805c01a73453387e1bcfc41b3b667331d103",
+    "tests/Game/QuestGravelordDeathCountersTest.php": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c"
   },
   "scopedEvidence": [
     {
@@ -802,6 +809,21 @@
       ],
       "scope": "Complete cached ZEN UUID0e4db2dc-36a6-5164-a5f7-d6e2efc3fbd0 normalized fixtureSHA2564c8373e38f293c70846d4bbd5a792fc0c3243856ca5edba587533476c9943e54. Both seats pay1G, play lands and accept/decline untargeted quest-counter landfall; three actually earned counters and self-sacrifice pay before resolution. Explicit0/1/2 tapped basic finds, empty-library failure to find, two same-name basics and one final shuffle. Wrong-seat/stale/repeated/invalid/cross-family/overselected/nonbasic actions reject atomically. Quest/+1/+1 separation, original-controller/incarnation probes, pending/queued/completed JSON replay, practice and persisted panels covered. Schema16 counter-kind validation and synthetic legacy10/15 +1/+1 migration.",
       "limits": "Exact quest-landfall and combined remove-three/self-sacrifice wording only. Synthetic controller relocation/incarnation/legacy saves/nonland entry/panel counter setup isolate contracts, not supporting-card certificates. General replacement/APNAP/copy/continuous rules, more-than25-name selector paging, newest printing and whole-card certification remain unverified. Saved kind allowlist validation is not authentication of arbitrary forged game state. No sourcefetch/corpusscan/import/live/build/restart/deploy."
+    },
+    {
+      "id": "quest-gravelord-optional-death-counter",
+      "cards": [
+        "Quest for the Gravelord"
+      ],
+      "tests": [
+        "tests/Game/QuestGravelordDeathCountersTest.php::testPaidCreatureDeathOffersOptionalQuestCounter",
+        "tests/Game/QuestGravelordDeathCountersTest.php::testThreeEarnedCountersPayForZombieAndReplayActivation",
+        "tests/Game/QuestGravelordDeathCountersTest.php::testSavedChoiceKeepsOriginalControllerAndRejectsInvalidAnswers",
+        "tests/Game/QuestGravelordDeathCountersTest.php::testDepartedOrReturnedSourceCannotReceiveAnOldCounter",
+        "tests/Game/QuestGravelordDeathCountersTest.php::testOnlyActualCreatureDeathsOfferQuestCounters"
+      ],
+      "scope": "Complete cached ZEN UUID3c15b10c-d09c-5c93-be42-98ff3515262a,fixtureSHA256c26e0bf5385b4bbf8ad5178f31263bfaf6f03f9391ddcbdc13c5cb3222924300. Actual paidBsource and paidBDisfigure deaths in both seats/both dying controllers; accept/decline rather than forced questcounter;three earned counters/self-sacrifice creates correct5/5blackZombieGiant;wrong/stale/invalid/repeated answers atomic;queued+pending JSON replay,original trigger controller,old-incarnation isolation and practice route.",
+      "limits": "Ornithopter victims and mana sources are seeded; transfer/zone movement/token-vs-noncreature/replacement controls explicitly use synthetic unit probes. Disfigure is an enabling complete cached record, not independently certified. No newest printing, whole-card certificate, animation/self-death, simultaneous mass-death, arbitrary forged-save authentication, general replacement/APNAP or Discord rendering claim. This branch starts atd0431f1and does not containPR406; no dependency on its target-clause change. No publish/merge/live/bot/build/deploy/import."
     }
   ],
   "explicitUnsupported": [
@@ -815,22 +837,41 @@
     }
   ],
   "nextFamily": {
-    "id": "copy-token-disguise-characteristics",
+    "id": "paid-zektar-expedition-token-endstep",
     "cards": [
-      "Dog Walker"
+      "Zektar Shrine Expedition"
     ],
     "measuredCandidateCount": 1,
-    "scope": "Deferred evidence gap: complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa selected by one name from271-card pool. Bounded local docs/fixtures/recovery search found no cached authoritative rules establishing copiable ward. No-network retained; no parser/paid reproduction or runtime-failure claim. Continue independent offline evidence slices.",
+    "scope": "One complete cached ZEN record selected by exact name from the existing229-card pool. Its paid3-landfall/token/end-step path has NOT been executed here, so this is an unverified candidate, not a reproduced runtime gap. No import/parser-corpus scan.",
     "acceptance": [
-      "Pin complete selected source and reproduce paid disguise cast/copy; verify current authoritative rules for copiable disguise/ward before changing runtime.",
-      "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
+      "Pay1R to cast, earn three quest counters through actual land plays, then pay remove-three/self-sacrifice activation.",
+      "Verify7/1redElemental/trample/haste and next-end-step exile, JSON replay, original incarnation and appropriate controller; add negative controls before support claims."
     ],
     "deferred": [
-      "Partner and commander deck rules",
-      "Merged/modal/general copy layers and other factories",
-      "General face-down and continuous/replacement/conditions/APNAP models",
-      "Newest-printing and whole-card certification"
+      "Dog Walker copy/disguise retains its full previous blocked evidence record under deferredFamilies; authoritative copiable-ward rules required before a runtime change.",
+      "Partner/commander rules and broad APNAP/replacement/continuous models remain separate.",
+      "Newest-printing and whole-card certification remain unestablished."
     ]
   },
-  "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad"
+  "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
+  "deferredFamilies": [
+    {
+      "id": "copy-token-disguise-characteristics",
+      "cards": [
+        "Dog Walker"
+      ],
+      "measuredCandidateCount": 1,
+      "scope": "Deferred evidence gap: complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa selected by one name from271-card pool. Bounded local docs/fixtures/recovery search found no cached authoritative rules establishing copiable ward. No-network retained; no parser/paid reproduction or runtime-failure claim. Continue independent offline evidence slices.",
+      "acceptance": [
+        "Pin complete selected source and reproduce paid disguise cast/copy; verify current authoritative rules for copiable disguise/ward before changing runtime.",
+        "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
+      ],
+      "deferred": [
+        "Partner and commander deck rules",
+        "Merged/modal/general copy layers and other factories",
+        "General face-down and continuous/replacement/conditions/APNAP models",
+        "Newest-printing and whole-card certification"
+      ]
+    }
+  ]
 }

@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [local Quest for the Gravelord slice](quest-gravelord-death-counters.md) fixes a reproduced forced optional-counter decision using a complete cached ZEN record. This branch is based on pre-#406 main: its scoped count is 31, including Quest and excluding Soul Stair. Current main's separate Soul Stair evidence must be reconciled before combining counts. Recognition remains historical and whole-card certificates remain zero; the next cached candidate and preserved Dog Walker deferral are recorded in the slice note.
+
 The [Harrow land-cost milestone](harrow-land-cost-search.md) pays a controlled land before resolution and offers zero, one or two untapped basics followed by one shuffle. Land-cost payment follows the existing automatic policy. The ledger now has 29 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates; recognition and earlier counts remain historical.
 
 The [Burnished Hart search milestone](burnished-hart-land-search.md) adds explicit selection of zero, one or two basics after a paid cast and paid self-sacrifice, with tapped entry and one final shuffle. The ledger now has 28 scoped names, 2 Partner-gap names, 1 overlap and zero whole-card certificates. Recognition and earlier milestone counts remain historical.
