@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [Expedition draw/life evidence batch](expedition-draw-life-evidence.md) verifies paid Ior Ruin and Sunspring gameplay against an already passing engine, including cost/negative/queued replay controls. No runtime correction is claimed. Current ledger: 35 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
+
 The [local Zektar Shrine milestone](zektar-shrine-expedition.md) verifies paid landfall/token gameplay and fixes a reproduced missing end-step response window. It preserves merged Quest and Soul Stair evidence: 33 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical; publication awaits main review.
 
 The [Quest for the Gravelord slice](quest-gravelord-death-counters.md) fixes a reproduced forced optional counter after paid creature deaths. This integrated branch preserves merged Soul Stair evidence: 32 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical. Both parent validation histories are retained with their original source anchors; combined validation is recorded separately.
