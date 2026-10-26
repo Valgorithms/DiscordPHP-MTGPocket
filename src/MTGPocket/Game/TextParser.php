@@ -3308,6 +3308,10 @@ final class TextParser
             $event = $match[1] === 'you' ? 'you_cast_kind' : 'opponent_cast_kind';
             $extra = ['objectKind' => 'x spell'];
             $text = $match[2];
+        } elseif (preg_match("/^Whenever you cast a spell during (your|an opponent's) turn, (.+)$/", $line, $match)) {
+            // See Game::castSpell().
+            $event = $match[1] === 'your' ? 'cast_spell_your_turn' : 'cast_spell_opponent_turn';
+            $text = $match[2];
         } elseif (preg_match("/^Whenever you cast your first spell during each opponent's turn, (.+)$/", $line, $match)) {
             // See Game::castSpell().
             $event = 'first_spell_opponent_turn';
