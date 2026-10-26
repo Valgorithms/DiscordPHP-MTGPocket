@@ -15,3 +15,9 @@ This changes the shared explicit next-end-step exile path. Unearth, dash, warp a
 The first full suite exposed two older reanimation/copy tests that expected immediate exile. Those assertions now verify the object remains while the delayed ability waits on the stack, then resolve it before checking exile. Both targeted cases passed after that expectation correction; the original full failure receipt is retained, and the final source requires a fresh full run.
 
 The integrated ledger contains 33 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains the historical 11,282/28,729 measurement. No new aggregate recognition or functional percentage is claimed. The next cached candidate is Ior Ruin Expedition's paid draw path, which has not been executed; Dog Walker's deferred rules-evidence record is preserved. Publication awaits main review.
+
+## Local final validation for main review
+
+Full offline source 2295487625efe6eed0ed64eed8423eefe44e2cfe: 2160 tests/58840 assertions, 2 expected missing-pool/rental skips; PHPUnit00:59.051/302.00 MB,wall59.317s/120scap. Combinedfamilies/schema/ledger/Modern140tests2275assertionsPASS;fullnonmutatingPintPASS. All62normalizedPHPpinsmatch. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,ignoredread-onlydependencybridge. No hostedCI or publication.
+
+Both prior Quest and Soul Stair entries and their complete validation object remain intact. This is not hosted acceptance. The optional object metadata supports old-save reading with the explicit limited fallback described above; no new top-level state version or user action was added. Multiple independent exile schedules on one object remain represented by the existing single schedule slot. No whole-card certificate or general delayed-trigger implementation is claimed.

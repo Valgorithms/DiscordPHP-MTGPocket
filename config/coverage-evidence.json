@@ -9,11 +9,11 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "80fb9e9e739cd97c43db355a6349794b4df2fd07",
+  "engineSource": "2295487625efe6eed0ed64eed8423eefe44e2cfe",
   "validation": {
-    "source": "80fb9e9e739cd97c43db355a6349794b4df2fd07",
+    "source": "2295487625efe6eed0ed64eed8423eefe44e2cfe",
     "evidenceMeaning": "Zektar paid gameplay plus reproduced shared next-end-step exile response-window correction;mergedQuestandSoulStairevidencepreserved. Recognitionhistorical;33scopednames/0wholecardcertificates.",
-    "local": "Baseline6tests132assertions:4ordinary/negativecontrolsPASS,2responsewindowFAIL at85d8541;redcommit5e819f0preserved. Bothactorspaid1R,played3lands,paidquest+selfsacrifice;tokenwasgonebeforepriority. Correctionusesordinarytriggerqueuewithoriginaleffectsource/controllerandincarnation-pinnedrecipient;optionalserializedendExileContextwithlegacyfallbackandstructuralreferencevalidation. Initialfixed6/136PASS;expandedstate/entry43tests782assertionsPASS;combat2tests52assertionsPASS;threefilePintPASS. IntegratedapprovedQuestmaine91c78dwithoutconflicts;full/combinedfocusedpending. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,read-onlyexistingvendorwithignoredlocalbridge. Firstfullate8c7911ran2160tests58836assertionswith2failures/2expectedskips:olderModernreanimationandcopytestsassumedimmediateexile. UpdatedbothassertionstoprovetheBFresponsewindowandqueuedabilitybeforeresolution;noadditionalproductionworkaround. Thisfailedreceiptretainedas zektar-full;freshfullrequired.",
+    "local": "Baseline6tests132assertions:4ordinary/negativecontrolsPASS,2responsewindowFAIL at85d8541;redcommit5e819f0preserved. Bothactorspaid1R,played3lands,paidquest+selfsacrifice;tokenwasgonebeforepriority. Correctionusesordinarytriggerqueuewithoriginaleffectsource/controllerandincarnation-pinnedrecipient;optionalserializedendExileContextwithlegacyfallbackandstructuralreferencevalidation. Initialfixed6/136PASS;expandedstate/entry43tests782assertionsPASS;combat2tests52assertionsPASS;threefilePintPASS. IntegratedapprovedQuestmaine91c78dwithoutconflicts; PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,read-onlyexistingvendorwithignoredlocalbridge. Firstfullate8c7911ran2160tests58836assertionswith2failures/2expectedskips:olderModernreanimationandcopytestsassumedimmediateexile. UpdatedbothassertionstoprovetheBFresponsewindowandqueuedabilitybeforeresolution;noadditionalproductionworkaround. Thisfailedreceiptretainedas zektar-full;freshfullrequired. Full offline source 2295487625efe6eed0ed64eed8423eefe44e2cfe: 2160 tests/58840 assertions, 2 expected missing-pool/rental skips; PHPUnit00:59.051/302.00 MB,wall59.317s/120scap. Combinedfamilies/schema/ledger/Modern140tests2275assertionsPASS;fullnonmutatingPintPASS. All62normalizedPHPpinsmatch. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,ignoredread-onlydependencybridge. No hostedCI or publication.",
     "ci": "NOT RUN: local patch awaits main review before publication. Main monitors post-mergeQuestCI;its results are not combined Zektar acceptance.",
     "historicalValidation": {
       "source": "b18712e48600893b0221df30758625d5efab8a16",
@@ -1100,7 +1100,7 @@
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Immutable full-tested combined Gravelord plus merged Soul Stair tree; final metadata-only follow-up changes no PHP. Both exact parent validation objects are retained separately.",
+  "engineSourceMeaning": "Immutable full-tested Zektar tree including approved Quest/SoulStair main; final metadata-only follow-up changes no PHP. Original baseline and historical parent validation retain their exact source anchors.",
   "deferredFamilies": [
     {
       "id": "copy-token-disguise-characteristics",
