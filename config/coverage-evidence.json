@@ -13,7 +13,7 @@
   "validation": {
     "source": "80fb9e9e739cd97c43db355a6349794b4df2fd07",
     "evidenceMeaning": "Zektar paid gameplay plus reproduced shared next-end-step exile response-window correction;mergedQuestandSoulStairevidencepreserved. Recognitionhistorical;33scopednames/0wholecardcertificates.",
-    "local": "Baseline6tests132assertions:4ordinary/negativecontrolsPASS,2responsewindowFAIL at85d8541;redcommit5e819f0preserved. Bothactorspaid1R,played3lands,paidquest+selfsacrifice;tokenwasgonebeforepriority. Correctionusesordinarytriggerqueuewithoriginaleffectsource/controllerandincarnation-pinnedrecipient;optionalserializedendExileContextwithlegacyfallbackandstructuralreferencevalidation. Initialfixed6/136PASS;expandedstate/entry43tests782assertionsPASS;combat2tests52assertionsPASS;threefilePintPASS. IntegratedapprovedQuestmaine91c78dwithoutconflicts;full/combinedfocusedpending. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,read-onlyexistingvendorwithignoredlocalbridge.",
+    "local": "Baseline6tests132assertions:4ordinary/negativecontrolsPASS,2responsewindowFAIL at85d8541;redcommit5e819f0preserved. Bothactorspaid1R,played3lands,paidquest+selfsacrifice;tokenwasgonebeforepriority. Correctionusesordinarytriggerqueuewithoriginaleffectsource/controllerandincarnation-pinnedrecipient;optionalserializedendExileContextwithlegacyfallbackandstructuralreferencevalidation. Initialfixed6/136PASS;expandedstate/entry43tests782assertionsPASS;combat2tests52assertionsPASS;threefilePintPASS. IntegratedapprovedQuestmaine91c78dwithoutconflicts;full/combinedfocusedpending. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,read-onlyexistingvendorwithignoredlocalbridge. Firstfullate8c7911ran2160tests58836assertionswith2failures/2expectedskips:olderModernreanimationandcopytestsassumedimmediateexile. UpdatedbothassertionstoprovetheBFresponsewindowandqueuedabilitybeforeresolution;noadditionalproductionworkaround. Thisfailedreceiptretainedas zektar-full;freshfullrequired.",
     "ci": "NOT RUN: local patch awaits main review before publication. Main monitors post-mergeQuestCI;its results are not combined Zektar acceptance.",
     "historicalValidation": {
       "source": "b18712e48600893b0221df30758625d5efab8a16",
@@ -294,7 +294,7 @@
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
     "tests/Game/FabricateChoiceTest.php": "ddd05a50cdc5608f4e189ef53699875420113e73d6848cc6e4a64ea773a070ea",
-    "tests/Game/ModernCardTextTest.php": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
+    "tests/Game/ModernCardTextTest.php": "182693a6c35f652634acbb42c1c11663be23d3476549cc2776e4f92d0da144bc",
     "tests/Game/DiscipleBurialChoiceTest.php": "e7a2803eb0fe908b67d782d7a882cdd5e711dc8a3d6182747395cffeb53bb4f3",
     "tests/AbilityCandidatesTest.php": "6b7a382e2a7aeddfdad38212dc8afa4afa5287e0d5ece4f5b088167db3e9be06",
     "tests/Game/FangrenBurialChoiceTest.php": "be9c8ac2147f7ae37afc158bb2a86114c3cfee3255580a504108d4f3c9514785",
