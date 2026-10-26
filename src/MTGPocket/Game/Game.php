@@ -3108,7 +3108,7 @@ final class Game
         }
         // `Whenever a player casts a red spell, …`
         foreach ($this->permanents() as $permanent) {
-            $this->trigger($permanent, 'any_cast', $permanent->controller);
+            $this->trigger($permanent, 'any_cast', $permanent->controller, null, $spell->id);
             $this->trigger($permanent, 'any_cast_kind', $permanent->controller, null, $spell->id);
             foreach ($card->colors as $color) {
                 $this->trigger($permanent, "any_cast_color_{$color}", $permanent->controller);
@@ -6607,8 +6607,8 @@ final class Game
             $ability['effects'] = array_map(fn (array $effect) => match (true) {
                 // `Whenever another creature you control enters, put a +1/+1 counter on it.`: the creature that entered.
                 ($effect['entering'] ?? false) => ['thatObject' => $context] + $effect,
-                // `Whenever a player casts a noncreature spell, … that player.`: the spell's controller.
-                ($effect['thatPlayer'] ?? false) => ['player' => $event === 'any_cast_kind' ? ($this->objects[$context] ?? null)?->controller ?? $controller : $context] + $effect,
+                // `Whenever a player casts a (noncreature) spell, … that player.`: the spell's controller.
+                ($effect['thatPlayer'] ?? false) => ['player' => in_array($event, ['any_cast', 'any_cast_kind'], true) ? ($this->objects[$context] ?? null)?->controller ?? $controller : $context] + $effect,
                 ($effect['amount'] ?? null) === 'counters' => ['amount' => $context] + $effect,
                 ($effect['amount'] ?? null) === 'that_much' => ['amount' => $context] + $effect,
                 // Freeze battlefield mana value before movement resets the active face.
