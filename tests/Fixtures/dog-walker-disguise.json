@@ -1,0 +1,45 @@
+{
+  "source": {
+    "setCode": "MKM",
+    "setName": "Murders at Karlov Manor",
+    "releaseDate": "2024-02-09",
+    "mtgjsonVersion": "5.3.0+20261022",
+    "importedAt": 1792723097,
+    "sourcePoolSha256": "59e2c0f688f2e8d69f8f7fa179cd3e7ea2e3b9372d3554f58bffbd42d0a801b2",
+    "preparedPacketSha256": "3f2858d325f7a92456750dd3b787577ab51d2d53cf6999ed2e824fd24699116f"
+  },
+  "card": {
+    "uuid": "7037c6a6-2329-5e62-a365-ddd83f37d0aa",
+    "name": "Dog Walker",
+    "number": "197",
+    "rarity": "common",
+    "colors": [
+      "W",
+      "R"
+    ],
+    "manaValue": 2,
+    "type": "Creature — Human Citizen",
+    "scryfallId": "a6e0adb7-a030-4dcc-9284-cd91c7598a22",
+    "manaCost": "{R}{W}",
+    "types": [
+      "Creature"
+    ],
+    "supertypes": [],
+    "subtypes": [
+      "Human",
+      "Citizen"
+    ],
+    "power": "3",
+    "toughness": "1",
+    "text": "Vigilance\nDisguise {R/W}{R/W} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this creature is turned face up, create two tapped 1/1 white Dog creature tokens.",
+    "keywords": [
+      "Vigilance",
+      "Disguise"
+    ],
+    "layout": "normal",
+    "colorIdentity": [
+      "R",
+      "W"
+    ]
+  }
+}

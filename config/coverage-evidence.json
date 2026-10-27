@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+  "engineSource": "3d30a9c576e196e919064ee60f380c163f400913",
   "validation": {
-    "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
-    "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
-    "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
-    "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision.",
+    "source": "3d30a9c576e196e919064ee60f380c163f400913",
+    "evidenceMeaning": "Independent disguise-copy characteristic correction on main 5707710. Paid cached source and synthetic copier regressions certify this scoped engine path only; recognition is historical and whole-card certificates remain zero.",
+    "local": "Immutable independent source 3d30a9c576e196e919064ee60f380c163f400913: full offline 2418 tests / 63809 assertions, two unchanged missing-pool/rental skips, no failures/errors/warnings/risky tests; 00:59.733 / 338 MiB. Focused disguise 16 / 660; adjacent copy/control 142 / 4313. Full nonmutating Pint and all 69 normalized source pins pass. PHP 8.5.12 / 512 MiB / Xdebug off / isolated data+temp / original dependencies. Existing injected HTTP-client constructors required read-only native Windows DNS configuration; no live card/bot requests, vendor edits or suppression. Metadata/docs completion keeps runtime/test/fixture bytes identical; exact published-head hosted checks must be read separately.",
+    "ci": "For current exact-head hosted acceptance read this draft PR checks on GitHub. Prior local/CI metadata is preserved under disguiseCopy; no later head is validated by an older green run.",
     "integration": {
       "prParent": "4797893913967dd38f36e0eda7009f7b50e874f5",
       "mainParent": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
@@ -402,12 +402,96 @@
           }
         }
       }
+    },
+    "disguiseCopy": {
+      "base": "570771053d31f16d700178d9fbc742da37e9106d",
+      "priorEngineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+      "priorValidationCore": {
+        "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+        "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
+        "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
+        "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision."
+      },
+      "priorGameSourcePin": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
+      "priorNextFamily": {
+        "id": "quest-pure-flame-paid-damage",
+        "cards": [
+          "Quest for Pure Flame"
+        ],
+        "measuredCandidateCount": 1,
+        "scope": "One complete existing cached ZEN UUID 03fcb278-4971-58a7-860b-9999263c347b selected by exact name; paid damage-trigger/four-counter temporary doubling path UNEXECUTED, not a reproduced gap. No import or corpus walk.",
+        "acceptance": [
+          "Establish paid R source and actual controlled-source damage to an opponent, with optional quest counters and non-opponent/other-controller controls.",
+          "Earn four counters, pay removal/self-sacrifice and test turn-limited doubled damage, expiry, identity, prevention/modifier order and queued replay before support claims."
+        ],
+        "deferred": [
+          "Dog Walker original rules-evidence gap remains under deferredFamilies.",
+          "Partner/commander rules and general replacement/APNAP/continuous/whole-card certification remain separate."
+        ]
+      },
+      "priorDeferredFamilies": [
+        {
+          "id": "copy-token-disguise-characteristics",
+          "cards": [
+            "Dog Walker"
+          ],
+          "measuredCandidateCount": 1,
+          "scope": "Deferred evidence gap: complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa selected by one name from271-card pool. Bounded local docs/fixtures/recovery search found no cached authoritative rules establishing copiable ward. No-network retained; no parser/paid reproduction or runtime-failure claim. Continue independent offline evidence slices.",
+          "acceptance": [
+            "Pin complete selected source and reproduce paid disguise cast/copy; verify current authoritative rules for copiable disguise/ward before changing runtime.",
+            "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
+          ],
+          "deferred": [
+            "Partner and commander deck rules",
+            "Merged/modal/general copy layers and other factories",
+            "General face-down and continuous/replacement/conditions/APNAP models",
+            "Newest-printing and whole-card certification"
+          ]
+        }
+      ],
+      "baseline": {
+        "source": "570771053d31f16d700178d9fbc742da37e9106d",
+        "tests": 2,
+        "reachedAssertions": 30,
+        "failures": 2,
+        "meaning": "Both seats paid {3} for complete cached Dog Walker disguise and {U} for the existing copier fixture; copy was printed 3/1 instead of 2/2. Later ward/hidden-ability assertions were unreached and not counted as passing."
+      },
+      "preparedPacketSha256": "3f2858d325f7a92456750dd3b787577ab51d2d53cf6999ed2e824fd24699116f",
+      "fixtureSha256": "27a09d399cdd6cbe3e819319bd47c28c0b08295bc635020daa55f2f4fcca973c",
+      "rules": {
+        "source": "https://media.wizards.com/2026/downloads/MagicCompRules%2020260925.pdf",
+        "effective": "2026-09-25",
+        "references": [
+          "702.168b",
+          "707.2",
+          "708.2",
+          "702.21a"
+        ],
+        "meaning": "Disguise ward is a copiable face-down characteristic. Actual Ward is triggered; the existing engine upfront tax is not certified as complete timing support."
+      },
+      "preservedReceipts": {
+        "disguise-baseline.json": "ec3d4ba690133817d4f1d9173cf7481bca5cedc11c1c4f2b4d44bdcfe82bae55",
+        "disguise-paid-baseline.json": "be80faffd8530df5ecedfbabb8cdf06e06aceac2a884b2d3968767eb47f72aa6",
+        "disguise-paid-baseline.stdout.txt": "c585cd986a9b6bbb7761ae6845b7a13116277d180158e7255376546df0e517c2",
+        "disguise-paid-baseline-pins.json": "dcf3342da78f29c63c12dc01276dd994c1e48532be5bc78d49f58b779d45d429",
+        "disguise-paid-baseline-test.php.txt": "87ef4144904b9f94261d67b767dd365e6c2afbc48bf3ef78c0fe031bc5bfdb40",
+        "disguise-first-fix.json": "fd3dc2def279cc76a0551163c4c7bc2081adbaac0d8b2bd884c5c8308673f26b",
+        "disguise-expanded.json": "fb7748be554a34ce7c12fa514301a653495a8266f4e5fb4de773907ec047f3c1",
+        "disguise-adjacent.json": "f09625939e269e1b7cca7c357b5924151efc56df4d615ad2810e418c174098ba"
+      },
+      "harnessCorrections": "Initial missing actors provider failed before gameplay; a later new assertion used a nonexistent CardDefinition manaCost property. Both error receipts remain distinct from the genuine paid baseline; source correction was not widened.",
+      "finalReceiptHashes": {
+        "disguise-full.json": "2b197ea58f0cdfec7c0cd002eb219d559530a8a61b97ac37eb3f7e3910489c84",
+        "disguise-final-pint.json": "6fe001132473c2ac71460fbcddfe19ab7d55ced9e52015ed9377068f47a99d05",
+        "disguise-expanded.json": "fb7748be554a34ce7c12fa514301a653495a8266f4e5fb4de773907ec047f3c1",
+        "disguise-adjacent.json": "f09625939e269e1b7cca7c357b5924151efc56df4d615ad2810e418c174098ba"
+      }
     }
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
+    "src/MTGPocket/Game/Game.php": "2293478b97eb71cc42af90cc8d9c0e87e0ae61deaf8d03cbecb54431cd09c413",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -471,7 +555,9 @@
     "tests/Game/SunspringExpeditionTest.php": "58eb40ed4bc7d62e09ac1e5ebac15b3d2005d58433a425384715689189c8eb4d",
     "tests/Game/QuestAncientSecretsTest.php": "2bb85b3cd1110e5e9f791a07b364b2a382b506045bf49ea8f07104ab889ca264",
     "tests/Game/QuestAncientMergedIdentityTest.php": "f96ede04a99e025344d6491f73b06d24a85b544554d3dc7ca2aece87b3cd3f02",
-    "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
+    "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd",
+    "tests/Game/DisguiseTokenCopyTest.php": "a98edad4ede8c717fda12443b34013ef0fe093603c74c1f4283264e7d13bc78a",
+    "tests/Fixtures/dog-walker-disguise.json": "27a09d399cdd6cbe3e819319bd47c28c0b08295bc635020daa55f2f4fcca973c"
   },
   "scopedEvidence": [
     {
@@ -1299,6 +1385,24 @@
       ],
       "scope": "Complete cached ZEN UUID72d2c199-508a-566e-a058-bb604d7817ac; fixtureSHA2564ff5e1ed95dbf1af435c6dff68f579186948f8381afa31b13aa54890d836948e includes complete cached M10 Raging Goblin/Centaur Courser/Runeclaw Bear/Lightning Bolt and RTR Fencing Ace records with source-pool provenance. Both seats pay1G for Quest and R for an attacking Goblin; actual positive combat damage to a creature offers optional quest counters. Earned one-counter/self-sacrifice pays before four targeted +1/+1 counters on either player's creature. Saved queued activation, cost/target rejection and later invalidation, current controller versus immutable owner, blocking creatures, numeric/source/protection/shield-counter prevention and zero/partial/unpreventable damage, multiple attackers/recipients and paid double strike, original counter-choice controller and queued/pending source incarnation boundaries.",
       "limits": "Only this cached printing and specified paths. Seeded blockers/targets/basic mana, foreign control, pumps, prevention/hexproof/relocation and activation-isolation counters are unit setups, not supporting-card certificates. No aggregate recognition scan, newest-printing review or whole-card certificate. General damage replacement/order, copy/mutation/continuous/APNAP behavior, animated Quest simultaneous departure and forged-save authentication remain unverified. No live Discord, bot, import, build or deployment."
+    },
+    {
+      "id": "dog-walker-disguise-copy-characteristics",
+      "cards": [
+        "Dog Walker"
+      ],
+      "scope": "Paid complete cached MKM Dog Walker disguise, paid synthetic token copy and copiable ward characteristics; source turn-up independence, both seats, original Dog trigger, copy of copy, noncopy modifiers and queued/resolved JSON.",
+      "tests": [
+        "tests/Game/DisguiseTokenCopyTest.php::testPaidDisguiseThenCopyPreservesOnlyCopiableFaceDownValues",
+        "tests/Game/DisguiseTokenCopyTest.php::testSourceTurnUpAndQueuedResolvedJsonAreIndependentOfCopy",
+        "tests/Game/DisguiseTokenCopyTest.php::testCopyOfCopyKeepsWardAfterOriginalLeaves",
+        "tests/Game/DisguiseTokenCopyTest.php::testTurnUpInResponseCopiesPrintedResolutionCharacteristics",
+        "tests/Game/DisguiseTokenCopyTest.php::testCopiedWardFeedsExistingTargetTaxWithoutClaimingWardTiming",
+        "tests/Game/DisguiseTokenCopyTest.php::testCopyAndSourceTurnUpRejectInvalidCostsAndTargetsAtomically",
+        "tests/Game/DisguiseTokenCopyTest.php::testNoncopyModifiersAndCountersAreNotCopied",
+        "tests/Game/DisguiseTokenCopyTest.php::testDepartedTargetProducesNoCopy"
+      ],
+      "limits": "Only this cached older record and listed paths. Synthetic copier, targeting spell, movement and modifier probes are not enabling-card certificates. Existing upfront ward targeting-tax behavior is a compatibility check, not correct Ward trigger timing. General Ward-trigger/payment/counter sequencing, other copy factories, cloak/manifest, merged/modal layers, newest printing, whole-card certification and live Discord remain outside. No aggregate recognition scan, corpus import or schema change."
     }
   ],
   "explicitUnsupported": [
@@ -1309,6 +1413,13 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
+    },
+    {
+      "id": "dog-walker-ward-trigger-timing",
+      "cards": [
+        "Dog Walker"
+      ],
+      "scope": "Copied Ward {2} characteristic has scoped evidence, but the engine still uses an upfront targeting tax rather than full triggered Ward timing/payment/counter semantics. No whole-card certificate or general Ward-family claim."
     }
   ],
   "nextFamily": {
@@ -1317,10 +1428,10 @@
       "Quest for Pure Flame"
     ],
     "measuredCandidateCount": 1,
-    "scope": "One complete existing cached ZEN UUID 03fcb278-4971-58a7-860b-9999263c347b selected by exact name; paid damage-trigger/four-counter temporary doubling path UNEXECUTED, not a reproduced gap. No import or corpus walk.",
+    "scope": "The existing Pure Flame/Recover family is already owned by PR #444/#445; do not duplicate it. This independent disguise-copy slice is complete locally pending exact-head CI/root review. No new corpus lead is selected.",
     "acceptance": [
-      "Establish paid R source and actual controlled-source damage to an opponent, with optional quest counters and non-opponent/other-controller controls.",
-      "Earn four counters, pay removal/self-sacrifice and test turn-limited doubled damage, expiry, identity, prevention/modifier order and queued replay before support claims."
+      "Review the independent disguise-copy delta and current-head checks, retaining the explicit Ward-timing and whole-card gaps.",
+      "Coordinate further family selection with root; #444/#445 remain separately owned."
     ],
     "deferred": [
       "Dog Walker original rules-evidence gap remains under deferredFamilies.",
@@ -1328,25 +1439,6 @@
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Immutable locally full-tested combined Fading/controller-damage source;final verification-only amend has identical PHP/test bytes. Both published parent evidence sets and shared historical record are preserved.",
-  "deferredFamilies": [
-    {
-      "id": "copy-token-disguise-characteristics",
-      "cards": [
-        "Dog Walker"
-      ],
-      "measuredCandidateCount": 1,
-      "scope": "Deferred evidence gap: complete existing MKM Dog Walker UUID7037c6a6-2329-5e62-a365-ddd83f37d0aa selected by one name from271-card pool. Bounded local docs/fixtures/recovery search found no cached authoritative rules establishing copiable ward. No-network retained; no parser/paid reproduction or runtime-failure claim. Continue independent offline evidence slices.",
-      "acceptance": [
-        "Pin complete selected source and reproduce paid disguise cast/copy; verify current authoritative rules for copiable disguise/ward before changing runtime.",
-        "Test source/copy turn-up independence, ownership, JSON, ward interactions and plain-morph/megamorph/transforming controls."
-      ],
-      "deferred": [
-        "Partner and commander deck rules",
-        "Merged/modal/general copy layers and other factories",
-        "General face-down and continuous/replacement/conditions/APNAP models",
-        "Newest-printing and whole-card certification"
-      ]
-    }
-  ]
+  "engineSourceMeaning": "Immutable independent locally tested disguise-copy runtime/test source. Verification metadata/docs may follow without changing source bytes; all prior recognition and scoped evidence remain historical/separate.",
+  "deferredFamilies": []
 }
