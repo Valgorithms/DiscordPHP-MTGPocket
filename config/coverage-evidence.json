@@ -12,9 +12,9 @@
   "engineSource": "b4de0748f1c5226fbfdcdeffd0699d2ff250deda",
   "validation": {
     "source": "b4de0748f1c5226fbfdcdeffd0699d2ff250deda",
-    "evidenceMeaning": "Private counter foundation. Independently reproduced ability/copy source-movement bugs corrected; Ward upfront tax remains explicitly characterized, not certified.",
+    "evidenceMeaning": "Counter identity foundation. Independently reproduced ability/copy source-movement bugs corrected; Ward upfront tax remains explicitly characterized, not certified.",
     "local": "Full2424tests/63287assertions/2unchangedmissing-pool/rental skips; no failures/errors/warnings/risky; 00:58.905/338MiB. Focused22/138; adjacent518/9581; full nonmutatingPint;ledger18/37;all70pins PASS. PHP8.5.12/512MiB/Xdebugoff/isolated data+temp/original dependencies; full-tested immutable source b4de0748f1c5226fbfdcdeffd0699d2ff250deda. Metadata/docs completion preserves runtime/test/fixture bytes.",
-    "ci": "Not published; no hosted CI for this private foundation. Frozen PR444/445/446 checks do not validate it. Root reviews before any broader integration or publication.",
+    "ci": "Local validation pins immutable source b4de0748f1c5226fbfdcdeffd0699d2ff250deda. Read the current draft PR Checks on GitHub for exact-head hosted acceptance; frozen PR444/445/446 checks do not validate this branch. No live-service acceptance claim.",
     "integration": {
       "prParent": "4797893913967dd38f36e0eda7009f7b50e874f5",
       "mainParent": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
@@ -413,7 +413,7 @@
         "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision."
       },
       "priorGameSourcePin": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
-      "meaning": "Private identity-safe counter foundation only. Ward remains an upfront tax; no scoped card or whole-card certificate added. Frozen PRs444/445/446 excluded.",
+      "meaning": "Identity-safe counter foundation only. Ward remains an upfront tax; no scoped card or whole-card certificate added. Frozen PRs444/445/446 excluded.",
       "cleanCounterBaseline": "Main5707710:2tests/5reachedassertions/2failures; activated-source card and original copied spell wrongly moved to graveyard.",
       "wardCharacterization": "Cached Dog Walker paid disguise on both seats:2tests/28assertions pass documenting retained incorrect upfront tax, not Ward timing support.",
       "baselinePins": {
@@ -438,7 +438,7 @@
         "ward-upfront-characterization.json": "6e8a6b8605873334a719c5308b438b55ae13e225464e8aa814baa62df4a9628b",
         "ward-upfront-clean-characterization.json": "5bfddeba3b4dfc379c8787f5760ab62b66043ec2572d372825617c4ad1d3bf38"
       },
-      "status": "Private unpublished foundation, root review required before broader Ward integration. No hosted CI or card-certification claim.",
+      "status": "Counter identity correction reviewed for draft publication. Broader Ward integration remains outside this slice; read current PR Checks for exact-head hosted acceptance. No card-certification claim.",
       "priorEngineSourceMeaning": "Immutable locally full-tested combined Fading/controller-damage source;final verification-only amend has identical PHP/test bytes. Both published parent evidence sets and shared historical record are preserved.",
       "fullTestedSource": "b4de0748f1c5226fbfdcdeffd0699d2ff250deda",
       "finalEvidence": "Full2424tests/63287assertions/2unchangedmissing-pool/rental skips; no failures/errors/warnings/risky; 00:58.905/338MiB. Focused22/138; adjacent518/9581; full nonmutatingPint;ledger18/37;all70pins PASS."
@@ -1371,7 +1371,7 @@
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Private identity-safe stack-entry counter foundation; historical main validation and prior Game pin preserved under validation.wardCounterFoundation. No new scoped card or whole-card certificate.",
+  "engineSourceMeaning": "Identity-safe stack-entry counter foundation; historical main validation and prior Game pin preserved under validation.wardCounterFoundation. No new scoped card or whole-card certificate.",
   "deferredFamilies": [
     {
       "id": "copy-token-disguise-characteristics",

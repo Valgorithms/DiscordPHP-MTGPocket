@@ -1,6 +1,6 @@
-# Private Ward counter foundation
+# Stack-entry counter identity foundation
 
-This private slice is based on main `570771053d31f16d700178d9fbc742da37e9106d`. It does not integrate or modify #444, #445 or #446. It corrects independently reproduced stack-entry identity bugs and preserves the still-incorrect upfront Ward policy as an explicit characterization. No full Ward trigger system, recognition rescan or whole-card certificate is added.
+This independently reviewed slice is based on main `570771053d31f16d700178d9fbc742da37e9106d`. It does not integrate or modify #444, #445 or #446. It corrects independently reproduced stack-entry identity bugs and preserves the still-incorrect upfront Ward policy as an explicit characterization. No full Ward trigger system, recognition rescan or whole-card certificate is added.
 
 ## Reproduced behavior and bounded correction
 
@@ -34,6 +34,6 @@ Ordinary trigger/payment preparation can proceed on main. #444/#445 overlap at `
 
 Before implementation, review the fixed-cost/ordering boundary and public ability-counter target-kind scope. Preserve historical recognition and existing evidence; update upfront-tax tests deliberately only when the corresponding gameplay behavior changes.
 
-## Private immutable-source verification
+## Immutable-source verification (historical local checkpoint)
 
-Full-tested source: `b4de0748f1c5226fbfdcdeffd0699d2ff250deda`. Focused 22 tests / 138 assertions; adjacent 518 / 9581; full offline 2424 / 63287, two unchanged missing-pool/rental skips and no failures/errors/warnings/risky tests, 00:58.905 / 338 MiB. Full nonmutating Pint, ledger 18 / 37 and all 70 normalized source pins pass. The later metadata/docs completion leaves runtime/test/fixture bytes identical. No hosted CI, publication, ready transition, merge or live bot action. Historic recognition and all prior scoped evidence remain unchanged.
+Full-tested source: `b4de0748f1c5226fbfdcdeffd0699d2ff250deda`. Focused 22 tests / 138 assertions; adjacent 518 / 9581; full offline 2424 / 63287, two unchanged missing-pool/rental skips and no failures/errors/warnings/risky tests, 00:58.905 / 338 MiB. Full nonmutating Pint, ledger 18 / 37 and all 70 normalized source pins pass. The later metadata/docs completion leaves runtime/test/fixture bytes identical. Those local runs preceded draft publication. Read the draft PR Checks on GitHub for current exact-head hosted acceptance; older green checks do not validate a later head. No ready transition, merge or live bot action is authorized here. Historic recognition and all prior scoped evidence remain unchanged.
