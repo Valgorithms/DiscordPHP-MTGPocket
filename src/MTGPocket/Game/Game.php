@@ -5630,10 +5630,13 @@ final class Game
                 // An unmerged transforming copy keeps both faces and enters on the same face.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     $copyCard = $affected->printed()->card;
-                    if ($affected->faceDown && in_array($affected->printed()->morph['kind'] ?? null, ['morph', 'megamorph'], true)) {
-                        // Morph and megamorph copy their nameless 2/2 characteristics, not the
-                        // printed card or our synthetic turn-face-up action (708.2).
-                        $copyCard = array_replace($affected->printed()->faceDownCard(), ['name' => '', 'text' => '']);
+                    if ($affected->faceDown && in_array($affected->printed()->morph['kind'] ?? null, ['morph', 'megamorph', 'disguise'], true)) {
+                        // Copy face-down characteristics, not our synthetic turn-up action.
+                        // Disguise's ward is copiable (702.168b, 708.2).
+                        $copyCard = array_replace($affected->printed()->faceDownCard(), [
+                            'name' => '',
+                            'text' => $affected->printed()->morph['kind'] === 'disguise' ? 'Ward {2}' : '',
+                        ]);
                     }
                     $copy = $this->createToken(
                         $copyCard,
