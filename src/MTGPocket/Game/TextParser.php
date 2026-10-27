@@ -1207,7 +1207,7 @@ final class TextParser
 
             return true;
         }
-        // Recover (rule 702.59): see Game::recover().
+        // Recover (rule 702.59): see RecoverResolution (queued graveyard trigger).
         if (preg_match('/^Recover '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['recover'] = $m[1];
 

@@ -164,6 +164,10 @@ final class AnimatedCreatureDeathTest extends GameTestCase
         $this->reload();
         $this->resolveAll();
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($id));
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($recover));
+        $choice = $this->game->choiceAwaiting();
+        $this->assertSame('optional_recover', $choice['type']);
+        $this->game->chooseRecover(0, $choice['id'], 'accept');
         $this->assertSame(GameObject::HAND, $this->zone($recover));
     }
 }

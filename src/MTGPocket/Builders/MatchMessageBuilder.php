@@ -361,6 +361,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'damage_order' => 'choose the next replacement or prevention for damage to '.$game->describeTarget($game->choiceAwaiting()['target']),
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
+                'optional_recover' => 'choose whether to pay recover '.$game->choiceAwaiting()['cost'].' for '.$game->choiceAwaiting()['label'],
                 'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
                 'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
                 'optional_source_counter' => 'choose whether to put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on '.$game->choiceAwaiting()['label'],
@@ -698,6 +699,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'optional_recover':
+                $optional = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('recover', (string) $optional['id'], 'accept'))->setLabel('Pay recover '.$optional['cost'])->setDisabled(! $game->canPayRecover($seat)))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('recover', (string) $optional['id'], 'decline'))->setLabel('Decline: exile original card')));
+                break;
+
             case 'optional_red_goblin':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
@@ -922,6 +930,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'damage_order' => 'Choose what applies next to the damage to **'.$game->describeTarget($game->choiceAwaiting()['target']).'**. Damage waits until all replacement and prevention choices are complete.',
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
+            'optional_recover' => '**'.$game->choiceAwaiting()['label'].'**: you may pay '.$game->choiceAwaiting()['cost'].' to return the original graveyard card to your hand. Otherwise, exile it. This does not target.',
             'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
             'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
             'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on this permanent. Only the original battlefield incarnation can receive it; this does not target.',

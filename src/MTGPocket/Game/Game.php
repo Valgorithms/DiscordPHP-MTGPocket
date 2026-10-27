@@ -42,6 +42,7 @@ final class Game
 {
     use DamageResolution;
     use PaidActionContinuation;
+    use RecoverResolution;
 
     public const string MULLIGAN = 'mulligan';
     public const string PLAYING = 'playing';
@@ -89,9 +90,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 17 adds bounded resumable damage and finite turn effects; older versions migrate them empty.
+     * Version 18 adds explicit Recover choices. Version 17 adds bounded resumable damage; older versions migrate it empty.
      */
-    public const int STATE_VERSION = 17;
+    public const int STATE_VERSION = 18;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -3444,20 +3445,6 @@ final class Game
         return null;
     }
 
-    private function recover(GameObject $card): void
-    {
-        $payment = $this->payFor($card->owner, $card->printed()->altCosts['recover']);
-        if ($payment !== null) {
-            $this->pay($card->owner, $payment);
-            $this->log("{$this->players[$card->owner]->name} pays recover and returns {$card->name()} to their hand.");
-            $this->moveTo($card, GameObject::HAND);
-
-            return;
-        }
-        $this->log("{$card->name()} is exiled (recover wasn't paid).");
-        $this->moveTo($card, GameObject::EXILE);
-    }
-
     private function whyNotTransmute(int $seat, int $id): ?string
     {
         $object = $this->objects[$id] ?? null;
@@ -4740,6 +4727,20 @@ final class Game
                 }
                 $this->gainLife($controller, count($opponents));
                 $this->log("{$this->players[$controller]->name} extorts.");
+                break;
+
+            case 'optional_recover':
+                $this->pendingChoice = [
+                    'type' => 'optional_recover', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+                    'cost' => $source->printed()->altCosts['recover'],
+                    'label' => $source->name(), 'options' => ['accept', 'decline'],
+                ];
+
+                return true;
+
+            case 'recover_return':
+                $this->finishRecover($source, $sourceIncarnation ?? $source->incarnation, true);
                 break;
 
             case 'optional_red_goblin':
@@ -9240,7 +9241,7 @@ final class Game
         foreach ($doomed as $object) {
             $characteristics[$object->id] = new DepartureCharacteristics($object->definition(), $this->isCreature($object), $this->power($object), $this->toughness($object), $object->battlefieldManaValue());
         }
-        $batch = new DeathObserverBatch($this->permanents(), $doomed, $characteristics);
+        $batch = new DeathObserverBatch($this->permanents(), $doomed, $characteristics, $this->recoverObservers());
         $previous = $this->deathObserverBatch;
         $this->deathObserverBatch = $batch;
         try {
@@ -10141,6 +10142,7 @@ final class Game
             ];
         }
         $dies = $toGraveyard && $departingCharacteristics->isCreature;
+        $recoverObservers = ! $dies ? [] : ($selectedCharacteristics !== null ? $this->deathObserverBatch->recoverObservers : $this->recoverObservers());
         $plusCounters = $object->counter('+1/+1');
         $diedPower = $dies ? $this->power($object) : 0;
         $damagedBy = $object->damagedBy;
@@ -10212,12 +10214,8 @@ final class Game
             if (! ($this->deathObserverBatch?->record($death) ?? false)) {
                 $this->notifyCreatureDeath($death, $this->permanents());
             }
-            // Recover (rule 702.59): paid at once whenever its owner can; otherwise exiled.
-            foreach ($owner->graveyard as $other) {
-                if ($other !== $object->id && isset($this->objects[$other]->printed()->altCosts['recover'])) {
-                    $this->recover($this->objects[$other]);
-                }
-            }
+            // Recover observes the old graveyard, then resolves through the stack.
+            $this->queueRecover($object->owner, $recoverObservers);
             // Sengir Vampire: `Whenever a creature dealt damage by CARDNAME this turn dies, …`
             foreach ($damagedBy as $sourceId) {
                 if (($this->objects[$sourceId] ?? null)?->zone === GameObject::BATTLEFIELD) {
@@ -11723,7 +11721,7 @@ final class Game
                 }
             }
         }
-        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin', 'optional_death_draw', 'optional_basic_land_search'], true)) {
+        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin', 'optional_death_draw', 'optional_basic_land_search', 'optional_recover'], true)) {
             $choice = $game->pendingChoice;
             $counter = $choice['type'] === 'optional_source_counter';
             if ($counter) {
@@ -11736,13 +11734,17 @@ final class Game
             }
             $untap = $choice['type'] === 'optional_source_untap';
             $goblin = $choice['type'] === 'optional_red_goblin';
+            $recover = $choice['type'] === 'optional_recover';
+            if ($recover) {
+                $game->validateRecoverChoice($choice);
+            }
             $deathDraw = $choice['type'] === 'optional_death_draw';
             $basicSearch = $choice['type'] === 'optional_basic_land_search';
-            $choiceKind = $basicSearch ? 'basic-land-search' : ($deathDraw ? 'death-draw' : ($goblin ? 'red-payment' : ($untap ? 'source-untap' : ($counter ? 'source-counter' : 'life'))));
+            $choiceKind = $recover ? 'recover' : ($basicSearch ? 'basic-land-search' : ($deathDraw ? 'death-draw' : ($goblin ? 'red-payment' : ($untap ? 'source-untap' : ($counter ? 'source-counter' : 'life')))));
             $untargeted = $choice['type'] !== 'optional_life_loss';
             $resume = $choice['resume'] ?? null;
             $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < ($basicSearch ? 14 : ($deathDraw ? 13 : ($goblin ? 12 : ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8)))))) || $game->stage !== self::PLAYING || $source === null ||
+            if ($version < ($recover ? 18 : ($basicSearch ? 14 : ($deathDraw ? 13 : ($goblin ? 12 : ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8))))))) || $game->stage !== self::PLAYING || $source === null ||
                 ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
                 ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
                 ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
@@ -11868,6 +11870,9 @@ final class Game
         if ($pendingDamage !== null && (! is_int($data['nextChoiceId'] ?? null) || $data['nextChoiceId'] < 1
             || $data['nextChoiceId'] > PHP_INT_MAX - DamageBatch::MAX_EVENTS * DamageBatch::MAX_OPERATIONS)) {
             throw new GameException('Invalid saved damage choice identity.');
+        }
+        if ($version < 18 && ($game->pendingChoice['resume']['item']['effects'] ?? null) === [['type' => 'optional_recover']]) {
+            throw new GameException('Recover continuations require saved game schema 18.');
         }
         $game->validateDamageState();
 

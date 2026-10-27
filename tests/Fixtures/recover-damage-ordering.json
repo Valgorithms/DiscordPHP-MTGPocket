@@ -1,0 +1,70 @@
+{
+  "sources": {
+    "CSP": {
+      "setCode": "CSP",
+      "setName": "Coldsnap",
+      "releaseDate": "2006-07-21",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723093,
+      "sourcePoolSha256": "b5c1a9c3cf20afeda999baaa7e11c75ee6088a52f2641b898c720255956d847e"
+    },
+    "10E": {
+      "setCode": "10E",
+      "setName": "Tenth Edition",
+      "releaseDate": "2007-07-13",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723093,
+      "sourcePoolSha256": "03ac62a3f04d0866b5b2f34322c27fd8701bd65447c3b249253ab73b2769205e"
+    }
+  },
+  "cards": [
+    {
+      "uuid": "5eb15421-57b2-5c71-b4d7-7a3157be63fa",
+      "name": "Grim Harvest",
+      "number": "58",
+      "rarity": "common",
+      "colors": [
+        "B"
+      ],
+      "manaValue": 2,
+      "type": "Instant",
+      "scryfallId": "bdb1972f-2ef7-4fe2-8c8e-ab07f48a3176",
+      "manaCost": "{1}{B}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Return target creature card from your graveyard to your hand.\nRecover {2}{B} (When a creature is put into your graveyard from the battlefield, you may pay {2}{B}. If you do, return this card from your graveyard to your hand. Otherwise, exile this card.)",
+      "keywords": [
+        "Recover"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "B"
+      ]
+    },
+    {
+      "uuid": "0cc99e92-fbb3-52d1-909c-ee619996e795",
+      "name": "Underground River",
+      "number": "362",
+      "rarity": "rare",
+      "colors": [],
+      "manaValue": 0,
+      "type": "Land",
+      "scryfallId": "8c298bf7-2514-43d4-a285-1386d6ba0835",
+      "types": [
+        "Land"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "{T}: Add {C}.\n{T}: Add {U} or {B}. This land deals 1 damage to you.",
+      "layout": "normal",
+      "colorIdentity": [
+        "B",
+        "U"
+      ],
+      "manaCost": null
+    }
+  ]
+}
