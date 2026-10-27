@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
+  "engineSource": "e12ba8ba5666b3ad8638df2d723d8e82258dda8a",
   "validation": {
-    "source": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
-    "evidenceMeaning": "Pure Flame bounded resumable damage candidate; all historical validation retained separately. Current pins identify this candidate. Scoped gameplay is separate from recognition and whole-card certification.",
-    "local": "Immutable full-tested feature source adf35df5b1ba727a1903e6762807ae4e9cfcc20e: 2,481 tests / 64,174 assertions, two expected missing-pool/rental skips and no risky tests; 01:06.266 / 352 MiB. Focused: 97 tests / 1,062 assertions. Full nonmutating Pint and all 73 normalized PHP pins pass. PHP 8.5.12, 512 MiB limit, Xdebug off, isolated data/temp and existing dependencies. Read-only native Windows DNS configuration access was required by fixture-backed importer constructors; no live requests, dependency edits or deprecation suppression. The final unpublished amend changes verification metadata/docs only; production/test bytes remain identical. Exact final-head hosted acceptance is pending publication.",
-    "ci": "PENDING exact final draft head; root retains architecture review, merge and post-merge decisions.",
+    "source": "e12ba8ba5666b3ad8638df2d723d8e82258dda8a",
+    "evidenceMeaning": "Private one-line Fog correction on frozen PR #444, separate from the frozen Recover candidate. Recognition, scoped card evidence and whole-card certificates are unchanged. Current pins identify this corrected source; the previous validation fields and changed Game pin are retained in fogReview.",
+    "local": "Immutable Fog source e12ba8ba5666b3ad8638df2d723d8e82258dda8a: full offline 2491 tests / 64301 assertions, two unchanged missing-data skips, no failures/errors/warnings/risky tests; 00:59.978 / 352 MiB. Focused identical-base/head comparison: base 570771053d31f16d700178d9fbc742da37e9106d passed 10 tests / 127 assertions, frozen b0941ed had five failures / 108 reached assertions, corrected source passed 10 / 127; adjacent 156 tests / 1934 assertions passed. Full nonmutating Pint and all 75 current source pins pass. PHP 8.5.12 / 512 MiB / Xdebug off / isolated data+temp / original dependencies. Native read-only Windows DNS configuration access was used by fixture client construction, with no live bot/card requests, vendor edits or suppression. Final verification metadata does not change runtime/test bytes. Previous validation and changed Game hash remain in fogReview.",
+    "ci": "PRIVATE UNPUBLISHED; root review required before publication. Frozen #444 and Recover heads remain unchanged.",
     "historicalValidation": {
       "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
       "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
@@ -437,12 +437,43 @@
       "oldEvidenceExact": true,
       "utilityBodiesTokenIdentical": 10,
       "initialCommitApproval": "First action rejected before execution over possible unrelated edits; new isolation/token/provenance audits resolved the concern and one normal retry succeeded. No bypass or uncertain write."
+    },
+    "fogReview": {
+      "baseHead": "b0941ed43b4a95c08ba83c1f1f82793c9c212f01",
+      "baselineEngineSource": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
+      "baselineValidation": {
+        "source": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
+        "evidenceMeaning": "Pure Flame bounded resumable damage candidate; all historical validation retained separately. Current pins identify this candidate. Scoped gameplay is separate from recognition and whole-card certification.",
+        "local": "Immutable full-tested feature source adf35df5b1ba727a1903e6762807ae4e9cfcc20e: 2,481 tests / 64,174 assertions, two expected missing-pool/rental skips and no risky tests; 01:06.266 / 352 MiB. Focused: 97 tests / 1,062 assertions. Full nonmutating Pint and all 73 normalized PHP pins pass. PHP 8.5.12, 512 MiB limit, Xdebug off, isolated data/temp and existing dependencies. Read-only native Windows DNS configuration access was required by fixture-backed importer constructors; no live requests, dependency edits or deprecation suppression. The final unpublished amend changes verification metadata/docs only; production/test bytes remain identical. Exact final-head hosted acceptance is pending publication.",
+        "ci": "PENDING exact final draft head; root retains architecture review, merge and post-merge decisions."
+      },
+      "baselineGameSha256": "fa6cb1a8a64a0e798a5465a1987112871c6ecd37bdf882d97ba0d068592f242a",
+      "production": "One conditional in applyDamage; preserve the synchronous fast path and existing unpreventable/prevention=false semantics. No parser behavior or card-scope changes.",
+      "limits": "Cached M10 Fog paid at {G}; seeded complete-record creatures and explicit resource/unpreventable status probes only. No whole-card or enabling-card certificate. Root retains publication/merge decisions.",
+      "receipts": [
+        "fog-frozen-red.json",
+        "fog-frozen-red.stdout.txt",
+        "fog-base-control.json",
+        "fog-base-control.stdout.txt",
+        "fog-frozen-baseline-pins.json",
+        "fog-corrected-focused.json",
+        "fog-adjacent.json"
+      ],
+      "receiptHashes": {
+        "fog-frozen-red.json": "a7955c39e88b0d839ed53bba9d08b15633b1cae1863bcb10004f195384e9ee57",
+        "fog-frozen-red.stdout.txt": "761a74d547609d5086bc3136f071522b485d6a66a2462137f40597f8a21d7b3a",
+        "fog-base-control.json": "1fc2b21fab6da8bbd8d0ee785cba2ee6fa6c061cf61b507b9dd72e9118db2d45",
+        "fog-base-control.stdout.txt": "23117a163f8674b8b41f27871199bdb5aace3bac22effc29a77801e502369c72",
+        "fog-frozen-baseline-pins.json": "71657c474f3abd4840919901cdaf4669ce2aeecd1b65e0ff05a2dc4ad11216c0",
+        "fog-final-full.json": "ab561332d9e56811323f9a89a325b0f99b92651c2c868b5083ea08fdbfd9374a",
+        "fog-final-pint.json": "78a3571db9515f76e6a5fa214b37a38bae0e1c52890c58ea4f1241a691557b38"
+      }
     }
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "3f6f2a460b2020c3e868a7e687c5abf56b74c83ab4ae7b721377c5c8f40fb88b",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "fa6cb1a8a64a0e798a5465a1987112871c6ecd37bdf882d97ba0d068592f242a",
+    "src/MTGPocket/Game/Game.php": "9af605e0b6c33e08ca9dce842f245353d066c5c9902e0cc3e1dfc609d6581543",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -512,7 +543,9 @@
     "src/MTGPocket/Game/PaidActionContinuation.php": "11c1d8c4132875b8f955453c7685c5058705008ba9290a6651d9c60f9e45ab7d",
     "tests/Game/DamageBatchTest.php": "c5ab02bde083db1d8f6ceb9feccb26afa5fe136fb5c59d94148776f861021576",
     "tests/Game/PaidDamageContinuationTest.php": "0ba1fd90eaad520d2a3d41bc86f304cf0282f92f7ac9ec8028fdab758890070c",
-    "tests/Game/QuestPureFlameTest.php": "cf72151dc6b44c5ae65097179cf45f3b4f16dee09a97d8680abfdea6b453a001"
+    "tests/Game/QuestPureFlameTest.php": "cf72151dc6b44c5ae65097179cf45f3b4f16dee09a97d8680abfdea6b453a001",
+    "tests/Game/FogCombatFastPathTest.php": "c814294530da098533068e47e122ca8cdbf3e16a51d54786623df0cd088ae48b",
+    "tests/Fixtures/fog-combat-fast-path.json": "c3e6ce305ee2d0287f4722b467209c271d6ab7e16e27446f44ce70e0d36689b1"
   },
   "scopedEvidence": [
     {
