@@ -1475,6 +1475,71 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
     }
 
+    /** @dataProvider recoverOptions */
+    public function testRecoverPanelPersistsExactOptionalPayment(string $option, bool $payable): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $harvest = null;
+        $mana = [];
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, $payable, &$harvest, &$mana): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/recover-damage-ordering.json'), true, flags: JSON_THROW_ON_ERROR);
+            $card = array_values(array_filter($fixture['cards'], fn (array $card) => $card['name'] === 'Grim Harvest'))[0];
+            $harvest = $game->addCard($seat, $card, GameObject::GRAVEYARD)->id;
+            if ($payable) {
+                for ($n = 0; $n < 3; $n++) {
+                    $mana[] = $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Swamp'), GameObject::BATTLEFIELD)->id;
+                }
+            }
+            // Existing engine primitive isolates the persisted action path.
+            $creature = $game->addCard($seat, ['name' => 'Panel death boundary', 'type' => 'Creature', 'power' => '1', 'toughness' => '1'], GameObject::BATTLEFIELD);
+            (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($game, $creature, GameObject::GRAVEYARD);
+            (new \ReflectionMethod(Game::class, 'settle'))->invoke($game);
+        });
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_recover', $choice['type']);
+        $this->assertStringContainsString('pay recover {2}{B}', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player));
+        $this->assertStringContainsString('Pay recover {2}{B}', $json);
+        $this->assertStringContainsString('Decline: exile original card', $json);
+        $this->assertSame(! $payable, $this->sacrificeComponent($match, $player, 'recover:'.$choice['id'].':accept')['disabled']);
+        $this->assertStringNotContainsString('recover:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, (string) $choice['id'], $option], [$player, (string) ($choice['id'] + 1), $option], [$player, (string) $choice['id'], 'both']] as [$actor, $choiceId, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'recover', [$choiceId, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        if (! $payable) {
+            $this->assertException(fn () => $panel->run($match->id, $player, 'recover', [(string) $choice['id'], 'accept']), 'cannot pay');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'recover', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $this->assertSame($option === 'accept' ? GameObject::HAND : GameObject::EXILE, $match->game->objects[$harvest]->zone);
+        foreach ($mana as $id) {
+            $this->assertSame($option === 'accept', $match->game->objects[$id]->tapped);
+        }
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'recover', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    public static function recoverOptions(): array
+    {
+        return [['accept', true], ['decline', true], ['decline', false]];
+    }
+
     public static function redGoblinOptions(): array
     {
         return [['accept', true], ['decline', true], ['decline', false]];

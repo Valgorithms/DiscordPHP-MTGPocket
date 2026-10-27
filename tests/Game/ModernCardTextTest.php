@@ -7332,13 +7332,19 @@ final class ModernCardTextTest extends GameTestCase
         $game->cast(0, $this->put(0, 'Terror', GameObject::HAND), 0, ["o:{$bears->id}"]);
         $this->resolve();
         $this->assertSame(GameObject::GRAVEYARD, $bears->zone);
-        $this->assertSame(GameObject::HAND, $game->objects[$recover]->zone, 'Paid {1}.');
+        $this->assertSame(GameObject::GRAVEYARD, $game->objects[$recover]->zone);
+        $this->resolve();
+        $game->chooseRecover(0, $game->choiceAwaiting()['id'], 'accept');
+        $this->assertSame(GameObject::HAND, $game->objects[$recover]->zone, 'Explicitly paid {1} at trigger resolution.');
 
         $again = $this->put(0, 'Recover Lite', GameObject::GRAVEYARD);
         $bears = $game->addCard(0, self::card('Grizzly Bears'), GameObject::BATTLEFIELD);
         $this->lands(0, 'Swamp', 2);
         $game->cast(0, $this->put(0, 'Terror', GameObject::HAND), 0, ["o:{$bears->id}"]);
         $this->resolve();
+        $this->resolve();
+        $this->assertFalse($game->canPayRecover(0));
+        $game->chooseRecover(0, $game->choiceAwaiting()['id'], 'decline');
         $this->assertSame(GameObject::EXILE, $game->objects[$again]->zone, 'No mana left to pay.');
     }
 

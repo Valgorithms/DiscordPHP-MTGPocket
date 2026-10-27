@@ -38,8 +38,9 @@ final class DeathObserverBatch
      * @param GameObject[] $observers
      * @param GameObject[] $doomed
      * @param array<int, DepartureCharacteristics> $characteristics
+     * @param array<int, array{object: int, incarnation: int, owner: int, cost: string}> $recoverObservers
      */
-    public function __construct(array $observers, array $doomed, array $characteristics)
+    public function __construct(array $observers, array $doomed, array $characteristics, public readonly array $recoverObservers = [])
     {
         $this->observers = array_map(fn (GameObject $object) => clone $object, $observers);
         $this->characteristics = $characteristics;

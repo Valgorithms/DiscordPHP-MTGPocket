@@ -349,6 +349,7 @@ trait DamageResolution
                     throw new GameException('Invalid saved damage target continuation.');
                 }
             }
+            $this->validateRecoverDamageResume($resume);
             if (array_filter($events, fn (array $event) => $event['combat']) !== []) {
                 throw new GameException('Combat damage in a spell-resolution continuation.');
             }
