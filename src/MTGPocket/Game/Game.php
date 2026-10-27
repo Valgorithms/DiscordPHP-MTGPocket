@@ -93,10 +93,11 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
+     * Version 21 adds the exact half-life Recover cost; older mana Recover remains compatible.
      * Version 20 adds default-off fixed Ward and bounded controller-selected trigger groups; 19 pins already-paid targets.
      * Version 18 adds explicit Recover choices. Version 17 adds bounded resumable damage; older versions migrate it empty.
      */
-    public const int STATE_VERSION = 20;
+    public const int STATE_VERSION = 21;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -12024,6 +12025,7 @@ final class Game
         if ($version < 18 && ($game->pendingChoice['resume']['item']['effects'] ?? null) === [['type' => 'optional_recover']]) {
             throw new GameException('Recover continuations require saved game schema 18.');
         }
+        $game->validateRecoverSchema($version);
         $game->restoreWardExecutionState($data['wardExecution'] ?? null, $version);
         $game->validateDamageState();
 

@@ -48,11 +48,23 @@ trait RecoverResolution
         }
     }
 
+    /** Preserve mana Recover; the one symbolic life cost uses the existing life-payment planner. */
+    private function recoverPayment(int $seat, string $cost): ?array
+    {
+        if ($cost === CardDefinition::RECOVER_HALF_LIFE) {
+            $life = max(0, $this->players[$seat]->life);
+
+            return $this->payFor($seat, '', intdiv($life, 2) + $life % 2);
+        }
+
+        return $this->payFor($seat, $cost);
+    }
+
     /** Whether the original trigger controller can pay, even if its source left. */
     public function canPayRecover(int $seat): bool
     {
         return $this->stage === self::PLAYING && ($this->pendingChoice['type'] ?? null) === 'optional_recover'
-            && $this->pendingChoice['seat'] === $seat && $this->payFor($seat, $this->pendingChoice['cost']) !== null;
+            && $this->pendingChoice['seat'] === $seat && $this->recoverPayment($seat, $this->pendingChoice['cost']) !== null;
     }
 
     /** Resolve an exact Recover decision; nested damage resumes after already-paid costs. */
@@ -63,7 +75,7 @@ trait RecoverResolution
             || $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
             throw new GameException('That recover choice is no longer available to you.');
         }
-        $payment = $option === 'accept' ? $this->payFor($seat, $choice['cost']) : null;
+        $payment = $option === 'accept' ? $this->recoverPayment($seat, $choice['cost']) : null;
         if ($option === 'accept' && $payment === null) {
             throw new GameException('You cannot pay the recover cost.');
         }
@@ -119,9 +131,29 @@ trait RecoverResolution
         }
         $source = $this->objects[$item['object']];
         if (! self::isAbility($item) || $source->owner !== $item['controller']
-            || ! isset($source->printed()->altCosts['recover']) || $item['targets'] !== []
+            || ! isset($source->printed()->altCosts['recover']) || $source->printed()->altCosts['recover'] === CardDefinition::RECOVER_HALF_LIFE || $item['targets'] !== []
             || $resume['self'] !== null || $resume['steps'] !== [[['type' => 'recover_return'], null]]) {
             throw new GameException('Invalid saved paid recover continuation.');
+        }
+    }
+
+    /** Older executables could not produce a half-life Recover entry or pending payment. */
+    private function validateRecoverSchema(int $version): void
+    {
+        if ($version >= 21) {
+            return;
+        }
+        if (($this->pendingChoice['type'] ?? null) === 'optional_recover'
+            && ($this->pendingChoice['cost'] ?? null) === CardDefinition::RECOVER_HALF_LIFE) {
+            throw new GameException('Half-life Recover requires saved game schema 21.');
+        }
+        foreach ([...$this->pendingTriggers, ...$this->stack, $this->pendingChoice['resume']['item'] ?? []] as $entry) {
+            $id = $entry['object'] ?? $entry['source'] ?? null;
+            $source = is_int($id) ? ($this->objects[$id] ?? null) : null;
+            if (($entry['effects'][0]['type'] ?? null) === 'optional_recover'
+                && ($source?->printed()->altCosts['recover'] ?? null) === CardDefinition::RECOVER_HALF_LIFE) {
+                throw new GameException('Half-life Recover requires saved game schema 21.');
+            }
         }
     }
 

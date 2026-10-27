@@ -28,6 +28,9 @@ use MTGPocket\Game\Mana\ManaCost;
  */
 final class CardDefinition
 {
+    /** One exact symbolic Recover cost; not a general dynamic-cost language. */
+    public const string RECOVER_HALF_LIFE = 'half your life, rounded up';
+
     /**
      * Keyword abilities the engine applies.
      *

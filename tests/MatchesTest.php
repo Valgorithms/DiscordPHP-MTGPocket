@@ -1535,6 +1535,53 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
     }
 
+    /** @dataProvider optionalLifeOptions */
+    public function testGarzaHalfLifeRecoverPanelPersistsExactOptionalPayment(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $assassin = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$assassin): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/garza-assassin-recover.json'), true, flags: JSON_THROW_ON_ERROR);
+            $card = array_values(array_filter($fixture['cards'], fn (array $card) => $card['name'] === "Garza's Assassin"))[0];
+            $assassin = $game->addCard($seat, $card, GameObject::GRAVEYARD)->id;
+            $game->players[$seat]->life = 19;
+            // Panel isolation only: the separate gameplay regression pays both creature casts and sacrifice.
+            $creature = $game->addCard($seat, ['name' => 'Panel death boundary', 'type' => 'Creature', 'power' => '1', 'toughness' => '1'], GameObject::BATTLEFIELD);
+            (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($game, $creature, GameObject::GRAVEYARD);
+            (new \ReflectionMethod(Game::class, 'settle'))->invoke($game);
+        });
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_recover', $choice['type']);
+        $this->assertStringContainsString('pay recover half your life, rounded up', MatchMessageBuilder::waiting($match)['text']);
+        $this->assertStringContainsString('Pay recover half your life, rounded up', json_encode(MatchMessageBuilder::actions($match, $player)));
+        $this->assertFalse($this->sacrificeComponent($match, $player, 'recover:'.$choice['id'].':accept')['disabled']);
+        $this->assertStringNotContainsString('recover:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, $choice['id'], $option], [$player, $choice['id'] + 1, $option], [$player, $choice['id'], 'both']] as [$actor, $id, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'recover', [(string) $id, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'recover', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $this->assertSame($option === 'accept' ? 9 : 19, $match->game->players[$seat]->life);
+        $this->assertSame($option === 'accept' ? GameObject::HAND : GameObject::EXILE, $match->game->objects[$assassin]->zone);
+        $this->assertNull($match->game->choiceAwaiting());
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'recover', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
     public static function recoverOptions(): array
     {
         return [['accept', true], ['decline', true], ['decline', false]];
