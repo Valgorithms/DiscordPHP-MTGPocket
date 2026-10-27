@@ -54,6 +54,13 @@ trait WardObservation
         if (! $this->wardObservationEnabled) {
             return null;
         }
+
+        return $this->captureWardSnapshot($targets, $payer);
+    }
+
+    /** Shared read-only capture; functional execution never reads diagnostic records or enablement. */
+    private function captureWardSnapshot(array $targets, int $payer): array
+    {
         $pins = array_map(fn (string $target) => preg_match('/^o:[0-9]+:[0-9]+$/D', $target)
             ? $target : $this->pinTarget($target), $targets);
         $prepared = ['targets' => $pins, 'instances' => [], 'held' => []];

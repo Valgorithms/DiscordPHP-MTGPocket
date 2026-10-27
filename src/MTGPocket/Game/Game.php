@@ -41,6 +41,8 @@ use Random\Randomizer;
 final class Game
 {
     use WardObservation;
+    use WardExecution;
+    use TriggerOrdering;
     use DamageResolution;
     use PaidActionContinuation;
     use RecoverResolution;
@@ -91,9 +93,10 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
+     * Version 20 adds default-off fixed Ward and bounded controller-selected trigger groups; 19 pins already-paid targets.
      * Version 18 adds explicit Recover choices. Version 17 adds bounded resumable damage; older versions migrate it empty.
      */
-    public const int STATE_VERSION = 19;
+    public const int STATE_VERSION = 20;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -565,6 +568,7 @@ final class Game
             }
         }
         [$this->stack, $this->pendingTriggers, $this->attackers, $this->blockers] = [[], [], [], []];
+        $this->triggerOrdering = null;
         $this->log('The turn ends.');
         $this->enterStep(Step::Cleanup);
     }
@@ -2247,6 +2251,19 @@ final class Game
      */
     private function wardCost(array $targets, int $seat, bool $spell = true): array
     {
+        if ($this->wardExecutionEnabled) {
+            $mana = '';
+            foreach ($spell ? array_unique($targets) : [] as $target) {
+                $object = $this->targetObject($target);
+                if ($object !== null && $object->zone === GameObject::BATTLEFIELD && $object->controller !== $seat) {
+                    foreach ($object->definition()->targetingTaxes as $tax) {
+                        $mana .= $tax['mana'];
+                    }
+                }
+            }
+
+            return [$mana, 0, 0];
+        }
         $mana = '';
         $life = $discard = 0;
         foreach ($targets as $target) {
@@ -2403,6 +2420,7 @@ final class Game
         $this->checkTargets($kinds, $targets, $seat, $card->name, $object, $effects);
         $targets = array_map(fn (string $target) => $this->pinTarget($target), $targets);
         $observation = $this->prepareWardObservation($targets, $seat);
+        $execution = $this->prepareWardExecution($targets, $seat);
 
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($targets, $seat);
         if ($wardDiscard > count($this->players[$seat]->hand) - (in_array($id, $this->players[$seat]->hand, true) ? 1 : 0)) {
@@ -2415,7 +2433,8 @@ final class Game
         }
         $after = ['kind' => 'cast', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
             'x' => $x, 'targets' => $targets, 'options' => $options, 'payment' => $payment,
-            'revealed' => $revealed?->id, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount];
+            'revealed' => $revealed?->id, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount]
+            + ($execution === null ? [] : ['wardExecution' => $execution]);
         if ($this->pay($seat, $payment, $after)) {
             $this->pendingPaidWardObservation = $observation;
 
@@ -2527,6 +2546,7 @@ final class Game
             // Splice onto Arcane: the spliced cards' effects, copied as it is cast (rule 702.47b).
             'spliced' => $this->splicedEffects($options['splice'])]);
         $this->commitWardObservation($observation, $committed);
+        $this->commitWardExecution($after['wardExecution'] ?? null, $committed);
         if ($options['alt'] === 'warp') {
             $this->warpedTurn = $this->turn;
         }
@@ -2844,6 +2864,7 @@ final class Game
             return null;
         }
         $observation = $this->prepareWardObservation($item['targets'], $controller);
+        $execution = $this->prepareWardExecution($item['targets'], $controller);
 
         return $this->pushAbility([
             'source' => $spell->id,
@@ -2854,7 +2875,7 @@ final class Game
             'label' => "A copy of {$card->name}",
             // Copies use ability-shaped entries but retain this spell characteristic.
             'uncounterable' => $this->hasKeyword($spell, "can't be countered"),
-        ], $item['targets'], "is put on the stack ({$why})", observation: $observation, frozenTargets: $item['targets']);
+        ], $item['targets'], "is put on the stack ({$why})", observation: $observation, frozenTargets: $item['targets'], execution: $execution);
     }
 
     /**
@@ -4740,6 +4761,15 @@ final class Game
                 }
                 $this->gainLife($controller, count($opponents));
                 $this->log("{$this->players[$controller]->name} extorts.");
+                break;
+
+            case 'ward_fixed':
+                $this->beginWardPayment($effect);
+
+                return true;
+
+            case 'ward_paid':
+                // The nested mana damage has completed; the already-paid cost is not repeated.
                 break;
 
             case 'optional_recover':
@@ -6804,8 +6834,16 @@ final class Game
      */
     private function flushTriggers(): bool
     {
-        usort($this->pendingTriggers, fn (array $a, array $b) => ($a['controller'] !== $this->active) <=> ($b['controller'] !== $this->active));
+        if (! $this->wardExecutionEnabled) {
+            usort($this->pendingTriggers, fn (array $a, array $b) => ($a['controller'] !== $this->active) <=> ($b['controller'] !== $this->active));
+        }
         while ($this->pendingTriggers !== [] && $this->pendingChoice === null) {
+            if ($this->wardExecutionEnabled && $this->prepareTriggerOrdering()) {
+                return true;
+            }
+            if ($this->pendingTriggers === [] || $this->stage !== self::PLAYING) {
+                return false;
+            }
             $trigger = $this->pendingTriggers[0];
             // A modal one first gets its modes (rule 603.3c): only those with targets to choose.
             if (isset($trigger['modes'])) {
@@ -6814,7 +6852,7 @@ final class Game
                     fn (array $modes) => array_filter(self::targetKindsOf($this->modeEffects($trigger, $modes)), fn (string $kind) => $this->targetOptions($trigger['controller'], $kind) === []) === []
                 ));
                 if ($options === []) {
-                    array_shift($this->pendingTriggers);
+                    $this->shiftPendingTrigger();
                     $this->log("{$trigger['label']} has no mode it can choose and is removed.");
 
                     continue;
@@ -6832,7 +6870,7 @@ final class Game
             }
             // Not targeted: the object the event named.
             if (isset($trigger['targets'])) {
-                array_shift($this->pendingTriggers);
+                $this->shiftPendingTrigger();
                 $this->pushAbility(array_diff_key($trigger, ['targets' => true]), $trigger['targets'], 'triggers');
 
                 continue;
@@ -6841,7 +6879,7 @@ final class Game
             foreach ($trigger['kinds'] as $kind) {
                 $options = $this->targetOptions($trigger['controller'], $kind);
                 if ($options === []) {
-                    array_shift($this->pendingTriggers);
+                    $this->shiftPendingTrigger();
                     $this->log("{$trigger['label']} has no legal targets and is removed.");
 
                     continue 2;
@@ -6851,7 +6889,16 @@ final class Game
                 }
                 $targets[] = $options[0];
             }
-            array_shift($this->pendingTriggers);
+            if ($this->wardExecutionEnabled) {
+                try {
+                    $this->prepareWardExecution($this->freezeChosenTargets($targets), $trigger['controller']);
+                } catch (GameException $e) {
+                    $this->holdWardExecution($e->getMessage());
+
+                    return true;
+                }
+            }
+            $this->shiftPendingTrigger();
             $this->pushTriggered($trigger, $targets);
         }
 
@@ -6930,7 +6977,8 @@ final class Game
         $this->expect($seat, 'trigger');
         $trigger = $this->pendingTriggers[0];
         $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label'], $this->objects[$trigger['source']] ?? null, $trigger['effects']);
-        array_shift($this->pendingTriggers);
+        $this->prepareWardExecution($this->freezeChosenTargets(array_values($targets)), $seat);
+        $this->shiftPendingTrigger();
         $committed = $this->pushTriggered($trigger, array_values($targets));
         $this->settle();
 
@@ -6951,6 +6999,7 @@ final class Game
     {
         $frozenTargets = $this->freezeChosenTargets($targets);
         $observation = $this->prepareWardObservation($frozenTargets, $trigger['controller']);
+        $execution = $this->prepareWardExecution($frozenTargets, $trigger['controller']);
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($frozenTargets, $trigger['controller'], false);
         if ($wardMana !== '' || $wardLife > 0 || $wardDiscard > 0) {
             $payment = $this->payFor($trigger['controller'], $wardMana, $wardLife);
@@ -6968,7 +7017,7 @@ final class Game
             }
             $this->discardCheapest($trigger['controller'], $wardDiscard);
         }
-        return $this->pushAbility($trigger, $targets, 'triggers', observation: $observation, frozenTargets: $frozenTargets);
+        return $this->pushAbility($trigger, $targets, 'triggers', observation: $observation, frozenTargets: $frozenTargets, execution: $execution);
     }
 
     /**
@@ -6991,7 +7040,7 @@ final class Game
      *
      * @return array The committed ability entry; this method does not suspend.
      */
-    private function pushAbility(array $ability, array $targets, string $verb, ?string $move = null, ?array $observation = null, ?array $frozenTargets = null): array
+    private function pushAbility(array $ability, array $targets, string $verb, ?string $move = null, ?array $observation = null, ?array $frozenTargets = null, ?array $execution = null): array
     {
         $targets = $frozenTargets ?? array_map(fn (string $target) => $this->pinTarget($target), $targets);
         $this->stack[] = $committed = [
@@ -7012,6 +7061,7 @@ final class Game
         // The record also says what a triggered ability does, since one card can have several.
         $this->log("{$line}.", $ability['controller'], $move === null ? null : $move.self::targetNotation($named), ($ability['text'] ?? '') === '' ? null : "{$line}: {$ability['text']}");
         $this->commitWardObservation($observation, $committed);
+        $this->commitWardExecution($execution, $committed);
 
         return $committed;
     }
@@ -7662,6 +7712,7 @@ final class Game
         $this->checkTargets($kinds, $targets, $seat, $label, $object, $ability['effects']);
         $frozenTargets = $this->freezeChosenTargets($targets);
         $observation = $this->prepareWardObservation($frozenTargets, $seat);
+        $execution = $this->prepareWardExecution($frozenTargets, $seat);
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($frozenTargets, $seat, false);
         if ($wardDiscard + ($ability['cost']['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             throw new GameException('You need a card in your hand to discard for ward.');
@@ -7676,7 +7727,8 @@ final class Game
         $cost = $ability['cost'];
         $crew = isset($cost['crew']) ? (array) $this->crew($seat, $object, $cost['crew']) : [];
         $after = ['kind' => 'activate', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
-            'index' => $index, 'targets' => $frozenTargets, 'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew];
+            'index' => $index, 'targets' => $frozenTargets, 'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew]
+            + ($execution === null ? [] : ['wardExecution' => $execution]);
         if ($this->pay($seat, $payment, $after)) {
             $this->pendingPaidWardObservation = $observation;
 
@@ -7809,6 +7861,7 @@ final class Game
             $this->moveTo($object, GameObject::HAND);
         }
         $this->commitWardObservation($observation, $committed);
+        $this->commitWardExecution($after['wardExecution'] ?? null, $committed);
         $this->settle();
 
         return $committed;
@@ -11578,6 +11631,7 @@ final class Game
     {
         return [
             'schemaVersion' => self::STATE_VERSION,
+            'wardExecution' => $this->wardExecutionState(),
             'damageEffects' => $this->damageEffects,
             'nextDamageEffectId' => $this->nextDamageEffectId,
             'pendingDamage' => $this->pendingDamage,
@@ -11712,7 +11766,9 @@ final class Game
             'kinds' => array_values(array_map('strval', (array) $trigger['kinds'])),
             'label' => (string) $trigger['label'],
             'text' => (string) ($trigger['text'] ?? ''),
-        ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : []), (array) ($data['pendingTriggers'] ?? [])));
+        ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : [])
+            + (array_key_exists('orderId', $trigger) ? ['orderId' => $trigger['orderId']] : [])
+            + (($data['wardExecution']['enabled'] ?? false) && array_key_exists('targets', $trigger) ? ['targets' => $trigger['targets']] : []), (array) ($data['pendingTriggers'] ?? [])));
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
         if (($game->pendingChoice['type'] ?? null) === 'look' && array_key_exists('reveal', $game->pendingChoice) && ! is_bool($game->pendingChoice['reveal'])) {
             throw new GameException('Invalid saved search reveal policy.');
@@ -11968,6 +12024,7 @@ final class Game
         if ($version < 18 && ($game->pendingChoice['resume']['item']['effects'] ?? null) === [['type' => 'optional_recover']]) {
             throw new GameException('Recover continuations require saved game schema 18.');
         }
+        $game->restoreWardExecutionState($data['wardExecution'] ?? null, $version);
         $game->validateDamageState();
 
         return $game;

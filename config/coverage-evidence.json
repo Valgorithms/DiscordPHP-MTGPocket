@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "9da3bce5cc813cb1fea493e9426a93075c685525",
+  "engineSource": "e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4",
   "validation": {
-    "source": "9da3bce5cc813cb1fea493e9426a93075c685525",
-    "evidenceMeaning": "Private combined frozen-target/paid-damage/Recover integration. Strict saved paid pins retain departed identities; current post-cost notifications cannot bind returned incarnations. No general pre-cost targeting-event completeness, Ward timing/order/payment or whole-card certification.",
-    "local": "Combined runtime evidence remains at immutable source9da3bce5cc813cb1fea493e9426a93075c685525: focused275/2198,full2649/65315,2expected missing-data skips,no failures/errors/warnings/risky,00:59.696/366MiB. The later two PHPDoc comment corrections change the full Game.php source pin only; runtime tokens and test files match. Prior full validation text is retained under documentationCorrection; no full rerun solely for documentation.",
-    "ci": "Current draft status and hosted acceptance must be read from GitHub for the exact publication head. Local combined receipts at9da3bce are historical source-tested evidence, not hosted acceptance of a later head. #444-447 remain separate frozen PRs; included #447 counter changes are an unmerged dependency. No ready transition, merge or rollout approval is implied.",
+    "source": "e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4",
+    "evidenceMeaning": "Private default-off fixed-mana/fixed-life Ward execution using pre-cost instances and exact committed stack references, optional resolution payment, bounded complete controller-selected two-seat trigger groups and already-paid continuations. This does not enable the mode for ordinary games or certify Ward broadly, enabling cards or whole cards.",
+    "local": "Source e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4: full2716tests/65894assertions,2expected missing-pool/rental skips,no failures/errors/warnings/risky,01:02.611/374MiB (runner62.914s). Focused248/1669 and Pint18files passed immediately before the immutable source checkpoint; historical source pins identified those checked files. 96normalized source pins verified. Later metadata/docs completion and a CardDefinition PHPDoc correction leave all executable PHP tokens and test files unchanged; current source pins include that comment correction.",
+    "ci": "Current draft status and hosted checks must be read from GitHub for the exact publication head. Full local evidence at e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4 and the retained comment-only token proof are historical source-tested evidence, not hosted acceptance of a later head. Earlier private status is explicitly historical under wardFixedExecution.publicationPreparation. This does not enable Ward or imply ready/merge/rollout approval.",
     "integration": {
       "frozenTargetsParent": "ec1e9311683a6789586ac0f48970fe762b5ffbf8",
       "paidContinuationParent": "e49214864e72e1b1c69964d57b06a67a912040fc",
@@ -1687,12 +1687,118 @@
         "liveMatchStorageInspected": false,
         "rolloutReadinessEstablished": false
       }
+    },
+    "previousWardPaidCheckpoint": {
+      "source": "9da3bce5cc813cb1fea493e9426a93075c685525",
+      "evidenceMeaning": "Private combined frozen-target/paid-damage/Recover integration. Strict saved paid pins retain departed identities; current post-cost notifications cannot bind returned incarnations. No general pre-cost targeting-event completeness, Ward timing/order/payment or whole-card certification.",
+      "local": "Combined runtime evidence remains at immutable source9da3bce5cc813cb1fea493e9426a93075c685525: focused275/2198,full2649/65315,2expected missing-data skips,no failures/errors/warnings/risky,00:59.696/366MiB. The later two PHPDoc comment corrections change the full Game.php source pin only; runtime tokens and test files match. Prior full validation text is retained under documentationCorrection; no full rerun solely for documentation.",
+      "ci": "Current draft status and hosted acceptance must be read from GitHub for the exact publication head. Local combined receipts at9da3bce are historical source-tested evidence, not hosted acceptance of a later head. #444-447 remain separate frozen PRs; included #447 counter changes are an unmerged dependency. No ready transition, merge or rollout approval is implied.",
+      "engineSource": "9da3bce5cc813cb1fea493e9426a93075c685525",
+      "engineSourceMeaning": "Private combined frozen-target/paid-damage/Recover integration. Strict saved paid pins retain departed identities; current post-cost notifications cannot bind returned incarnations. No general pre-cost targeting-event completeness, Ward timing/order/payment or whole-card certification."
+    },
+    "wardFixedExecution": {
+      "base": "e53f45cf44d6edab4e9fc2b471d19e38e43ca9b4",
+      "source": "e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4",
+      "schema": 20,
+      "defaultEnabled": false,
+      "historicalFields": "integration and documentationCorrection remain unchanged historical #448 evidence, not assertions about the new runtime. previousWardPaidCheckpoint preserves the replaced summary verbatim. All earlier crash/failure receipts remain retained.",
+      "baseline": "Existing actual paid Dog Walker characterization remains a default-off upfront-tax gap in both seats. The initial new mode test run reached35assertions:2old cases passed and3new cases errored at the absent mode API; later assertions were unreachable. No three-runtime-defect claim.",
+      "intermediateFailures": "16/174/2errors: missing non-target targets[] on queued Ward. 15/83/3errors/3failures: fixture mistakes (Counterspell cannot target an ability, moveTo cannot enter battlefield, ASCII dash and expected unread text). 20/36/4errors/3failures: malformed offset and three omitted strict checks corrected; three old-version fixtures used wrong schema key. Panel4/40/3failures: compare persisted normalized numeric fixture values. Combined245/1641/1failure: old test hard-coded schema19; now expects STATE_VERSION without relaxing legacy refusal. These are preserved development receipts, not final acceptance.",
+      "receipts": [
+        {
+          "receipt": "ward-execution-baseline.json",
+          "sha256": "a5c31994f8a2d5deb5e248caaecb61f43eed583b798f030cd90492b99fcbc8a2",
+          "exitCode": 2,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-ordering.json",
+          "sha256": "f05f1ab098ea53a0ce3536d7bbf0c063cf7af812fd75c8eb5381758bceef72f3",
+          "exitCode": 2,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-identity-first.json",
+          "sha256": "0e6592e8f1bf3bd5c248ba8e90f4e1a876c2bcfdea45284d1d87a3720f76bcb8",
+          "exitCode": 2,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-persistence-first.json",
+          "sha256": "eeac93de5a5e17eccc6d3db8356b727c1d4809c47a435c98187568f80750993c",
+          "exitCode": 2,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-panel-first.json",
+          "sha256": "29e5ddff7a1ce2bd530b64c55ad2627e9ccf3c4d92b1d81f42f483c089e0258e",
+          "exitCode": 1,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-integrated-focused.json",
+          "sha256": "6c2062da74edec7974f32d81409882f47647f3f8200bb8d98b0806cd06c930cf",
+          "exitCode": 1,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-focused-final-precommit.json",
+          "sha256": "ef86e470bbf820e46535c555b942a015918c70b147e13d30a4f68140e5c6ba54",
+          "exitCode": 0,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-pint-final.json",
+          "sha256": "3e78f296b0d10d87a5c28b0e3c3dd479fd98ef3f3a9b3238df488b78c63e6477",
+          "exitCode": 0,
+          "headFieldMeaning": "Then-current branch HEAD; uncommitted intermediate/focused source state is identified separately by the baseline snapshot or final source pins"
+        },
+        {
+          "receipt": "ward-execution-full-source-e5a05fb.json",
+          "sha256": "3c614e985853acf7a6b794314580bc5fb656e1308ccb111e9f0de5b5f5863ed7",
+          "exitCode": 0,
+          "headFieldMeaning": "Immutable tested head"
+        }
+      ],
+      "limits": [
+        "Mode remains default-off; neither panels nor practice enable it.",
+        "Fixed mana and fixed life only; unsupported discard/dynamic costs and legacy offending-controller payer clauses refuse before player costs or hold automatic targeting. Genuine static taxes remain casting costs.",
+        "Complete affected pending groups include ordinary triggers with explicit two-seat controller ordering; no multiplayer/general APNAP or ability-triggered-by-triggering second phase.",
+        "No general pre-cost ordinary target-trigger capture, retargeting, arbitrary replacement/continuous/copy families or new enabling-card certification.",
+        "Countering Ward itself is an engine-primitive control, not Stifle parsing support.",
+        "Schema17/18 already-paid bare-object pending actions must finish under the old version before upgrade or receive an explicitly reviewed recovery policy; no guessed incarnation, refund, cancellation, reselect or live inspection.",
+        "Legacy native PHP0xC0000005 crash remains unexplained historical evidence. No new corpus import/live bot/deployment/whole-card certificate."
+      ],
+      "nextStep": "Inspect exact publication-head hosted checks and complete ordinary readiness review. The default-off mode, unsupported interactions and schema17/18 already-paid-action upgrade prerequisite remain explicit.",
+      "documentationCorrection": {
+        "previousHead": "5a21552f68291a1f0fbb8c20f76230d3ce56efd2",
+        "fullTestedSource": "e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4",
+        "path": "src/MTGPocket/Game/CardDefinition.php",
+        "previousSha256": "147b5cbd2d5d6dbadef4db053c506b0fecca9d48cf75ed147c51bfc55f709686",
+        "currentSha256": "a452c296dd83b2b01ced145666875995df302b0cf67179b4fbfccdb7fea1000f",
+        "baselineRuntimeTokensSha256": "e5835f47cf0c07759b2f036338e08b7f5c2e74834e22b489c72ed61e81a1c4f7",
+        "currentRuntimeTokensSha256": "e5835f47cf0c07759b2f036338e08b7f5c2e74834e22b489c72ed61e81a1c4f7",
+        "equal": true,
+        "gameplayTestsRerun": false,
+        "meaning": "PHPDoc correction only; TOKEN_PARSE verifies equal non-comment/non-whitespace PHP tokens."
+      },
+      "publicationPreparation": {
+        "reviewedCandidate": "ea45c9581c1c4dd77a83b58e0ffd8cfc56ad2f9f",
+        "comparisonBase": "e53f45cf44d6edab4e9fc2b471d19e38e43ca9b4",
+        "fullTestedSource": "e5a05fb358efe8faa9a718f5cc8604f23fd1b2e4",
+        "historicalPrivateStatus": {
+          "ci": "PRIVATE UNPUBLISHED Ward candidate; no current-head hosted CI or publication/merge/rollout approval. Public #444-448 are frozen dependencies and retain their own exact-head hosted histories; they do not establish hosted acceptance of this private delta. Root reviews the complete functional source/tests before any publication.",
+          "nextStep": "Root reviews the complete private production/test delta; publication, ready transition and merge remain withheld."
+        },
+        "layout": "One publication commit above frozen #448. Runtime/test files match reviewed candidate; CardDefinition comment-only token proof remains recorded. Existing #444-448 histories are unchanged.",
+        "currentStatus": "Draft publication. Current exact-head checks and draft status must be read from GitHub; no ready/merge/rollout or mode-enablement claim."
+      }
     }
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "dd60598d15f8e88416ace4a38ca9ecf905cd9ff7fe08b7040e52b277274ec07e",
-    "src/MTGPocket/Game/CardDefinition.php": "62187ce55766156cf4755d098699a1c6f1126dd4fa6779cef30390ba3d3a59db",
-    "src/MTGPocket/Game/Game.php": "71769ba7e031f866c063d80ba82eb7142d36ea62475d6717a0ad8025354b20d0",
+    "src/MTGPocket/Game/TextParser.php": "d47a22093bc17c589f771791561cd88dcf7989eba7c14375b845a76deef5f9fc",
+    "src/MTGPocket/Game/CardDefinition.php": "a452c296dd83b2b01ced145666875995df302b0cf67179b4fbfccdb7fea1000f",
+    "src/MTGPocket/Game/Game.php": "5d3d2f3f8df3e980640b82784e298ca591ef59e57072f19d985a5cd00cb2caa6",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -1709,12 +1815,12 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "53c5c470f3210f985c94cc8406eba70b8dc3f0aca9bf71751f416e9ea25592ad",
-    "src/MTGPocket/Matches/PanelActions.php": "4777ade259bd8a7b69fcc49ad33ea9d175748088ebc272cd39b35df146493cf2",
-    "src/MTGPocket/Tutorial/PracticeBot.php": "622668061160e6c2957499eafded021fded0030c9e15881fb30130847df10b3c",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "d890c15ca9b79889667342fddca91f01f229acbaa7a34c686d2b094f2efb58bf",
+    "src/MTGPocket/Matches/PanelActions.php": "b9416e00310dec55876e0f47690180d5b1c682d6daa9f33ae0ea8c6fb397decd",
+    "src/MTGPocket/Tutorial/PracticeBot.php": "47550a9e561f9c35885d61aaadd381c962a920dc001d521c639d2216484b4f1b",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "08635d4fe319c5712b7ce78c3d7205a34989f1cbcc054741e647063eeb954405",
+    "tests/MatchesTest.php": "f673bee82f036658385334cde8652d1c9b94f89d5ce70b492eb309d59bffff88",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -1758,7 +1864,7 @@
     "tests/Game/QuestAncientMergedIdentityTest.php": "f96ede04a99e025344d6491f73b06d24a85b544554d3dc7ca2aece87b3cd3f02",
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd",
     "src/MTGPocket/Game/DamageBatch.php": "71fc7f7cf36d54c7fa3bfa7ed4844acd8c4a678468d6866ec99e8ce0ce930ce5",
-    "src/MTGPocket/Game/DamageResolution.php": "b457893509edeed99b706ca88838716a47eda6b1e6258357ab197ad1764683d8",
+    "src/MTGPocket/Game/DamageResolution.php": "6899ea68dd93c5fc053e59bef72b700a597ff432390c43dc9a268ef81f976b67",
     "src/MTGPocket/Game/PaidActionContinuation.php": "0e848317f0a773374841c338a6b954cb2c19d45c5bfd3d7347f7a486a51342f4",
     "tests/Game/DamageBatchTest.php": "c5ab02bde083db1d8f6ceb9feccb26afa5fe136fb5c59d94148776f861021576",
     "tests/Game/PaidDamageContinuationTest.php": "0ba1fd90eaad520d2a3d41bc86f304cf0282f92f7ac9ec8028fdab758890070c",
@@ -1774,10 +1880,18 @@
     "src/MTGPocket/Game/WardInstance.php": "1a6673c03c6fba6476d8e94872be4e7d2cfe37ba09675579c94b64c80e927169",
     "src/MTGPocket/Game/WardTargetingEvent.php": "3d1d0cec5fbe64d73589fe4bd483dcd8f01b0709090019de4722eb88c3e43fdb",
     "tests/Game/WardTargetingModelTest.php": "7cc6af699639e3d20363e7d8a7b742065da8a7c8328d6b314742c72826b222b9",
-    "src/MTGPocket/Game/WardObservation.php": "09e033a039bbbfffaeb6acd4c16fa69b0c76906778aec1e3763ad12683692b8b",
+    "src/MTGPocket/Game/WardObservation.php": "2e80ee321da6872f58e6f187c192638dfea3fb49b0d85b4aaa0c187557c47869",
     "tests/Game/WardObserverIdentityTest.php": "aaa6c30b38e888077ec330411fba35408ce1cef3dfdcd82c77f9eb4297439a1b",
     "tests/Game/FrozenTargetPinsTest.php": "fb5183722fea676f47d363ebcd56bf6d431be8b9b4e8d86ca3afbe78d502b882",
-    "tests/Game/PaidFrozenTargetsTest.php": "8bdfac81f48294c9cd308bea71a452633e3c466b45d130af1fecaed7d09f9139"
+    "tests/Game/PaidFrozenTargetsTest.php": "572484dfa64aa89d21298392fd120521af7853a0d395bec0f8e37c82d36107d2",
+    "src/MTGPocket/Game/TriggerOrdering.php": "03c40aadcd0aa26b7dadfd693aacaccbc9ee560fa81d02b10827dead0c3809fa",
+    "src/MTGPocket/Game/WardExecution.php": "e95f6d9cfc449298c59eafba658940b03965836dd07d219dab08f791078d99a7",
+    "tests/Game/WardExecutionIdentityTest.php": "179503b4fa404bf8b572f9522fbe2f0afd76774ed1612e4bf7e2a1badccfd7f6",
+    "tests/Game/WardExecutionPersistenceTest.php": "e76304e936f148894f7f96e29b4b16a9baf8f12b618a3aa3cf3a61f38fedac23",
+    "tests/Game/WardExecutionTest.php": "733c01f8060a5a1ffca7b2ea036122ace82547aadd9a13626c0d887bcc614fea",
+    "tests/Game/WardPaymentContinuationTest.php": "e1550514b976251553caeab664325401b65d2418b67d86a6ba3862955cfb4094",
+    "tests/Game/WardPracticeTest.php": "d3ebadbe6a1add93c9f58f681eb8ad0c1cd1b80cc227c4e9e90d128c7693597a",
+    "tests/Game/WardTriggerOrderingTest.php": "877db00cec488af3a9c4700d7b31ba5cef621c76f983f215c3e27beee1c4ac71"
   },
   "scopedEvidence": [
     {
@@ -2683,7 +2797,7 @@
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Private combined frozen-target/paid-damage/Recover integration. Strict saved paid pins retain departed identities; current post-cost notifications cannot bind returned incarnations. No general pre-cost targeting-event completeness, Ward timing/order/payment or whole-card certification.",
+  "engineSourceMeaning": "Private default-off fixed-mana/fixed-life Ward execution using pre-cost instances and exact committed stack references, optional resolution payment, bounded complete controller-selected two-seat trigger groups and already-paid continuations. This does not enable the mode for ordinary games or certify Ward broadly, enabling cards or whole cards.",
   "deferredFamilies": [
     {
       "id": "copy-token-disguise-characteristics",

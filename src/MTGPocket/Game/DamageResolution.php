@@ -222,6 +222,9 @@ trait DamageResolution
             throw new GameException('That damage choice is no longer available.');
         }
         $this->validateDamageState();
+        if ($this->wardExecutionEnabled) {
+            $this->validateWardExecutionState();
+        }
         $batch = DamageBatch::fromArray($this->pendingDamage['batch'])->choose($option);
         $this->pendingDamage['batch'] = $batch->toArray();
         $this->pendingChoice = null;
@@ -351,6 +354,7 @@ trait DamageResolution
                 }
             }
             $this->validateRecoverDamageResume($resume);
+            $this->validateWardDamageResume($resume);
             if (array_filter($events, fn (array $event) => $event['combat']) !== []) {
                 throw new GameException('Combat damage in a spell-resolution continuation.');
             }
@@ -360,6 +364,7 @@ trait DamageResolution
     /** Only explicit cast/activation continuations are accepted, never method names. */
     private function validatePaidAction(mixed $after): void
     {
+        $this->validatePaidWardSnapshot($after);
         if (is_array($after) && ($after['kind'] ?? null) === 'ward_trigger') {
             $this->validatePaidTrigger($after);
 
@@ -384,7 +389,7 @@ trait DamageResolution
         }
         $object = $this->objects[$after['object']];
         if ($after['kind'] === 'cast') {
-            if (array_keys($after) !== ['kind', 'seat', 'object', 'incarnation', 'x', 'targets', 'options', 'payment', 'revealed', 'wardDiscard', 'wardLife', 'xCount']
+            if (array_keys($after) !== [...['kind', 'seat', 'object', 'incarnation', 'x', 'targets', 'options', 'payment', 'revealed', 'wardDiscard', 'wardLife', 'xCount'], ...($this->wardExecutionEnabled ? ['wardExecution'] : [])]
                 || ! is_array($after['options']) || self::castOptions($after['options']) !== $after['options']
                 || ! is_array($after['payment']) || ! is_int($after['payment']['life'] ?? null) || $after['payment']['life'] < 0
                 || ! is_int($after['wardLife']) || $after['wardLife'] < 0 || ! is_int($after['xCount']) || $after['xCount'] < 0
@@ -416,7 +421,7 @@ trait DamageResolution
             $this->validateFrozenChosenTargets($this->castKinds($card, $options), $after['targets'], $effects);
         } else {
             $ability = is_int($after['index'] ?? null) ? ($object->definition()->activated[$after['index']] ?? null) : null;
-            if (array_keys($after) !== ['kind', 'seat', 'object', 'incarnation', 'index', 'targets', 'x', 'wardDiscard', 'crew']
+            if (array_keys($after) !== [...['kind', 'seat', 'object', 'incarnation', 'index', 'targets', 'x', 'wardDiscard', 'crew'], ...($this->wardExecutionEnabled ? ['wardExecution'] : [])]
                 || $ability === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $after['seat']
                 || ! is_array($after['crew']) || ! array_is_list($after['crew']) || count($after['crew']) > 256
                 || array_filter($after['crew'], fn ($id) => ! is_int($id) || ! isset($this->objects[$id]) || $this->objects[$id]->tapped
