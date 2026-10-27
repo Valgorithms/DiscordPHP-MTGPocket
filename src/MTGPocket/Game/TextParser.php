@@ -406,13 +406,13 @@ final class TextParser
     /**
      * @param CardDefinition $card With its name, types and text set.
      *
-     * @return array{keywords: string[], mana: array|null, entersTapped: bool, counters: int, effects: array[], modes: array[], choose: array|null, aura: array|null, equipment: array|null, triggered: array[], activated: array[], ward: array|null, wardInstances: array[], kicker: string|null, kickerCounters: int, flashback: string|null, cycling: string|null, morph: array|null, levels: array[], unsupported: string[]}
+     * @return array{keywords: string[], mana: array|null, entersTapped: bool, counters: int, effects: array[], modes: array[], choose: array|null, aura: array|null, equipment: array|null, triggered: array[], activated: array[], ward: array|null, wardInstances: array[], wardLegacyClauses: array[], targetingTaxes: array[], kicker: string|null, kickerCounters: int, flashback: string|null, cycling: string|null, morph: array|null, levels: array[], unsupported: string[]}
      */
     public static function parse(CardDefinition $card): array
     {
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
-            'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [], 'wardInstances' => [],
+            'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [], 'wardInstances' => [], 'wardLegacyClauses' => [], 'targetingTaxes' => [],
             'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'entwine' => null, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'countsAs' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
@@ -654,7 +654,14 @@ final class TextParser
 
                 continue;
             }
-            // Frost Titan: `Whenever CARDNAME becomes the target of a spell or ability an opponent controls, counter that spell or ability unless its controller pays {2}.` is ward (rule 702.21a).
+            // Read separate metadata without changing the legacy recognition/payment branches below.
+            if (! $spell && preg_match('/^Whenever CARDNAME becomes the target of a spell or ability an opponent controls, counter that spell or ability unless its controller pays (?:(?<mana>'.self::COST.')|(?<life>\d+) life)\.$/', $line, $wardClause)) {
+                $result['wardLegacyClauses'][] = ($wardClause['mana'] ?? '') !== '' ? ['mana' => $wardClause['mana']] : ['life' => (int) $wardClause['life']];
+            }
+            if (! $spell && preg_match('/^Spells your opponents cast that target CARDNAME cost ((?:\{\d+\})+) more to cast\.$/', $line, $targetingTax)) {
+                $result['targetingTaxes'][] = ['mana' => $targetingTax[1]];
+            }
+            // Historical Frost Titan approximation; opt-in Ward execution keeps its payer wording separate.
             if (! $spell && $result['ward'] === null && preg_match('/^Whenever CARDNAME becomes the target of a spell or ability an opponent controls, counter that spell or ability unless its controller pays (?:('.self::COST.')|(\d+) life)\.$/', $line, $match)) {
                 $result['ward'] = ($match[1] ?? '') !== '' ? ['mana' => $match[1]] : ['life' => (int) $match[3]];
 

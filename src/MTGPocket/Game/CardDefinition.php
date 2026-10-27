@@ -95,8 +95,14 @@ final class CardDefinition
     /** @var array{mana?: string, life?: int}|null What an opponent pays to target it (rule 702.21). */
     public readonly ?array $ward;
 
-    /** @var array[] Each true Ward keyword instance, for the opt-in observer only. */
+    /** @var array[] Each true Ward keyword instance, shared by observation and opt-in execution. */
     public readonly array $wardInstances;
+
+    /** Legacy payer clauses are held separately from true Ward in the opt-in mode. */
+    public readonly array $wardLegacyClauses;
+
+    /** Genuine targeting taxes remain casting costs in both modes. */
+    public readonly array $targetingTaxes;
 
     /** A kicker cost (rule 702.33). */
     public readonly ?string $kicker;
@@ -251,6 +257,8 @@ final class CardDefinition
         $this->choose = $parsed['choose'];
         $this->ward = $parsed['ward'];
         $this->wardInstances = $parsed['wardInstances'];
+        $this->wardLegacyClauses = $parsed['wardLegacyClauses'];
+        $this->targetingTaxes = $parsed['targetingTaxes'];
         $this->kicker = $parsed['kicker'];
         $this->entwine = $parsed['entwine'];
         $this->kickerCounters = $parsed['kickerCounters'];

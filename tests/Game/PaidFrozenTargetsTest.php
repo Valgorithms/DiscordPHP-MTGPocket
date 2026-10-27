@@ -317,7 +317,7 @@ final class PaidFrozenTargetsTest extends GameTestCase
         $state = $this->saved();
         $state['schemaVersion'] = 18;
         $this->game = Game::fromArray($state);
-        $state['schemaVersion'] = 19;
+        $state['schemaVersion'] = Game::STATE_VERSION;
         $this->assertSame($state, $this->saved());
         $this->assertSame([], $this->game->stack);
         $this->assertNull($this->game->choiceAwaiting());

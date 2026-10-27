@@ -58,6 +58,9 @@ final class PracticeBot
 
                 return;
             }
+            if ($game->decision($seat) === 'ward_unsupported') {
+                return; // A held interaction requires review; do not concede or spin.
+            }
             try {
                 $moved = self::act($game, $seat);
             } catch (GameException) {
@@ -160,6 +163,18 @@ final class PracticeBot
                 $game->chooseFabricate($seat, $choice['id'], 'counters');
 
                 return true;
+            case 'ward_payment':
+                $game->chooseWardPayment($seat, $game->choiceAwaiting()['id'], $game->canPayWard($seat) ? 'accept' : 'decline');
+
+                return true;
+            case 'trigger_order':
+                // Deliberate simple bot policy; a human can choose any order for the complete group.
+                $choice = $game->choiceAwaiting();
+                $game->chooseNextTrigger($seat, $choice['id'], $choice['options'][0]);
+
+                return true;
+            case 'ward_unsupported':
+                return false;
             case 'damage_order':
                 $choice = $game->choiceAwaiting();
                 $prevention = array_values(array_filter($choice['options'], fn (string $option) => ! str_starts_with($option, 'double:')));

@@ -358,6 +358,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'trigger' => 'choose targets for '.$game->triggerAwaitingTargets()['label'],
                 'scry', 'surveil' => $game->decision($seat),
                 'look' => 'choose from the top of their library',
+                'ward_payment' => 'choose whether to pay '.$game->choiceAwaiting()['label'],
+                'trigger_order' => 'choose the order for their simultaneous triggered abilities',
+                'ward_unsupported' => 'wait for review of an unsupported Ward interaction',
                 'damage_order' => 'choose the next replacement or prevention for damage to '.$game->describeTarget($game->choiceAwaiting()['target']),
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
@@ -765,6 +768,35 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'ward_payment':
+                $ward = $game->choiceAwaiting();
+                $message->addComponent(ActionRow::new()
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('wardpay', (string) $ward['id'], 'accept'))
+                        ->setLabel(Text::clip('Pay '.$ward['label'], 80))->setDisabled(! $game->canPayWard($seat)))
+                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('wardpay', (string) $ward['id'], 'decline'))->setLabel('Decline payment')));
+                break;
+
+            case 'trigger_order':
+                $order = $game->choiceAwaiting();
+                $savedPage = $choice['triggerOrder'] ?? [];
+                $lastPage = intdiv(count($order['options']) - 1, 25);
+                $page = ($savedPage['id'] ?? null) === $order['id'] ? max(0, min($lastPage, (int) ($savedPage['page'] ?? 0))) : 0;
+                $select = StringSelect::new($id('trigorder', (string) $order['id']))->setPlaceholder('Next ability to put on the stack');
+                foreach ($game->triggerOrderOptions($page) as $value => $label) {
+                    $select->addOption(Option::new(Text::clip($label, 100), (string) $value));
+                }
+                $message->addComponent(ActionRow::new()->addComponent($select));
+                if ($lastPage > 0) {
+                    $message->addComponent(ActionRow::new()
+                        ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('trigpage', (string) $order['id'], (string) ($page - 1)))->setLabel('Previous triggers')->setDisabled($page === 0))
+                        ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('trigpage', (string) $order['id'], (string) ($page + 1)))->setLabel('Next triggers')->setDisabled($page === $lastPage)));
+                }
+                break;
+
+            case 'ward_unsupported':
+                // Held engine state offers no retry/cancel/refund that could alter an already paid action.
+                break;
+
             case 'damage_order':
                 $damage = $game->choiceAwaiting();
                 $select = StringSelect::new($id('damageorder', (string) $damage['id']))->setPlaceholder('Apply a replacement or prevention');
@@ -927,6 +959,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
         return match ($decision) {
             'sacrifice' => self::sacrificePrompt($game, $choice),
+            'ward_payment' => '**'.$game->choiceAwaiting()['label'].'**: you may pay this cost. Declining counters only the referenced spell or ability if it is still counterable. This ability does not target.',
+            'trigger_order' => 'Choose the next ability to put on the stack from your simultaneous group. Earlier selections resolve later; other controllers keep their active-player order.',
+            'ward_unsupported' => 'This opt-in game is held for review: '.$game->choiceAwaiting()['reason'].' No automatic payment, cancellation or refund is available.',
             'damage_order' => 'Choose what applies next to the damage to **'.$game->describeTarget($game->choiceAwaiting()['target']).'**. Damage waits until all replacement and prevention choices are complete.',
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',

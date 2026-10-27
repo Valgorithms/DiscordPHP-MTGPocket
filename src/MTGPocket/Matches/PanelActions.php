@@ -42,7 +42,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, `maylife`, `maygain`, `maycounter`, `mayuntap`, `maygoblin`, `recover`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, `maylife`, `maygain`, `maycounter`, `mayuntap`, `maygoblin`, `recover`, `wardpay`, `trigorder`, `trigpage`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
@@ -70,6 +70,9 @@ final class PanelActions
             'keepall' => $act(fn (Game $game, int $seat) => $game->arrange($seat, [])),
             'take' => $act(fn (Game $game, int $seat) => $game->take($seat, $ints)),
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
+            'wardpay' => $act(fn (Game $game, int $seat) => $game->chooseWardPayment($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
+            'trigorder' => $act(fn (Game $game, int $seat) => $game->chooseNextTrigger($seat, (int) ($args[0] ?? 0), (int) ($values[0] ?? 0))),
+            'trigpage' => $this->triggerOrderPage($matchId, $playerId, (int) ($args[0] ?? 0), (int) ($args[1] ?? 0)),
             'damageorder' => $act(fn (Game $game, int $seat) => $game->chooseDamageOrder($seat, (int) ($args[0] ?? 0), $values[0] ?? '')),
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'fabricate' => $act(fn (Game $game, int $seat) => $game->chooseFabricate($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
@@ -110,6 +113,21 @@ final class PanelActions
             'noblk' => $act(fn (Game $game, int $seat) => $game->declareBlockers($seat, [])),
             default => throw new \InvalidArgumentException('That button does nothing any more.'),
         };
+    }
+
+    /** Page navigation changes presentation only; every selected order identity is engine-owned. */
+    private function triggerOrderPage(string $matchId, string $playerId, int $choiceId, int $page): array
+    {
+        return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($playerId, $choiceId, $page): void {
+            $choice = $game->choiceAwaiting();
+            if ($game->decision($seat) !== 'trigger_order' || ($choice['id'] ?? null) !== $choiceId) {
+                throw new GameException('That trigger-order choice is no longer available to you.');
+            }
+            if ($page < 0 || $page > intdiv(count($choice['options']) - 1, 25)) {
+                throw new GameException('That trigger-order page is unavailable.');
+            }
+            $match->choices[$playerId]['triggerOrder'] = ['id' => $choiceId, 'page' => $page];
+        }), false];
     }
 
     /** Stages paged selections; only sacgo submits the complete engine choice. */

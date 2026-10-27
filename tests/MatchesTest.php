@@ -1837,4 +1837,95 @@ final class MatchesTest extends PocketTestCase
 
         return null;
     }
+    /** @dataProvider recoverOptions */
+    public function testFixedWardPanelPersistsOptionalPaymentAndRejectsStaleAnswers(string $option, bool $payable): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $spell = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, $payable, &$spell): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $game->setWardExecution(true);
+            $ward = $game->addCard(1 - $seat, ['name' => 'Panel Ward Unit Fixture', 'type' => 'Creature', 'power' => '2', 'toughness' => '5', 'text' => 'Ward {2}'], GameObject::BATTLEFIELD)->id;
+            for ($n = 0; $n < ($payable ? 3 : 1); $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+            $spell = $game->addCard($seat, $this->pocket->deckBuilder->cardData('shock'), GameObject::HAND)->id;
+            $game->cast($seat, $spell, 0, ['o:'.$ward]);
+            $game->pass($game->priority);
+            $game->pass($game->priority);
+        });
+        $match = $this->pocket->matches->find($match->id);
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('ward_payment', $choice['type']);
+        $this->assertStringContainsString('pay Ward {2}', MatchMessageBuilder::waiting($match)['text']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player));
+        $this->assertStringContainsString('wardpay:'.$choice['id'].':accept', $json);
+        $this->assertSame(! $payable, $this->sacrificeComponent($match, $player, 'wardpay:'.$choice['id'].':accept')['disabled']);
+        $this->assertStringNotContainsString('wardpay:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $before = $match->game->toArray();
+        foreach ([[$other, $choice['id'], $option], [$player, $choice['id'] + 1, $option], [$player, $choice['id'], 'cancel']] as [$who, $id, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $who, 'wardpay', [(string) $id, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        if (! $payable) {
+            $this->assertException(fn () => $panel->run($match->id, $player, 'wardpay', [(string) $choice['id'], 'accept']), 'cannot pay');
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'wardpay', [(string) $choice['id'], $option]);
+        $this->assertTrue($changed);
+        $this->assertSame($option === 'accept' ? GameObject::STACK : GameObject::GRAVEYARD, $match->game->objects[$spell]->zone);
+        $this->assertSame($option === 'accept' ? 3 : 1, $match->game->players[$seat]->expended);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'wardpay', [(string) $choice['id'], $option]), 'no longer available');
+    }
+
+    public function testWholeTriggerGroupPanelPagesStableIdsAndPersistsPartialSelections(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[1 - $seat]->id;
+        $other = $match->game->players[$seat]->id;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $game->setWardExecution(true);
+            $ward = $game->addCard(1 - $seat, ['name' => 'Paged Ward Unit Fixture', 'type' => 'Creature', 'power' => '2', 'toughness' => '5',
+                'text' => implode("\n", array_fill(0, 26, 'Ward {1}'))], GameObject::BATTLEFIELD)->id;
+            $game->addCard(1 - $seat, ['name' => 'Ordinary Cast Watch Unit Fixture', 'type' => 'Enchantment', 'text' => 'Whenever a player casts a spell, you gain 1 life.'], GameObject::BATTLEFIELD);
+            $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            $spell = $game->addCard($seat, $this->pocket->deckBuilder->cardData('shock'), GameObject::HAND)->id;
+            $game->cast($seat, $spell, 0, ['o:'.$ward]);
+        });
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('trigger_order', $choice['type']);
+        $this->assertCount(27, $choice['options']);
+        $this->assertCount(25, $match->game->triggerOrderOptions());
+        $this->assertCount(2, $match->game->triggerOrderOptions(1));
+        $this->assertStringContainsString('Earlier selections resolve later', json_encode(MatchMessageBuilder::actions($match, $player)));
+        $this->assertStringNotContainsString('trigorder:', json_encode(MatchMessageBuilder::actions($match, $other)));
+        $this->assertException(fn () => $panel->run($match->id, $other, 'trigpage', [(string) $choice['id'], '1']), 'no longer available');
+        $this->assertException(fn () => $panel->run($match->id, $player, 'trigpage', [(string) $choice['id'], '2']), 'unavailable');
+        [$match, $changed] = $panel->run($match->id, $player, 'trigpage', [(string) $choice['id'], '1']);
+        $this->assertFalse($changed);
+        $this->assertSame(1, $match->choice($player)['triggerOrder']['page']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $player));
+        $this->assertStringContainsString((string) $choice['options'][26], $json);
+        $selected = $choice['options'][26]; // Ordinary trigger shares the Ward group.
+        [$match, $changed] = $panel->run($match->id, $player, 'trigorder', [(string) $choice['id']], [(string) $selected]);
+        $this->assertTrue($changed);
+        $this->assertSame([$selected], $match->game->choiceAwaiting()['selected']);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'trigorder', [(string) $choice['id']], [(string) $selected]), 'no longer available');
+        $this->assertException(fn () => $panel->run($match->id, $player, 'trigpage', [(string) $choice['id'], '0']), 'no longer available');
+    }
+
 }
