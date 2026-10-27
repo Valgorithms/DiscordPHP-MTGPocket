@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Pure Flame damage-ordering slice](quest-pure-flame-damage-ordering.md) adds bounded persisted replacement/prevention choices and explicit caller/payment continuations. Its current scoped evidence is separate from historical recognition: 38 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates. Nested recover/zone-movement ordering remains explicit; final verification is recorded in the manifest.
+
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.

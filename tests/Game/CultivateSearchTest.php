@@ -314,7 +314,7 @@ final class CultivateSearchTest extends GameTestCase
         $this->game->take($actor, [$first, $second]);
         $destination = $this->saved();
         foreach ([$finding, $destination] as $saved) {
-            $this->assertSame(16, $saved['schemaVersion']);
+            $this->assertSame(Game::STATE_VERSION, $saved['schemaVersion']);
             $this->assertSame($saved, Game::fromArray($saved)->toArray());
             $changes = [
                 fn (array &$s) => $s['schemaVersion'] = 14,
@@ -347,7 +347,7 @@ final class CultivateSearchTest extends GameTestCase
         foreach ([13, 14] as $version) {
             $legacy['schemaVersion'] = $version;
             $loaded = Game::fromArray($legacy);
-            $this->assertSame(16, $loaded->toArray()['schemaVersion']);
+            $this->assertSame(Game::STATE_VERSION, $loaded->toArray()['schemaVersion']);
             $loaded->take($actor, [$first]);
             $this->assertSame(GameObject::BATTLEFIELD, $loaded->objects[$first]->zone);
             $this->assertTrue($loaded->objects[$first]->tapped);

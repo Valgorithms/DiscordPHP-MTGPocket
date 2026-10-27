@@ -58,6 +58,9 @@ final class GameObject
     /** @var array<int, array{power: int, toughness: int}> Battlefield departure statistics keyed by the source incarnation; not permanent state. */
     public array $lastKnownStatistics = [];
 
+    /** @var array<int, array{object: array, keywords: string[]}> Departed damage-source incarnations. */
+    public array $lastKnownDamage = [];
+
     public ?int $attachedTo = null;
 
     /** @var array<int, array{power: int, toughness: int, keywords: string[], creature?: bool}> Effects that last until end of turn; `creature` makes a crewed Vehicle one. */
@@ -376,6 +379,7 @@ final class GameObject
             'zone' => $this->zone,
             'card' => $this->card,
             'lastKnownStatistics' => $this->lastKnownStatistics,
+            'lastKnownDamage' => $this->lastKnownDamage,
         ];
         // Only state that differs from a fresh object, to keep saved games small.
         $state = [
@@ -466,6 +470,27 @@ final class GameObject
             }
         }
         $object->lastKnownStatistics = $statistics;
+        $damage = $data['lastKnownDamage'] ?? [];
+        if (! is_array($damage)) {
+            throw new GameException('Invalid saved damage-source history.');
+        }
+        foreach ($damage as $incarnation => $snapshot) {
+            if (! is_int($incarnation) || $incarnation < 0 || $incarnation >= (int) ($data['incarnation'] ?? 0)
+                || ! is_array($snapshot) || array_keys($snapshot) !== ['object', 'keywords']
+                || ! is_array($snapshot['object']) || strlen(json_encode($snapshot, JSON_THROW_ON_ERROR)) > 65536
+                || ($snapshot['object']['id'] ?? null) !== $object->id || ($snapshot['object']['owner'] ?? null) !== $object->owner
+                || ($snapshot['object']['incarnation'] ?? 0) !== $incarnation
+                || ($snapshot['object']['lastKnownDamage'] ?? null) !== [] || ($snapshot['object']['lastKnownStatistics'] ?? null) !== []
+                || ! in_array($snapshot['object']['controller'] ?? null, [0, 1], true)
+                || ! is_array($snapshot['keywords']) || ! array_is_list($snapshot['keywords'])
+                || count($snapshot['keywords']) > 4 || array_filter($snapshot['keywords'], fn ($keyword) => ! is_string($keyword)) !== []
+                || count(array_unique($snapshot['keywords'])) !== count($snapshot['keywords'])
+                || array_diff($snapshot['keywords'], ['infect', 'wither', 'deathtouch', 'lifelink']) !== []) {
+                throw new GameException('Invalid saved damage-source snapshot.');
+            }
+            self::fromArray($snapshot['object']);
+        }
+        $object->lastKnownDamage = $damage;
         $object->attachedTo = isset($data['attachedTo']) ? (int) $data['attachedTo'] : null;
         $object->untilEndOfTurn = array_values((array) ($data['untilEndOfTurn'] ?? []));
         $object->incarnation = (int) ($data['incarnation'] ?? 0);

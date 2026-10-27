@@ -182,7 +182,7 @@ final class KhalniExpeditionSearchTest extends GameTestCase
         $source = $this->expedition($actor);
         $choice = $this->landfall($actor);
         $saved = $this->saved();
-        $this->assertSame(16, $saved['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $saved['schemaVersion']);
         $this->assertSame($saved, Game::fromArray($saved)->toArray());
         foreach ([null, 'loyalty', 1, [], '+3/+3'] as $kind) {
             $bad = $saved;

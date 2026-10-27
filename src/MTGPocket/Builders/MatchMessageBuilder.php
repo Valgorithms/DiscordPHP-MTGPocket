@@ -358,6 +358,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'trigger' => 'choose targets for '.$game->triggerAwaitingTargets()['label'],
                 'scry', 'surveil' => $game->decision($seat),
                 'look' => 'choose from the top of their library',
+                'damage_order' => 'choose the next replacement or prevention for damage to '.$game->describeTarget($game->choiceAwaiting()['target']),
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
                 'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
@@ -756,6 +757,15 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'damage_order':
+                $damage = $game->choiceAwaiting();
+                $select = StringSelect::new($id('damageorder', (string) $damage['id']))->setPlaceholder('Apply a replacement or prevention');
+                foreach ($game->damageOrderOptions() as $value => $label) {
+                    $select->addOption(Option::new($label, $value));
+                }
+                $message->addComponent(ActionRow::new()->addComponent($select));
+                break;
+
             case 'entry_life':
                 $entry = $game->choiceAwaiting();
                 $row = ActionRow::new();
@@ -909,6 +919,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
 
         return match ($decision) {
             'sacrifice' => self::sacrificePrompt($game, $choice),
+            'damage_order' => 'Choose what applies next to the damage to **'.$game->describeTarget($game->choiceAwaiting()['target']).'**. Damage waits until all replacement and prevention choices are complete.',
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
             'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
