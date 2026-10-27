@@ -40,6 +40,7 @@ use Random\Randomizer;
  */
 final class Game
 {
+    use WardObservation;
     use DamageResolution;
     use PaidActionContinuation;
     use RecoverResolution;
@@ -92,7 +93,7 @@ final class Game
      * Persisted rules-state format; unversioned records are version 1.
      * Version 18 adds explicit Recover choices. Version 17 adds bounded resumable damage; older versions migrate it empty.
      */
-    public const int STATE_VERSION = 18;
+    public const int STATE_VERSION = 19;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -2374,9 +2375,9 @@ final class Game
      * @param string[]     $targets One per target the spell needs: `p:{seat}`, `o:{objectId}` or `s:{stackId}`.
      * @param string|array $how     How it is cast; see {@see plays()}.
      *
-     * @return void
+     * @return array|null The original committed entry, even if copies are appended later; null while paid mana damage suspends commitment.
      */
-    public function cast(int $seat, int $id, int $x = 0, array $targets = [], string|array $how = ''): void
+    public function cast(int $seat, int $id, int $x = 0, array $targets = [], string|array $how = ''): ?array
     {
         $this->expect($seat, 'priority');
         $options = self::castOptions($how);
@@ -2401,6 +2402,7 @@ final class Game
             : [...$card->spellEffects($options['modes'], $options['kicked']), ...$this->splicedEffects($options['splice'])];
         $this->checkTargets($kinds, $targets, $seat, $card->name, $object, $effects);
         $targets = array_map(fn (string $target) => $this->pinTarget($target), $targets);
+        $observation = $this->prepareWardObservation($targets, $seat);
 
         [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($targets, $seat);
         if ($wardDiscard > count($this->players[$seat]->hand) - (in_array($id, $this->players[$seat]->hand, true) ? 1 : 0)) {
@@ -2414,13 +2416,17 @@ final class Game
         $after = ['kind' => 'cast', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
             'x' => $x, 'targets' => $targets, 'options' => $options, 'payment' => $payment,
             'revealed' => $revealed?->id, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount];
-        if (! $this->pay($seat, $payment, $after)) {
-            $this->finishPaidCast($after);
+        if ($this->pay($seat, $payment, $after)) {
+            $this->pendingPaidWardObservation = $observation;
+
+            return null;
         }
+
+        return $this->finishPaidCast($after, $observation);
     }
 
     /** Completes a cast after mana damage; the mana payment is never replayed. */
-    private function finishPaidCast(array $after): void
+    private function finishPaidCast(array $after, ?array $observation = null): array
     {
         ['seat' => $seat, 'object' => $id, 'x' => $x, 'targets' => $targets, 'options' => $options,
             'payment' => $payment, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount] = $after;
@@ -2506,7 +2512,7 @@ final class Game
         if (! $options['faceDown'] && $card->additionalCost !== null && ! $orPaid) {
             $this->payAdditionalCost($seat, $card);
         }
-        $this->stack[] = [
+        $this->stack[] = $committed = [
             'id' => $this->nextStackId++,
             'object' => $object->id,
             'incarnation' => $object->incarnation,
@@ -2520,6 +2526,7 @@ final class Game
             'compleated' => in_array('compleated', $card->keywords, true) ? $payment['life'] - $wardLife : 0,
             // Splice onto Arcane: the spliced cards' effects, copied as it is cast (rule 702.47b).
             'spliced' => $this->splicedEffects($options['splice'])]);
+        $this->commitWardObservation($observation, $committed);
         if ($options['alt'] === 'warp') {
             $this->warpedTurn = $this->turn;
         }
@@ -2558,6 +2565,8 @@ final class Game
         $this->castTriggers($seat, $object, $castFrom);
         $this->targetedTriggers($targets, $seat, true, $object);
         $this->settle();
+
+        return $committed;
     }
 
     /**
@@ -2821,27 +2830,31 @@ final class Game
      * @param int         $controller
      * @param string      $why
      *
-     * @return void
+     * @return array|null
      */
-    private function copySpell(array|false $item, int $controller, string $why): void
+    private function copySpell(array|false $item, int $controller, string $why): ?array
     {
         if ($item === false || self::isAbility($item)) {
-            return;
+            return null;
         }
         $spell = $this->objects[$item['object']];
         $card = $spell->definition();
         $effects = $card->isPermanentCard() ? [] : [...$card->spellEffects($item['modes'] ?? [], $item['kicked'] ?? false), ...$item['spliced'] ?? []];
         if ($effects === []) {
-            return;
+            return null;
         }
-        $this->pushAbility([
+        $observation = $this->prepareWardObservation($item['targets'], $controller);
+
+        return $this->pushAbility([
             'source' => $spell->id,
             'incarnation' => $spell->incarnation,
             'controller' => $controller,
             'effects' => $effects,
             'kinds' => self::targetKindsOf($effects),
             'label' => "A copy of {$card->name}",
-        ], $item['targets'], "is put on the stack ({$why})");
+            // Copies use ability-shaped entries but retain this spell characteristic.
+            'uncounterable' => $this->hasKeyword($spell, "can't be countered"),
+        ], $item['targets'], "is put on the stack ({$why})", observation: $observation, frozenTargets: $item['targets']);
     }
 
     /**
@@ -5200,10 +5213,10 @@ final class Game
 
             case 'counter':
                 $stackId = (int) substr((string) $target, 2);
-                foreach ($this->stack as $index => $item) {
+                foreach ($this->stack as $item) {
                     if ($item['id'] === $stackId) {
                         $countered = $this->objects[$item['object']];
-                        if (! self::isAbility($item) && $this->hasKeyword($countered, "can't be countered")) {
+                        if ($this->stackItemUncounterable($item)) {
                             $this->log("{$countered->name()} can't be countered.");
                             break;
                         }
@@ -5215,14 +5228,9 @@ final class Game
                             $this->log("{$this->players[$item['controller']]->name} pays {$unless}, so {$countered->name()} is not countered.");
                             break;
                         }
-                        array_splice($this->stack, $index, 1);
-                        $this->log("{$countered->name()} is countered.", null, "{$countered->name()} countered");
-                        // `Its controller loses 2 life.` after it: that player.
-                        $this->followed[(string) $target] = "p:{$item['controller']}";
-                        if (($effect['exileCountered'] ?? false) && ! self::isAbility($item)) {
-                            $this->moveTo($countered, GameObject::EXILE);
-                        } elseif (! self::isAbility($item)) {
-                            $this->spellLeavesStack($countered, $item);
+                        if ($this->counterStackItem($stackId, $effect['exileCountered'] ?? false) !== null) {
+                            // `Its controller loses 2 life.` after it: that player.
+                            $this->followed[(string) $target] = "p:{$item['controller']}";
                         }
                         break;
                     }
@@ -6505,6 +6513,47 @@ final class Game
         return ($item['kind'] ?? 'spell') === 'ability';
     }
 
+    /** Whether this stack entry itself, rather than an ability's source, is uncounterable. */
+    private function stackItemUncounterable(array $item): bool
+    {
+        return ($item['uncounterable'] ?? false) || (! self::isAbility($item)
+            && $this->hasKeyword($this->objects[$item['object']], "can't be countered"));
+    }
+
+    /**
+     * Removes exactly one stack entry. Only a card spell moves its underlying
+     * object; an ability or ability-shaped spell copy never moves its source.
+     *
+     * @return array|null The removed entry, or null if absent, stale or uncounterable.
+     */
+    private function counterStackItem(int $stackId, bool $exile = false): ?array
+    {
+        foreach ($this->stack as $index => $item) {
+            if ($item['id'] !== $stackId) {
+                continue;
+            }
+            $object = $this->objects[$item['object']];
+            if ((! self::isAbility($item) && ($object->zone !== GameObject::STACK || $object->incarnation !== $item['incarnation']))
+                || $this->stackItemUncounterable($item)) {
+                return null;
+            }
+            array_splice($this->stack, $index, 1);
+            $name = self::isAbility($item) ? $item['label'] : $object->name();
+            $this->log("{$name} is countered.", null, "{$name} countered");
+            if (! self::isAbility($item)) {
+                if ($exile) {
+                    $this->moveTo($object, GameObject::EXILE);
+                } else {
+                    $this->spellLeavesStack($object, $item);
+                }
+            }
+
+            return $item;
+        }
+
+        return null;
+    }
+
     /**
      * The kinds of target effects need, in order.
      *
@@ -6874,16 +6923,18 @@ final class Game
      * @param int      $seat
      * @param string[] $targets One per target, as for {@see cast()}.
      *
-     * @return void
+     * @return array|null
      */
-    public function chooseTriggerTargets(int $seat, array $targets): void
+    public function chooseTriggerTargets(int $seat, array $targets): ?array
     {
         $this->expect($seat, 'trigger');
         $trigger = $this->pendingTriggers[0];
         $this->checkTargets($trigger['kinds'], array_values($targets), $seat, $trigger['label'], $this->objects[$trigger['source']] ?? null, $trigger['effects']);
         array_shift($this->pendingTriggers);
-        $this->pushTriggered($trigger, array_values($targets));
+        $committed = $this->pushTriggered($trigger, array_values($targets));
         $this->settle();
+
+        return $committed;
     }
 
     /**
@@ -6894,26 +6945,30 @@ final class Game
      * @param array    $trigger
      * @param string[] $targets
      *
-     * @return void
+     * @return array|null
      */
-    private function pushTriggered(array $trigger, array $targets): void
+    private function pushTriggered(array $trigger, array $targets): ?array
     {
-        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $trigger['controller'], false);
+        $frozenTargets = $this->freezeChosenTargets($targets);
+        $observation = $this->prepareWardObservation($frozenTargets, $trigger['controller']);
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($frozenTargets, $trigger['controller'], false);
         if ($wardMana !== '' || $wardLife > 0 || $wardDiscard > 0) {
             $payment = $this->payFor($trigger['controller'], $wardMana, $wardLife);
             if ($payment === null || $wardDiscard > count($this->players[$trigger['controller']]->hand)) {
                 $this->log("{$trigger['label']} is countered by ward.", $trigger['controller']);
 
-                return;
+                return null;
             }
             $after = ['kind' => 'ward_trigger', 'seat' => $trigger['controller'], 'object' => $trigger['source'],
-                'incarnation' => $trigger['incarnation'], 'trigger' => $trigger, 'targets' => $targets, 'wardDiscard' => $wardDiscard];
+                'incarnation' => $trigger['incarnation'], 'trigger' => $trigger, 'targets' => $frozenTargets, 'wardDiscard' => $wardDiscard];
             if ($this->pay($trigger['controller'], $payment, $after)) {
-                return;
+                $this->pendingPaidWardObservation = $observation;
+
+                return null;
             }
             $this->discardCheapest($trigger['controller'], $wardDiscard);
         }
-        $this->pushAbility($trigger, $targets, 'triggers');
+        return $this->pushAbility($trigger, $targets, 'triggers', observation: $observation, frozenTargets: $frozenTargets);
     }
 
     /**
@@ -6932,13 +6987,14 @@ final class Game
      * @param array{source: int, incarnation: int, controller: int, effects: array[], kinds: string[], label: string, text?: string} $ability
      * @param string[] $targets Already checked.
      * @param string   $verb    For the log: `triggers` or `is activated`.
+     * @param string[]|null $frozenTargets Gameplay-owned chosen identities captured before costs, or original copy targets.
      *
-     * @return void
+     * @return array The committed ability entry; this method does not suspend.
      */
-    private function pushAbility(array $ability, array $targets, string $verb, ?string $move = null): void
+    private function pushAbility(array $ability, array $targets, string $verb, ?string $move = null, ?array $observation = null, ?array $frozenTargets = null): array
     {
-        $targets = array_map(fn (string $target) => $this->pinTarget($target), $targets);
-        $this->stack[] = [
+        $targets = $frozenTargets ?? array_map(fn (string $target) => $this->pinTarget($target), $targets);
+        $this->stack[] = $committed = [
             'id' => $this->nextStackId++,
             'object' => $ability['source'],
             'incarnation' => $ability['incarnation'],
@@ -6949,12 +7005,15 @@ final class Game
             'effects' => $ability['effects'],
             'kinds' => $ability['kinds'],
             'label' => $ability['label'],
-        ];
+        ] + (array_key_exists('uncounterable', $ability) ? ['uncounterable' => $ability['uncounterable']] : []);
         $this->passes = 0;
         $named = array_map(fn (string $target) => $this->describeTarget($target), $targets);
         $line = "{$ability['label']} {$verb}".($named === [] ? '' : ' targeting '.implode(', ', $named));
         // The record also says what a triggered ability does, since one card can have several.
         $this->log("{$line}.", $ability['controller'], $move === null ? null : $move.self::targetNotation($named), ($ability['text'] ?? '') === '' ? null : "{$line}: {$ability['text']}");
+        $this->commitWardObservation($observation, $committed);
+
+        return $committed;
     }
 
     /**
@@ -7579,16 +7638,17 @@ final class Game
      * Activates an ability (rule 602): it goes on the stack and its costs
      * are paid, mana automatically, with ward's for opponents' permanents it
      * targets on top. The player keeps priority. Turning a face-down
-     * permanent face up happens at once instead.
+     * permanent face up happens at once instead. A suspended paid tail has no
+     * committed receipt until its damage choice completes.
      *
      * @param int      $seat
      * @param int      $id      A permanent they control.
      * @param int      $index   Among its card's {@see CardDefinition::$activated}.
      * @param string[] $targets One per target, as for {@see cast()}.
      *
-     * @return void
+     * @return array|null
      */
-    public function activate(int $seat, int $id, int $index, array $targets = []): void
+    public function activate(int $seat, int $id, int $index, array $targets = []): ?array
     {
         $this->expect($seat, 'priority');
         if (($reason = $this->whyNotActivate($seat, $id, $index)) !== null) {
@@ -7600,7 +7660,9 @@ final class Game
         $targets = array_values($targets);
         $label = "{$object->name()}'s ability";
         $this->checkTargets($kinds, $targets, $seat, $label, $object, $ability['effects']);
-        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost(array_map(fn (string $target) => $this->pinTarget($target), $targets), $seat, false);
+        $frozenTargets = $this->freezeChosenTargets($targets);
+        $observation = $this->prepareWardObservation($frozenTargets, $seat);
+        [$wardMana, $wardLife, $wardDiscard] = $this->wardCost($frozenTargets, $seat, false);
         if ($wardDiscard + ($ability['cost']['discard'] ?? 0) > count($this->players[$seat]->hand)) {
             throw new GameException('You need a card in your hand to discard for ward.');
         }
@@ -7614,14 +7676,18 @@ final class Game
         $cost = $ability['cost'];
         $crew = isset($cost['crew']) ? (array) $this->crew($seat, $object, $cost['crew']) : [];
         $after = ['kind' => 'activate', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
-            'index' => $index, 'targets' => $targets, 'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew];
-        if (! $this->pay($seat, $payment, $after)) {
-            $this->finishPaidActivation($after);
+            'index' => $index, 'targets' => $frozenTargets, 'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew];
+        if ($this->pay($seat, $payment, $after)) {
+            $this->pendingPaidWardObservation = $observation;
+
+            return null;
         }
+
+        return $this->finishPaidActivation($after, $observation);
     }
 
     /** Completes the remaining activation costs and queueing once, after mana damage. */
-    private function finishPaidActivation(array $after): void
+    private function finishPaidActivation(array $after, ?array $observation = null): ?array
     {
         ['seat' => $seat, 'object' => $id, 'index' => $index, 'targets' => $targets,
             'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew] = $after;
@@ -7703,7 +7769,7 @@ final class Game
             $this->turnFaceUp($object);
             $this->settle();
 
-            return;
+            return null;
         }
         $object->activations[$index] = ($object->used[$index] ?? 0) === $this->turn ? ($object->activations[$index] ?? 0) + 1 : 1;
         $object->used[$index] = $this->turn;
@@ -7713,7 +7779,7 @@ final class Game
             $label = "A copy of {$object->definition()->prepare?->name}";
         }
 
-        $this->pushAbility([
+        $committed = $this->pushAbility([
             'source' => $object->id,
             'incarnation' => $object->incarnation,
             'controller' => $seat,
@@ -7721,7 +7787,7 @@ final class Game
             'kinds' => $kinds,
             'label' => $label,
             'x' => $x,
-        ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'));
+        ], $targets, 'is activated', $object->name().'*'.($crew === [] ? '' : ' (crew '.implode(', ', array_map(fn (int $c) => $this->objects[$c]->name(), $crew)).')'), frozenTargets: $targets);
         $this->targetedTriggers($targets, $seat);
         // `Whenever you activate an ability that isn't a mana ability (an exhaust ability), …`
         foreach ($this->permanents($seat) as $permanent) {
@@ -7742,7 +7808,10 @@ final class Game
             $this->log("{$player->name} returns {$object->name()} to its owner's hand.");
             $this->moveTo($object, GameObject::HAND);
         }
+        $this->commitWardObservation($observation, $committed);
         $this->settle();
+
+        return $committed;
     }
 
     /**
@@ -8019,6 +8088,20 @@ final class Game
 
         return array_values(array_filter($options, fn (string $target) => $this->isLegalTarget($kind, $target, $seat, $self)
             && ($from === null || ! $this->protectedFrom($this->targetObject($target), $from))));
+    }
+
+    /**
+     * Freeze chosen targets once, preserving supplied incarnations and every slot.
+     * Event-context references still use pinTarget() at their existing call sites.
+     *
+     * @param string[] $targets Already validated chosen targets.
+     *
+     * @return string[]
+     */
+    private function freezeChosenTargets(array $targets): array
+    {
+        return array_map(fn (string $target) => str_starts_with($target, 'o:') && count(explode(':', $target)) === 2
+            ? $this->pinTarget($target) : $target, $targets);
     }
 
     /**
@@ -11260,7 +11343,7 @@ final class Game
      *
      * @return array[]
      */
-    private function anthems(GameObject $object): array
+    private function anthems(GameObject $object, bool $withWardOrigins = false): array
     {
         if ($object->zone !== GameObject::BATTLEFIELD) {
             return [];
@@ -11268,23 +11351,29 @@ final class Game
         $anthems = [];
         foreach ($this->battlefield as $id) {
             $source = $this->objects[$id];
+            $sourceAnthems = $source->definition()->anthem;
+            if ($withWardOrigins) {
+                foreach ($sourceAnthems as $index => $anthem) {
+                    $sourceAnthems[$index]['wardObservationOrigin'] = "{$source->id}:{$source->incarnation}:{$index}";
+                }
+            }
             // "Creatures enchanted player controls get -1/-1."
             if ($source->enchantedPlayer === $object->controller) {
-                array_push($anthems, ...array_filter($source->definition()->anthem, fn (array $anthem) => $anthem['enchantedPlayer'] ?? false));
+                array_push($anthems, ...array_filter($sourceAnthems, fn (array $anthem) => $anthem['enchantedPlayer'] ?? false));
             }
             // "Creatures your opponents control get -1/-1."
             if ($source->controller !== $object->controller && ! $source->faceDown) {
-                array_push($anthems, ...array_filter($source->definition()->anthem, fn (array $anthem) => ($anthem['opponents'] ?? false) && $this->gained($source, $anthem)));
+                array_push($anthems, ...array_filter($sourceAnthems, fn (array $anthem) => ($anthem['opponents'] ?? false) && $this->gained($source, $anthem)));
             }
             // The Slivers: `All Sliver creatures get +1/+1.`, whoever controls them.
             if ($source->controller !== $object->controller && ! $source->faceDown) {
-                array_push($anthems, ...array_filter($source->definition()->anthem, fn (array $anthem) => ($anthem['everyone'] ?? false) && $this->gained($source, $anthem)
+                array_push($anthems, ...array_filter($sourceAnthems, fn (array $anthem) => ($anthem['everyone'] ?? false) && $this->gained($source, $anthem)
                     && (in_array($anthem['subtype'], $object->definition()->subtypes, true) || in_array('changeling', $object->definition()->keywords, true))));
             }
             if ($source->controller !== $object->controller || $source->faceDown) {
                 continue;
             }
-            foreach ($source->definition()->anthem as $anthem) {
+            foreach ($sourceAnthems as $anthem) {
                 if (($anthem['enchantedPlayer'] ?? false) || ($anthem['opponents'] ?? false) || ! $this->gained($source, $anthem) || (($anthem['withCounter'] ?? false) && ($anthem['withCounter'] === 'any' ? array_filter($object->counters) === [] : $object->counter('+1/+1') === 0))) {
                     continue;
                 }
@@ -11581,6 +11670,11 @@ final class Game
             }
         }
         $game->battlefield = array_map('intval', (array) $data['battlefield']);
+        foreach ((array) $data['stack'] as $item) {
+            if (array_key_exists('uncounterable', $item) && (! self::isAbility($item) || ! is_bool($item['uncounterable']))) {
+                throw new GameException('Invalid saved stack-entry counter characteristic.');
+            }
+        }
         $game->stack = array_values(array_map(fn ($item) => [
             'id' => (int) $item['id'],
             'object' => (int) $item['object'],
@@ -11593,7 +11687,7 @@ final class Game
             'effects' => array_values((array) $item['effects']),
             'kinds' => array_values(array_map('strval', (array) $item['kinds'])),
             'label' => (string) $item['label'],
-        ] : array_filter([
+        ] + (array_key_exists('uncounterable', $item) ? ['uncounterable' => $item['uncounterable']] : []) : array_filter([
             'modes' => array_values(array_map('intval', (array) ($item['modes'] ?? []))),
             'kicked' => (bool) ($item['kicked'] ?? false),
             'kicks' => (int) ($item['kicks'] ?? 0),

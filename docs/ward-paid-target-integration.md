@@ -1,0 +1,43 @@
+# Private frozen-target / paid-continuation integration
+
+This combines frozen synchronous target checkpoint `ec1e9311683a6789586ac0f48970fe762b5ffbf8` with frozen #445 `e49214864e72e1b1c69964d57b06a67a912040fc`, which includes #444 `32bd33ddbf2d1811068d02fc678899d186073424`. It is a private integration, not a modification or acceptance of those public branches. #446 and #447 remain frozen too. Separate parent passes are historical evidence; this tree requires its own validation. No new Ward timing, optional payment, simultaneous-trigger ordering, live bot or whole-card certification is included.
+
+## Upgrade prerequisite: finish older already-paid bare-target actions first
+
+**Schema 19 refuses schema-17/18 already-paid pending actions that store a bare object target such as `o:55` instead of its original `o:55:1` incarnation. Such a match cannot load under the new version. There is no automatic migration or recovery for those records.**
+
+Before upgrading, drain or finish affected pending actions under the old version. If affected records still exist and cannot be finished there, obtain an explicitly reviewed recovery policy before rollout. Do not invent an original incarnation from the current object, refund or cancel the action, replay payment, or silently rewrite the save. Loading refusal does not itself repair the already-paid action. Preserve the original stored record for that review.
+
+Other structurally valid schema-17/18 pending actions can load when their stored selections already satisfy the frozen-pin contract and the retained source/action checks. Old casts and Bloodrush already normally stored pins; old activation and legacy Ward-trigger payment could store bare object selections. Empty older pending state retains the existing migration. This is a representation boundary, not a blanket promise that all version-17/18 pending saves can upgrade.
+
+The [private PR handoff](ward-paid-target-pr-handoff.md) carries this prerequisite forward. A repository-fixture inventory cannot establish whether live matches are clear. This work does not inspect or modify live private match storage, perform draining or authorize deployment.
+
+Read-only repository inventory found no schema-17/18 serialized game records in the 37 tracked JSON files under `tests`. The maintained PHP regression's `bare-legacy18` case deliberately constructs an affected pending shape; it is synthetic evidence of refusal, not an inventory of live matches.
+
+## Paid target and receipt contract
+
+Cast already freezes chosen object identities before payment. Activation and targeted-trigger payment now carry the gameplay-owned pre-cost list in the existing `after.targets` field. Bloodrush carries its original pinned `after.attacker` reference. Payment, suspension, save/load and completion never select or pin those targets again. Targets that died while producing mana remain stored as stale identities; the action completes and its ordinary resolution legality checks determine which effects can resolve. A legal second target can resolve while the first is stale. Separate clauses retain repeated slots; one clause still requires distinct identities, and optional omitted slots retain `-`.
+
+`finishPaidCast()` returns the actual original committed spell entry, before copy appends; `finishPaidActivation()` returns its committed ability or null for a face-up special action. Public `cast()` now has a nullable receipt because a suspended paid tail has not committed an entry yet. Activation and targeted-trigger selection likewise return null during suspension. This is not a guessed receipt or an end-of-stack lookup. Existing damage-choice completion remains the asynchronous action boundary; it finishes each tail once using the original pending action and the normal monotonic stack ID. Existing source/copy counter identity and uncounterability snapshots are retained.
+
+Schema 19 applies strict structural validation to the existing paid target fields: bounded lists/strings, canonical object/incarnation, player and prior stack-ID references, slot count, token-kind category, optional omissions and within-clause distinctness. Historical object pins may be older than the object's current incarnation; a paid target is not required to remain on the battlefield, controlled by the same player, targetable or otherwise currently legal. Malformed, unknown and future pins reject. Existing source/action/cost constraints and the one-MiB pending-state bound remain. An older already-paid bare target is refused rather than guessed from current state; empty schema-18 and earlier states retain the existing migrations.
+
+At most one optional pre-cost Ward diagnostic snapshot is held in memory across live suspension and consumed at completion. It is never serialized or used for gameplay. A reload disables observation and drops that diagnostic snapshot; re-enabling cannot reconstruct it from post-cost state or invent an event. Observation stays default-off, its collection order remains unselected, and no executable Ward trigger is created.
+
+## Direct post-cost target-event defect and precise limit
+
+The synchronous activation callback previously passed raw chosen IDs to `targetedTriggers()` after costs. A real engine Persist departure/return during sacrifice payment showed the callback queuing an ability with the *returned* incarnation, although the committed offending ability retained the original selected pin. The new maintained negative regression rejects that wrong new-source identity. Passing the frozen chosen list through the paid activation tail prevents that rebind. Cast callbacks already receive their pre-cost pins.
+
+This is not general target-event correctness: conditions of the original target are not comprehensively snapshotted at selection before costs. An original incarnation may have earned a trigger before departing, and this patch does not implement that capture. Copy and targeted-trigger event notification completeness also remain outside the claim. The regression intentionally does not demand absence of a legitimate old-source trigger. Ward's separate pre-cost diagnostic model does not authorize or supply gameplay truth for these ordinary triggers.
+
+## Actual baselines and evidence boundaries
+
+On unchanged `ec1e931`, the new-source callback identity regression fails after seven reached assertions. On unchanged `e492148`, five paid action cases reach 14 assertions and error while sealing payment: the legacy continuation validator rechecks a target that already left to produce mana, including cast for both seats, activation, targeted-trigger payment and Bloodrush. Mana costs had already been paid before those errors. Unreachable later assertions are not counted as passes. The original callback count-only probe, its later precise identity probe, the earlier seven synchronous pin failures and all parent failure histories remain preserved.
+
+The first mechanical integration focused run had 150 tests / 1727 assertions and one failure because a migration regression hard-coded output schema 18. That assertion now follows `Game::STATE_VERSION`; the migration and Recover behavior remain tested. Frozen Fog source/fixture and all ten Fog regressions are retained. Recover runtime and its historical unexplained native PHP crash remain unchanged and preserved. Seeded doubling/prevention and synthetic painful-mana, Persist, Storm and cost fixtures are bounded engine contracts, not new printed-card certificates or corpus coverage.
+
+## Combined verification
+
+Immutable combined runtime/test source `9da3bce5cc813cb1fea493e9426a93075c685525`: focused 275 tests / 2198 assertions, including 28 new integration cases / 193 assertions; full offline 2649 / 65315, two unchanged missing-pool/rental skips and no failures, errors, warnings or risky tests, 00:59.696 / 366 MiB. Full nonmutating Pint, all 88 normalized source pins, ledger 18 / 37 and 33 unchanged-method token checks pass. Imported Fog, damage and Recover fixtures/runtime/tests are checked against the frozen paid parent; older counter/model/observer/frozen-pin tests remain byte-identical except the explicit migration version assertion.
+
+Both complete validation histories and legitimate scoped evidence/gap sets are retained. The inventory combines 38 scoped names, three gap names, two overlaps and zero whole-card certificates; historical recognition remains unchanged. No new card is certified by this integration. PHP 8.5.12, 512 MiB, Xdebug off, isolated data/temp and original dependencies were used; native read-only Windows DNS served only existing mocked HTTP constructors. Metadata/docs completion retains the exact tested PHP/test bytes. No hosted CI or public branch change is claimed.

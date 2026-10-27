@@ -201,10 +201,11 @@ trait DamageResolution
         if ($pending['completion'] === 'combat') {
             $this->finishCombatDamage($assignments);
         } elseif ($pending['completion'] === 'payment') {
+            $observation = $this->takePaidWardObservation();
             match ($pending['after']['kind']) {
-                'cast' => $this->finishPaidCast($pending['after']),
-                'activate' => $this->finishPaidActivation($pending['after']),
-                default => $this->finishPaidUtility($pending['after']),
+                'cast' => $this->finishPaidCast($pending['after'], $observation),
+                'activate' => $this->finishPaidActivation($pending['after'], $observation),
+                default => $this->finishPaidUtility($pending['after'], $observation),
             };
         }
 
@@ -412,7 +413,7 @@ trait DamageResolution
             $card = $object->printed();
             $effects = $options['faceDown'] || $options['bestowed'] || $options['alt'] === 'mutate' || $card->aura !== null ? []
                 : [...$card->spellEffects($options['modes'], $options['kicked']), ...$this->splicedEffects($options['splice'])];
-            $this->checkTargets($this->castKinds($card, $options), $after['targets'], $after['seat'], $card->name, $object, $effects);
+            $this->validateFrozenChosenTargets($this->castKinds($card, $options), $after['targets'], $effects);
         } else {
             $ability = is_int($after['index'] ?? null) ? ($object->definition()->activated[$after['index']] ?? null) : null;
             if (array_keys($after) !== ['kind', 'seat', 'object', 'incarnation', 'index', 'targets', 'x', 'wardDiscard', 'crew']
@@ -422,7 +423,7 @@ trait DamageResolution
                     || $this->objects[$id]->zone !== GameObject::BATTLEFIELD || $this->objects[$id]->controller !== $after['seat']) !== []) {
                 throw new GameException('Invalid saved paid activation.');
             }
-            $this->checkTargets(self::targetKindsOf($ability['effects']), $after['targets'], $after['seat'], $object->name(), $object, $ability['effects']);
+            $this->validateFrozenChosenTargets(self::targetKindsOf($ability['effects']), $after['targets'], $ability['effects']);
         }
     }
 }
