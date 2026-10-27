@@ -70,6 +70,7 @@ final class PanelActions
             'keepall' => $act(fn (Game $game, int $seat) => $game->arrange($seat, [])),
             'take' => $act(fn (Game $game, int $seat) => $game->take($seat, $ints)),
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
+            'damageorder' => $act(fn (Game $game, int $seat) => $game->chooseDamageOrder($seat, (int) ($args[0] ?? 0), $values[0] ?? '')),
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'fabricate' => $act(fn (Game $game, int $seat) => $game->chooseFabricate($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maygoblin' => $act(fn (Game $game, int $seat) => $game->chooseOptionalRedGoblin($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),

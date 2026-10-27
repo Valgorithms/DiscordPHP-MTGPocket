@@ -154,6 +154,12 @@ final class PracticeBot
                 $game->chooseFabricate($seat, $choice['id'], 'counters');
 
                 return true;
+            case 'damage_order':
+                $choice = $game->choiceAwaiting();
+                $prevention = array_values(array_filter($choice['options'], fn (string $option) => ! str_starts_with($option, 'double:')));
+                $game->chooseDamageOrder($seat, $choice['id'], $prevention[0] ?? $choice['options'][0]);
+
+                return true;
             case 'entry_life':
                 $choice = $game->choiceAwaiting();
                 $pay = in_array('pay', $choice['options'], true) && ! $choice['tapped'] && $game->players[$seat]->life > 10;

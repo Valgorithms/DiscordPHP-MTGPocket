@@ -1,0 +1,277 @@
+{
+  "sources": {
+    "M10": {
+      "setCode": "M10",
+      "setName": "Magic 2010",
+      "releaseDate": "2009-07-17",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723094,
+      "sourcePoolSha256": "8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0"
+    },
+    "M15": {
+      "setCode": "M15",
+      "setName": "Magic 2015",
+      "releaseDate": "2014-07-18",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723095,
+      "sourcePoolSha256": "bf220c3fd3b9ec976c553de156bf79ed30fc4f3fe335f91ed80da3494da9b846"
+    },
+    "DTK": {
+      "setCode": "DTK",
+      "setName": "Dragons of Tarkir",
+      "releaseDate": "2015-03-27",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723095,
+      "sourcePoolSha256": "0364490f3dea791722ea79c3a38825ae81ef356272f982650a219a9fed745505"
+    },
+    "NPH": {
+      "setCode": "NPH",
+      "setName": "New Phyrexia",
+      "releaseDate": "2011-05-13",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723094,
+      "sourcePoolSha256": "35c59a0ecb4fb878a20f0410a5a94ad77d5f3a0a804d604ff3fef0a65b3a7e37"
+    },
+    "10E": {
+      "setCode": "10E",
+      "setName": "Tenth Edition",
+      "releaseDate": "2007-07-13",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723093,
+      "sourcePoolSha256": "03ac62a3f04d0866b5b2f34322c27fd8701bd65447c3b249253ab73b2769205e"
+    },
+    "GRN": {
+      "setCode": "GRN",
+      "setName": "Guilds of Ravnica",
+      "releaseDate": "2018-10-05",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723095,
+      "sourcePoolSha256": "2e59371b4b7d6dc68ab2cc0bd52cc6028a1ba1640a120ca29a1f0609a24decdf"
+    }
+  },
+  "cards": [
+    {
+      "uuid": "ad3f4ca2-c974-5463-86c2-c95cb37f50b6",
+      "name": "Act of Treason",
+      "number": "124",
+      "rarity": "uncommon",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 3,
+      "type": "Sorcery",
+      "scryfallId": "8b63bee5-d8e5-4c2f-8514-8c86d025f7c9",
+      "manaCost": "{2}{R}",
+      "types": [
+        "Sorcery"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. (It can attack and {T} this turn.)",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "5c3e3371-9565-5e59-838b-c8fc0edc15c4",
+      "name": "Prodigal Pyromancer",
+      "number": "151",
+      "rarity": "uncommon",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 3,
+      "type": "Creature — Human Wizard",
+      "scryfallId": "ea894b56-7427-4dda-a63a-65608252f13e",
+      "manaCost": "{2}{R}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Human",
+        "Wizard"
+      ],
+      "power": "1",
+      "toughness": "1",
+      "text": "{T}: This creature deals 1 damage to any target.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "f1700bec-c9dd-5322-9a63-cae2c99612e0",
+      "name": "Pyroclasm",
+      "number": "152",
+      "rarity": "uncommon",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 2,
+      "type": "Sorcery",
+      "scryfallId": "2df4f214-5db5-41ea-8e06-e8f0aaeac05d",
+      "manaCost": "{1}{R}",
+      "types": [
+        "Sorcery"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Pyroclasm deals 2 damage to each creature.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "a91b9680-80f4-5676-ad64-0153775d79cd",
+      "name": "Shivan Dragon",
+      "number": "156",
+      "rarity": "rare",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 6,
+      "type": "Creature — Dragon",
+      "scryfallId": "c5efc94a-b644-4cc4-9598-2ce16fe68420",
+      "manaCost": "{4}{R}{R}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Dragon"
+      ],
+      "power": "5",
+      "toughness": "5",
+      "text": "Flying\n{R}: This creature gets +1/+0 until end of turn.",
+      "keywords": [
+        "Flying"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "0e2f1527-403c-56be-8b66-dca3a53b4a15",
+      "name": "Hunt the Weak",
+      "number": "179",
+      "rarity": "common",
+      "colors": [
+        "G"
+      ],
+      "manaValue": 4,
+      "type": "Sorcery",
+      "scryfallId": "546686cb-4cb1-4107-bbf5-0af943236ad2",
+      "manaCost": "{3}{G}",
+      "types": [
+        "Sorcery"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Put a +1/+1 counter on target creature you control. Then that creature fights target creature you don't control. (Each deals damage equal to its power to the other.)",
+      "keywords": [
+        "Fight"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "G"
+      ]
+    },
+    {
+      "uuid": "df15dd46-9de6-5291-9951-efbde49a5d43",
+      "name": "Twin Bolt",
+      "number": "164",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 2,
+      "type": "Instant",
+      "scryfallId": "5bd58ec4-34a9-4fc2-b057-438492e2e06e",
+      "manaCost": "{1}{R}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Twin Bolt deals 2 damage divided as you choose among one or two targets.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "7069ef31-1382-58b4-af23-8da8d0b5a79d",
+      "name": "Act of Aggression",
+      "number": "78",
+      "rarity": "uncommon",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 5,
+      "type": "Instant",
+      "scryfallId": "61a9f30b-d154-49a4-ad6b-f05601992de3",
+      "manaCost": "{3}{R/P}{R/P}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "({R/P} can be paid with either {R} or 2 life.)\nGain control of target creature an opponent controls until end of turn. Untap that creature. It gains haste until end of turn.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "ff703e3a-4ea3-59d6-99e5-02c4db74f035",
+      "name": "Shivan Reef",
+      "number": "357",
+      "rarity": "rare",
+      "colors": [],
+      "manaValue": 0,
+      "type": "Land",
+      "scryfallId": "d62ea973-7799-4179-9d36-60e2287feae7",
+      "types": [
+        "Land"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "{T}: Add {C}.\n{T}: Add {U} or {R}. This land deals 1 damage to you.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R",
+        "U"
+      ],
+      "manaCost": null
+    },
+    {
+      "uuid": "fa0d0bb3-e9b7-5752-911e-0719ff9a1a12",
+      "name": "Justice Strike",
+      "number": "182",
+      "rarity": "uncommon",
+      "colors": [
+        "W",
+        "R"
+      ],
+      "manaValue": 2,
+      "type": "Instant",
+      "scryfallId": "27619ce9-59df-4f0e-a5db-2d32a530e547",
+      "manaCost": "{R}{W}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Target creature deals damage to itself equal to its power.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R",
+        "W"
+      ]
+    }
+  ]
+}

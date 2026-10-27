@@ -2630,6 +2630,12 @@ final class TextParser
             return true;
         }
         // Quest for Ancient Secrets: count each card, not tokens or just mill events.
+        if ($line === 'Whenever a source you control deals damage to an opponent, you may put a quest counter on CARDNAME.') {
+            $result['triggered'][] = ['text' => $line, 'event' => 'your_source_damages_opponent',
+                'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
+
+            return true;
+        }
         if ($line === 'Whenever a card is put into your graveyard from anywhere, you may put a quest counter on CARDNAME.') {
             $result['triggered'][] = ['text' => $line, 'event' => 'card_to_graveyard_yours',
                 'effects' => [['type' => 'optional_source_counter', 'kind' => 'quest']]];
@@ -3584,7 +3590,7 @@ final class TextParser
                 [$cost['mana'], $cost['waterbend']] = [$water[1], true];
             } elseif ($part === 'Sacrifice CARDNAME') {
                 $cost['sacrifice'] = true;
-            } elseif (preg_match('/^Remove (a quest counter|(?:three|five) quest counters) from CARDNAME and sacrifice it$/', $part, $quest)) {
+            } elseif (preg_match('/^Remove (a quest counter|(?:three|four|five) quest counters) from CARDNAME and sacrifice it$/', $part, $quest)) {
                 $cost += ['remove' => ['quest', self::amount(explode(' ', $quest[1])[0])], 'sacrifice' => true];
             } elseif ($part === 'Discard CARDNAME') {
                 $cost['discardSelf'] = true;
@@ -3761,6 +3767,9 @@ final class TextParser
      */
     public static function effects(string $text): ?array
     {
+        if (trim($text) === 'If any source you control would deal damage to a permanent or player this turn, it deals double that damage to that permanent or player instead.') {
+            return [['type' => 'double_damage_turn']];
+        }
         // `Look at the top card of your library. You may put that card into your graveyard.`: surveil 1 in all but name, so no `Whenever you surveil` triggers.
         if (preg_match('/^[Ll]ook at the top card of your library\. You may put (?:that card|it) into your graveyard\.?$/', trim($text))) {
             return [['type' => 'surveil', 'amount' => 1, 'quiet' => true]];

@@ -1536,6 +1536,72 @@ final class MatchesTest extends PocketTestCase
         return [['counters'], ['servos']];
     }
 
+    public function testDamageOrderingPanelPersistsAndRejectsInvalidAndRepeatedAnswers(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $quest = $bolt = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$quest, &$bolt): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $cards = json_decode(file_get_contents(__DIR__.'/Fixtures/quest-pure-flame.json'), true, flags: JSON_THROW_ON_ERROR)['cards'];
+            foreach ($cards as $card) {
+                if ($card['name'] === 'Quest for Pure Flame') {
+                    $quest = $game->addCard($seat, $card, GameObject::HAND)->id;
+                } elseif ($card['name'] === 'Lightning Bolt') {
+                    $bolt = $game->addCard($seat, $card, GameObject::HAND)->id;
+                }
+            }
+            for ($n = 0; $n < 2; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+        });
+        [$match] = $panel->run($match->id, $player, 'play', [], [(string) $quest]);
+        for ($n = 0; $n < 2; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $match = $this->modifyGame($match, function (Game $game) use ($quest): void {
+            $game->objects[$quest]->addCounters('quest', 4); // Activation/UI isolation; earning is tested separately.
+        });
+        [$match] = $panel->run($match->id, $player, 'ability', [], [$quest.'.0']);
+        for ($n = 0; $n < 2; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, $bolt): void {
+            $game->prevent['p:'.(1 - $seat)] = 2;
+            $game->cast($seat, $bolt, 0, ['p:'.(1 - $seat)]);
+        });
+        for ($n = 0; $n < 2; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('damage_order', $choice['type']);
+        $this->assertSame(1 - $seat, $choice['seat']);
+        $json = json_encode(MatchMessageBuilder::actions($match, $other));
+        $this->assertStringContainsString('damageorder:'.$choice['id'], $json);
+        $this->assertStringContainsString('Double the damage', $json);
+        $this->assertStringContainsString('Use the damage prevention shield', $json);
+        $this->assertStringNotContainsString('damageorder:', json_encode(MatchMessageBuilder::actions($match, $player)));
+        $before = $this->pocket->matches->find($match->id)->game->toArray();
+        foreach ([[$player, $choice['id'], 'prevent'], [$other, $choice['id'] + 1, 'prevent'], [$other, $choice['id'], 'unknown']] as [$actor, $id, $option]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'damageorder', [(string) $id], [$option]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $other, 'damageorder', [(string) $choice['id']], ['prevent']);
+        $this->assertTrue($changed);
+        $this->assertSame(18, $match->game->players[1 - $seat]->life);
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$bolt]->zone);
+        $this->assertNull($match->game->choiceAwaiting());
+        $after = $this->pocket->matches->find($match->id)->game->toArray();
+        $this->assertException(fn () => $panel->run($match->id, $other, 'damageorder', [(string) $choice['id']], ['prevent']), 'no longer available');
+        $this->assertSame($after, $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
     public function testEntryLifePanelPersistsItsChoiceAndRejectsWrongOrRepeatedAnswers(): void
     {
         $match = $this->startMatch();

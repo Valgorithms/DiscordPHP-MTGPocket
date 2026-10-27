@@ -1,0 +1,129 @@
+{
+  "sources": {
+    "ZEN": {
+      "setCode": "ZEN",
+      "setName": "Zendikar",
+      "releaseDate": "2009-10-02",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723094,
+      "sourcePoolSha256": "7e79b10521b27e2ea4aa0b5951f3fd77e531a2c086588b640634dee0095e903e"
+    },
+    "M10": {
+      "setCode": "M10",
+      "setName": "Magic 2010",
+      "releaseDate": "2009-07-17",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723094,
+      "sourcePoolSha256": "8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0"
+    }
+  },
+  "cards": [
+    {
+      "uuid": "03fcb278-4971-58a7-860b-9999263c347b",
+      "name": "Quest for Pure Flame",
+      "number": "144",
+      "rarity": "uncommon",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Enchantment",
+      "scryfallId": "7b43ac5a-21b9-4abe-b8be-86b9056ad70d",
+      "manaCost": "{R}",
+      "types": [
+        "Enchantment"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Whenever a source you control deals damage to an opponent, you may put a quest counter on this enchantment.\nRemove four quest counters from this enchantment and sacrifice it: If any source you control would deal damage to a permanent or player this turn, it deals double that damage to that permanent or player instead.",
+      "keywords": [
+        "Double"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "78380203-7623-50bc-ab48-577cd655ee9a",
+      "name": "Lightning Bolt",
+      "number": "146",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Instant",
+      "scryfallId": "435589bb-27c6-4a6d-9d63-394d5092b9d8",
+      "manaCost": "{R}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Lightning Bolt deals 3 damage to any target.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "fd74a5d3-beea-5ca2-b590-0282dac572f1",
+      "name": "Raging Goblin",
+      "number": "153",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Creature — Goblin Berserker",
+      "scryfallId": "aa318c3a-70ae-499a-8022-b380f03fd53f",
+      "manaCost": "{R}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Goblin",
+        "Berserker"
+      ],
+      "power": "1",
+      "toughness": "1",
+      "text": "Haste (This creature can attack and {T} as soon as it comes under your control.)",
+      "keywords": [
+        "Haste"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "a5cf3057-7e30-51ca-884c-7598b045e0eb",
+      "name": "Centaur Courser",
+      "number": "172",
+      "rarity": "common",
+      "colors": [
+        "G"
+      ],
+      "manaValue": 3,
+      "type": "Creature — Centaur Warrior",
+      "scryfallId": "03354b67-7df2-4b4b-a996-a37550e58561",
+      "manaCost": "{2}{G}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Centaur",
+        "Warrior"
+      ],
+      "power": "3",
+      "toughness": "3",
+      "layout": "normal",
+      "colorIdentity": [
+        "G"
+      ]
+    }
+  ]
+}

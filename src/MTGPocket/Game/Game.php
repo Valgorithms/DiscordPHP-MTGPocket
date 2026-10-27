@@ -40,6 +40,9 @@ use Random\Randomizer;
  */
 final class Game
 {
+    use DamageResolution;
+    use PaidActionContinuation;
+
     public const string MULLIGAN = 'mulligan';
     public const string PLAYING = 'playing';
     public const string OVER = 'over';
@@ -86,9 +89,9 @@ final class Game
 
     /**
      * Persisted rules-state format; unversioned records are version 1.
-     * Version 16 records the optional source-counter kind; version 15 added split land searches.
+     * Version 17 adds bounded resumable damage and finite turn effects; older versions migrate them empty.
      */
-    public const int STATE_VERSION = 16;
+    public const int STATE_VERSION = 17;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -912,6 +915,7 @@ final class Game
         }
 
         $this->priority = $this->active;
+        $this->sealDamageChoice();
     }
 
     /**
@@ -922,6 +926,7 @@ final class Game
      */
     private function cleanup(): void
     {
+        $this->damageEffects = [];
         $this->prevent = [];
         $this->preventGain = [];
         foreach ($this->battlefield as $id) {
@@ -2139,10 +2144,21 @@ final class Game
      * @param int   $seat
      * @param array $payment
      *
-     * @return void
+     * @return bool Whether mana damage suspended the action.
      */
-    private function pay(int $seat, array $payment): void
+    private function pay(int $seat, array $payment, ?array $after = null): bool
     {
+        $pain = [];
+        foreach ($payment['made'] ?? [] as $source => $type) {
+            $object = $this->objects[$source];
+            if (in_array($type, $object->definition()->manaAbility['pain'] ?? [], true)) {
+                $pain[] = [$object, "p:{$seat}", 1, false, $seat, $object->incarnation];
+            }
+        }
+        $painBatch = $this->prepareDamageBatch($pain);
+        if ($after === null && DamageBatch::fromArray($painBatch['batch'])->progress()['options'] !== []) {
+            throw new GameException('Replacement ordering during painful mana payment is not supported; use other mana sources. No costs were paid.');
+        }
         $player = $this->players[$seat];
         foreach ($payment['tap'] as $source) {
             $ability = $this->objects[$source]->definition()->manaAbility ?? [];
@@ -2198,10 +2214,24 @@ final class Game
         foreach ($payment['made'] ?? [] as $source => $type) {
             $object = $this->objects[$source];
             if (in_array($type, $object->definition()->manaAbility['pain'] ?? [], true)) {
-                $this->dealDamage($object, "p:{$seat}", 1);
+                // Painful-mana damage is committed once, from its mana-ability source incarnation.
                 $this->note("{$object->name()} deals 1 damage to {$player->name} for {{$type}}.", $seat);
             }
         }
+        $this->pendingDamage = $this->prepareDamageBatch($pain);
+        if (DamageBatch::fromArray($this->pendingDamage['batch'])->progress()['options'] !== []) {
+            if (($after['kind'] ?? null) !== 'resolution') {
+                $this->pendingDamage['completion'] = 'payment';
+                $this->pendingDamage['after'] = $after;
+            }
+        }
+
+        $pending = $this->continueDamageBatch();
+        if ($pending && ($this->pendingDamage['completion'] ?? null) === 'payment') {
+            $this->sealDamageChoice();
+        }
+
+        return $pending;
     }
 
     /**
@@ -2380,7 +2410,22 @@ final class Game
             $cost = ManaCost::parse(self::castCost($card, $options).$this->spliceCost($options['splice']));
             throw new GameException("You cannot pay {$cost}".($xCount > 0 ? " with X = {$x}" : '').($wardMana !== '' || $wardLife > 0 ? ' and ward' : '').'.');
         }
-        $this->pay($seat, $payment);
+        $after = ['kind' => 'cast', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
+            'x' => $x, 'targets' => $targets, 'options' => $options, 'payment' => $payment,
+            'revealed' => $revealed?->id, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount];
+        if (! $this->pay($seat, $payment, $after)) {
+            $this->finishPaidCast($after);
+        }
+    }
+
+    /** Completes a cast after mana damage; the mana payment is never replayed. */
+    private function finishPaidCast(array $after): void
+    {
+        ['seat' => $seat, 'object' => $id, 'x' => $x, 'targets' => $targets, 'options' => $options,
+            'payment' => $payment, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount] = $after;
+        $object = $this->objects[$id];
+        $card = $object->printed();
+        $revealed = $after['revealed'] === null ? null : $this->objects[$after['revealed']];
         // Sunburst (rule 702.44): how many colors of mana were spent.
         $colorsSpent = count(array_intersect(['W', 'U', 'B', 'R', 'G'], [...array_values($payment['made'] ?? []), ...array_keys(array_filter($payment['pool'] ?? []))]));
         if (($payment['delve'] ?? 0) > 0) {
@@ -3184,26 +3229,10 @@ final class Game
         $object = $this->objects[$id];
         $card = $object->printed();
         $payment = $this->payFor($seat, (string) $card->cycling) ?? throw new GameException("You cannot pay {$card->cycling}.");
-        $this->pay($seat, $payment);
-        $this->moveTo($object, GameObject::GRAVEYARD);
-        // `When you cycle CARDNAME, …` and `Whenever you cycle a card, …`, above the cycling draw.
-        $this->trigger($object, 'cycled', $seat);
-        foreach ($this->permanents($seat) as $permanent) {
-            // Cycling discards the card (rule 702.29a).
-            $this->trigger($permanent, 'you_cycle', $seat);
-            $this->trigger($permanent, 'you_discard', $seat);
-            $this->trigger($permanent, 'you_discard_batch', $seat);
+        $after = ['kind' => 'cycle', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $payment, $after)) {
+            $this->finishPaidUtility($after);
         }
-        $this->discardedBy($seat, $object->id);
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => [$card->cyclingFinds === null ? ['type' => 'draw', 'amount' => 1] : ['type' => 'search', 'find' => $card->cyclingFinds, 'to' => 'hand']],
-            'kinds' => [],
-            'label' => "{$card->name}'s ".($card->cyclingFinds === null ? 'cycling' : 'landcycling'),
-        ], [], 'is activated', "cycle {$card->name}");
-        $this->settle();
     }
 
     /**
@@ -3224,16 +3253,10 @@ final class Game
         }
         $object = $this->objects[$id];
         $card = $object->printed();
-        $this->pay($seat, $this->payFor($seat, (string) $card->unearth));
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => [['type' => 'unearth']],
-            'kinds' => [],
-            'label' => "{$card->name}'s unearth",
-        ], [], 'is activated', "unearth {$card->name}");
-        $this->settle();
+        $after = ['kind' => 'unearth', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $this->payFor($seat, (string) $card->unearth), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     /**
@@ -3252,12 +3275,10 @@ final class Game
             throw new GameException($reason);
         }
         $object = $this->objects[$id];
-        $this->pay($seat, $this->payFor($seat, $object->printed()->altCosts['plot']));
-        $this->moveTo($object, GameObject::EXILE);
-        $object->exiledBy = 'plot';
-        $object->exiledOn = $this->turn;
-        $this->log("{$this->players[$seat]->name} plots {$object->name()}.", $seat, "plot {$object->name()}");
-        $this->settle();
+        $after = ['kind' => 'plot', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $this->payFor($seat, $object->printed()->altCosts['plot']), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     /**
@@ -3317,12 +3338,10 @@ final class Game
             throw new GameException($reason);
         }
         $object = $this->objects[$id];
-        $this->pay($seat, $this->payFor($seat, '{2}'));
-        $this->moveTo($object, GameObject::EXILE);
-        $object->exiledBy = 'foretell';
-        $object->exiledOn = $this->turn;
-        $this->log("{$this->players[$seat]->name} foretells a card.", $seat, 'foretell');
-        $this->settle();
+        $after = ['kind' => 'foretell', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $this->payFor($seat, '{2}'), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     private function whyNotForetell(int $seat, int $id): ?string
@@ -3362,18 +3381,10 @@ final class Game
         }
         $object = $this->objects[$id];
         $card = $object->printed();
-        $this->pay($seat, $this->payFor($seat, $card->altCosts['transmute']));
-        $value = $card->cost->manaValue();
-        $this->moveTo($object, GameObject::GRAVEYARD);
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => [['type' => 'tutor', 'filter' => "mv_ge_{$value}&mv_le_{$value}", 'to' => 'hand']],
-            'kinds' => [],
-            'label' => "{$card->name}'s transmute",
-        ], [], 'is activated', "transmute {$card->name}");
-        $this->settle();
+        $after = ['kind' => 'transmute', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $this->payFor($seat, $card->altCosts['transmute']), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     /**
@@ -3394,17 +3405,10 @@ final class Game
         $object = $this->objects[$id];
         $card = $object->printed();
         $attacker = $this->bloodrushTarget($seat);
-        $this->pay($seat, $this->payFor($seat, $card->altCosts['bloodrush']));
-        $this->discardCards($seat, [$id]);
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => TextParser::effects($card->altCosts['bloodrushText']) ?? [],
-            'kinds' => ['attacking'],
-            'label' => "{$card->name}'s bloodrush",
-        ], ["o:{$attacker->id}"], 'is activated', "bloodrush {$card->name}");
-        $this->settle();
+        $after = ['kind' => 'bloodrush', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation, 'attacker' => $this->pinTarget("o:{$attacker->id}")];
+        if (! $this->pay($seat, $this->payFor($seat, $card->altCosts['bloodrush']), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     private function bloodrushTarget(int $seat): ?GameObject
@@ -3536,18 +3540,10 @@ final class Game
         $back = $returned === null ? $unblocked[0] : $this->objects[$returned];
         $object = $this->objects[$id];
         $card = $object->printed();
-        $this->pay($seat, $this->payFor($seat, $card->altCosts['ninjutsu']));
-        $this->moveTo($back, GameObject::HAND);
-        $this->log("{$this->players[$seat]->name} returns {$back->name()} to hand for ninjutsu.");
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => [['type' => 'ninjutsu']],
-            'kinds' => [],
-            'label' => "{$card->name}'s ninjutsu",
-        ], [], 'is activated', "ninjutsu {$card->name}");
-        $this->settle();
+        $after = ['kind' => 'ninjutsu', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation, 'returned' => $this->pinTarget("o:{$back->id}")];
+        if (! $this->pay($seat, $this->payFor($seat, $card->altCosts['ninjutsu']), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     /**
@@ -3605,13 +3601,10 @@ final class Game
         }
         $object = $this->objects[$id];
         $card = $object->printed();
-        $this->pay($seat, $this->payFor($seat, $card->altCosts['suspend']));
-        $this->moveTo($object, GameObject::EXILE);
-        $object->exiledBy = 'suspend';
-        $object->exiledOn = $this->turn;
-        $object->addCounters('time', self::suspendTime($card));
-        $this->log("{$this->players[$seat]->name} suspends {$object->name()} with {$object->counter('time')} time counters.", $seat, "suspend {$object->name()}");
-        $this->settle();
+        $after = ['kind' => 'suspend', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $this->payFor($seat, $card->altCosts['suspend']), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     private static function suspendTime(CardDefinition $card): int
@@ -3664,16 +3657,10 @@ final class Game
         }
         $object = $this->objects[$id];
         $card = $object->printed();
-        $this->pay($seat, $this->payFor($seat, $card->altCosts['regrow']));
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => [['type' => 'regrow']],
-            'kinds' => [],
-            'label' => "{$card->name}'s ability",
-        ], [], 'is activated', "return {$card->name}");
-        $this->settle();
+        $after = ['kind' => 'regrow', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation];
+        if (! $this->pay($seat, $this->payFor($seat, $card->altCosts['regrow']), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     /**
@@ -3696,17 +3683,10 @@ final class Game
         }
         $object = $this->objects[$id];
         $card = $object->printed();
-        $this->pay($seat, $this->payFor($seat, $card->altCosts[$way]));
-        $this->moveTo($object, GameObject::EXILE);
-        $this->pushAbility([
-            'source' => $object->id,
-            'incarnation' => $object->incarnation,
-            'controller' => $seat,
-            'effects' => [$way === 'scavenge' ? ['type' => 'scavenge', 'amount' => max(0, (int) ($card->card['power'] ?? 0))] : ['type' => 'embalm', 'way' => $way]],
-            'kinds' => [],
-            'label' => "{$card->name}'s {$way}",
-        ], [], 'is activated', "{$way} {$card->name}");
-        $this->settle();
+        $after = ['kind' => 'embalm', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation, 'way' => $way];
+        if (! $this->pay($seat, $this->payFor($seat, $card->altCosts[$way]), $after)) {
+            $this->finishPaidUtility($after);
+        }
     }
 
     private function whyNotEmbalm(int $seat, int $id, string $way): ?string
@@ -3934,6 +3914,7 @@ final class Game
     {
         if ($this->pendingChoice !== null) {
             $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
+            $this->sealDamageChoice();
 
             return;
         }
@@ -3948,7 +3929,24 @@ final class Game
         while ($steps !== []) {
             [$effect, $target] = array_shift($steps);
             if ($effect['type'] === 'divided') {
-                $effect['sharing'] = max(1, $sharing);
+                $group = [[$effect, $target]];
+                while (($steps[0][0]['type'] ?? null) === 'divided') {
+                    $group[] = array_shift($steps);
+                }
+                $damage = [];
+                foreach ($group as [$part, $hit]) {
+                    if ($hit !== null && $hit !== '-') {
+                        $damage[] = [$source, $hit, intdiv($part['total'], max(1, $sharing)) + ($part['slot'] === 0 ? $part['total'] % max(1, $sharing) : 0), false, $item['controller'], $item['incarnation']];
+                    }
+                }
+                if ($this->startDamageBatch($damage)) {
+                    $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
+                    $this->sealDamageChoice();
+
+                    return;
+                }
+
+                continue;
             }
             if ($effect['type'] === 'clash') {
                 $item['won'] = $this->clash($item['controller'], $source);
@@ -4006,6 +4004,7 @@ final class Game
                 $steps = array_merge($this->pendingChoice['nestedSteps'] ?? [], $steps);
                 unset($this->pendingChoice['nestedSteps']);
                 $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
+                $this->sealDamageChoice();
 
                 return;
             }
@@ -4536,16 +4535,22 @@ final class Game
                     // `… deals 3 damage to that creature's controller.`
                     default => isset($effect['you']) ? ["p:{$controller}"] : (isset($effect['toController']) ? ($affected === null ? [] : ["p:{$affected->controller}"]) : [$target]),
                 };
+                $damage = [];
                 foreach ($hits as $hit) {
                     // `It can't be regenerated.`: its regeneration shields are gone.
                     if (($effect['noRegen'] ?? false) && ($hurt = $this->targetObject((string) $hit)) !== null) {
                         $hurt->shields = 0;
                     }
-                    $this->dealDamage($source, (string) $hit, $amount);
+                    $damage[] = [$source, (string) $hit, $amount, false, $source->zone === GameObject::BATTLEFIELD ? $source->controller : $controller, $sourceIncarnation ?? $source->incarnation];
                     if (($effect['exileIfDies'] ?? false) && ($hurt = $this->targetObject((string) $hit)) !== null) {
                         $hurt->exileIfDies = $this->turn;
                     }
                 }
+                $this->startDamageBatch($damage);
+                break;
+
+            case 'double_damage_turn':
+                $this->damageEffects[] = ['id' => $this->nextDamageEffectId++, 'controller' => $controller, 'expiresTurn' => $this->turn, 'factor' => 2];
                 break;
 
             case 'draw':
@@ -4718,15 +4723,23 @@ final class Game
                 break;
 
             case 'extort':
-                if (($payment = $this->payFor($controller, '{W/B}')) !== null) {
-                    $this->pay($controller, $payment);
-                    foreach ($opponents as $seat) {
-                        $this->players[$seat]->life--;
-                        $this->lostLife($seat);
-                    }
-                    $this->gainLife($controller, count($opponents));
-                    $this->log("{$this->players[$controller]->name} extorts.");
+                if (($payment = $this->payFor($controller, '{W/B}')) === null) {
+                    break;
                 }
+                if ($this->pay($controller, $payment, ['kind' => 'resolution'])) {
+                    $this->pendingChoice['nestedSteps'] = [[['type' => 'paid_extort'], null]];
+
+                    return true;
+                }
+                // fall through
+                // no break
+            case 'paid_extort':
+                foreach ($opponents as $seat) {
+                    $this->players[$seat]->life--;
+                    $this->lostLife($seat);
+                }
+                $this->gainLife($controller, count($opponents));
+                $this->log("{$this->players[$controller]->name} extorts.");
                 break;
 
             case 'optional_red_goblin':
@@ -5060,7 +5073,7 @@ final class Game
                 // Paid when its controller can, else sacrificed.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
                     if (($payment = $this->payFor($controller, $effect['cost'])) !== null) {
-                        $this->pay($controller, $payment);
+                        $this->pay($controller, $payment, ['kind' => 'resolution']);
                         $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$affected->name()}.");
                     } else {
                         $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()}.");
@@ -5075,7 +5088,7 @@ final class Game
                     $affected->addCounters('age', 1);
                     $cost = str_repeat($affected->definition()->altCosts['cumulative'], $affected->counter('age'));
                     if (($payment = $this->payFor($controller, $cost)) !== null) {
-                        $this->pay($controller, $payment);
+                        $this->pay($controller, $payment, ['kind' => 'resolution']);
                         $this->log("{$this->players[$controller]->name} pays {$cost} for {$affected->name()}'s cumulative upkeep.");
                     } else {
                         $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()} (cumulative upkeep).");
@@ -5197,7 +5210,7 @@ final class Game
                         // `{X}`: the X this spell was cast with.
                         $unless = isset($effect['unless']) ? str_replace('{X}', '{'.max(0, $x).'}', $effect['unless']) : null;
                         if ($unless !== null && ($payment = $this->payFor($item['controller'], $unless)) !== null) {
-                            $this->pay($item['controller'], $payment);
+                            $this->pay($item['controller'], $payment, ['kind' => 'resolution']);
                             $this->log("{$this->players[$item['controller']]->name} pays {$unless}, so {$countered->name()} is not countered.");
                             break;
                         }
@@ -5207,7 +5220,7 @@ final class Game
                         $this->followed[(string) $target] = "p:{$item['controller']}";
                         if (($effect['exileCountered'] ?? false) && ! self::isAbility($item)) {
                             $this->moveTo($countered, GameObject::EXILE);
-                        } else {
+                        } elseif (! self::isAbility($item)) {
                             $this->spellLeavesStack($countered, $item);
                         }
                         break;
@@ -5332,10 +5345,11 @@ final class Game
                 // `it fights target creature`: the source itself.
                 $fighter = ($effect['selfFight'] ?? false) ? $source : ($effect['with'] === null ? null : $this->targetObject($effect['with']));
                 if ($fighter !== null && $affected !== null && $fighter->zone === GameObject::BATTLEFIELD && $affected->zone === GameObject::BATTLEFIELD && $this->isCreature($fighter)) {
-                    $this->dealDamage($fighter, "o:{$affected->id}", $this->power($fighter));
+                    $damage = [[$fighter, "o:{$affected->id}", $this->power($fighter), false]];
                     if ($effect['mutual'] && $this->isCreature($affected)) {
-                        $this->dealDamage($affected, "o:{$fighter->id}", $this->power($affected));
+                        $damage[] = [$affected, "o:{$fighter->id}", $this->power($affected), false];
                     }
+                    $this->startDamageBatch($damage);
                     $this->log("{$fighter->name()} ".($effect['mutual'] ? 'fights' : 'deals damage equal to its power to')." {$affected->name()}.");
                 }
                 break;
@@ -5367,7 +5381,7 @@ final class Game
                 if ($affected !== null && ! $affected->echoPaid && $affected->zone === GameObject::BATTLEFIELD) {
                     $affected->echoPaid = true;
                     if (($payment = $this->payFor($controller, $affected->definition()->altCosts['echo'])) !== null) {
-                        $this->pay($controller, $payment);
+                        $this->pay($controller, $payment, ['kind' => 'resolution']);
                         $this->log("{$this->players[$controller]->name} pays echo for {$affected->name()}.");
                     } else {
                         $this->log("{$this->players[$controller]->name} sacrifices {$affected->name()} (echo).");
@@ -5601,7 +5615,7 @@ final class Game
 
             case 'divided':
                 if ($target !== null && $target !== '-') {
-                    $this->dealDamage($source, $target, intdiv($effect['total'], $effect['sharing']) + ($effect['slot'] === 0 ? $effect['total'] % $effect['sharing'] : 0));
+                    $this->startDamageBatch([[$source, $target, intdiv($effect['total'], $effect['sharing']) + ($effect['slot'] === 0 ? $effect['total'] % $effect['sharing'] : 0), false, $controller, $sourceIncarnation ?? $source->incarnation]]);
                 }
                 break;
 
@@ -5670,7 +5684,7 @@ final class Game
 
             case 'self_damage':
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
-                    $this->dealDamage($affected, "o:{$affected->id}:{$affected->incarnation}", $this->power($affected));
+                    $this->startDamageBatch([[$affected, "o:{$affected->id}:{$affected->incarnation}", $this->power($affected), false]]);
                 }
                 break;
 
@@ -6164,7 +6178,11 @@ final class Game
                     if ($energy > 0) {
                         $this->players[$controller]->energy -= $energy;
                     } else {
-                        $this->pay($controller, $payment);
+                        if ($this->pay($controller, $payment, ['kind' => 'resolution'])) {
+                            $this->pendingChoice['nestedSteps'] = array_map(fn (array $next) => [$next, $target], $effect['then']);
+
+                            return true;
+                        }
                     }
                     $this->log("{$this->players[$controller]->name} pays {$effect['cost']} for {$source->name()}.");
                     $remaining = $effect['then'];
@@ -6185,7 +6203,18 @@ final class Game
             case 'pay_transform':
                 // `At the beginning of your first main phase, you may pay {N}. If you do, transform CARDNAME.`: paid when it can be.
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD && ! $self->transformed && ($payment = $this->payFor($controller, $effect['cost'])) !== null) {
-                    $this->pay($controller, $payment);
+                    if ($this->pay($controller, $payment, ['kind' => 'resolution'])) {
+                        $this->pendingChoice['nestedSteps'] = [[['type' => 'paid_transform', 'self' => true, 'cost' => $effect['cost']], null]];
+
+                        return true;
+                    }
+                } else {
+                    break;
+                }
+                // fall through
+                // no break
+            case 'paid_transform':
+                if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
                     $before = $self->name();
                     $self->transformed = true;
                     $this->log("{$this->players[$controller]->name} pays {$effect['cost']}, and {$before} transforms into {$self->name()}.");
@@ -6726,7 +6755,7 @@ final class Game
     private function flushTriggers(): bool
     {
         usort($this->pendingTriggers, fn (array $a, array $b) => ($a['controller'] !== $this->active) <=> ($b['controller'] !== $this->active));
-        while ($this->pendingTriggers !== []) {
+        while ($this->pendingTriggers !== [] && $this->pendingChoice === null) {
             $trigger = $this->pendingTriggers[0];
             // A modal one first gets its modes (rule 603.3c): only those with targets to choose.
             if (isset($trigger['modes'])) {
@@ -6776,7 +6805,7 @@ final class Game
             $this->pushTriggered($trigger, $targets);
         }
 
-        return false;
+        return $this->pendingChoice !== null;
     }
 
     /**
@@ -6876,7 +6905,11 @@ final class Game
 
                 return;
             }
-            $this->pay($trigger['controller'], $payment);
+            $after = ['kind' => 'ward_trigger', 'seat' => $trigger['controller'], 'object' => $trigger['source'],
+                'incarnation' => $trigger['incarnation'], 'trigger' => $trigger, 'targets' => $targets, 'wardDiscard' => $wardDiscard];
+            if ($this->pay($trigger['controller'], $payment, $after)) {
+                return;
+            }
             $this->discardCheapest($trigger['controller'], $wardDiscard);
         }
         $this->pushAbility($trigger, $targets, 'triggers');
@@ -7054,6 +7087,10 @@ final class Game
         $ability = $card->activated[$index] ?? null;
         if ($ability === null) {
             return "{$card->name} has no such ability.";
+        }
+        if (in_array('double_damage_turn', array_column($ability['effects'], 'type'), true)
+            && count($this->damageEffects) + count(array_filter($this->stack, fn (array $item) => in_array('double_damage_turn', array_column($item['effects'] ?? [], 'type'), true))) >= 32) {
+            return 'The supported limit of 32 damage-doubling effects has been reached.';
         }
         if (($split = $this->splitSecond()) !== null) {
             return "{$split} has split second: no abilities can be activated while it is on the stack.";
@@ -7575,7 +7612,25 @@ final class Game
         $player = $this->players[$seat];
         $cost = $ability['cost'];
         $crew = isset($cost['crew']) ? (array) $this->crew($seat, $object, $cost['crew']) : [];
-        $this->pay($seat, $payment);
+        $after = ['kind' => 'activate', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
+            'index' => $index, 'targets' => $targets, 'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew];
+        if (! $this->pay($seat, $payment, $after)) {
+            $this->finishPaidActivation($after);
+        }
+    }
+
+    /** Completes the remaining activation costs and queueing once, after mana damage. */
+    private function finishPaidActivation(array $after): void
+    {
+        ['seat' => $seat, 'object' => $id, 'index' => $index, 'targets' => $targets,
+            'x' => $x, 'wardDiscard' => $wardDiscard, 'crew' => $crew] = $after;
+        $object = $this->objects[$id];
+        $snapshot = $this->damageSourceSnapshot($object, $seat, $after['incarnation']);
+        $ability = GameObject::fromArray($snapshot['object'])->definition()->activated[$index];
+        $cost = $ability['cost'];
+        $player = $this->players[$seat];
+        $kinds = self::targetKindsOf($ability['effects']);
+        $label = "{$object->name()}'s ability";
         if ($cost['tap'] ?? false) {
             $object->tapped = true;
         }
@@ -8810,11 +8865,6 @@ final class Game
      */
     private function combatDamage(bool $first): void
     {
-        if ($this->fogTurn === $this->turn && $this->unpreventableTurn !== $this->turn) {
-            $this->log('All combat damage is prevented this turn.');
-
-            return;
-        }
         $deals = function (GameObject $object) use ($first): bool {
             if ($object->zone !== GameObject::BATTLEFIELD || ! $this->isCreature($object)) {
                 return false;
@@ -8892,13 +8942,17 @@ final class Game
         }
 
         // `Prevent all damage target creature would deal this turn.`: it deals none, so nothing triggers on it.
-        $assignments = array_values(array_filter($assignments, fn (array $assignment) => $assignment[0]->preventDealing !== $this->turn || $this->unpreventableTurn === $this->turn));
+        $this->startDamageBatch(array_map(fn (array $assignment) => [...$assignment, true], $assignments), 'combat');
+    }
+
+    /** Completes one combat batch after every ordering decision, using actual final damage. */
+    private function finishCombatDamage(array $assignments): void
+    {
         // All combat damage is dealt at once (rule 510.2).
         $lines = $hitPlayer = $toPlayers = [];
         $this->combatDealt = [];
         foreach ($assignments as [$source, $target, $amount]) {
             $hurt = $target[0] === 'o' ? $this->objects[(int) substr($target, 2)] : null;
-            $this->dealDamage($source, $target, $amount, combat: true);
             $lines[] = "{$source->name()} deals {$amount} to ".$this->describeTarget($target);
             // `Whenever CARDNAME deals combat damage to a creature, tap that creature …`: that creature, not targeted.
             foreach ($hurt !== null ? $source->definition()->triggersOn('combat_damage_creature') : [] as $ability) {
@@ -9014,19 +9068,20 @@ final class Game
      *
      * @return void
      */
-    private function dealDamage(GameObject $source, string $target, int $amount, bool $combat = false): void
+    private function applyDamage(GameObject $source, string $target, int $amount, bool $combat = false, bool $prevention = true, ?array $damageKeywords = null): int
     {
         if ($amount <= 0) {
-            return;
+            return 0;
         }
+        $damageKeywords ??= $this->keywords($source);
         // Prevention shields (rule 615.7): `Prevent the next N damage that would be dealt to …`.
         // Shields are keyed without a target's incarnation (`o:ID`, not `o:ID:N`).
         $shielded = implode(':', array_slice(explode(':', $target), 0, 2));
-        $preventable = $this->unpreventableTurn !== $this->turn;
-        if ($preventable && $source->preventDealing === $this->turn) {
+        $preventable = $prevention && $this->unpreventableTurn !== $this->turn;
+        if ($preventable && ($source->preventDealing === $this->turn || ($combat && $this->fogTurn === $this->turn))) {
             $this->log("{$amount} damage from {$source->name()} is prevented.");
 
-            return;
+            return 0;
         }
         if ($preventable && ($shield = $this->prevent[$shielded] ?? 0) > 0) {
             $prevented = min($shield, $amount);
@@ -9037,23 +9092,30 @@ final class Game
                 $this->gainLife($this->preventGain[$shielded], $prevented);
             }
             if ($amount <= 0) {
-                return;
+                return 0;
             }
         }
         $parts = explode(':', $target);
         if ($parts[0] === 'p') {
             $this->players[(int) $parts[1]]->damagedOnTurn = $this->turn;
             // Infect (rule 702.90b): poison counters instead of life loss.
-            if ($this->hasKeyword($source, 'infect')) {
+            if (in_array('infect', $damageKeywords, true)) {
                 $this->players[(int) $parts[1]]->poison += $amount;
             } else {
                 $this->players[(int) $parts[1]]->life -= $amount;
                 $this->lostLife((int) $parts[1]);
             }
             // `Whenever CARDNAME deals damage to a player (an opponent), …`: that player is the context.
-            $this->trigger($source, 'damages_player', $source->controller, null, (int) $parts[1]);
+            if ($this->damageSourceCanTrigger($source)) {
+                $this->trigger($source, 'damages_player', $source->controller, null, (int) $parts[1]);
+            }
             if ((int) $parts[1] !== $source->controller) {
-                $this->trigger($source, 'damages_opponent', $source->controller, null, (int) $parts[1]);
+                if ($this->damageSourceCanTrigger($source)) {
+                    $this->trigger($source, 'damages_opponent', $source->controller, null, (int) $parts[1]);
+                }
+                foreach ($this->permanents($source->controller) as $observer) {
+                    $this->trigger($observer, 'your_source_damages_opponent', $source->controller);
+                }
                 // `Whenever a source an opponent controls deals damage to you, …`
                 foreach ($this->permanents((int) $parts[1]) as $permanent) {
                     $this->trigger($permanent, 'opponent_source_damages_you', (int) $parts[1]);
@@ -9062,34 +9124,34 @@ final class Game
         } else {
             $object = $this->targetObject($target);
             if ($object === null || $object->zone !== GameObject::BATTLEFIELD) {
-                return;
+                return 0;
             }
             if ($preventable && $this->protectedFrom($object, $source)) {
                 $this->log("Protection prevents the damage {$source->name()} would deal to {$object->name()}.");
 
-                return;
+                return 0;
             }
             // A shield counter (rule 122.1c): prevent the damage and remove the counter instead.
             if ($preventable && $object->counter('shield') > 0) {
                 $object->addCounters('shield', -1);
                 $this->log("A shield counter on {$object->name()} prevents the damage and is removed.");
 
-                return;
+                return 0;
             }
             if ($this->isCreature($object) && ! in_array($source->id, $object->damagedBy, true)) {
                 $object->damagedBy[] = $source->id;
             }
             if ($object->definition()->isPlaneswalker() && ! $this->isCreature($object)) {
                 $object->addCounters('loyalty', -$amount);
-            } elseif ($this->hasKeyword($source, 'infect') || $this->hasKeyword($source, 'wither')) {
+            } elseif (in_array('infect', $damageKeywords, true) || in_array('wither', $damageKeywords, true)) {
                 // Infect and wither (rules 702.90 and 702.80): -1/-1 counters instead of damage.
                 $object->addCounters('-1/-1', $amount);
-                if ($this->hasKeyword($source, 'deathtouch')) {
+                if (in_array('deathtouch', $damageKeywords, true)) {
                     $object->deathtouched = true;
                 }
             } else {
                 $object->damage += $amount;
-                if ($this->hasKeyword($source, 'deathtouch')) {
+                if (in_array('deathtouch', $damageKeywords, true)) {
                     $object->deathtouched = true;
                 }
             }
@@ -9111,10 +9173,14 @@ final class Game
             }
         }
         // `Whenever CARDNAME deals damage, you gain that much life.`: the damage dealt is the context.
-        $this->trigger($source, 'deals_damage', $source->controller, null, $amount);
-        if ($this->hasKeyword($source, 'lifelink')) {
+        if ($this->damageSourceCanTrigger($source)) {
+            $this->trigger($source, 'deals_damage', $source->controller, null, $amount);
+        }
+        if (in_array('lifelink', $damageKeywords, true)) {
             $this->gainLife($source->controller, $amount);
         }
+
+        return $amount;
     }
 
     /**
@@ -9684,7 +9750,17 @@ final class Game
         $this->followed = $resume['followed'];
         $this->pendingChoice = null;
         if ($payment !== null) {
-            $this->pay($seat, $payment);
+            $token = ['type' => 'token', 'amount' => 1, 'haste' => true, 'token' => [
+                'name' => 'Goblin Token', 'type' => 'Token Creature - Goblin', 'types' => ['Creature'],
+                'subtypes' => ['Goblin'], 'colors' => ['R'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null,
+            ]];
+            if ($this->pay($seat, $payment, ['kind' => 'resolution'])) {
+                $resume['steps'] = [[ $token, null ], ...$resume['steps']];
+                $this->pendingChoice['resume'] = $resume;
+                $this->sealDamageChoice();
+
+                return;
+            }
             $this->applyEffect(['type' => 'token', 'amount' => 1, 'haste' => true, 'token' => [
                 'name' => 'Goblin Token', 'type' => 'Token Creature — Goblin', 'types' => ['Creature'],
                 'subtypes' => ['Goblin'], 'colors' => ['R'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null,
@@ -10054,6 +10130,10 @@ final class Game
         $departingCharacteristics = $leaves ? new DepartureCharacteristics($object->definition(), $this->isCreature($object), manaValue: $object->battlefieldManaValue()) : null;
         $departingDefinition = $departingCharacteristics?->definition;
         if ($leaves) {
+            $damageSource = clone $object;
+            $damageSource->lastKnownDamage = $damageSource->lastKnownStatistics = [];
+            $object->lastKnownDamage[$incarnation] = ['object' => $damageSource->toArray(),
+                'keywords' => array_values(array_intersect(['infect', 'wither', 'deathtouch', 'lifelink'], $this->keywords($object)))];
             // Retain the departing incarnation even if this card returns before its ability resolves.
             $object->lastKnownStatistics[$incarnation] = [
                 'power' => $selectedCharacteristics?->power ?? $this->power($object),
@@ -11411,6 +11491,9 @@ final class Game
     {
         return [
             'schemaVersion' => self::STATE_VERSION,
+            'damageEffects' => $this->damageEffects,
+            'nextDamageEffectId' => $this->nextDamageEffectId,
+            'pendingDamage' => $this->pendingDamage,
             'id' => $this->id,
             'seed' => $this->seed,
             'stage' => $this->stage,
@@ -11770,6 +11853,23 @@ final class Game
             }
         }
         $game->preventGain = array_map('intval', (array) ($data['preventGain'] ?? []));
+
+        $effects = $data['damageEffects'] ?? ($version < 17 ? [] : null);
+        $nextEffect = $data['nextDamageEffectId'] ?? ($version < 17 ? 1 : null);
+        $pendingDamage = $data['pendingDamage'] ?? null;
+        if (! is_array($effects) || ! is_int($nextEffect) || ($pendingDamage !== null && ! is_array($pendingDamage))
+            || ($version >= 17 && ! array_key_exists('pendingDamage', $data))
+            || ($version < 17 && ($effects !== [] || $nextEffect !== 1 || $pendingDamage !== null))) {
+            throw new GameException('Invalid saved damage state.');
+        }
+        $game->damageEffects = $effects;
+        $game->nextDamageEffectId = $nextEffect;
+        $game->pendingDamage = $pendingDamage;
+        if ($pendingDamage !== null && (! is_int($data['nextChoiceId'] ?? null) || $data['nextChoiceId'] < 1
+            || $data['nextChoiceId'] > PHP_INT_MAX - DamageBatch::MAX_EVENTS * DamageBatch::MAX_OPERATIONS)) {
+            throw new GameException('Invalid saved damage choice identity.');
+        }
+        $game->validateDamageState();
 
         return $game;
     }

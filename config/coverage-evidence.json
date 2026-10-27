@@ -9,39 +9,96 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+  "engineSource": "e12ba8ba5666b3ad8638df2d723d8e82258dda8a",
   "validation": {
-    "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
-    "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
-    "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
-    "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision.",
-    "integration": {
-      "prParent": "4797893913967dd38f36e0eda7009f7b50e874f5",
-      "mainParent": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
-      "actualConflicts": [
-        "config/coverage-evidence.json",
-        "docs/rules-engine-continuation.md"
-      ],
-      "changedSourcePins": [
-        {
-          "path": "src/MTGPocket/Game/TextParser.php",
-          "main": "c449be0f835424903b4e6e4aa647cd1e8f8caafa441ee5868265d7e623e3347f",
-          "integrated": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4"
+    "source": "e12ba8ba5666b3ad8638df2d723d8e82258dda8a",
+    "evidenceMeaning": "Reviewed one-line Fog correction for PR #444, separate from the private Recover candidate. Recognition, scoped card evidence and whole-card certificates are unchanged. Current pins identify this corrected source; the previous validation fields and changed Game pin are retained in fogReview.",
+    "local": "Immutable Fog source e12ba8ba5666b3ad8638df2d723d8e82258dda8a: full offline 2491 tests / 64301 assertions, two unchanged missing-data skips, no failures/errors/warnings/risky tests; 00:59.978 / 352 MiB. Focused identical-base/head comparison: base 570771053d31f16d700178d9fbc742da37e9106d passed 10 tests / 127 assertions, frozen b0941ed had five failures / 108 reached assertions, corrected source passed 10 / 127; adjacent 156 tests / 1934 assertions passed. Full nonmutating Pint and all 75 current source pins pass. PHP 8.5.12 / 512 MiB / Xdebug off / isolated data+temp / original dependencies. Native read-only Windows DNS configuration access was used by fixture client construction, with no live bot/card requests, vendor edits or suppression. Final verification metadata does not change runtime/test bytes. Previous validation and changed Game hash remain in fogReview.",
+    "ci": "Verified historical exact-head evidence: Tests 40456232370 completed success on f15f18288ac8db2b31ef1aa5f59c7602681811da, with Pint and PHPUnit passing on PHP 8.3/8.4/8.5 (https://github.com/Valgorithms/DiscordPHP-MTGPocket/actions/runs/40456232370). This evidence applies only to that immutable head. For any later head, including metadata/docs follow-ups, read its own current checks on GitHub PR #444 (https://github.com/Valgorithms/DiscordPHP-MTGPocket/pull/444/checks). Root retains readiness/merge review; no live-service or deployment acceptance is claimed.",
+    "historicalValidation": {
+      "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+      "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
+      "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
+      "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision.",
+      "integration": {
+        "prParent": "4797893913967dd38f36e0eda7009f7b50e874f5",
+        "mainParent": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
+        "actualConflicts": [
+          "config/coverage-evidence.json",
+          "docs/rules-engine-continuation.md"
+        ],
+        "changedSourcePins": [
+          {
+            "path": "src/MTGPocket/Game/TextParser.php",
+            "main": "c449be0f835424903b4e6e4aa647cd1e8f8caafa441ee5868265d7e623e3347f",
+            "integrated": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4"
+          },
+          {
+            "path": "src/MTGPocket/Game/Game.php",
+            "main": "1ebe2faba74a1566ed2159b19a73c3d1c1a0efa6dec6920152a9842d57a87848",
+            "integrated": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee"
+          }
+        ],
+        "prParentValidation": {
+          "source": "153003f7eb27e2ff4e7dc6869167bc5e270c74ad",
+          "evidenceMeaning": "Existing PR#331 integrated with merged Gemblades main, preserving original card rules/evidence.37scopednames/0whole-cardcertificates;historicalrecognitionunchanged.",
+          "local": "Full-tested integrated source 153003f7eb27e2ff4e7dc6869167bc5e270c74ad: 2383 tests/62838 assertions,2expected missing-pool/rental skips,no risky tests;PHPUnit01:07.445/332.00 MB. Focused637tests/7996assertions,fullnonmutatingPint,all67normalizedPHPpinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;production/testbytes match. Hosted acceptance requires the final exact PR head.",
+          "ci": "PENDING: exact final existing-PR head requires its own hosted acceptance; no prior green run substitutes.",
+          "integration": {
+            "pr": 331,
+            "prParent": "3f309578ebc35f17ae9321f969a67fe4e14db4ab",
+            "mainParent": "bd96559c492f6ae032a8a29898105e018f2020f1",
+            "actualConflicts": [
+              "docs/rules-engine-continuation.md"
+            ],
+            "changedSourcePins": [
+              {
+                "path": "src/MTGPocket/Game/TextParser.php",
+                "main": "f5bb0ad189f8d498e68756a0f096ab01a1f276912e04c573a37f00e68847f900",
+                "integrated": "a4f4abf2ce6223236d414dd63ca212b0aa162fbad7d4d5a4fcfe3fc26bdc5ae6"
+              },
+              {
+                "path": "src/MTGPocket/Game/Game.php",
+                "main": "46f52781f9c75e1427eaf11303acc3173c943f5307024ee96a76406ca1dea07a",
+                "integrated": "e5b7063fabca65196f2e232845ba1770f3dc280c9e9190fab465de3f91476884"
+              }
+            ],
+            "meaning": "Exact PR/main reconciliation; original production behavior and both documentation sides preserved. No scope expansion or corpus scan. Current combined pins require focused/full validation. Recognition and prior evidence remain historical;37scoped names/0whole-card certificates.",
+            "fullTestedSource": "153003f7eb27e2ff4e7dc6869167bc5e270c74ad"
+          },
+          "historicalValidationRef": {
+            "source": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
+            "path": "/validation/historicalValidation",
+            "canonicalJsonSha256": "5099b92322798cfcc30a900a4e149de5dbcd9e99e75341b5877bf1f6fa1a6279",
+            "meaning": "Identical shared record retained under current validation/historicalValidation/historicalValidation;reference avoids duplicating it."
+          }
         },
-        {
-          "path": "src/MTGPocket/Game/Game.php",
-          "main": "1ebe2faba74a1566ed2159b19a73c3d1c1a0efa6dec6920152a9842d57a87848",
-          "integrated": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee"
-        }
-      ],
-      "prParentValidation": {
-        "source": "153003f7eb27e2ff4e7dc6869167bc5e270c74ad",
-        "evidenceMeaning": "Existing PR#331 integrated with merged Gemblades main, preserving original card rules/evidence.37scopednames/0whole-cardcertificates;historicalrecognitionunchanged.",
-        "local": "Full-tested integrated source 153003f7eb27e2ff4e7dc6869167bc5e270c74ad: 2383 tests/62838 assertions,2expected missing-pool/rental skips,no risky tests;PHPUnit01:07.445/332.00 MB. Focused637tests/7996assertions,fullnonmutatingPint,all67normalizedPHPpinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;production/testbytes match. Hosted acceptance requires the final exact PR head.",
+        "priorPrCI": {
+          "head": "4797893913967dd38f36e0eda7009f7b50e874f5",
+          "run": 40382653564,
+          "result": "PHP8.3/8.4/8.5PintandPHPUnitPASS"
+        },
+        "mainPostmergeCI": {
+          "head": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
+          "run": 40383781448,
+          "status": "completed",
+          "conclusion": "success",
+          "php": [
+            "8.3",
+            "8.4",
+            "8.5"
+          ]
+        },
+        "fullTestedSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf"
+      },
+      "historicalValidation": {
+        "source": "2e0dcb18036d69b081c431a1e03710903b565361",
+        "evidenceMeaning": "Existing PR#330 integrated with merged Gemblades main, preserving original card rules/evidence.37scopednames/0whole-cardcertificates;historicalrecognitionunchanged.",
+        "local": "Full-tested integrated source 2e0dcb18036d69b081c431a1e03710903b565361: 2384 tests/63030 assertions,2expected missing-pool/rental skips,no risky tests;PHPUnit01:05.773/334.00 MB. Focused638tests/8188assertions,fullnonmutatingPint,all67normalizedPHPpinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;production/testbytes match. Hosted acceptance requires the final exact PR head.",
         "ci": "PENDING: exact final existing-PR head requires its own hosted acceptance; no prior green run substitutes.",
         "integration": {
-          "pr": 331,
-          "prParent": "3f309578ebc35f17ae9321f969a67fe4e14db4ab",
+          "pr": 330,
+          "prParent": "75e2ab6f6a99236460632b8f00c9e0efb96c6195",
           "mainParent": "bd96559c492f6ae032a8a29898105e018f2020f1",
           "actualConflicts": [
             "docs/rules-engine-continuation.md"
@@ -50,288 +107,47 @@
             {
               "path": "src/MTGPocket/Game/TextParser.php",
               "main": "f5bb0ad189f8d498e68756a0f096ab01a1f276912e04c573a37f00e68847f900",
-              "integrated": "a4f4abf2ce6223236d414dd63ca212b0aa162fbad7d4d5a4fcfe3fc26bdc5ae6"
+              "integrated": "c449be0f835424903b4e6e4aa647cd1e8f8caafa441ee5868265d7e623e3347f"
             },
             {
               "path": "src/MTGPocket/Game/Game.php",
               "main": "46f52781f9c75e1427eaf11303acc3173c943f5307024ee96a76406ca1dea07a",
-              "integrated": "e5b7063fabca65196f2e232845ba1770f3dc280c9e9190fab465de3f91476884"
+              "integrated": "1ebe2faba74a1566ed2159b19a73c3d1c1a0efa6dec6920152a9842d57a87848"
             }
           ],
           "meaning": "Exact PR/main reconciliation; original production behavior and both documentation sides preserved. No scope expansion or corpus scan. Current combined pins require focused/full validation. Recognition and prior evidence remain historical;37scoped names/0whole-card certificates.",
-          "fullTestedSource": "153003f7eb27e2ff4e7dc6869167bc5e270c74ad"
+          "fullTestedSource": "2e0dcb18036d69b081c431a1e03710903b565361"
         },
-        "historicalValidationRef": {
-          "source": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
-          "path": "/validation/historicalValidation",
-          "canonicalJsonSha256": "5099b92322798cfcc30a900a4e149de5dbcd9e99e75341b5877bf1f6fa1a6279",
-          "meaning": "Identical shared record retained under current validation/historicalValidation/historicalValidation;reference avoids duplicating it."
-        }
-      },
-      "priorPrCI": {
-        "head": "4797893913967dd38f36e0eda7009f7b50e874f5",
-        "run": 40382653564,
-        "result": "PHP8.3/8.4/8.5PintandPHPUnitPASS"
-      },
-      "mainPostmergeCI": {
-        "head": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
-        "run": 40383781448,
-        "status": "completed",
-        "conclusion": "success",
-        "php": [
-          "8.3",
-          "8.4",
-          "8.5"
-        ]
-      },
-      "fullTestedSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf"
-    },
-    "historicalValidation": {
-      "source": "2e0dcb18036d69b081c431a1e03710903b565361",
-      "evidenceMeaning": "Existing PR#330 integrated with merged Gemblades main, preserving original card rules/evidence.37scopednames/0whole-cardcertificates;historicalrecognitionunchanged.",
-      "local": "Full-tested integrated source 2e0dcb18036d69b081c431a1e03710903b565361: 2384 tests/63030 assertions,2expected missing-pool/rental skips,no risky tests;PHPUnit01:05.773/334.00 MB. Focused638tests/8188assertions,fullnonmutatingPint,all67normalizedPHPpinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;production/testbytes match. Hosted acceptance requires the final exact PR head.",
-      "ci": "PENDING: exact final existing-PR head requires its own hosted acceptance; no prior green run substitutes.",
-      "integration": {
-        "pr": 330,
-        "prParent": "75e2ab6f6a99236460632b8f00c9e0efb96c6195",
-        "mainParent": "bd96559c492f6ae032a8a29898105e018f2020f1",
-        "actualConflicts": [
-          "docs/rules-engine-continuation.md"
-        ],
-        "changedSourcePins": [
-          {
-            "path": "src/MTGPocket/Game/TextParser.php",
-            "main": "f5bb0ad189f8d498e68756a0f096ab01a1f276912e04c573a37f00e68847f900",
-            "integrated": "c449be0f835424903b4e6e4aa647cd1e8f8caafa441ee5868265d7e623e3347f"
-          },
-          {
-            "path": "src/MTGPocket/Game/Game.php",
-            "main": "46f52781f9c75e1427eaf11303acc3173c943f5307024ee96a76406ca1dea07a",
-            "integrated": "1ebe2faba74a1566ed2159b19a73c3d1c1a0efa6dec6920152a9842d57a87848"
-          }
-        ],
-        "meaning": "Exact PR/main reconciliation; original production behavior and both documentation sides preserved. No scope expansion or corpus scan. Current combined pins require focused/full validation. Recognition and prior evidence remain historical;37scoped names/0whole-card certificates.",
-        "fullTestedSource": "2e0dcb18036d69b081c431a1e03710903b565361"
-      },
-      "historicalValidation": {
-        "source": "ca412b8e9da14a0328080abc7eda6de5440565c3",
-        "evidenceMeaning": "Quest for the Gemblades: reproduced missing optional controlled-creature combat damage counter and single-counter sacrifice activation. 37 scoped names, zero whole-card certificates; aggregate recognition historical.",
-        "local": "Immutable base Game/TextParser class-map rerun of six maintained paid baseline cases:6tests/52assertions,2failures(no combat triggers),4errors(no activated ability). Recognition-only intermediate with corrected test power/toughness call passes4activation cases but2combat failures remain:6/76. Runtime combat-only observer fixes6/82. Expanded61/798PASS. Initial test-only power/toughness argument and readonly owner/automatic empty blockers harness errors are retained and excluded from engine claims. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Full-tested source ca412b8e9da14a0328080abc7eda6de5440565c3: 2359 tests /62440 assertions, 2 expected missing-pool/rental skips, no risky tests; PHPUnit 01:01.007 /330.00 MB,61.287s wall/120s cap. Focused835tests/12124assertions, full nonmutating Pint, existing-pool ledger inventory and all67 normalized PHP pins PASS. New card61tests/798assertionsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final single coherent commit amends metadata/docs only; production/test pins match. No publication or hosted acceptance.",
-        "ci": "NOT RUN: unpublished candidate held for main source/test review. Main reported #437 postmerge Tests40340724555 passed on2e77a1e; historical for this changed tree.",
         "historicalValidation": {
-          "source": "7ac46aeb2cfda81234d7743d9cfa61d9d913d253",
-          "evidenceMeaning": "Quest for Ancient Secrets: reproduced missing optional per-card graveyard event, five-counter activation and target-player shuffle. 36 scoped names, zero whole-card certificates; recognition historical.",
-          "local": "Corrected baseline against immutable base Game/TextParser class map:6 tests/38 assertions,2 failures(no six triggers after paid self-mill),4 errors(missing ability). Activation baseline seeds five counters only to isolate cost/target; separate gameplay earns counters. Event/cost intermediate passes2 self-mill cases but4 target cases reject because parsed ability needs0targets; targeted whole-GY correction resolves this. Initial fixed6/100PASS; final card42/582PASS. One intermediate priority fixture error and one missing explicit discard-choice harness failure are retained and excluded from engine-defect claims. First adjacent run only failed stale source-pin validation; pins now updated, final focused/full recorded below. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Full-tested source f4f76178aee6f6e2251ed11ad37bee82706987fe: 2238 tests /60206 assertions, 2 expected missing-pool/rental skips, no risky tests; PHPUnit 00:54.973 /314.00 MB. Focused677tests/9176assertions and full nonmutating Pint PASS. All65 normalized PHP pins match. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final single coherent commit amends verification metadata/docs only; PHP/test pins match this tested source. No hosted acceptance or publication.",
-          "ci": "NOT RUN: local candidate held for main review before publication. Parent reported merged #436 exact Tests40331225195 success; that is historical acceptance, not this changed engine.",
+          "source": "ca412b8e9da14a0328080abc7eda6de5440565c3",
+          "evidenceMeaning": "Quest for the Gemblades: reproduced missing optional controlled-creature combat damage counter and single-counter sacrifice activation. 37 scoped names, zero whole-card certificates; aggregate recognition historical.",
+          "local": "Immutable base Game/TextParser class-map rerun of six maintained paid baseline cases:6tests/52assertions,2failures(no combat triggers),4errors(no activated ability). Recognition-only intermediate with corrected test power/toughness call passes4activation cases but2combat failures remain:6/76. Runtime combat-only observer fixes6/82. Expanded61/798PASS. Initial test-only power/toughness argument and readonly owner/automatic empty blockers harness errors are retained and excluded from engine claims. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Full-tested source ca412b8e9da14a0328080abc7eda6de5440565c3: 2359 tests /62440 assertions, 2 expected missing-pool/rental skips, no risky tests; PHPUnit 01:01.007 /330.00 MB,61.287s wall/120s cap. Focused835tests/12124assertions, full nonmutating Pint, existing-pool ledger inventory and all67 normalized PHP pins PASS. New card61tests/798assertionsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final single coherent commit amends metadata/docs only; production/test pins match. No publication or hosted acceptance.",
+          "ci": "NOT RUN: unpublished candidate held for main source/test review. Main reported #437 postmerge Tests40340724555 passed on2e77a1e; historical for this changed tree.",
           "historicalValidation": {
-            "source": "34d5ea2f2bd460cc47be312255f41097c01b1d94",
-            "evidenceMeaning": "Combined Ior Ruin and Sunspring Expedition evidence-only slice. Both paid gameplay baselines already pass; engine/parser/schema are unchanged from merged 7204f5b. 35 scoped names, zero whole-card certificates; recognition historical.",
-            "local": "Ior baseline 12 tests /248 assertions PASS; its prior isolated full run at d53db30d98a39d0b08068ab7ab3bdea12ae3fc6d passed2180/59332 with2 expected missing-data skips. Sunspring baseline6/112 PASS, expanded16/292 PASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp, existing dependencies. Baseline/source identities and prior local commit patches are preserved in receipts before unpublished squash. Combined full-tested source 34d5ea2f2bd460cc47be312255f41097c01b1d94: 2196 tests / 59624 assertions, 2 expected missing-pool/rental skips, no risky tests; PHPUnit 01:01.374 / 308.00 MB. Focused 247 tests /4731 assertions and full nonmutating Pint PASS. All64 normalized PHP pins match. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp, existing dependencies. The final single coherent commit amends only metadata/docs from this tested source; production and test pins are identical. No hosted acceptance or publication.",
-            "ci": "NOT RUN: combined local candidate awaits main review before publication; previous CI is historical.",
+            "source": "7ac46aeb2cfda81234d7743d9cfa61d9d913d253",
+            "evidenceMeaning": "Quest for Ancient Secrets: reproduced missing optional per-card graveyard event, five-counter activation and target-player shuffle. 36 scoped names, zero whole-card certificates; recognition historical.",
+            "local": "Corrected baseline against immutable base Game/TextParser class map:6 tests/38 assertions,2 failures(no six triggers after paid self-mill),4 errors(missing ability). Activation baseline seeds five counters only to isolate cost/target; separate gameplay earns counters. Event/cost intermediate passes2 self-mill cases but4 target cases reject because parsed ability needs0targets; targeted whole-GY correction resolves this. Initial fixed6/100PASS; final card42/582PASS. One intermediate priority fixture error and one missing explicit discard-choice harness failure are retained and excluded from engine-defect claims. First adjacent run only failed stale source-pin validation; pins now updated, final focused/full recorded below. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Full-tested source f4f76178aee6f6e2251ed11ad37bee82706987fe: 2238 tests /60206 assertions, 2 expected missing-pool/rental skips, no risky tests; PHPUnit 00:54.973 /314.00 MB. Focused677tests/9176assertions and full nonmutating Pint PASS. All65 normalized PHP pins match. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final single coherent commit amends verification metadata/docs only; PHP/test pins match this tested source. No hosted acceptance or publication.",
+            "ci": "NOT RUN: local candidate held for main review before publication. Parent reported merged #436 exact Tests40331225195 success; that is historical acceptance, not this changed engine.",
             "historicalValidation": {
-              "source": "eb481a668c3faaf8a2f13f70b686592ad452a725",
-              "evidenceMeaning": "Zektar paid gameplay plus reproduced shared next-end-step exile response-window correction;mergedQuestandSoulStairevidencepreserved. Recognitionhistorical;33scopednames/0wholecardcertificates.",
-              "local": "Baseline6tests132assertions:4ordinary/negativecontrolsPASS,2responsewindowFAIL at85d8541;redcommit5e819f0preserved. Bothactorspaid1R,played3lands,paidquest+selfsacrifice;tokenwasgonebeforepriority. Correctionusesordinarytriggerqueuewithoriginaleffectsource/controllerandincarnation-pinnedrecipient;optionalserializedendExileContextwithlegacyfallbackandstructuralreferencevalidation. Initialfixed6/136PASS;expandedstate/entry43tests782assertionsPASS;combat2tests52assertionsPASS;threefilePintPASS. IntegratedapprovedQuestmaine91c78dwithoutconflicts; PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,read-onlyexistingvendorwithignoredlocalbridge. Firstfullate8c7911ran2160tests58836assertionswith2failures/2expectedskips:olderModernreanimationandcopytestsassumedimmediateexile. UpdatedbothassertionstoprovetheBFresponsewindowandqueuedabilitybeforeresolution;noadditionalproductionworkaround. Thisfailedreceiptretainedas zektar-full;freshfullrequired. Full offline source 2295487625efe6eed0ed64eed8423eefe44e2cfe: 2160 tests/58840 assertions, 2 expected missing-pool/rental skips; PHPUnit00:59.051/302.00 MB,wall59.317s/120scap. Combinedfamilies/schema/ledger/Modern140tests2275assertionsPASS;fullnonmutatingPintPASS. All62normalizedPHPpinsmatch. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,ignoredread-onlydependencybridge. No hostedCI or publication. Publication source eb481a668c3faaf8a2f13f70b686592ad452a725: full offline 2168 tests / 59084 assertions / 2 expected missing-data skips; focused 148 tests / 2519 assertions PASS; full nonmutating Pint PASS; all 62 normalized PHP pins match. Maintained identity: 8 cases / 244 assertions PASS. PHP 8.5.12, 512 MiB, Xdebug off, isolated data/temp; production unchanged since ad2d948. The sandboxed full attempt reported six risky importer tests from null WMIC output in React DNS; targeted importer tests and the full suite passed with Windows configuration reads available. All historical failed full receipts are retained. Hosted CI pending draft PR publication.",
-              "ci": "PENDING: draft publication authorized after focused review and maintained identity regressions; exact-head hosted checks must be verified separately. No local result is hosted acceptance.",
+              "source": "34d5ea2f2bd460cc47be312255f41097c01b1d94",
+              "evidenceMeaning": "Combined Ior Ruin and Sunspring Expedition evidence-only slice. Both paid gameplay baselines already pass; engine/parser/schema are unchanged from merged 7204f5b. 35 scoped names, zero whole-card certificates; recognition historical.",
+              "local": "Ior baseline 12 tests /248 assertions PASS; its prior isolated full run at d53db30d98a39d0b08068ab7ab3bdea12ae3fc6d passed2180/59332 with2 expected missing-data skips. Sunspring baseline6/112 PASS, expanded16/292 PASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp, existing dependencies. Baseline/source identities and prior local commit patches are preserved in receipts before unpublished squash. Combined full-tested source 34d5ea2f2bd460cc47be312255f41097c01b1d94: 2196 tests / 59624 assertions, 2 expected missing-pool/rental skips, no risky tests; PHPUnit 01:01.374 / 308.00 MB. Focused 247 tests /4731 assertions and full nonmutating Pint PASS. All64 normalized PHP pins match. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp, existing dependencies. The final single coherent commit amends only metadata/docs from this tested source; production and test pins are identical. No hosted acceptance or publication.",
+              "ci": "NOT RUN: combined local candidate awaits main review before publication; previous CI is historical.",
               "historicalValidation": {
-                "source": "b18712e48600893b0221df30758625d5efab8a16",
-                "evidenceMeaning": "Integrated scoped Soul Stair and Quest for the Gravelord evidence;32scopednames,2Partnergapnames,1overlap,0wholecardcertificates. Recognition remains historical; no newest-printing or aggregate gameplay claim.",
-                "local": "Integrated offline source b18712e48600893b0221df30758625d5efab8a16: 2132 tests, 58132 assertions, 2 expected missing-pool/rental skips; PHPUnit 00:55.576, 298.00 MB, 55.837s wall under120s cap. Focused ledger/schema/Gravelord/SoulStair/targetclause/Khalni/Moriok:154tests2677assertionsPASS; fullnonmutatingPintPASS. PHP8.5.12,512MiB,Xdebugoff,isolateddata/temp; ignoredlocaldependencybridge only. All61normalizedPHPpinsverified. No newpublication/hostedCI/live/build/deploy.",
-                "ci": "NOT RUN for this local integrated branch: main review of concrete source/tests/metadata is required before publication. Main post-merge Tests40320123315 passed at85d8541 and remains historical for this changed tree.",
+                "source": "eb481a668c3faaf8a2f13f70b686592ad452a725",
+                "evidenceMeaning": "Zektar paid gameplay plus reproduced shared next-end-step exile response-window correction;mergedQuestandSoulStairevidencepreserved. Recognitionhistorical;33scopednames/0wholecardcertificates.",
+                "local": "Baseline6tests132assertions:4ordinary/negativecontrolsPASS,2responsewindowFAIL at85d8541;redcommit5e819f0preserved. Bothactorspaid1R,played3lands,paidquest+selfsacrifice;tokenwasgonebeforepriority. Correctionusesordinarytriggerqueuewithoriginaleffectsource/controllerandincarnation-pinnedrecipient;optionalserializedendExileContextwithlegacyfallbackandstructuralreferencevalidation. Initialfixed6/136PASS;expandedstate/entry43tests782assertionsPASS;combat2tests52assertionsPASS;threefilePintPASS. IntegratedapprovedQuestmaine91c78dwithoutconflicts; PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,read-onlyexistingvendorwithignoredlocalbridge. Firstfullate8c7911ran2160tests58836assertionswith2failures/2expectedskips:olderModernreanimationandcopytestsassumedimmediateexile. UpdatedbothassertionstoprovetheBFresponsewindowandqueuedabilitybeforeresolution;noadditionalproductionworkaround. Thisfailedreceiptretainedas zektar-full;freshfullrequired. Full offline source 2295487625efe6eed0ed64eed8423eefe44e2cfe: 2160 tests/58840 assertions, 2 expected missing-pool/rental skips; PHPUnit00:59.051/302.00 MB,wall59.317s/120scap. Combinedfamilies/schema/ledger/Modern140tests2275assertionsPASS;fullnonmutatingPintPASS. All62normalizedPHPpinsmatch. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp,ignoredread-onlydependencybridge. No hostedCI or publication. Publication source eb481a668c3faaf8a2f13f70b686592ad452a725: full offline 2168 tests / 59084 assertions / 2 expected missing-data skips; focused 148 tests / 2519 assertions PASS; full nonmutating Pint PASS; all 62 normalized PHP pins match. Maintained identity: 8 cases / 244 assertions PASS. PHP 8.5.12, 512 MiB, Xdebug off, isolated data/temp; production unchanged since ad2d948. The sandboxed full attempt reported six risky importer tests from null WMIC output in React DNS; targeted importer tests and the full suite passed with Windows configuration reads available. All historical failed full receipts are retained. Hosted CI pending draft PR publication.",
+                "ci": "PENDING: draft publication authorized after focused review and maintained identity regressions; exact-head hosted checks must be verified separately. No local result is hosted acceptance.",
                 "historicalValidation": {
-                  "source": "51bf5132f5313959d3deead373f094f902739417",
-                  "evidenceMeaning": "Soul Stair Expedition paid quest/sacrifice graveyard returns plus synthetic per-target-clause announcement/practice controls. Recognition remains historical; no whole-card certification.",
-                  "local": "Corrected ordinary paid baseline00262fe:2tests32assertionsPASS; initial Memnite harness error excluded. Actual duplicate-target negative baselineb6287c5:2tests28assertions2FAIL, both actors paid B and earned three quest counters, duplicate accepted before fix. Fixed fcc3837:22tests302assertionsPASS. Adjacent a55fc5d:492tests9439assertionsPASS28.986sPHPUnit/30scap/92MiB. Latest source636dec8:28tests338assertionsPASS0.222s/38MiB, adding modal/support/forced-practice and legal separate activated-clause controls. Serial,512MiB,Xdebugoff,isolated data/temp. Full suite and exact final hosted full Pint/PHPUnit8.3/8.4/8.5 pending. No environment contract changes or corpus/parser scan/import/live/build/restart/deploy. Resume2026-10-26: Full offline PHPUnit at `86dd45fd6069a1382381095bd160c57b15acfdcc` passed: 2,079 tests, 57,860 assertions, two expected missing-imported-pool/rental skips; 63.716s PHPUnit/280MiB, 64.29s wall under a 120s process-tree cap. Focused checks passed 48 tests/391 assertions in 0.576s/36MiB. Five-file nonmutating Pint passed. PHP8.5.12, 512MiB, Xdebug off, isolated data and task-local temp. All 60 normalized PHP pins verified. No new parser recognition scan or whole-card certificates. Exact final hosted matrix remains pending. Authorized metadata-conflict integration2026-10-26: Integrated offline full suite at `51bf5132f5313959d3deead373f094f902739417` passed 2,105 tests/57,760 assertions with 2 expected missing-data skips; PHPUnit 00:54.239, 296.00 MB, 54.488s wall/120s cap. Focused ledger/Soul Stair/clause/Khalni schema checks passed 66 tests/1,041 assertions; full nonmutating Pint passed. PHP8.5.12,512MiB,Xdebugoff,isolated data/temp. All60normalizedPHPpins verified. Exact final hosted PHP8.3/8.4/8.5 matrix remains pending.",
-                  "ci": "PENDING: exact final integrated draft requires its own Tests workflow full Pint/PHPUnit8.3/8.4/8.5. Earlier source/CI receipts are historical and do not establish final hosted acceptance.",
+                  "source": "b18712e48600893b0221df30758625d5efab8a16",
+                  "evidenceMeaning": "Integrated scoped Soul Stair and Quest for the Gravelord evidence;32scopednames,2Partnergapnames,1overlap,0wholecardcertificates. Recognition remains historical; no newest-printing or aggregate gameplay claim.",
+                  "local": "Integrated offline source b18712e48600893b0221df30758625d5efab8a16: 2132 tests, 58132 assertions, 2 expected missing-pool/rental skips; PHPUnit 00:55.576, 298.00 MB, 55.837s wall under120s cap. Focused ledger/schema/Gravelord/SoulStair/targetclause/Khalni/Moriok:154tests2677assertionsPASS; fullnonmutatingPintPASS. PHP8.5.12,512MiB,Xdebugoff,isolateddata/temp; ignoredlocaldependencybridge only. All61normalizedPHPpinsverified. No newpublication/hostedCI/live/build/deploy.",
+                  "ci": "NOT RUN for this local integrated branch: main review of concrete source/tests/metadata is required before publication. Main post-merge Tests40320123315 passed at85d8541 and remains historical for this changed tree.",
                   "historicalValidation": {
-                    "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
-                    "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
-                    "local": "Sole-owner validation of the preserved integration with main27189a71df613c26846c92c997e8accb435cf64e. Focused40tests731assertionsPASS6.761s wall/30s cap: Khalni, opponent-discard recipient, legacy counter migration, persisted panels and ledger. All58normalizedPHPpins verified. Full offline source `336fabb6621c810096164b18f7dc69ac86dd0bc8` passed 2,049 tests and 57,506 assertions with two expected missing-imported-pool/rental skips. PHPUnit 73.900s/276MiB; 74.810s wall under the 120s process-tree cap, 512MiB, Xdebug off, empty data and task-local temporary storage. Fresh 9.02GiB/no other PHP tests at 2026-10-24T18:59:08.8000221Z. Local two-file Pint produced no output and timed out124 at34.853s wall/30s cap; owned process tree stopped, NOT accepted. Previous input-head passes remain historical under integration.historicalValidation. No corpus scan/import/live/bot/build/restart/deploy. Schema16/noenvchange.",
-                    "ci": "NOT RUN at this metadata commit creation. Final head must pass its own exact Tests workflow with full Pint and PHPUnit on PHP8.3/8.4/8.5 before merge. Local Pint timeout is not a pass. CI40118185025 is historical and predates PR404/405.",
-                    "integration": {
-                      "prHead": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
-                      "mainHead": "27189a71df613c26846c92c997e8accb435cf64e",
-                      "status": "combined source passed current focused and full offline PHPUnit; final hosted CI pending",
-                      "changedSourcePins": {
-                        "src/MTGPocket/Game/TextParser.php": {
-                          "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
-                          "main": "cb56be75277087578ee54849c1cf65003980604be27a7e161c30ba2433ac5d86",
-                          "integrated": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5"
-                        },
-                        "tests/Game/ModernCardTextTest.php": {
-                          "pr375": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
-                          "main": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
-                          "integrated": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27"
-                        }
-                      },
-                      "historicalValidation": [
-                        {
-                          "head": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
-                          "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
-                          "validation": {
-                            "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
-                            "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
-                            "local": "Original paid baselines2/14/2fail and2/22/2errors; followups2/16 and2/28PASS. Integrated main355a84f through PR404 preserving upstream runtime. Current Khalni+Modern442tests6386assertions/Pint3PASS; earlier integratedfocused23/732,Modern423/5900,adjacent312/6924/Pint7 passed. Ledger18/37 and existing181-pool inventory30scopenames2Partnergaps1overlap0wholecert. Initialfull071f0c4fixtureerror corrected by faithful old-schema fixture, not runtime workaround. Full offline target `71db2da86085b881ae6918487c1cc9f8be770b96` after PR404/main355a84f passed 2048tests/57419assertions/2expected missing-imported-pool/rental skips. PHPUnit01:04.286,276.00MiB;64.690s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh7.93GiB/nootherPHP at2026-10-24T17:57:16.2601596Z. All58normalizedPHPpins match this target. Schema16/noenvchange.",
-                            "ci": "Previous source65faf3b passed CI40118185025 (full Pint/PHPUnit8.3/8.4/8.5). It predates PR404 and is historical. Final metadata commit with all58 PHP source pins unchanged from the current local full target requires its own exact full Pint/PHPUnit8.3/8.4/8.5 before merge."
-                          }
-                        },
-                        {
-                          "head": "27189a71df613c26846c92c997e8accb435cf64e",
-                          "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
-                          "validation": {
-                            "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
-                            "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
-                            "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target `1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb` passed 1,998 tests and 56,374 assertions, with two expected missing-imported-pool/rental skips. PHPUnit57.955s270MiB;58.327s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh11.76GiB/no other test processes at2026-10-24T14:42:03.4480779Z. All57normalizedPHPpins match this target. Exact tested/final CI required before merge. Noenv/schema15change.",
-                            "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
-                          }
-                        }
-                      ],
-                      "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
-                    }
-                  },
-                  "integration": {
-                    "mergeBase": "7101b553ff3a71dc5b84f35928eac43e78789aae",
-                    "prParent": "d258380aec4a80d6a9e29e4ccbd1453266fd59d3",
-                    "mainParent": "d0431f1d834ba9365c159c9e341d9ac33905a903",
-                    "evidenceMeaning": "One explicitly authorized conflict integration. Both parent evidence sets and historical source anchors are preserved; current combined source pins were locally full-tested. Historical recognition, scoped gameplay and whole-card certification remain separate. Exact final hosted CI is pending.",
-                    "upstreamEvidenceChanges": [
-                      {
-                        "path": "/validation/integration/changedSourcePins/src/MTGPocket/Game/TextParser.php/integrated",
-                        "before": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
-                        "after": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
-                      },
-                      {
-                        "path": "/validation/integration/changedSourcePins/tests/Game/ModernCardTextTest.php/main",
-                        "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
-                        "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
-                      },
-                      {
-                        "path": "/validation/integration/changedSourcePins/tests/Game/ModernCardTextTest.php/integrated",
-                        "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
-                        "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
-                      },
-                      {
-                        "path": "/sourcePins/src/MTGPocket/Game/TextParser.php",
-                        "before": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
-                        "after": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
-                      },
-                      {
-                        "path": "/sourcePins/src/MTGPocket/Game/Game.php",
-                        "before": "122a7a4b7a93d4352da10cdd4f3301c292baf6809619b1e73e029c097252938d",
-                        "after": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3"
-                      },
-                      {
-                        "path": "/sourcePins/src/MTGPocket/Game/GamePlayer.php",
-                        "before": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
-                        "after": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3"
-                      },
-                      {
-                        "path": "/sourcePins/src/MTGPocket/Game/GameObject.php",
-                        "before": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
-                        "after": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe"
-                      },
-                      {
-                        "path": "/sourcePins/tests/Game/ModernCardTextTest.php",
-                        "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
-                        "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
-                      }
-                    ],
-                    "changedSourcePins": {
-                      "src/MTGPocket/Game/TextParser.php": {
-                        "pr": "73c2d6d481d9b23a019c2cf9a9531cf45560f30ae5c4499763988bb4d017baef",
-                        "main": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb",
-                        "integrated": "eec03dd76a8cd6206ad2b30d3f192c64dd47dc8ea3b3b0de95763bb8dc0028c6"
-                      },
-                      "src/MTGPocket/Game/Game.php": {
-                        "pr": "e336b27f51d99eee5371a854c9c40bdb08ea278f77fc37e4fd295c749d03b3f8",
-                        "main": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3",
-                        "integrated": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014"
-                      },
-                      "src/MTGPocket/Game/GamePlayer.php": {
-                        "pr": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
-                        "main": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3",
-                        "integrated": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3"
-                      },
-                      "src/MTGPocket/Game/GameObject.php": {
-                        "pr": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
-                        "main": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe",
-                        "integrated": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe"
-                      },
-                      "src/MTGPocket/Tutorial/PracticeBot.php": {
-                        "pr": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9",
-                        "main": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
-                        "integrated": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9"
-                      },
-                      "tests/Game/ModernCardTextTest.php": {
-                        "pr": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
-                        "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
-                        "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
-                      },
-                      "tests/Game/SoulStairExpeditionReturnsTest.php": {
-                        "pr": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
-                        "main": null,
-                        "integrated": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc"
-                      },
-                      "tests/Game/TargetClauseDistinctnessTest.php": {
-                        "pr": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
-                        "main": null,
-                        "integrated": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
-                      }
-                    },
-                    "preservation": "PR scopedEvidence, explicitUnsupported, nextFamily and historical validation remain intact. Main adds no scoped names; all upstream evidence changes are retained above with before/after provenance. All current pins describe the combined tree.",
-                    "fullTestedSource": "51bf5132f5313959d3deead373f094f902739417"
-                  }
-                },
-                "integration": {
-                  "gravelordParent": "3e55066c079b1fd75eaeab7500456d03469ed4d5",
-                  "mainParent": "85d85418cee2244cf8e6eb9dc3dac70a9646bb6b",
-                  "sourceMeaning": "Merged local source full-tested at b18712e48600893b0221df30758625d5efab8a16; both parent evidence sets and their original exact source anchors are retained. Publication and exact final hosted CI remain pending main review.",
-                  "changedSourcePins": {
-                    "src/MTGPocket/Game/TextParser.php": {
-                      "gravelord": "8a2ab70148664bd2249b5688ef7bc9b86ac7df37acce51996c291ad4a71b9fdb",
-                      "mergedSoulStair": "eec03dd76a8cd6206ad2b30d3f192c64dd47dc8ea3b3b0de95763bb8dc0028c6",
-                      "integrated": "1ffa7c8bce4c7d6a5af3cbaf47d5a55dc551ce044d05855f89134c0f7686e39d"
-                    },
-                    "src/MTGPocket/Game/Game.php": {
-                      "gravelord": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3",
-                      "mergedSoulStair": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014",
-                      "integrated": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014"
-                    },
-                    "src/MTGPocket/Tutorial/PracticeBot.php": {
-                      "gravelord": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
-                      "mergedSoulStair": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9",
-                      "integrated": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9"
-                    },
-                    "tests/Game/SoulStairExpeditionReturnsTest.php": {
-                      "gravelord": null,
-                      "mergedSoulStair": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
-                      "integrated": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc"
-                    },
-                    "tests/Game/TargetClauseDistinctnessTest.php": {
-                      "gravelord": null,
-                      "mergedSoulStair": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
-                      "integrated": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
-                    },
-                    "tests/Game/QuestGravelordDeathCountersTest.php": {
-                      "gravelord": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c",
-                      "mergedSoulStair": null,
-                      "integrated": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c"
-                    }
-                  },
-                  "mainPostMergeTests": {
-                    "sha": "85d85418cee2244cf8e6eb9dc3dac70a9646bb6b",
-                    "run": 40320123315,
-                    "status": "success confirmed by main; historical for the combined tree"
-                  }
-                },
-                "gravelordParentValidation": {
-                  "head": "3e55066c079b1fd75eaeab7500456d03469ed4d5",
-                  "engineSource": "58060b0d7d8eb86869a6ceed169ebf53f7bb72c5",
-                  "validation": {
-                    "source": "58060b0d7d8eb86869a6ceed169ebf53f7bb72c5",
-                    "evidenceMeaning": "Quest for the Gravelord scoped optional creature-death quest counters. This cached older ZEN record parsed atd0431f1while gameplay forced its may-counter. The older aggregate newest-name report does not list Quest recognized and remains unchanged;noaggregate/newest-printing/whole-cardclaim.",
-                    "local": "Executable baseline atd0431f1with new complete fixture/test:4tests40assertions4FAIL,actualBcastandBDisfiguredeaths;questcounterforcedinall4seat/controllerpairs. Local red commitf0e6426preserved. Narrow9-linetriggerroute reuses optional_source_counterquest plus existing creature-death events. Expanded27tests372assertionsPASS0.127s36MiB;two-filePintPASS. Initial expanded helper wrongly skipped spellresolution forqueuedcases;corrected harness without productionworkaround.  PHP8.5.12/512MiB/Xdebugoff/isolateddata/tasktemp,existingvendordependencies with explicit PSR4testbootstrap. Full offline source `58060b0d7d8eb86869a6ceed169ebf53f7bb72c5` passed 2,102 tests/57,778 assertions with2expected missing-pool/rental skips;PHPUnit01:04.004/294.00 MB,wall64.276s/120scap. Adjacent ledger/Khalni/Moriok/Quest124tests2323assertionsPASS;Quest27tests372assertionsPASS;fullnonmutatingPintPASS. All59normalizedPHPpins match. PHP8.5.12/512MiB/Xdebugoff/isolated data+temp;ignoredtask-localautoloadbridge reusesexistingvendorread-onlyandallowsCLItests. No dependencyorenvcontractchange;nohostedCI/publication. Earlier adjacent124runfailedonlybecauseCLIcouldnotfindnewworktreevendor/autoload.php;ignoreddependencybridgecorrectedsetupwithoutproductionchangesandtargetedCLI1test6assertionspassed.",
-                    "ci": "NOT RUN: local patch is awaiting main review before publication; no hosted acceptance claim. PR406 was subsequently merged as85d85418cee2244cf8e6eb9dc3dac70a9646bb6b;this independent patch has not synced or changed it.",
+                    "source": "51bf5132f5313959d3deead373f094f902739417",
+                    "evidenceMeaning": "Soul Stair Expedition paid quest/sacrifice graveyard returns plus synthetic per-target-clause announcement/practice controls. Recognition remains historical; no whole-card certification.",
+                    "local": "Corrected ordinary paid baseline00262fe:2tests32assertionsPASS; initial Memnite harness error excluded. Actual duplicate-target negative baselineb6287c5:2tests28assertions2FAIL, both actors paid B and earned three quest counters, duplicate accepted before fix. Fixed fcc3837:22tests302assertionsPASS. Adjacent a55fc5d:492tests9439assertionsPASS28.986sPHPUnit/30scap/92MiB. Latest source636dec8:28tests338assertionsPASS0.222s/38MiB, adding modal/support/forced-practice and legal separate activated-clause controls. Serial,512MiB,Xdebugoff,isolated data/temp. Full suite and exact final hosted full Pint/PHPUnit8.3/8.4/8.5 pending. No environment contract changes or corpus/parser scan/import/live/build/restart/deploy. Resume2026-10-26: Full offline PHPUnit at `86dd45fd6069a1382381095bd160c57b15acfdcc` passed: 2,079 tests, 57,860 assertions, two expected missing-imported-pool/rental skips; 63.716s PHPUnit/280MiB, 64.29s wall under a 120s process-tree cap. Focused checks passed 48 tests/391 assertions in 0.576s/36MiB. Five-file nonmutating Pint passed. PHP8.5.12, 512MiB, Xdebug off, isolated data and task-local temp. All 60 normalized PHP pins verified. No new parser recognition scan or whole-card certificates. Exact final hosted matrix remains pending. Authorized metadata-conflict integration2026-10-26: Integrated offline full suite at `51bf5132f5313959d3deead373f094f902739417` passed 2,105 tests/57,760 assertions with 2 expected missing-data skips; PHPUnit 00:54.239, 296.00 MB, 54.488s wall/120s cap. Focused ledger/Soul Stair/clause/Khalni schema checks passed 66 tests/1,041 assertions; full nonmutating Pint passed. PHP8.5.12,512MiB,Xdebugoff,isolated data/temp. All60normalizedPHPpins verified. Exact final hosted PHP8.3/8.4/8.5 matrix remains pending.",
+                    "ci": "PENDING: exact final integrated draft requires its own Tests workflow full Pint/PHPUnit8.3/8.4/8.5. Earlier source/CI receipts are historical and do not establish final hosted acceptance.",
                     "historicalValidation": {
                       "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
                       "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
@@ -345,12 +161,12 @@
                           "src/MTGPocket/Game/TextParser.php": {
                             "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
                             "main": "cb56be75277087578ee54849c1cf65003980604be27a7e161c30ba2433ac5d86",
-                            "integrated": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+                            "integrated": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5"
                           },
                           "tests/Game/ModernCardTextTest.php": {
                             "pr375": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
-                            "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
-                            "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+                            "main": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+                            "integrated": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27"
                           }
                         },
                         "historicalValidation": [
@@ -377,37 +193,287 @@
                         ],
                         "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
                       }
+                    },
+                    "integration": {
+                      "mergeBase": "7101b553ff3a71dc5b84f35928eac43e78789aae",
+                      "prParent": "d258380aec4a80d6a9e29e4ccbd1453266fd59d3",
+                      "mainParent": "d0431f1d834ba9365c159c9e341d9ac33905a903",
+                      "evidenceMeaning": "One explicitly authorized conflict integration. Both parent evidence sets and historical source anchors are preserved; current combined source pins were locally full-tested. Historical recognition, scoped gameplay and whole-card certification remain separate. Exact final hosted CI is pending.",
+                      "upstreamEvidenceChanges": [
+                        {
+                          "path": "/validation/integration/changedSourcePins/src/MTGPocket/Game/TextParser.php/integrated",
+                          "before": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
+                          "after": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+                        },
+                        {
+                          "path": "/validation/integration/changedSourcePins/tests/Game/ModernCardTextTest.php/main",
+                          "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+                          "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+                        },
+                        {
+                          "path": "/validation/integration/changedSourcePins/tests/Game/ModernCardTextTest.php/integrated",
+                          "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+                          "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+                        },
+                        {
+                          "path": "/sourcePins/src/MTGPocket/Game/TextParser.php",
+                          "before": "6669f2211c1ab7bd16680e97d645cd360eda63dc5a24ee857ba449260a4951b5",
+                          "after": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+                        },
+                        {
+                          "path": "/sourcePins/src/MTGPocket/Game/Game.php",
+                          "before": "122a7a4b7a93d4352da10cdd4f3301c292baf6809619b1e73e029c097252938d",
+                          "after": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3"
+                        },
+                        {
+                          "path": "/sourcePins/src/MTGPocket/Game/GamePlayer.php",
+                          "before": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
+                          "after": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3"
+                        },
+                        {
+                          "path": "/sourcePins/src/MTGPocket/Game/GameObject.php",
+                          "before": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
+                          "after": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe"
+                        },
+                        {
+                          "path": "/sourcePins/tests/Game/ModernCardTextTest.php",
+                          "before": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+                          "after": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+                        }
+                      ],
+                      "changedSourcePins": {
+                        "src/MTGPocket/Game/TextParser.php": {
+                          "pr": "73c2d6d481d9b23a019c2cf9a9531cf45560f30ae5c4499763988bb4d017baef",
+                          "main": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb",
+                          "integrated": "eec03dd76a8cd6206ad2b30d3f192c64dd47dc8ea3b3b0de95763bb8dc0028c6"
+                        },
+                        "src/MTGPocket/Game/Game.php": {
+                          "pr": "e336b27f51d99eee5371a854c9c40bdb08ea278f77fc37e4fd295c749d03b3f8",
+                          "main": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3",
+                          "integrated": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014"
+                        },
+                        "src/MTGPocket/Game/GamePlayer.php": {
+                          "pr": "8a19a94393231554dfb073dc6c206c594c4c813a857491d11652f43fd60ca80b",
+                          "main": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3",
+                          "integrated": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3"
+                        },
+                        "src/MTGPocket/Game/GameObject.php": {
+                          "pr": "7296761afc3ca96f8b4b72d03db7b5995ac982dc4aa63004350b52b6a78480cc",
+                          "main": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe",
+                          "integrated": "a28f1d80b99836fc94f64e467c1a051e0e5d251f10138f63d518339c8f0640fe"
+                        },
+                        "src/MTGPocket/Tutorial/PracticeBot.php": {
+                          "pr": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9",
+                          "main": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
+                          "integrated": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9"
+                        },
+                        "tests/Game/ModernCardTextTest.php": {
+                          "pr": "ad1e2c8703a8c9ce2e86850c9d8bfd6ac350ec2cb26c29efedb129e8480dcc27",
+                          "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
+                          "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+                        },
+                        "tests/Game/SoulStairExpeditionReturnsTest.php": {
+                          "pr": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
+                          "main": null,
+                          "integrated": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc"
+                        },
+                        "tests/Game/TargetClauseDistinctnessTest.php": {
+                          "pr": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
+                          "main": null,
+                          "integrated": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
+                        }
+                      },
+                      "preservation": "PR scopedEvidence, explicitUnsupported, nextFamily and historical validation remain intact. Main adds no scoped names; all upstream evidence changes are retained above with before/after provenance. All current pins describe the combined tree.",
+                      "fullTestedSource": "51bf5132f5313959d3deead373f094f902739417"
+                    }
+                  },
+                  "integration": {
+                    "gravelordParent": "3e55066c079b1fd75eaeab7500456d03469ed4d5",
+                    "mainParent": "85d85418cee2244cf8e6eb9dc3dac70a9646bb6b",
+                    "sourceMeaning": "Merged local source full-tested at b18712e48600893b0221df30758625d5efab8a16; both parent evidence sets and their original exact source anchors are retained. Publication and exact final hosted CI remain pending main review.",
+                    "changedSourcePins": {
+                      "src/MTGPocket/Game/TextParser.php": {
+                        "gravelord": "8a2ab70148664bd2249b5688ef7bc9b86ac7df37acce51996c291ad4a71b9fdb",
+                        "mergedSoulStair": "eec03dd76a8cd6206ad2b30d3f192c64dd47dc8ea3b3b0de95763bb8dc0028c6",
+                        "integrated": "1ffa7c8bce4c7d6a5af3cbaf47d5a55dc551ce044d05855f89134c0f7686e39d"
+                      },
+                      "src/MTGPocket/Game/Game.php": {
+                        "gravelord": "6434ceee254514c9b2185654b08c9cfa3aeabfe1063056858046fa24e3c3d5c3",
+                        "mergedSoulStair": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014",
+                        "integrated": "1512255d74768ff54c105d2abf18ad745bd5942fe9f0fe790abbfd021fe7b014"
+                      },
+                      "src/MTGPocket/Tutorial/PracticeBot.php": {
+                        "gravelord": "c51e0733335456c58ef3720005004634d6aaa4722c65f222c6fc2d4fdc96afab",
+                        "mergedSoulStair": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9",
+                        "integrated": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9"
+                      },
+                      "tests/Game/SoulStairExpeditionReturnsTest.php": {
+                        "gravelord": null,
+                        "mergedSoulStair": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
+                        "integrated": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc"
+                      },
+                      "tests/Game/TargetClauseDistinctnessTest.php": {
+                        "gravelord": null,
+                        "mergedSoulStair": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
+                        "integrated": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a"
+                      },
+                      "tests/Game/QuestGravelordDeathCountersTest.php": {
+                        "gravelord": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c",
+                        "mergedSoulStair": null,
+                        "integrated": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c"
+                      }
+                    },
+                    "mainPostMergeTests": {
+                      "sha": "85d85418cee2244cf8e6eb9dc3dac70a9646bb6b",
+                      "run": 40320123315,
+                      "status": "success confirmed by main; historical for the combined tree"
+                    }
+                  },
+                  "gravelordParentValidation": {
+                    "head": "3e55066c079b1fd75eaeab7500456d03469ed4d5",
+                    "engineSource": "58060b0d7d8eb86869a6ceed169ebf53f7bb72c5",
+                    "validation": {
+                      "source": "58060b0d7d8eb86869a6ceed169ebf53f7bb72c5",
+                      "evidenceMeaning": "Quest for the Gravelord scoped optional creature-death quest counters. This cached older ZEN record parsed atd0431f1while gameplay forced its may-counter. The older aggregate newest-name report does not list Quest recognized and remains unchanged;noaggregate/newest-printing/whole-cardclaim.",
+                      "local": "Executable baseline atd0431f1with new complete fixture/test:4tests40assertions4FAIL,actualBcastandBDisfiguredeaths;questcounterforcedinall4seat/controllerpairs. Local red commitf0e6426preserved. Narrow9-linetriggerroute reuses optional_source_counterquest plus existing creature-death events. Expanded27tests372assertionsPASS0.127s36MiB;two-filePintPASS. Initial expanded helper wrongly skipped spellresolution forqueuedcases;corrected harness without productionworkaround.  PHP8.5.12/512MiB/Xdebugoff/isolateddata/tasktemp,existingvendordependencies with explicit PSR4testbootstrap. Full offline source `58060b0d7d8eb86869a6ceed169ebf53f7bb72c5` passed 2,102 tests/57,778 assertions with2expected missing-pool/rental skips;PHPUnit01:04.004/294.00 MB,wall64.276s/120scap. Adjacent ledger/Khalni/Moriok/Quest124tests2323assertionsPASS;Quest27tests372assertionsPASS;fullnonmutatingPintPASS. All59normalizedPHPpins match. PHP8.5.12/512MiB/Xdebugoff/isolated data+temp;ignoredtask-localautoloadbridge reusesexistingvendorread-onlyandallowsCLItests. No dependencyorenvcontractchange;nohostedCI/publication. Earlier adjacent124runfailedonlybecauseCLIcouldnotfindnewworktreevendor/autoload.php;ignoreddependencybridgecorrectedsetupwithoutproductionchangesandtargetedCLI1test6assertionspassed.",
+                      "ci": "NOT RUN: local patch is awaiting main review before publication; no hosted acceptance claim. PR406 was subsequently merged as85d85418cee2244cf8e6eb9dc3dac70a9646bb6b;this independent patch has not synced or changed it.",
+                      "historicalValidation": {
+                        "source": "336fabb6621c810096164b18f7dc69ac86dd0bc8",
+                        "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches; combined with upstream PR405 opponent-discard parsing. Recognition remains historical; no whole-card certification.",
+                        "local": "Sole-owner validation of the preserved integration with main27189a71df613c26846c92c997e8accb435cf64e. Focused40tests731assertionsPASS6.761s wall/30s cap: Khalni, opponent-discard recipient, legacy counter migration, persisted panels and ledger. All58normalizedPHPpins verified. Full offline source `336fabb6621c810096164b18f7dc69ac86dd0bc8` passed 2,049 tests and 57,506 assertions with two expected missing-imported-pool/rental skips. PHPUnit 73.900s/276MiB; 74.810s wall under the 120s process-tree cap, 512MiB, Xdebug off, empty data and task-local temporary storage. Fresh 9.02GiB/no other PHP tests at 2026-10-24T18:59:08.8000221Z. Local two-file Pint produced no output and timed out124 at34.853s wall/30s cap; owned process tree stopped, NOT accepted. Previous input-head passes remain historical under integration.historicalValidation. No corpus scan/import/live/bot/build/restart/deploy. Schema16/noenvchange.",
+                        "ci": "NOT RUN at this metadata commit creation. Final head must pass its own exact Tests workflow with full Pint and PHPUnit on PHP8.3/8.4/8.5 before merge. Local Pint timeout is not a pass. CI40118185025 is historical and predates PR404/405.",
+                        "integration": {
+                          "prHead": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
+                          "mainHead": "27189a71df613c26846c92c997e8accb435cf64e",
+                          "status": "combined source passed current focused and full offline PHPUnit; final hosted CI pending",
+                          "changedSourcePins": {
+                            "src/MTGPocket/Game/TextParser.php": {
+                              "pr375": "0cd33d1f46a420073ce8ce6f3db6875deea109cd0654869c86cd959ce2450bdf",
+                              "main": "cb56be75277087578ee54849c1cf65003980604be27a7e161c30ba2433ac5d86",
+                              "integrated": "00bc7ed1e205391a441add6c4218a3498cb3af91615c298a5ec7cbdd7e276dcb"
+                            },
+                            "tests/Game/ModernCardTextTest.php": {
+                              "pr375": "e62cfe938952097227ed0a8c76177aa98106e80c7eded44c7be7aebb1f0dadbf",
+                              "main": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b",
+                              "integrated": "ef3857ceca5b6892110cddce99a4ea2000a352cde944e3eceb150041843b150b"
+                            }
+                          },
+                          "historicalValidation": [
+                            {
+                              "head": "29988ae23e8c424f25968c2fd29ff9ad9850c9af",
+                              "engineSource": "71db2da86085b881ae6918487c1cc9f8be770b96",
+                              "validation": {
+                                "source": "71db2da86085b881ae6918487c1cc9f8be770b96",
+                                "evidenceMeaning": "Khalni Heart Expedition scoped optional quest counters, three earned counters/self-sacrifice and tapped basic-land searches. Recognition remains historical; no whole-card certification.",
+                                "local": "Original paid baselines2/14/2fail and2/22/2errors; followups2/16 and2/28PASS. Integrated main355a84f through PR404 preserving upstream runtime. Current Khalni+Modern442tests6386assertions/Pint3PASS; earlier integratedfocused23/732,Modern423/5900,adjacent312/6924/Pint7 passed. Ledger18/37 and existing181-pool inventory30scopenames2Partnergaps1overlap0wholecert. Initialfull071f0c4fixtureerror corrected by faithful old-schema fixture, not runtime workaround. Full offline target `71db2da86085b881ae6918487c1cc9f8be770b96` after PR404/main355a84f passed 2048tests/57419assertions/2expected missing-imported-pool/rental skips. PHPUnit01:04.286,276.00MiB;64.690s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh7.93GiB/nootherPHP at2026-10-24T17:57:16.2601596Z. All58normalizedPHPpins match this target. Schema16/noenvchange.",
+                                "ci": "Previous source65faf3b passed CI40118185025 (full Pint/PHPUnit8.3/8.4/8.5). It predates PR404 and is historical. Final metadata commit with all58 PHP source pins unchanged from the current local full target requires its own exact full Pint/PHPUnit8.3/8.4/8.5 before merge."
+                              }
+                            },
+                            {
+                              "head": "27189a71df613c26846c92c997e8accb435cf64e",
+                              "engineSource": "fc0454e14ef5a967484f274d3150f4440737ca91",
+                              "validation": {
+                                "source": "fc0454e14ef5a967484f274d3150f4440737ca91",
+                                "evidenceMeaning": "Harrow scoped additional land payment, mana-source reservation and explicit untapped land search. Recognition remains historical; no whole-card certification.",
+                                "local": "Actual paid baselines: missing additional land cost 2 tests/12 assertions/2 failures; cost-only corrected search baseline 2/16/2 failures. Late sole-land-sacrifice mana baseline 1 test/1 assertion/1 error reproduced a null dereference at previous head1ed958c590ad3afe00beed6b186de6f5dc7adf64. Reservation follow-up focused43tests601assertions and six-file nonmutating Pint/diff passed. Accepted adjacent splits: Modern394tests5378assertions11.722s84MiB12.077s wall; other406tests8452assertions13.972s82MiB14.371s wall. Each serial30s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Earlier combined adjacent792/13782 printedOK but receipt124/33.656s wall exceeded30s and is NOT accepted. Previous full1992/56308 andCI40099632122 predate reservation and do not cover current code. Refreshed ledger18tests37assertions and existing181-pool inventory passed:29scoped names2Partner-gap names1overlap0whole-card certificates. Full offline target `1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb` passed 1,998 tests and 56,374 assertions, with two expected missing-imported-pool/rental skips. PHPUnit57.955s270MiB;58.327s wall under120s process-tree cap,512MiB/Xdebugoff/emptydata/tasklocaltemp. Fresh11.76GiB/no other test processes at2026-10-24T14:42:03.4480779Z. All57normalizedPHPpins match this target. Exact tested/final CI required before merge. Noenv/schema15change.",
+                                "ci": "Exact tested-head CI40103667262 at1e48cf5df4ae6a0b5b75a827292a0c351b5fd3bb passed all three PHP8.3/8.4/8.5 full Pint/PHPUnit jobs; zero artifacts expected. Final metadata commit requires its own exact CI before merge."
+                              }
+                            }
+                          ],
+                          "engineSourceMeaning": "Immutable locally full-tested combined source; the final metadata follow-up changes no PHP. Historical validation records retain their original source anchors."
+                        }
+                      }
                     }
                   }
                 }
               }
-            }
-          },
-          "mergedIdentityReview": {
-            "baseline": {
-              "source": "e4770d0f68e17a5bc38ed2abf135c5d07813a34f",
-              "Game_blob": "4dec00f36e1bbef432ed570c8c7af8417f03fe12",
-              "tests": 8,
-              "assertions": 144,
-              "failures": 2,
-              "passing_controls": 6,
-              "meaning": "Both actors: paid real Sea-Dasher Octopus above a seeded token-copy host produces two Quest triggers and buries original token, expected one physical card/GONE. Below-token and actual-card host controls already pass. Battlefield top-component token identity checks pass and are preserved.",
-              "test_sha256": "08a85bacfdc69f63721a4dd722b05ce8446489de3247d7f70ef19b1e496060cf",
-              "fixture_sha256": "029e06776aad56cbb226dbe28556d5401a3b4e9cfdbd3641b42c412b548b475c"
             },
-            "fixedLocal": "Initial8/152PASS after component snapshot/routing correction; expanded60tests/1436assertionsPASS. Original Quest test source unchanged. Battlefield top-component token status is unchanged; departure routes each physical component from captured identity. No general mutation architecture or whole-card support claim. Merged-identity full-tested source 7ac46aeb2cfda81234d7743d9cfa61d9d913d253: 2298 tests /61642 assertions, 2 expected missing-data skips, no risky tests; PHPUnit 00:54.167 /322.00 MB. Focused833tests/13354assertions, full nonmutating Pint and all66 normalized PHP pins PASS. New merged regression60tests/1436assertionsPASS; original Quest42/582unchanged. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final single coherent commit amends metadata/docs only; PHP/test pins match. No publication/hosted acceptance.",
-            "priorFullTestedSource": "f4f76178aee6f6e2251ed11ad37bee82706987fe",
-            "ci": "NOT RUN: unpublished, main review required.",
-            "fullTestedSource": "7ac46aeb2cfda81234d7743d9cfa61d9d913d253"
+            "mergedIdentityReview": {
+              "baseline": {
+                "source": "e4770d0f68e17a5bc38ed2abf135c5d07813a34f",
+                "Game_blob": "4dec00f36e1bbef432ed570c8c7af8417f03fe12",
+                "tests": 8,
+                "assertions": 144,
+                "failures": 2,
+                "passing_controls": 6,
+                "meaning": "Both actors: paid real Sea-Dasher Octopus above a seeded token-copy host produces two Quest triggers and buries original token, expected one physical card/GONE. Below-token and actual-card host controls already pass. Battlefield top-component token identity checks pass and are preserved.",
+                "test_sha256": "08a85bacfdc69f63721a4dd722b05ce8446489de3247d7f70ef19b1e496060cf",
+                "fixture_sha256": "029e06776aad56cbb226dbe28556d5401a3b4e9cfdbd3641b42c412b548b475c"
+              },
+              "fixedLocal": "Initial8/152PASS after component snapshot/routing correction; expanded60tests/1436assertionsPASS. Original Quest test source unchanged. Battlefield top-component token status is unchanged; departure routes each physical component from captured identity. No general mutation architecture or whole-card support claim. Merged-identity full-tested source 7ac46aeb2cfda81234d7743d9cfa61d9d913d253: 2298 tests /61642 assertions, 2 expected missing-data skips, no risky tests; PHPUnit 00:54.167 /322.00 MB. Focused833tests/13354assertions, full nonmutating Pint and all66 normalized PHP pins PASS. New merged regression60tests/1436assertionsPASS; original Quest42/582unchanged. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final single coherent commit amends metadata/docs only; PHP/test pins match. No publication/hosted acceptance.",
+              "priorFullTestedSource": "f4f76178aee6f6e2251ed11ad37bee82706987fe",
+              "ci": "NOT RUN: unpublished, main review required.",
+              "fullTestedSource": "7ac46aeb2cfda81234d7743d9cfa61d9d913d253"
+            }
           }
         }
+      }
+    },
+    "base": {
+      "head": "570771053d31f16d700178d9fbc742da37e9106d",
+      "postmergeTestsRun": 40385772847,
+      "conclusion": "success",
+      "evidence": "Parent independently verified exact main post-merge CI before this task."
+    },
+    "preservedLocalFailure": {
+      "head": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
+      "tests": 2481,
+      "assertions": 64174,
+      "expectedSkips": 2,
+      "risky": 6,
+      "assertionFailures": 0,
+      "reason": "Restricted Windows WMIC DNS configuration probe returned null, causing vendor React DNS output in six fixture-backed importer tests. Same six tests passed6/41 with native read access; same full source then passed without risky tests. No warning suppression or vendor edits.",
+      "receipts": [
+        "pure-runtime-final-full.json",
+        "pure-runtime-final-full.stdout.txt",
+        "pure-runtime-final-full.stderr.txt",
+        "pure-runtime-importer-native-launcher-probe.json",
+        "pure-runtime-importer-unsandboxed-probe.json",
+        "pure-runtime-final-full-native.json"
+      ]
+    },
+    "isolationAudit": {
+      "all20FilesAttributedToThisTask": true,
+      "oldEvidenceExact": true,
+      "utilityBodiesTokenIdentical": 10,
+      "initialCommitApproval": "First action rejected before execution over possible unrelated edits; new isolation/token/provenance audits resolved the concern and one normal retry succeeded. No bypass or uncertain write."
+    },
+    "fogReview": {
+      "baseHead": "b0941ed43b4a95c08ba83c1f1f82793c9c212f01",
+      "baselineEngineSource": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
+      "baselineValidation": {
+        "source": "adf35df5b1ba727a1903e6762807ae4e9cfcc20e",
+        "evidenceMeaning": "Pure Flame bounded resumable damage candidate; all historical validation retained separately. Current pins identify this candidate. Scoped gameplay is separate from recognition and whole-card certification.",
+        "local": "Immutable full-tested feature source adf35df5b1ba727a1903e6762807ae4e9cfcc20e: 2,481 tests / 64,174 assertions, two expected missing-pool/rental skips and no risky tests; 01:06.266 / 352 MiB. Focused: 97 tests / 1,062 assertions. Full nonmutating Pint and all 73 normalized PHP pins pass. PHP 8.5.12, 512 MiB limit, Xdebug off, isolated data/temp and existing dependencies. Read-only native Windows DNS configuration access was required by fixture-backed importer constructors; no live requests, dependency edits or deprecation suppression. The final unpublished amend changes verification metadata/docs only; production/test bytes remain identical. Exact final-head hosted acceptance is pending publication.",
+        "ci": "PENDING exact final draft head; root retains architecture review, merge and post-merge decisions."
+      },
+      "baselineGameSha256": "fa6cb1a8a64a0e798a5465a1987112871c6ecd37bdf882d97ba0d068592f242a",
+      "production": "One conditional in applyDamage; preserve the synchronous fast path and existing unpreventable/prevention=false semantics. No parser behavior or card-scope changes.",
+      "limits": "Cached M10 Fog paid at {G}; seeded complete-record creatures and explicit resource/unpreventable status probes only. No whole-card or enabling-card certificate. Root retains publication/merge decisions.",
+      "receipts": [
+        "fog-frozen-red.json",
+        "fog-frozen-red.stdout.txt",
+        "fog-base-control.json",
+        "fog-base-control.stdout.txt",
+        "fog-frozen-baseline-pins.json",
+        "fog-corrected-focused.json",
+        "fog-adjacent.json"
+      ],
+      "receiptHashes": {
+        "fog-frozen-red.json": "a7955c39e88b0d839ed53bba9d08b15633b1cae1863bcb10004f195384e9ee57",
+        "fog-frozen-red.stdout.txt": "761a74d547609d5086bc3136f071522b485d6a66a2462137f40597f8a21d7b3a",
+        "fog-base-control.json": "1fc2b21fab6da8bbd8d0ee785cba2ee6fa6c061cf61b507b9dd72e9118db2d45",
+        "fog-base-control.stdout.txt": "23117a163f8674b8b41f27871199bdb5aace3bac22effc29a77801e502369c72",
+        "fog-frozen-baseline-pins.json": "71657c474f3abd4840919901cdaf4669ce2aeecd1b65e0ff05a2dc4ad11216c0",
+        "fog-final-full.json": "ab561332d9e56811323f9a89a325b0f99b92651c2c868b5083ea08fdbfd9374a",
+        "fog-final-pint.json": "78a3571db9515f76e6a5fa214b37a38bae0e1c52890c58ea4f1241a691557b38"
       }
     }
   },
   "sourcePins": {
-    "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
+    "src/MTGPocket/Game/TextParser.php": "3f6f2a460b2020c3e868a7e687c5abf56b74c83ab4ae7b721377c5c8f40fb88b",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
+    "src/MTGPocket/Game/Game.php": "9af605e0b6c33e08ca9dce842f245353d066c5c9902e0cc3e1dfc609d6581543",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -416,7 +482,7 @@
     "src/MTGPocket/Game/Mana/ManaCost.php": "bee132afe78bcce2f8eea54e0a98f05424cec0260ceea3d1085ee1135ae39f15",
     "src/MTGPocket/Game/GameRecord.php": "38d05c870a583a027d0a79daed6f88c97ee296c5de009c9e92913aa0837cab9a",
     "src/MTGPocket/Game/GamePlayer.php": "d925b1cddb4d775aa9bf19914cfe73d73013850de4fd0925ae4a6b64f15767b3",
-    "src/MTGPocket/Game/GameObject.php": "611e0edcbb40cfb227a561f3008e623f01536aeab396bc4741bc6cc1e9bee29a",
+    "src/MTGPocket/Game/GameObject.php": "b70dfd388f7a9d671fdac75dc0fd501c5a9abe45ba283d9e2508362043c0c996",
     "src/MTGPocket/Game/GameException.php": "76d8c70a4b8cfd9fb7818976e4c9faa8b9865a295d9ffc478ce852f7e50a0158",
     "src/MTGPocket/Game/DepartureCharacteristics.php": "73d749b205af5fdb63d8cbd40fe7f6a467a73827de9383f39510597c274ce51c",
     "src/MTGPocket/Game/CreatureDeath.php": "4d39c10adce98d8e515b25ebcce712681d09dd7c89c8b2f42efa0778242c978f",
@@ -424,12 +490,12 @@
     "tests/Game/SimultaneousDeathObserverTest.php": "013eb3b6e99336307a74e66bbc514f0f2713066a9ee522551410ac1969ab7146",
     "tests/Game/StateBasedDeathObserverTest.php": "a44463e9aafaeb8670f19bb56601bc03c9f56365560b3c299101045092472541",
     "tests/Game/SimultaneousSacrificeObserverTest.php": "2385fc290bd0157b6901bb390b6b346238be29df925f07de7381d1708bbc5388",
-    "src/MTGPocket/Builders/MatchMessageBuilder.php": "0c96b8a9c51ba98b68065724c8fc950cfb9093a098cbbdd893190797c4b0bf39",
-    "src/MTGPocket/Matches/PanelActions.php": "7a4bcb69b5d840281d3279688e0b227b20ba68409aad9bed49ba7741c173848a",
-    "src/MTGPocket/Tutorial/PracticeBot.php": "b11515194895e147f29a61bd617aefd27577e0200e459f008b5250d8bba595e9",
+    "src/MTGPocket/Builders/MatchMessageBuilder.php": "382abe64a2bcd390c5e3a7c7bc33e2fbb36fb4eca5f291a0cb685ad70f73c7c0",
+    "src/MTGPocket/Matches/PanelActions.php": "89d873feaa604ace60dae1e9592a30d8d127ea6bd06d92aa14e73cf790f42fad",
+    "src/MTGPocket/Tutorial/PracticeBot.php": "a02e72b00c799f04a8c1461e9ef1a62bc8d8b81781ef58b15cabf35873cb9c3b",
     "tests/Game/EdictChoiceTest.php": "91bf22983bca198e0ff3762cb931727b707df66636f19eb787fd80756908226a",
     "tests/Game/SelectorStateCompatibilityTest.php": "e2e7d546866d79d9121afe0c0689e51ea24190b90adf52c46aa4eadff3076d3c",
-    "tests/MatchesTest.php": "e35c1fec70fe155d161519f7c7f6872609afcd0b0c0772b94588b84033c67fba",
+    "tests/MatchesTest.php": "3572a5489a9dbf8c18566a4cbf0ffa1eb96e15bceb8687249b2f14790bb0102d",
     "tests/Game/SacrificeObserverLookbackTest.php": "0a13b74e88a589ba77bb4d467e2dc30e804e2587fcdbde56b0523388a0ead5f7",
     "tests/Game/ArtifactGraveyardObserverTest.php": "296e0bee3502974562a61b346d81baf43d5510b4d9d0012171efde5546648c81",
     "tests/Game/DepartedSourceStatisticsTest.php": "d077746e44bff3554407376f95e1b20ba7b00fc29f8a409927b68d964fd9241a",
@@ -458,11 +524,11 @@
     "tests/Game/RampantGrowthSearchTest.php": "42cff887467974eb57d4378d1b0a006d65be31ac323dfdf614b6f3d25177789b",
     "tests/Game/FarseekSearchTest.php": "4ef27ac600cdd90c4d57820b7fb6191d1e34b31c735bca8307808f6a20a34bf1",
     "tests/Game/EvolvingWildsSearchTest.php": "7fac85bd967446498dc6cea90f4ac62d3847329d07a2e1dfcd64b835570bac57",
-    "tests/Game/CultivateSearchTest.php": "2599748198acb8a5b2145d29e077819bd39743d3d09eca7428f4fb55b676fe85",
+    "tests/Game/CultivateSearchTest.php": "09277f63cb64e65ee29679b11a6216802bdcd3211417ae9a43d63cd70956c878",
     "tests/Game/DiabolicTutorSearchTest.php": "8bde2bd3dd8b6a6a7ea83882a35f4e58158c51ff5c5fd612e9c2ca3a8ee50446",
     "tests/Game/BurnishedHartSearchTest.php": "f1746faee47f219a2a872d863f18803bb03f7afbcd0d3477cb1aed8d16862c59",
     "tests/Game/HarrowSearchTest.php": "03d51933849cbd2cb2e47d81dc40bdbfb7bde006d05a53d3c3780785587b1172",
-    "tests/Game/KhalniExpeditionSearchTest.php": "cbb55dda0dbe3982bf0cdb9c10fd805c01a73453387e1bcfc41b3b667331d103",
+    "tests/Game/KhalniExpeditionSearchTest.php": "8f8d72044cc0a3a5401b36c5a44de8194d8dfb07373f5847e1078423286a6843",
     "tests/Game/SoulStairExpeditionReturnsTest.php": "30f4a279a56709874df21ad46157cee43570efbb4b2acbfdcf68e22b0d7ddbbc",
     "tests/Game/TargetClauseDistinctnessTest.php": "95c8bbdc1363d5a2677a1ea230b822880e5f9ee209b436ccd2ba2387dfabfd4a",
     "tests/Game/QuestGravelordDeathCountersTest.php": "f3c250cf84d7dd81afe725f3d8b4a89b682ae007bbca6541a330d4e11cbf1f2c",
@@ -471,7 +537,15 @@
     "tests/Game/SunspringExpeditionTest.php": "58eb40ed4bc7d62e09ac1e5ebac15b3d2005d58433a425384715689189c8eb4d",
     "tests/Game/QuestAncientSecretsTest.php": "2bb85b3cd1110e5e9f791a07b364b2a382b506045bf49ea8f07104ab889ca264",
     "tests/Game/QuestAncientMergedIdentityTest.php": "f96ede04a99e025344d6491f73b06d24a85b544554d3dc7ca2aece87b3cd3f02",
-    "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
+    "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd",
+    "src/MTGPocket/Game/DamageBatch.php": "71fc7f7cf36d54c7fa3bfa7ed4844acd8c4a678468d6866ec99e8ce0ce930ce5",
+    "src/MTGPocket/Game/DamageResolution.php": "dd48873b528e32175dd25cbb94a9aca7e465ae9491f687cc54746fe9a5d81b66",
+    "src/MTGPocket/Game/PaidActionContinuation.php": "11c1d8c4132875b8f955453c7685c5058705008ba9290a6651d9c60f9e45ab7d",
+    "tests/Game/DamageBatchTest.php": "c5ab02bde083db1d8f6ceb9feccb26afa5fe136fb5c59d94148776f861021576",
+    "tests/Game/PaidDamageContinuationTest.php": "0ba1fd90eaad520d2a3d41bc86f304cf0282f92f7ac9ec8028fdab758890070c",
+    "tests/Game/QuestPureFlameTest.php": "cf72151dc6b44c5ae65097179cf45f3b4f16dee09a97d8680abfdea6b453a001",
+    "tests/Game/FogCombatFastPathTest.php": "c814294530da098533068e47e122ca8cdbf3e16a51d54786623df0cd088ae48b",
+    "tests/Fixtures/fog-combat-fast-path.json": "c3e6ce305ee2d0287f4722b467209c271d6ab7e16e27446f44ce70e0d36689b1"
   },
   "scopedEvidence": [
     {
@@ -1299,6 +1373,48 @@
       ],
       "scope": "Complete cached ZEN UUID72d2c199-508a-566e-a058-bb604d7817ac; fixtureSHA2564ff5e1ed95dbf1af435c6dff68f579186948f8381afa31b13aa54890d836948e includes complete cached M10 Raging Goblin/Centaur Courser/Runeclaw Bear/Lightning Bolt and RTR Fencing Ace records with source-pool provenance. Both seats pay1G for Quest and R for an attacking Goblin; actual positive combat damage to a creature offers optional quest counters. Earned one-counter/self-sacrifice pays before four targeted +1/+1 counters on either player's creature. Saved queued activation, cost/target rejection and later invalidation, current controller versus immutable owner, blocking creatures, numeric/source/protection/shield-counter prevention and zero/partial/unpreventable damage, multiple attackers/recipients and paid double strike, original counter-choice controller and queued/pending source incarnation boundaries.",
       "limits": "Only this cached printing and specified paths. Seeded blockers/targets/basic mana, foreign control, pumps, prevention/hexproof/relocation and activation-isolation counters are unit setups, not supporting-card certificates. No aggregate recognition scan, newest-printing review or whole-card certificate. General damage replacement/order, copy/mutation/continuous/APNAP behavior, animated Quest simultaneous departure and forged-save authentication remain unverified. No live Discord, bot, import, build or deployment."
+    },
+    {
+      "id": "quest-pure-flame-damage-ordering",
+      "cards": [
+        "Quest for Pure Flame"
+      ],
+      "tests": [
+        "tests/Game/QuestPureFlameTest.php::testCompleteCachedQuestRecognizesOnlyTheBoundedDamageContract",
+        "tests/Game/QuestPureFlameTest.php::testPaidOpponentSpellDamageOffersOptionalQuestCounter",
+        "tests/Game/QuestPureFlameTest.php::testPaidCreatureCombatDamageToOpponentAlsoCounts",
+        "tests/Game/QuestPureFlameTest.php::testPaidQuestWithSeededFourCountersActivatesPersistentTurnDoubling",
+        "tests/Game/QuestPureFlameTest.php::testOtherRecipientsControllersAndFullyPreventedDamageDoNotCount",
+        "tests/Game/QuestPureFlameTest.php::testAffectedPlayerOrdersReplacementAndPreventionWithAtomicReplay",
+        "tests/Game/QuestPureFlameTest.php::testPainfulManaChoiceResumesPaidCastExactlyOnce",
+        "tests/Game/QuestPureFlameTest.php::testPainfulManaChoiceResumesPaidActivationExactlyOnce",
+        "tests/Game/QuestPureFlameTest.php::testMalformedPaidActionCannotResumeOrSpendFurtherCosts",
+        "tests/Game/QuestPureFlameTest.php::testSelfDamageUsesAffectedCreatureSourceAndCurrentRecipientController",
+        "tests/Game/QuestPureFlameTest.php::testFightFreezesBothDirectionsUntilOrderChoiceAndThenCompletesOnce",
+        "tests/Game/QuestPureFlameTest.php::testDividedBatchCanSaveBetweenTwoRecipientChoicesWithoutPartialDamage",
+        "tests/Game/QuestPureFlameTest.php::testCombatBatchWaitsThenUsesFinalDamageForLifelinkAndTriggers",
+        "tests/Game/QuestPureFlameTest.php::testCurrentControllerOfForeignOwnedSourceAndRecipientChooses",
+        "tests/Game/QuestPureFlameTest.php::testUnpreventableDamageDoublesWithoutConsumingAnyShield",
+        "tests/Game/QuestPureFlameTest.php::testFullPreventionDoesNotOfferMeaninglessOrder",
+        "tests/Game/QuestPureFlameTest.php::testPracticeUsesTheSameValidatedOrderingAction",
+        "tests/Game/QuestPureFlameTest.php::testForgedAndOversizedDamageContinuationsRejectWithoutMutation",
+        "tests/Game/QuestPureFlameTest.php::testCounteredActivationInstallsNoEffectAndSacrificeIsNotReplayed",
+        "tests/Game/QuestPureFlameTest.php::testReturnedQuestIsIndependentOfItsOldActivation",
+        "tests/Game/QuestPureFlameTest.php::testDepartedSourceUsesLastKnownControlAfterPaidTheftAndDestruction",
+        "tests/Game/QuestPureFlameTest.php::testFourPaidEventsEarnCountersBeforePaidSacrifice",
+        "tests/Game/QuestPureFlameTest.php::testActivationCostsAndExtraTargetsRejectAtomically",
+        "tests/Game/QuestPureFlameTest.php::testDecliningOptionalCounterAndReturningObserverCannotReceiveOldCounter",
+        "tests/Game/QuestPureFlameTest.php::testTwoResolvedEffectsMultiplyAndExpireAtCleanup",
+        "tests/Game/QuestPureFlameTest.php::testLegacyStateMigratesToEmptyAndMalformedPendingStateRejects",
+        "tests/Game/DamageBatchTest.php::testBothLegalOrdersAndReplay",
+        "tests/Game/PaidDamageContinuationTest.php::testExistingUtilityCostPausesAndResumesItsTailExactlyOnce",
+        "tests/Game/PaidDamageContinuationTest.php::testPaidResolutionContinuationRunsItsEffectsAfterDamageOnce",
+        "tests/Game/PaidDamageContinuationTest.php::testOptionalPaymentPreservesTokenAndRemainingResolutionAcrossDamageChoice",
+        "tests/Game/PaidDamageContinuationTest.php::testAutomaticWardPaymentStopsFlushingOtherTriggersUntilAnswered",
+        "tests/MatchesTest.php::testDamageOrderingPanelPersistsAndRejectsInvalidAndRepeatedAnswers"
+      ],
+      "scope": "Complete cached ZEN Quest UUID03fcb278-4971-58a7-860b-9999263c347b: paid optional positive-damage counters, four actually earned counters, paid removal/self-sacrifice, resolution-only finite controller-bound doubling, both 4-vs-2 prevention orders, fight/divided/combat/payment continuations, persisted validated decisions, expiry and replay. Baseline16/156 had4failures/4errors/8controls; doubling assertions then unreachable. Promoted normal suite separately tests seeded-counter isolation. No corpus import or aggregate recognition scan.",
+      "limits": "Scoped older cached printing and listed paid paths only. No whole-card certificate. Nested automatic recover payment during zone movement remains unsupported when damage ordering is needed; it rejects before mana costs instead of silently continuing. General zone movement, automatic payment policy, redirection, arbitrary replacement families, multiplayer/APNAP, prevention side-effect feedback, continuous/copy layers, unrestricted divided allocation, newest printing, forged-save authentication and live Discord are outside. Synthetic utility/resolution fixtures and isolated lifelink/identity/control states are engine contracts, not enabling-card certificates. Countered activation uses the existing counter primitive, not Stifle parsing. Original complete fixture SHA25667ab998793f431650a7a452f4e2a3b546fbc0c587320a8ed0ee51baf7743852b and nine-record interaction fixture SHA256a56d6ee3028d77a615f917a4e7aa6adc6ed1e9237fa6bca816a1099538a65e21 retain cached source provenance. 32doublings/256events/64operations/256remainingsteps/256KiBbatch/1MiBpending bounds apply."
     }
   ],
   "explicitUnsupported": [
@@ -1309,26 +1425,33 @@
       ],
       "id": "partner-unread",
       "scope": "Partner remains an unread clause in both pinned records. Ich-Tekik has separate scoped entry/token/counter evidence; no whole-card, commander or deck-legality claim."
+    },
+    {
+      "id": "pure-flame-nested-recover-payments",
+      "cards": [
+        "Quest for Pure Flame"
+      ],
+      "scope": "Both exact Quest clauses are recognized in the selected pinned record, but nested automatic recover payment during graveyard movement cannot suspend for damage ordering. Such a payment rejects before mana costs; general resumable zone movement is deferred. Broader replacement/APNAP/continuous/copy and whole-card certification remain unsupported and are not implied by scoped paid paths."
     }
   ],
   "nextFamily": {
-    "id": "quest-pure-flame-paid-damage",
+    "id": "recover-damage-payment-continuation",
     "cards": [
       "Quest for Pure Flame"
     ],
     "measuredCandidateCount": 1,
-    "scope": "One complete existing cached ZEN UUID 03fcb278-4971-58a7-860b-9999263c347b selected by exact name; paid damage-trigger/four-counter temporary doubling path UNEXECUTED, not a reproduced gap. No import or corpus walk.",
+    "scope": "Explicit remaining interaction of this same cached Quest slice: recover currently pays inside synchronous graveyard movement. No new card lead, import or corpus walk.",
     "acceptance": [
-      "Establish paid R source and actual controlled-source damage to an opponent, with optional quest counters and non-opponent/other-controller controls.",
-      "Earn four counters, pay removal/self-sacrifice and test turn-limited doubled damage, expiry, identity, prevention/modifier order and queued replay before support claims."
+      "Design a bounded zone-movement/recover continuation without allowing later departures or effects to run through a pending mana-damage choice.",
+      "Reproduce a paid recover/doubling/prevention intersection first; preserve existing recovery, selected-group departures, original failure evidence, costs, trigger ordering and restart identity."
     ],
     "deferred": [
-      "Dog Walker original rules-evidence gap remains under deferredFamilies.",
-      "Partner/commander rules and general replacement/APNAP/continuous/whole-card certification remain separate."
+      "Dog Walker authoritative disguise-copy rules gap remains deferred.",
+      "Generic replacement/redirection/APNAP/continuous models, whole-card certification and live bot acceptance remain separate."
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Immutable locally full-tested combined Fading/controller-damage source;final verification-only amend has identical PHP/test bytes. Both published parent evidence sets and shared historical record are preserved.",
+  "engineSourceMeaning": "Immutable locally full-tested Pure Flame implementation source; final verification-only amend has identical production/test/fixture bytes. Historical baseline, earlier validation, recognition and known unsupported intersections remain separate.",
   "deferredFamilies": [
     {
       "id": "copy-token-disguise-characteristics",
