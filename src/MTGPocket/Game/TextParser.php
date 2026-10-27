@@ -406,13 +406,13 @@ final class TextParser
     /**
      * @param CardDefinition $card With its name, types and text set.
      *
-     * @return array{keywords: string[], mana: array|null, entersTapped: bool, counters: int, effects: array[], modes: array[], choose: array|null, aura: array|null, equipment: array|null, triggered: array[], activated: array[], ward: array|null, kicker: string|null, kickerCounters: int, flashback: string|null, cycling: string|null, morph: array|null, levels: array[], unsupported: string[]}
+     * @return array{keywords: string[], mana: array|null, entersTapped: bool, counters: int, effects: array[], modes: array[], choose: array|null, aura: array|null, equipment: array|null, triggered: array[], activated: array[], ward: array|null, wardInstances: array[], kicker: string|null, kickerCounters: int, flashback: string|null, cycling: string|null, morph: array|null, levels: array[], unsupported: string[]}
      */
     public static function parse(CardDefinition $card): array
     {
         $result = [
             'keywords' => [], 'mana' => null, 'entersTapped' => false, 'counters' => 0, 'effects' => [], 'modes' => [], 'choose' => null,
-            'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [],
+            'aura' => null, 'equipment' => null, 'triggered' => [], 'activated' => [], 'wardInstances' => [],
             'ward' => null, 'kicker' => null, 'kickerCounters' => 0, 'entwine' => null, 'flashback' => null, 'cycling' => null, 'cyclingFinds' => null, 'unearth' => null, 'bestow' => null, 'chooses' => null, 'stationBands' => [], 'maxSpeed' => null, 'countsAs' => null, 'yourTurnKeywords' => [], 'otherCounters' => [], 'costReductions' => [], 'altCosts' => [], 'morph' => null, 'levels' => [],
             'minusCounters' => 0, 'tappedUnless' => null, 'anthem' => [], 'additionalCost' => null,
             'unsupported' => [],
@@ -1268,10 +1268,13 @@ final class TextParser
                 $found['triggered'][] = ['text' => $part, 'event' => 'blocked', 'effects' => [['type' => 'lose_life', 'amount' => (int) $m[1], 'each' => 'opponent']]];
             } elseif (preg_match('/^ward '.self::COST.'$/i', $part, $m)) {
                 $found['ward'] = ['mana' => $m[1]];
+                $found['wardInstances'][] = $found['ward'];
             } elseif (preg_match('/^ward—pay (\d+) life\.?$/iu', $part, $m)) {
                 $found['ward'] = ['life' => (int) $m[1]];
+                $found['wardInstances'][] = $found['ward'];
             } elseif (preg_match('/^ward—discard a card\.?$/iu', $part)) {
                 $found['ward'] = ['discard' => 1];
+                $found['wardInstances'][] = $found['ward'];
             } elseif (preg_match('/^kicker '.self::COST.'$/i', $part, $m)) {
                 $found['kicker'] = $m[1];
             } elseif (preg_match('/^multikicker '.self::COST.'$/i', $part, $m)) {

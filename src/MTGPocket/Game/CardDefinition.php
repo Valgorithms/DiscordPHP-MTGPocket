@@ -95,6 +95,9 @@ final class CardDefinition
     /** @var array{mana?: string, life?: int}|null What an opponent pays to target it (rule 702.21). */
     public readonly ?array $ward;
 
+    /** @var array[] Each true Ward keyword instance, for the opt-in observer only. */
+    public readonly array $wardInstances;
+
     /** A kicker cost (rule 702.33). */
     public readonly ?string $kicker;
 
@@ -247,6 +250,7 @@ final class CardDefinition
         $this->modes = $parsed['modes'];
         $this->choose = $parsed['choose'];
         $this->ward = $parsed['ward'];
+        $this->wardInstances = $parsed['wardInstances'];
         $this->kicker = $parsed['kicker'];
         $this->entwine = $parsed['entwine'];
         $this->kickerCounters = $parsed['kickerCounters'];

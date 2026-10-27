@@ -374,7 +374,7 @@ final class RecoverDamageOrderingTest extends GameTestCase
         $old = $this->saved();
         $old['schemaVersion'] = 17;
         $this->game = Game::fromArray($old);
-        $this->assertSame(18, $this->saved()['schemaVersion']);
+        $this->assertSame(Game::STATE_VERSION, $this->saved()['schemaVersion']);
         $this->assertNull($this->game->choiceAwaiting());
         $this->assertSame($old['damageEffects'], $this->saved()['damageEffects']);
         $this->resolveOne();

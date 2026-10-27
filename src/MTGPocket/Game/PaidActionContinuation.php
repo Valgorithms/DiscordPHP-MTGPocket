@@ -18,7 +18,7 @@ trait PaidActionContinuation
 {
     private const array PAID_UTILITY_ACTIONS = ['cycle', 'unearth', 'plot', 'foretell', 'transmute', 'bloodrush', 'ninjutsu', 'suspend', 'regrow', 'embalm'];
 
-    private function finishPaidUtility(array $after): void
+    private function finishPaidUtility(array $after, ?array $observation = null): void
     {
         ['seat' => $seat, 'object' => $id] = $after;
         $object = $this->objects[$id];
@@ -26,7 +26,7 @@ trait PaidActionContinuation
         switch ($after['kind']) {
             case 'ward_trigger':
                 $this->discardCheapest($seat, $after['wardDiscard']);
-                $this->pushAbility($after['trigger'], $after['targets'], 'triggers');
+                $this->pushAbility($after['trigger'], $after['targets'], 'triggers', observation: $observation, frozenTargets: $after['targets']);
 
                 return;
             case 'cycle':
@@ -94,7 +94,6 @@ trait PaidActionContinuation
 
                 return;
             case 'bloodrush':
-                $attacker = $this->targetObject($after['attacker']);
                 $this->discardCards($seat, [$id]);
                 $this->pushAbility([
                     'source' => $object->id,
@@ -103,7 +102,7 @@ trait PaidActionContinuation
                     'effects' => TextParser::effects($card->altCosts['bloodrushText']) ?? [],
                     'kinds' => ['attacking'],
                     'label' => "{$card->name}'s bloodrush",
-                ], ["o:{$attacker->id}"], 'is activated', "bloodrush {$card->name}");
+                ], [$after['attacker']], 'is activated', "bloodrush {$card->name}", frozenTargets: [$after['attacker']]);
                 $this->settle();
 
                 return;
@@ -185,8 +184,11 @@ trait PaidActionContinuation
         }) {
             throw new GameException('Invalid saved paid utility ability.');
         }
-        if (in_array($kind, ['bloodrush', 'ninjutsu'], true)) {
-            $target = $kind === 'bloodrush' ? $after['attacker'] : $after['returned'];
+        if ($kind === 'bloodrush') {
+            $this->validateFrozenChosenTargets(['attacking'], [$after['attacker']]);
+        }
+        if ($kind === 'ninjutsu') {
+            $target = $after['returned'];
             $creature = is_string($target) ? $this->targetObject($target) : null;
             if ($creature === null || $creature->zone !== GameObject::BATTLEFIELD || $creature->controller !== $after['seat']
                 || ! $this->isCreature($creature) || ! isset($this->attackers[$creature->id])
@@ -211,6 +213,46 @@ trait PaidActionContinuation
             || ! is_int($after['wardDiscard'] ?? null) || $after['wardDiscard'] < 0 || $after['wardDiscard'] > count($this->players[$after['seat']]->hand)) {
             throw new GameException('Invalid saved paid ward-trigger continuation.');
         }
-        $this->checkTargets($trigger['kinds'], $after['targets'], $after['seat'], $trigger['label'], $source, $trigger['effects']);
+        $this->validateFrozenChosenTargets($trigger['kinds'], $after['targets'], $trigger['effects']);
+    }
+
+    /** Validate saved paid selections structurally, without testing their current legality. */
+    private function validateFrozenChosenTargets(array $kinds, array $targets, array $effects = []): void
+    {
+        if (! array_is_list($kinds) || ! array_is_list($targets) || count($targets) > 256 || count($targets) !== count($kinds)
+            || array_filter($kinds, fn ($kind) => ! is_string($kind) || strlen($kind) > 128) !== []) {
+            throw new GameException('Invalid saved frozen target slots.');
+        }
+        $groups = self::targetGroups($effects);
+        $chosen = [];
+        foreach ($targets as $slot => $target) {
+            if (! is_string($target) || strlen($target) > 64) {
+                throw new GameException('Invalid saved frozen target.');
+            }
+            if ($target === '-' && str_starts_with($kinds[$slot], '?')) {
+                continue;
+            }
+            $kind = ltrim($kinds[$slot], '?');
+            if (preg_match('/^o:([1-9][0-9]{0,9}):(0|[1-9][0-9]{0,9})$/D', $target, $match)) {
+                $object = $this->objects[(int) $match[1]] ?? null;
+                if ($object === null || (int) $match[1] > 2147483647 || (int) $match[2] > 2147483647 || (int) $match[2] > $object->incarnation
+                    || in_array($kind, ['player', 'opponent'], true) || str_contains($kind, 'spell')) {
+                    throw new GameException('Invalid saved frozen object identity.');
+                }
+                $identity = 'o:'.$match[1];
+            } elseif (preg_match('/^p:[01]$/D', $target) && in_array($kind, ['any', 'player', 'player_or_planeswalker', 'opponent'], true)) {
+                $identity = $target;
+            } elseif (preg_match('/^s:([1-9][0-9]{0,9})$/D', $target, $match) && (int) $match[1] <= 2147483647
+                && (int) $match[1] < $this->nextStackId && str_contains($kind, 'spell')) {
+                $identity = $target;
+            } else {
+                throw new GameException('Unpinned or invalid saved frozen target.');
+            }
+            $group = $groups[$slot] ?? $slot;
+            if (isset($chosen[$group][$identity])) {
+                throw new GameException('Repeated saved targets within one target clause.');
+            }
+            $chosen[$group][$identity] = true;
+        }
     }
 }
