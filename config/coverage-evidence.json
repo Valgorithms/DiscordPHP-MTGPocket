@@ -9,12 +9,12 @@
   },
   "recognitionReportSha256": "c7f8e9086eb85757aa4f70b121ed3659c9c30053776ea74a09cd90f2ce1a5d39",
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
-  "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+  "engineSource": "b4de0748f1c5226fbfdcdeffd0699d2ff250deda",
   "validation": {
-    "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
-    "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
-    "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
-    "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision.",
+    "source": "b4de0748f1c5226fbfdcdeffd0699d2ff250deda",
+    "evidenceMeaning": "Counter identity foundation. Independently reproduced ability/copy source-movement bugs corrected; Ward upfront tax remains explicitly characterized, not certified.",
+    "local": "Full2424tests/63287assertions/2unchangedmissing-pool/rental skips; no failures/errors/warnings/risky; 00:58.905/338MiB. Focused22/138; adjacent518/9581; full nonmutatingPint;ledger18/37;all70pins PASS. PHP8.5.12/512MiB/Xdebugoff/isolated data+temp/original dependencies; full-tested immutable source b4de0748f1c5226fbfdcdeffd0699d2ff250deda. Metadata/docs completion preserves runtime/test/fixture bytes.",
+    "ci": "Local validation pins immutable source b4de0748f1c5226fbfdcdeffd0699d2ff250deda. Read the current draft PR Checks on GitHub for exact-head hosted acceptance; frozen PR444/445/446 checks do not validate this branch. No live-service acceptance claim.",
     "integration": {
       "prParent": "4797893913967dd38f36e0eda7009f7b50e874f5",
       "mainParent": "fc2477f4ee259bf12b24dbe4076d32afa34f07ae",
@@ -402,12 +402,52 @@
           }
         }
       }
+    },
+    "wardCounterFoundation": {
+      "base": "570771053d31f16d700178d9fbc742da37e9106d",
+      "priorEngineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+      "priorValidationCore": {
+        "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
+        "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
+        "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
+        "ci": "PENDING exact final #331 head;previous published #331 CI40382653564 remains historical. Root retains merge decision."
+      },
+      "priorGameSourcePin": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
+      "meaning": "Identity-safe counter foundation only. Ward remains an upfront tax; no scoped card or whole-card certificate added. Frozen PRs444/445/446 excluded.",
+      "cleanCounterBaseline": "Main5707710:2tests/5reachedassertions/2failures; activated-source card and original copied spell wrongly moved to graveyard.",
+      "wardCharacterization": "Cached Dog Walker paid disguise on both seats:2tests/28assertions pass documenting retained incorrect upfront tax, not Ward timing support.",
+      "baselinePins": {
+        "src/MTGPocket/Game/Game.php": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
+        "tests/Game/StackEntryCounterTest.php": "bdd9f916f52b28785d3322f39ca66694850bbfc754dedb72a8f1ac60ba21ab46",
+        "tests/Game/WardUpfrontGapTest.php": "07fba9bdde7c0f56e025ba99fe266c2b1fe3cd606503a7542695867c7ec82db5",
+        "tests/Fixtures/dog-walker-disguise.json": "27a09d399cdd6cbe3e819319bd47c28c0b08295bc635020daa55f2f4fcca973c"
+      },
+      "receiptSha256": {
+        "ward-clean-baseline-pins.json": "060cd2e8bd4b76b3d65eadb863fb65fa4673f12a2ef99b683de720a03d4c7f01",
+        "ward-counter-clean-baseline.json": "3eedcf7dd6cc93dd04ee13f103667ef2b2d4b56a0580445cc0a69b9dd6a44623",
+        "ward-counter-expanded.json": "4e5a22b44f02b41f30b7a789aa897e6f75e62fbd67475b3ade53f34e6e2009b5",
+        "ward-counter-focused.json": "8d0fa9140c0fb9aac76d743a1b06268d04ae13e6724ada1aa9cd36770efa5554",
+        "ward-counter-initial-fix.json": "c9daeb1a4c4208b215876239176886485e5f4677c1da10d07a6b5ea47f9764eb",
+        "ward-counter-replay-fix.json": "7c17e314420f96d6ad1ed5e5dfda4e4b056e6117977825c307a853daf4d2dda5",
+        "ward-foundation-adjacent.json": "5412c7ea02b57d10e79878086e57e4cce761a99d9a05309994a5d4868c1f37b6",
+        "ward-foundation-baseline.json": "c1e321e7c0569c177274c04fd6a96df0e2ed66746b8b14387bbc7d9259e2e4db",
+        "ward-foundation-final-pint.json": "01ce5e5e98515d81b8075825d7c02dcf430556ababddd5ccedd67cc05e73dbbe",
+        "ward-foundation-full.json": "5ad931a63ccd32cb4b11510c384730902ee038dc07c439ed3fcecebc335a062e",
+        "ward-foundation-ledger.json": "2cdc713be715bdb965ca267488d423a9d68d1f56853b2e5bc3e36ffe34b82b11",
+        "ward-foundation-style.json": "1e016184c3eb94fa51bb25267a5e254b2266b086283c10466eab2a04b3ca23d0",
+        "ward-upfront-characterization.json": "6e8a6b8605873334a719c5308b438b55ae13e225464e8aa814baa62df4a9628b",
+        "ward-upfront-clean-characterization.json": "5bfddeba3b4dfc379c8787f5760ab62b66043ec2572d372825617c4ad1d3bf38"
+      },
+      "status": "Counter identity correction reviewed for draft publication. Broader Ward integration remains outside this slice; read current PR Checks for exact-head hosted acceptance. No card-certification claim.",
+      "priorEngineSourceMeaning": "Immutable locally full-tested combined Fading/controller-damage source;final verification-only amend has identical PHP/test bytes. Both published parent evidence sets and shared historical record are preserved.",
+      "fullTestedSource": "b4de0748f1c5226fbfdcdeffd0699d2ff250deda",
+      "finalEvidence": "Full2424tests/63287assertions/2unchangedmissing-pool/rental skips; no failures/errors/warnings/risky; 00:58.905/338MiB. Focused22/138; adjacent518/9581; full nonmutatingPint;ledger18/37;all70pins PASS."
     }
   },
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
+    "src/MTGPocket/Game/Game.php": "48c3998a3c6d60d045f8a1d4601bfd31f66844505b5dea285bdedac3a556f7ff",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -471,7 +511,10 @@
     "tests/Game/SunspringExpeditionTest.php": "58eb40ed4bc7d62e09ac1e5ebac15b3d2005d58433a425384715689189c8eb4d",
     "tests/Game/QuestAncientSecretsTest.php": "2bb85b3cd1110e5e9f791a07b364b2a382b506045bf49ea8f07104ab889ca264",
     "tests/Game/QuestAncientMergedIdentityTest.php": "f96ede04a99e025344d6491f73b06d24a85b544554d3dc7ca2aece87b3cd3f02",
-    "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
+    "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd",
+    "tests/Game/StackEntryCounterTest.php": "1ff7d88c37f6533c607a748d1fb136172d628c581dc86e322393d7f7f252476a",
+    "tests/Game/WardUpfrontGapTest.php": "07fba9bdde7c0f56e025ba99fe266c2b1fe3cd606503a7542695867c7ec82db5",
+    "tests/Fixtures/dog-walker-disguise.json": "27a09d399cdd6cbe3e819319bd47c28c0b08295bc635020daa55f2f4fcca973c"
   },
   "scopedEvidence": [
     {
@@ -1328,7 +1371,7 @@
     ]
   },
   "originalReportSha256": "a7b07773beb24532c66f282d65ac907968d6cd83f2dc8cb978457d76092e20ad",
-  "engineSourceMeaning": "Immutable locally full-tested combined Fading/controller-damage source;final verification-only amend has identical PHP/test bytes. Both published parent evidence sets and shared historical record are preserved.",
+  "engineSourceMeaning": "Identity-safe stack-entry counter foundation; historical main validation and prior Game pin preserved under validation.wardCounterFoundation. No new scoped card or whole-card certificate.",
   "deferredFamilies": [
     {
       "id": "copy-token-disguise-characteristics",

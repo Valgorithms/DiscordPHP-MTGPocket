@@ -2796,6 +2796,8 @@ final class Game
             'kinds' => self::targetKindsOf($effects),
             'label' => "A copy of {$card->name}",
         ], $item['targets'], "is put on the stack ({$why})");
+        // Copies use ability-shaped entries, but retain this spell characteristic.
+        $this->stack[array_key_last($this->stack)]['uncounterable'] = $this->hasKeyword($spell, "can't be countered");
     }
 
     /**
@@ -5186,10 +5188,10 @@ final class Game
 
             case 'counter':
                 $stackId = (int) substr((string) $target, 2);
-                foreach ($this->stack as $index => $item) {
+                foreach ($this->stack as $item) {
                     if ($item['id'] === $stackId) {
                         $countered = $this->objects[$item['object']];
-                        if (! self::isAbility($item) && $this->hasKeyword($countered, "can't be countered")) {
+                        if ($this->stackItemUncounterable($item)) {
                             $this->log("{$countered->name()} can't be countered.");
                             break;
                         }
@@ -5201,14 +5203,9 @@ final class Game
                             $this->log("{$this->players[$item['controller']]->name} pays {$unless}, so {$countered->name()} is not countered.");
                             break;
                         }
-                        array_splice($this->stack, $index, 1);
-                        $this->log("{$countered->name()} is countered.", null, "{$countered->name()} countered");
-                        // `Its controller loses 2 life.` after it: that player.
-                        $this->followed[(string) $target] = "p:{$item['controller']}";
-                        if (($effect['exileCountered'] ?? false) && ! self::isAbility($item)) {
-                            $this->moveTo($countered, GameObject::EXILE);
-                        } else {
-                            $this->spellLeavesStack($countered, $item);
+                        if ($this->counterStackItem($stackId, $effect['exileCountered'] ?? false) !== null) {
+                            // `Its controller loses 2 life.` after it: that player.
+                            $this->followed[(string) $target] = "p:{$item['controller']}";
                         }
                         break;
                     }
@@ -6473,6 +6470,47 @@ final class Game
     public static function isAbility(array $item): bool
     {
         return ($item['kind'] ?? 'spell') === 'ability';
+    }
+
+    /** Whether this stack entry itself, rather than an ability's source, is uncounterable. */
+    private function stackItemUncounterable(array $item): bool
+    {
+        return ($item['uncounterable'] ?? false) || (! self::isAbility($item)
+            && $this->hasKeyword($this->objects[$item['object']], "can't be countered"));
+    }
+
+    /**
+     * Removes exactly one stack entry. Only a card spell moves its underlying
+     * object; an ability or ability-shaped spell copy never moves its source.
+     *
+     * @return array|null The removed entry, or null if absent, stale or uncounterable.
+     */
+    private function counterStackItem(int $stackId, bool $exile = false): ?array
+    {
+        foreach ($this->stack as $index => $item) {
+            if ($item['id'] !== $stackId) {
+                continue;
+            }
+            $object = $this->objects[$item['object']];
+            if ((! self::isAbility($item) && ($object->zone !== GameObject::STACK || $object->incarnation !== $item['incarnation']))
+                || $this->stackItemUncounterable($item)) {
+                return null;
+            }
+            array_splice($this->stack, $index, 1);
+            $name = self::isAbility($item) ? $item['label'] : $object->name();
+            $this->log("{$name} is countered.", null, "{$name} countered");
+            if (! self::isAbility($item)) {
+                if ($exile) {
+                    $this->moveTo($object, GameObject::EXILE);
+                } else {
+                    $this->spellLeavesStack($object, $item);
+                }
+            }
+
+            return $item;
+        }
+
+        return null;
     }
 
     /**
@@ -11500,6 +11538,11 @@ final class Game
             }
         }
         $game->battlefield = array_map('intval', (array) $data['battlefield']);
+        foreach ((array) $data['stack'] as $item) {
+            if (array_key_exists('uncounterable', $item) && (! self::isAbility($item) || ! is_bool($item['uncounterable']))) {
+                throw new GameException('Invalid saved stack-entry counter characteristic.');
+            }
+        }
         $game->stack = array_values(array_map(fn ($item) => [
             'id' => (int) $item['id'],
             'object' => (int) $item['object'],
@@ -11512,7 +11555,7 @@ final class Game
             'effects' => array_values((array) $item['effects']),
             'kinds' => array_values(array_map('strval', (array) $item['kinds'])),
             'label' => (string) $item['label'],
-        ] : array_filter([
+        ] + (array_key_exists('uncounterable', $item) ? ['uncounterable' => $item['uncounterable']] : []) : array_filter([
             'modes' => array_values(array_map('intval', (array) ($item['modes'] ?? []))),
             'kicked' => (bool) ($item['kicked'] ?? false),
             'kicks' => (int) ($item['kicks'] ?? 0),
