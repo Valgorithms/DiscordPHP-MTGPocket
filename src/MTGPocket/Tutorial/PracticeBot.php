@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace MTGPocket\Tutorial;
 
+use MTGPocket\Game\CardDefinition;
 use MTGPocket\Game\Game;
 use MTGPocket\Game\GameException;
 use MTGPocket\Game\GameObject;
@@ -110,8 +111,10 @@ final class PracticeBot
 
                 return true;
             case 'optional_recover':
-                // Buy back a recover card when the existing mana planner can pay.
-                $game->chooseRecover($seat, $game->choiceAwaiting()['id'], $game->canPayRecover($seat) ? 'accept' : 'decline');
+                // Buy back when payable; the simple life-cost policy avoids paying the last life.
+                $choice = $game->choiceAwaiting();
+                $safe = $choice['cost'] !== CardDefinition::RECOVER_HALF_LIFE || $game->players[$seat]->life > 1;
+                $game->chooseRecover($seat, $choice['id'], $safe && $game->canPayRecover($seat) ? 'accept' : 'decline');
 
                 return true;
 

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "provenance": [
+    {
+      "setCode": "CSP",
+      "releaseDate": "2006-07-21",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "poolSha256": "b5c1a9c3cf20afeda999baaa7e11c75ee6088a52f2641b898c720255956d847e",
+      "selectedNames": [
+        "Garza's Assassin"
+      ]
+    },
+    {
+      "setCode": "M10",
+      "releaseDate": "2009-07-17",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "poolSha256": "8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0",
+      "selectedNames": [
+        "Raging Goblin",
+        "Lightning Bolt"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "uuid": "a49f3a52-aa88-598a-818b-23b314cfc33c",
+      "name": "Garza's Assassin",
+      "number": "57",
+      "rarity": "rare",
+      "colors": [
+        "B"
+      ],
+      "manaValue": 3,
+      "type": "Creature — Human Assassin",
+      "scryfallId": "3407ccbd-788d-4fe3-a039-0497724a94b5",
+      "manaCost": "{B}{B}{B}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Human",
+        "Assassin"
+      ],
+      "power": "2",
+      "toughness": "2",
+      "text": "Sacrifice this creature: Destroy target nonblack creature.\nRecover—Pay half your life, rounded up. (When another creature is put into your graveyard from the battlefield, you may pay half your life, rounded up. If you do, return this card from your graveyard to your hand. Otherwise, exile this card.)",
+      "keywords": [
+        "Recover"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "B"
+      ]
+    },
+    {
+      "uuid": "78380203-7623-50bc-ab48-577cd655ee9a",
+      "name": "Lightning Bolt",
+      "number": "146",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Instant",
+      "scryfallId": "435589bb-27c6-4a6d-9d63-394d5092b9d8",
+      "manaCost": "{R}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Lightning Bolt deals 3 damage to any target.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    },
+    {
+      "uuid": "fd74a5d3-beea-5ca2-b590-0282dac572f1",
+      "name": "Raging Goblin",
+      "number": "153",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Creature — Goblin Berserker",
+      "scryfallId": "aa318c3a-70ae-499a-8022-b380f03fd53f",
+      "manaCost": "{R}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Goblin",
+        "Berserker"
+      ],
+      "power": "1",
+      "toughness": "1",
+      "text": "Haste (This creature can attack and {T} as soon as it comes under your control.)",
+      "keywords": [
+        "Haste"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    }
+  ],
+  "scope": "Exact cached records for paid half-life Recover regression; no corpus import, newest-printing or whole-card claim."
+}

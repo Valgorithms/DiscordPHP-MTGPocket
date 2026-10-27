@@ -1215,6 +1215,12 @@ final class TextParser
             return true;
         }
         // Recover (rule 702.59): see RecoverResolution (queued graveyard trigger).
+        // Garza's exact life-cost wording; its value is evaluated only when paying at resolution.
+        if ($line === 'Recover—Pay half your life, rounded up.') {
+            $result['altCosts']['recover'] = CardDefinition::RECOVER_HALF_LIFE;
+
+            return true;
+        }
         if (preg_match('/^Recover '.self::COST.'\.?$/u', $line, $m) && ! str_contains($m[1], 'X')) {
             $result['altCosts']['recover'] = $m[1];
 

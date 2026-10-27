@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [draft Garza half-life Recover slice](garza-half-life-recover.md) adds exact resolution-time life payment after a reproduced paid baseline. Current draft ledger:39scoped names,3explicit-gap names,2overlaps and zero whole-card certificates; recognition remains historical. Schema21 preserves older ordinary mana-Recover/fixed-Ward saves and the schema17/18 already-paid-action rollout prerequisite. Public #444–449 remain unchanged.
+
 The [Pure Flame damage-ordering slice](quest-pure-flame-damage-ordering.md) adds bounded persisted replacement/prevention choices and explicit caller/payment continuations. Its current scoped evidence is separate from historical recognition: 38 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates. The [stacked Recover follow-up](recover-damage-ordering-private.md) covers optional mana-cost graveyard triggers and bounded payment ordering; general zone movement and life-cost Recover remain outside. Historical and integrated verification are separated in the manifest.
 
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
