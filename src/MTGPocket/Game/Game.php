@@ -9078,7 +9078,7 @@ final class Game
         // Shields are keyed without a target's incarnation (`o:ID`, not `o:ID:N`).
         $shielded = implode(':', array_slice(explode(':', $target), 0, 2));
         $preventable = $prevention && $this->unpreventableTurn !== $this->turn;
-        if ($preventable && $source->preventDealing === $this->turn) {
+        if ($preventable && ($source->preventDealing === $this->turn || ($combat && $this->fogTurn === $this->turn))) {
             $this->log("{$amount} damage from {$source->name()} is prevented.");
 
             return 0;
