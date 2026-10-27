@@ -1,5 +1,7 @@
 # Rules-engine architecture and continuation
 
+The [Dog Walker slice](disguise-token-copy.md) corrects copied face-down characteristics with copiable ward. It is prepared independently of #444/#445, and does not certify Ward timing or whole-card support. Historical recognition is unchanged; current ledger has 38 scoped names, three gap names, two overlaps and zero whole-card certificates.
+
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.
