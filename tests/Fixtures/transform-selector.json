@@ -1,0 +1,98 @@
+{
+  "records": [
+    {
+      "set": "GPT",
+      "sourceSha256": "7378364f96741f7ddc6951366e8fc6ceea944e529a2c4fbe73e00c92a2a38f03",
+      "card": {
+        "uuid": "c3f254ed-45ba-58b5-8079-ee425eae4e6f",
+        "name": "Culling Sun",
+        "number": "109",
+        "rarity": "rare",
+        "colors": [
+          "W",
+          "B"
+        ],
+        "manaValue": 5,
+        "type": "Sorcery",
+        "scryfallId": "5ec5a956-c846-46b6-91bd-37e4db542280",
+        "manaCost": "{2}{W}{W}{B}",
+        "types": [
+          "Sorcery"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "Destroy each creature with mana value 3 or less.",
+        "layout": "normal",
+        "colorIdentity": [
+          "B",
+          "W"
+        ]
+      }
+    },
+    {
+      "set": "DKA",
+      "sourceSha256": "31411aa01b433b933ec4cce229d3725105fd971b97a3c556a77cc472a07854d9",
+      "card": {
+        "uuid": "d7eb7756-fc8f-5e70-b86d-db6446361748",
+        "name": "Huntmaster of the Fells // Ravager of the Fells",
+        "number": "140",
+        "rarity": "mythic",
+        "colors": [
+          "R",
+          "G"
+        ],
+        "manaValue": 4,
+        "type": "Creature — Human Werewolf",
+        "scryfallId": "aae6fb12-b252-453b-bca7-1ea2a0d6c8dc",
+        "manaCost": "{2}{R}{G}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Werewolf"
+        ],
+        "power": "2",
+        "toughness": "2",
+        "text": "Whenever this creature enters or transforms into Huntmaster of the Fells, create a 2/2 green Wolf creature token and you gain 2 life.\nAt the beginning of each upkeep, if no spells were cast last turn, transform this creature.",
+        "keywords": [
+          "Transform",
+          "Trample"
+        ],
+        "layout": "transform",
+        "colorIdentity": [
+          "G",
+          "R"
+        ],
+        "back": {
+          "name": "Ravager of the Fells",
+          "colors": [
+            "R",
+            "G"
+          ],
+          "type": "Creature — Werewolf",
+          "types": [
+            "Creature"
+          ],
+          "supertypes": [],
+          "subtypes": [
+            "Werewolf"
+          ],
+          "power": "4",
+          "toughness": "4",
+          "text": "Trample\nWhenever this creature transforms into Ravager of the Fells, it deals 2 damage to target opponent or planeswalker and 2 damage to up to one target creature that player or that planeswalker's controller controls.\nAt the beginning of each upkeep, if a player cast two or more spells last turn, transform this creature.",
+          "keywords": [
+            "Transform",
+            "Trample"
+          ],
+          "colorIdentity": [
+            "G",
+            "R"
+          ],
+          "manaCost": null
+        }
+      }
+    }
+  ]
+}

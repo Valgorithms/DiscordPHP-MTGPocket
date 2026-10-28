@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [Disfigure evidence slice](disfigure-paid-coverage.md) and [Infest/Pyroclasm evidence batch](infest-pyroclasm-paid.md) verify selected cached printings through paid gameplay; all three baselines passed without a production change. The [animated planeswalker damage slice](animated-planeswalker-damage.md) fixes a separately reproduced damage defect using paid cached Lightning Bolt. This integrated ledger has 41 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical.
+The [transformed mana-value selector slice](transformed-selector-mana-value.md) corrects paid Culling Sun selection using the existing battlefield mana-value helper. This ledger has 42 scoped names and zero whole-card certificates; recognition remains historical.
+
+The [Disfigure evidence slice](disfigure-paid-coverage.md) and [Infest/Pyroclasm evidence batch](infest-pyroclasm-paid.md) verify selected cached printings through paid gameplay; all three baselines passed without a production change. The [animated planeswalker damage slice](animated-planeswalker-damage.md) fixes a separately reproduced damage defect using paid cached Lightning Bolt. That integrated milestone recorded 41 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Recognition remains historical.
 
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
