@@ -11,6 +11,10 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "disfigureEvidence": {
+      "base": "570771053d31f16d700178d9fbc742da37e9106d",
+      "status": "Evidence-only; initial 14 tests/112 assertions passed on the existing engine. Final hosted checks belong to the published head. Earlier validation and recognition records remain historical."
+    },
     "source": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
     "evidenceMeaning": "Combined existing #330 Fading and #331 fixed-controller damage/audit behavior;no added mechanic or whole-card claim.37scopednames/0whole-cardcertificates;aggregate recognition historical.",
     "local": "Combined Fading/controller-damage full-tested source 0e51e5633e5faca48eed0a2666bb476a8ddd2adf: 2402 tests/63149 assertions,2expected missing-data skips,no risky tests;PHPUnit01:00.355/336.00 MB. Focused656tests/8307assertions,fullnonmutatingPint/all67pinsPASS. PHP8.5.12/512MiB/Xdebugoff/isolateddata+temp/existingdeps. Final unpublished merge amend changes verification metadata/docs only;PHP/testbytes match. Main#330postmergeTests40383781448passedPHP8.3/8.4/8.5. Final #331 exact-head hosted acceptance pending publication.",
@@ -405,6 +409,7 @@
     }
   },
   "sourcePins": {
+    "tests/Game/DisfigureCoverageTest.php": "db33d67173f684e8eb6dbabda8fe6686d5766feced96ad91aafd4a9bd750cc9f",
     "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
     "src/MTGPocket/Game/Game.php": "382ce1344522db1170c426ec4f77486fc437a1aec614db0f95d53cc9b19913ee",
@@ -474,6 +479,22 @@
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
   },
   "scopedEvidence": [
+    {
+      "id": "disfigure-paid-target-reduction",
+      "cards": [
+        "Disfigure"
+      ],
+      "tests": [
+        "tests/Game/DisfigureCoverageTest.php::testPaidCastAppliesSignedStatsAndExpiresAfterJson",
+        "tests/Game/DisfigureCoverageTest.php::testZeroToughnessKillsIndestructibleWithoutDamage",
+        "tests/Game/DisfigureCoverageTest.php::testIllegalTargetsRejectBeforePaying",
+        "tests/Game/DisfigureCoverageTest.php::testRemovedTargetMakesPaidSpellFailToAffectAnything",
+        "tests/Game/DisfigureCoverageTest.php::testNegativePowerDoesNotDealCombatDamage",
+        "tests/Game/DisfigureCoverageTest.php::testCounteredSpellDoesNotApplyItsEffect"
+      ],
+      "scope": "Complete cached ZEN Disfigure UUID 15269cf5-9eb9-5b7d-8c79-42154e8ece24; real paid B casts in both seats, own/opponent creature targets, signed -2/-2 through JSON and cleanup, zero-toughness indestructible death, negative-power combat, invalid targets before payment, and paid bounce/counterspell responses. The existing engine passed the 14-case baseline; no runtime fix.",
+      "limits": "Older cached ZEN printing and only enumerated paths; target creatures and response cards are supporting fixtures and are not certified. No whole-card certificate, newest-printing scan, general continuous-layer/replacement/APNAP claim, live Discord or deployment. Historical recognition unchanged; no import."
+    },
     {
       "limits": "Fixture uses card-name wording; pinned printing uses this creature. No whole-card, per-printing, simultaneous-event or general interaction certification.",
       "cards": [

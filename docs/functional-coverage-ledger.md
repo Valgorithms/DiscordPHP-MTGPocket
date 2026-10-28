@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [Disfigure evidence slice](disfigure-paid-coverage.md) verifies its selected cached printing through paid targeted gameplay and existing resolution behavior; the baseline already passed and no production change is claimed. The current manifest has 38 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Historical recognition is unchanged.
+
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.
