@@ -10378,7 +10378,7 @@ final class Game
     {
         // `Destroy all creatures with power 3 or less.`, or with mana value; `each nonland permanent with mana value 2 or less`.
         if (preg_match('/^(all (?:creatures|nonland permanents|artifacts, creatures, and enchantments)) with (power|mana value) (\d+) or (less|greater)$/', $all, $m)) {
-            return array_filter($this->allMatching($m[1], $source, $controller), fn (GameObject $o) => (($m[2] === 'power' ? $this->power($o) : $o->definition()->cost->manaValue()) <=> (int) $m[3]) !== ($m[4] === 'less' ? 1 : -1));
+            return array_filter($this->allMatching($m[1], $source, $controller), fn (GameObject $o) => (($m[2] === 'power' ? $this->power($o) : $o->battlefieldManaValue()) <=> (int) $m[3]) !== ($m[4] === 'less' ? 1 : -1));
         }
 
         return array_filter($this->permanents(), fn (GameObject $o) => match ($all) {
