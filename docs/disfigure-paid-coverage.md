@@ -1,0 +1,7 @@
+# Disfigure: paid targeted reduction evidence
+
+This evidence-only slice uses the complete cached ZEN Disfigure record, UUID `15269cf5-9eb9-5b7d-8c79-42154e8ece24`, in `tests/Fixtures/quest-gravelord-death-counters.json` (normalized-LF SHA-256 `c26e0bf5385b4bbf8ad5178f31263bfaf6f03f9391ddcbdc13c5cb3222924300`). The fixture retains the original pool provenance and was already used for paid Quest for the Gravelord deaths; Disfigure was not independently evidenced there. No corpus was downloaded or imported.
+
+The existing main engine passed the initial 14-case / 112-assertion gameplay baseline. Both seats pay B and target their own or an opposing creature. Tests cover signed power and toughness through a saved stack and post-resolution JSON, expiration after cleanup, zero-toughness death despite indestructible, no combat damage from negative power, invalid targets before mana payment, and paid Unsummon and Counterspell responses. Synthetic target creatures and response cards serve as controls, not supporting-card certificates. No production change is claimed.
+
+This records scoped evidence for the selected cached printing and listed paths only. It does not certify newest printings, every possible target or interaction, general continuous-layer/replacement/APNAP behavior, whole-card coverage, live Discord or deployment. The historical recognition index and existing evidence histories are unchanged; hosted checks apply only to their exact commit.
