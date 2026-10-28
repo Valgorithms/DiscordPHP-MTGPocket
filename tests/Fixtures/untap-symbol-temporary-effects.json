@@ -1,0 +1,92 @@
+{
+  "set": "SHM",
+  "sourceSha256": "d2f7b7afdae8fecb211988e34236cac8b5afbdd3ae6407fb5863fa57bfbecfde",
+  "cards": [
+    {
+      "uuid": "28aa77b1-24ca-56bf-a3a1-28f674bb88e3",
+      "name": "Safehold Sentry",
+      "number": "22",
+      "rarity": "common",
+      "colors": [
+        "W"
+      ],
+      "manaValue": 2,
+      "type": "Creature — Elf Warrior",
+      "scryfallId": "caa8bd74-9897-4515-b1a0-50d5f1bda673",
+      "manaCost": "{1}{W}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Elf",
+        "Warrior"
+      ],
+      "power": "2",
+      "toughness": "2",
+      "text": "{2}{W}, {Q}: This creature gets +0/+2 until end of turn. ({Q} is the untap symbol.)",
+      "layout": "normal",
+      "colorIdentity": [
+        "W"
+      ]
+    },
+    {
+      "uuid": "32d2a2e8-6a84-560e-bb57-356b8da657ac",
+      "name": "Merrow Wavebreakers",
+      "number": "44",
+      "rarity": "common",
+      "colors": [
+        "U"
+      ],
+      "manaValue": 5,
+      "type": "Creature — Merfolk Soldier",
+      "scryfallId": "9919382e-3dcd-4f83-8135-be71345e57c0",
+      "manaCost": "{4}{U}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Merfolk",
+        "Soldier"
+      ],
+      "power": "3",
+      "toughness": "3",
+      "text": "{1}{U}, {Q}: This creature gains flying until end of turn. ({Q} is the untap symbol.)",
+      "layout": "normal",
+      "colorIdentity": [
+        "U"
+      ]
+    },
+    {
+      "uuid": "68205de9-ca1c-5709-a25d-be8baaaef24a",
+      "name": "Merrow Grimeblotter",
+      "number": "171",
+      "rarity": "uncommon",
+      "colors": [
+        "U",
+        "B"
+      ],
+      "manaValue": 4,
+      "type": "Creature — Merfolk Wizard",
+      "scryfallId": "b839c9d0-ef08-4661-8009-3bcb256bf508",
+      "manaCost": "{3}{U/B}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Merfolk",
+        "Wizard"
+      ],
+      "power": "2",
+      "toughness": "2",
+      "text": "{1}{U/B}, {Q}: Target creature gets -2/-0 until end of turn. ({Q} is the untap symbol.)",
+      "layout": "normal",
+      "colorIdentity": [
+        "B",
+        "U"
+      ]
+    }
+  ]
+}

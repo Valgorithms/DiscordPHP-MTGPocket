@@ -3577,8 +3577,13 @@ final class TextParser
         foreach (array_map('trim', explode(',', $match[1])) as $part) {
             if ($part === '{T}') {
                 $cost['tap'] = true;
-            } elseif ($part === '{Q}' && $match[1] === '{1}{W/U}, {Q}' && $match[2] === 'Tap target creature.') {
-                // Bounded untap-symbol support for the Silkbind Faerie effect.
+            } elseif ($part === '{Q}' && in_array([$match[1], $match[2]], [
+                ['{1}{W/U}, {Q}', 'Tap target creature.'],
+                ['{2}{W}, {Q}', 'CARDNAME gets +0/+2 until end of turn.'],
+                ['{1}{U}, {Q}', 'CARDNAME gains flying until end of turn.'],
+                ['{1}{U/B}, {Q}', 'Target creature gets -2/-0 until end of turn.'],
+            ], true)) {
+                // Bounded untap-symbol support for the tested effect and cost shapes.
                 $cost['untap'] = true;
             } elseif (preg_match('/^(\{[0-9WUBRGCX\/P]+\})+$/', $part) && ! isset($cost['waterbend'])) {
                 $cost['mana'] = ($cost['mana'] ?? '').$part;
