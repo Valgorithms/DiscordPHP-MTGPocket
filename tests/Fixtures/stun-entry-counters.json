@@ -1,0 +1,75 @@
+{
+  "records": [
+    {
+      "set": "FIN",
+      "sourceSha256": "96cffae6a671efe455003dcffbfc087061e576fd8126a548385457405ed16cfa",
+      "card": {
+        "uuid": "2dfac2a6-15a3-5f36-9adc-eb005e756cf1",
+        "name": "Tonberry",
+        "number": "122",
+        "rarity": "uncommon",
+        "colors": [
+          "B"
+        ],
+        "manaValue": 1,
+        "type": "Creature — Salamander Horror",
+        "scryfallId": "1a9b8723-4383-4c14-b24d-52863af8703d",
+        "manaCost": "{B}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Salamander",
+          "Horror"
+        ],
+        "power": "2",
+        "toughness": "1",
+        "text": "This creature enters tapped with a stun counter on it. (If it would become untapped, remove a stun counter from it instead.)\nChef's Knife — During your turn, this creature has first strike and deathtouch.",
+        "keywords": [
+          "Chef's Knife"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "B"
+        ]
+      }
+    },
+    {
+      "set": "WOE",
+      "sourceSha256": "52d5f5c3e8a975b4e3c8bebc38bd56b927700ce35e1e6b31ed3306306a061562",
+      "card": {
+        "uuid": "b7cf0005-fc24-5821-8cec-e57e57519f84",
+        "name": "Sleep-Cursed Faerie",
+        "number": "66",
+        "rarity": "rare",
+        "colors": [
+          "U"
+        ],
+        "manaValue": 1,
+        "type": "Creature — Faerie Wizard",
+        "scryfallId": "31051436-68f2-457e-8293-2b10ccf7684e",
+        "manaCost": "{U}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Faerie",
+          "Wizard"
+        ],
+        "power": "3",
+        "toughness": "3",
+        "text": "Flying, ward {2}\nThis creature enters tapped with three stun counters on it. (If it would become untapped, remove a stun counter from it instead.)\n{1}{U}: Untap this creature.",
+        "keywords": [
+          "Flying",
+          "Ward"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "U"
+        ]
+      }
+    }
+  ]
+}
