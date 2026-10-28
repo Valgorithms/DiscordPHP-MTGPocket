@@ -1,0 +1,66 @@
+{
+  "records": [
+    {
+      "set": "NEM",
+      "sourceSha256": "dc5ed57181971ead9c2d207ad86fe83158a48652bec597a43af1bfc53319c482",
+      "card": {
+        "uuid": "0cd5be94-3bcf-560a-982c-c911323e0557",
+        "name": "Ancient Hydra",
+        "number": "76",
+        "rarity": "uncommon",
+        "colors": [
+          "R"
+        ],
+        "manaValue": 5,
+        "type": "Creature — Hydra",
+        "scryfallId": "5de57c84-38b9-4606-b934-0ab270496582",
+        "manaCost": "{4}{R}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Hydra"
+        ],
+        "power": "5",
+        "toughness": "1",
+        "text": "Fading 5 (This creature enters with five fade counters on it. At the beginning of your upkeep, remove a fade counter from it. If you can't, sacrifice it.)\n{1}, Remove a fade counter from this creature: It deals 1 damage to any target.",
+        "keywords": [
+          "Fading"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "R"
+        ]
+      }
+    },
+    {
+      "set": "MH2",
+      "sourceSha256": "9482b51f68923ad97449337841cc5d69831bf04d7314701782f38e27e59fe0fc",
+      "card": {
+        "uuid": "78532063-e9e5-5761-b911-cdf4a65b4f90",
+        "name": "Monoskelion",
+        "number": "229",
+        "rarity": "uncommon",
+        "colors": [],
+        "manaValue": 2,
+        "type": "Artifact Creature — Construct",
+        "scryfallId": "4736aae2-5136-4f8f-9283-baf6b542a6a8",
+        "manaCost": "{2}",
+        "types": [
+          "Artifact",
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Construct"
+        ],
+        "power": "1",
+        "toughness": "1",
+        "text": "This creature enters with a +1/+1 counter on it.\n{1}, Remove a +1/+1 counter from this creature: It deals 1 damage to any target.",
+        "layout": "normal",
+        "colorIdentity": []
+      }
+    }
+  ]
+}

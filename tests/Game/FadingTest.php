@@ -103,12 +103,11 @@ final class FadingTest extends GameTestCase
 
     public function testAdditionalAbilitiesAreNotBlanketRecognized(): void
     {
-        // Actual unresolved clauses on Tangle Wire, Rusting Golem, Parallax Wave and Ancient Hydra.
+        // Actual unresolved clauses on Tangle Wire, Rusting Golem and Parallax Wave.
         foreach ([
             "At the beginning of each player's upkeep, that player taps an untapped artifact, creature, or land they control for each fade counter on this artifact.",
             "This creature's power and toughness are each equal to the number of fade counters on it.",
             'When this enchantment leaves the battlefield, each player returns to the battlefield all cards they own exiled with it.',
-            '{1}, Remove a fade counter from this creature: It deals 1 damage to any target.',
         ] as $extra) {
             $card = new CardDefinition(self::fixture("Fading 3\n{$extra}"));
             $this->assertCount(1, $card->unsupported, $extra);

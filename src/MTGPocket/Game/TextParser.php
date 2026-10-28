@@ -3664,8 +3664,8 @@ final class TextParser
             }
             $text = $limit[1];
         }
-        if ($cost['sacrifice'] ?? false) {
-            // `Sacrifice CARDNAME: It deals 2 damage to target creature.`: "it" is the sacrificed permanent.
+        if (($cost['sacrifice'] ?? false) || (isset($cost['remove']) && array_diff(array_keys($cost), ['mana', 'tap', 'remove']) === [])) {
+            // A self-sacrifice or an unambiguous self-counter cost followed by `It deals` refers to the source.
             $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
         }
         $effects = self::effects($text);
