@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [mass untap stun slice](mass-untap-stun.md) fixes a shared effect path with paid Vitalize and To Arms! tests. The ledger has 53 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates. Recognition remains historical.
+The [Silkbind Faerie untap-cost slice](silkbind-untap-cost.md) adds one bounded paid activation path. The ledger has 54 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical.
+
+The [mass untap stun slice](mass-untap-stun.md) fixes a shared effect path with paid Vitalize and To Arms! tests. That milestone recorded 53 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates. Recognition remains historical.
 
 The [stun entry and untap slice](stun-entry-counters.md) adds paid Tonberry and Sleep-Cursed Faerie evidence. That milestone recorded 51 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical. Tonberry’s combat clause and Faerie’s Ward timing remain explicit gaps.
 

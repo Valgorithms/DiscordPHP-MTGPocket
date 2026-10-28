@@ -3577,6 +3577,9 @@ final class TextParser
         foreach (array_map('trim', explode(',', $match[1])) as $part) {
             if ($part === '{T}') {
                 $cost['tap'] = true;
+            } elseif ($part === '{Q}' && $match[1] === '{1}{W/U}, {Q}' && $match[2] === 'Tap target creature.') {
+                // Bounded untap-symbol support for the Silkbind Faerie effect.
+                $cost['untap'] = true;
             } elseif (preg_match('/^(\{[0-9WUBRGCX\/P]+\})+$/', $part) && ! isset($cost['waterbend'])) {
                 $cost['mana'] = ($cost['mana'] ?? '').$part;
             } elseif (preg_match('/^[Ww]aterbend (\{\d+\})$/', $part, $water) && ! isset($cost['mana'])) {
@@ -3667,6 +3670,9 @@ final class TextParser
         if (($cost['sacrifice'] ?? false) || (isset($cost['remove']) && array_diff(array_keys($cost), ['mana', 'tap', 'remove']) === [])) {
             // A self-sacrifice or an unambiguous self-counter cost followed by `It deals` refers to the source.
             $text = preg_replace('/^It deals /', 'CARDNAME deals ', $text);
+        }
+        if (($cost['untap'] ?? false) && array_diff(array_keys($cost), ['mana', 'untap']) !== []) {
+            return false;
         }
         $effects = self::effects($text);
         if ($effects === null || $xCost && ! preg_match('/"X"|xPump/', (string) json_encode($effects))) {
