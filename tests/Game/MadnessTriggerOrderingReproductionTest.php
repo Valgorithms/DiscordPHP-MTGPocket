@@ -348,7 +348,6 @@ final class MadnessTriggerOrderingReproductionTest extends GameTestCase
         (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $object, GameObject::EXILE);
         $object->exiledBy = 'madness';
         $before = $this->saved();
-        $this->game = Game::fromArray($before);
         foreach (['accept', 'decline'] as $option) {
             try {
                 $this->game->chooseMadness($owner, $choice['id'], $option);
@@ -358,6 +357,71 @@ final class MadnessTriggerOrderingReproductionTest extends GameTestCase
             }
         }
         $this->assertSame(GameObject::EXILE, $this->zone($compulsion));
+    }
+
+    /** @dataProvider staleSavedChoices */
+    public function testRestoreRejectsUnavailableMadnessChoiceAtomically(int $owner, string $change): void
+    {
+        [$compulsion] = $this->paidDiscard($owner);
+        $this->resolveOne();
+        $object = $this->game->objects[$compulsion];
+        if ($change === 'reentered') {
+            (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $object, GameObject::HAND);
+            (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $object, GameObject::EXILE);
+            $object->exiledBy = 'madness';
+        }
+        $live = $this->saved();
+        $bad = $live;
+        $index = array_search($compulsion, array_column($bad['objects'], 'id'), true);
+        $this->assertNotFalse($index);
+        switch ($change) {
+            case 'stale':
+                ++$bad['objects'][$index]['incarnation'];
+                break;
+            case 'missing':
+                unset($bad['objects'][$index]);
+                $bad['objects'] = array_values($bad['objects']);
+                break;
+            case 'non-exile':
+                $bad['objects'][$index]['zone'] = GameObject::HAND;
+                break;
+            case 'marker':
+                $bad['objects'][$index]['exiledBy'] = null;
+                break;
+        }
+        $payload = $bad;
+        try {
+            Game::fromArray($bad);
+            $this->fail('Unavailable Madness decision was restored: '.$change);
+        } catch (GameException) {
+            $this->assertSame($payload, $bad, 'Rejected input is not mutated.');
+            $this->assertSame($live, $this->saved(), 'No partially restored game replaces or mutates the original.');
+        }
+    }
+
+    public static function staleSavedChoices(): array
+    {
+        $cases = [];
+        foreach ([0, 1] as $owner) {
+            foreach (['stale', 'reentered', 'missing', 'non-exile', 'marker'] as $change) {
+                $cases["seat {$owner} {$change}"] = [$owner, $change];
+            }
+        }
+
+        return $cases;
+    }
+
+    /** @dataProvider owners */
+    public function testCurrentMadnessChoiceRoundTripsAndCanBeDeclined(int $owner): void
+    {
+        [$compulsion] = $this->paidDiscard($owner);
+        $this->resolveOne();
+        $pending = $this->saved();
+        $restored = Game::fromArray($pending);
+        $this->assertSame($pending, $restored->toArray());
+        $restored->chooseMadness($owner, $pending['pendingChoice']['id'], 'decline');
+        $this->assertSame(GameObject::GRAVEYARD, $restored->objects[$compulsion]->zone);
+        $this->assertSame($pending, $this->saved());
     }
 
     public function testUnknownMadnessSourceIncarnationFailsClosed(): void

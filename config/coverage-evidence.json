@@ -1844,7 +1844,7 @@
   "sourcePins": {
     "src/MTGPocket/Game/TextParser.php": "d2e29579dded97cecdbb8ae29aa4bae37cfc71065d3c10d67223b4770947a122",
     "src/MTGPocket/Game/CardDefinition.php": "6566cc10ca35d5aff5c8841c4694beae924e74f92ba99c709ef032f31a101c56",
-    "src/MTGPocket/Game/Game.php": "fa7fff8f595e05844b3815ff5e6894e9d5650bdb75d64f5c675d9ef97531e5b1",
+    "src/MTGPocket/Game/Game.php": "d9723f626d7a4435d7b1d05f2750b4cd424d4c3251f46cd231c85eaefa74bf97",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -1941,7 +1941,7 @@
     "tests/Game/GarzaRecoverLifeCostTest.php": "7478647230846d3b45cd135ca0ad297457f84accf3f4fc0d1e87afaffcd9859f",
     "tests/Fixtures/garza-assassin-recover.json": "2e7a9a0a4a53cdbb774c75a4e01ad583de243fdd731579e01e2ea09e65bda04a",
     "src/MTGPocket/Game/MadnessResolution.php": "0d52a4528e0b9b78d78c48630d9aedee44d4e2c1304c966039b48f752533a3ba",
-    "tests/Game/MadnessTriggerOrderingReproductionTest.php": "5e7257db9428925cc92a7ab71420da6f6fc59d1be80ef4cd66c9550f575d0680",
+    "tests/Game/MadnessTriggerOrderingReproductionTest.php": "0b41e4f469e3e67c7e639bb4cd75004a64c610828ea4e20e70416e2e50dc3595",
     "tests/Fixtures/madness-trigger-ordering.json": "7bb25b92eb0e697b0955055a41e622d295dd9da23238173cf92d0b1fded78a5f"
   },
   "scopedEvidence": [

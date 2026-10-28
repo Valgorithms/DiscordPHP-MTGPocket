@@ -12084,6 +12084,11 @@ final class Game
         $game->restoreWardExecutionState($data['wardExecution'] ?? null, $version);
         if (($game->pendingChoice['type'] ?? null) === 'optional_madness') {
             $game->validateMadnessChoice($game->pendingChoice);
+            $choice = $game->pendingChoice;
+            $source = $game->objects[$choice['object']];
+            if ($source->zone !== GameObject::EXILE || $source->exiledBy !== 'madness' || $source->incarnation !== $choice['incarnation']) {
+                throw new GameException('Unavailable saved Madness card incarnation.');
+            }
         }
         $game->validateDamageState();
 
