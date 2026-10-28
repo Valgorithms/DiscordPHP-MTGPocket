@@ -1,0 +1,103 @@
+{
+  "records": [
+    {
+      "set": "EMN",
+      "sourceSha256": "95f41f4eabdc4f8b822d49c53fe4185325359035c6c7a622ff500b4242794a11",
+      "card": {
+        "uuid": "9fde7c4e-1ca6-5fff-a266-3e4c8871ca09",
+        "name": "Wretched Gryff",
+        "number": "12",
+        "rarity": "common",
+        "colors": [],
+        "manaValue": 7,
+        "type": "Creature — Eldrazi Hippogriff",
+        "scryfallId": "9d65efec-018f-485c-906c-460379b4af87",
+        "manaCost": "{7}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Eldrazi",
+          "Hippogriff"
+        ],
+        "power": "3",
+        "toughness": "4",
+        "text": "Emerge {5}{U} (You may cast this spell by sacrificing a creature and paying the emerge cost reduced by that creature's mana value.)\nWhen you cast this spell, draw a card.\nFlying",
+        "keywords": [
+          "Flying",
+          "Emerge"
+        ],
+        "layout": "normal",
+        "colorIdentity": [
+          "U"
+        ]
+      }
+    },
+    {
+      "set": "DKA",
+      "sourceSha256": "31411aa01b433b933ec4cce229d3725105fd971b97a3c556a77cc472a07854d9",
+      "card": {
+        "uuid": "d7eb7756-fc8f-5e70-b86d-db6446361748",
+        "name": "Huntmaster of the Fells // Ravager of the Fells",
+        "number": "140",
+        "rarity": "mythic",
+        "colors": [
+          "R",
+          "G"
+        ],
+        "manaValue": 4,
+        "type": "Creature — Human Werewolf",
+        "scryfallId": "aae6fb12-b252-453b-bca7-1ea2a0d6c8dc",
+        "manaCost": "{2}{R}{G}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Werewolf"
+        ],
+        "power": "2",
+        "toughness": "2",
+        "text": "Whenever this creature enters or transforms into Huntmaster of the Fells, create a 2/2 green Wolf creature token and you gain 2 life.\nAt the beginning of each upkeep, if no spells were cast last turn, transform this creature.",
+        "keywords": [
+          "Transform",
+          "Trample"
+        ],
+        "layout": "transform",
+        "colorIdentity": [
+          "G",
+          "R"
+        ],
+        "back": {
+          "name": "Ravager of the Fells",
+          "colors": [
+            "R",
+            "G"
+          ],
+          "type": "Creature — Werewolf",
+          "types": [
+            "Creature"
+          ],
+          "supertypes": [],
+          "subtypes": [
+            "Werewolf"
+          ],
+          "power": "4",
+          "toughness": "4",
+          "text": "Trample\nWhenever this creature transforms into Ravager of the Fells, it deals 2 damage to target opponent or planeswalker and 2 damage to up to one target creature that player or that planeswalker's controller controls.\nAt the beginning of each upkeep, if a player cast two or more spells last turn, transform this creature.",
+          "keywords": [
+            "Transform",
+            "Trample"
+          ],
+          "colorIdentity": [
+            "G",
+            "R"
+          ],
+          "manaCost": null
+        }
+      }
+    }
+  ]
+}
