@@ -1,6 +1,6 @@
 # Functional coverage evidence ledger
 
-The [Disfigure evidence slice](disfigure-paid-coverage.md) verifies its selected cached printing through paid targeted gameplay and existing resolution behavior; the baseline already passed and no production change is claimed. The current manifest has 38 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Historical recognition is unchanged.
+The [Disfigure evidence slice](disfigure-paid-coverage.md) and [Infest/Pyroclasm evidence batch](infest-pyroclasm-paid.md) verify selected cached printings through paid stat-reduction and damage gameplay; all three baselines passed and no production change is claimed. The current manifest has 40 scoped names, two Partner-gap names, one overlap and zero whole-card certificates. Historical recognition is unchanged.
 
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 

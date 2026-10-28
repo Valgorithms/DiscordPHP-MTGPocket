@@ -11,6 +11,10 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "sweeperEvidence": {
+      "base": "1400dfa15900cb1c4f1291a618d48bd5954c525e",
+      "status": "Evidence-only; Infest initial 2 tests/30 assertions and Pyroclasm initial 2/32 passed on the existing engine. Hosted checks belong to the current published head."
+    },
     "disfigureEvidence": {
       "base": "570771053d31f16d700178d9fbc742da37e9106d",
       "status": "Evidence-only; initial 14 tests/112 assertions passed on the existing engine. Final hosted checks belong to the published head. Earlier validation and recognition records remain historical."
@@ -409,6 +413,7 @@
     }
   },
   "sourcePins": {
+    "tests/Game/InfestPyroclasmCoverageTest.php": "a78df15b9d11ca12652e305f93105f889d01cb9f38754890ed3582968dc575bc",
     "tests/Game/DisfigureCoverageTest.php": "db33d67173f684e8eb6dbabda8fe6686d5766feced96ad91aafd4a9bd750cc9f",
     "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
@@ -479,6 +484,30 @@
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
   },
   "scopedEvidence": [
+    {
+      "id": "infest-paid-stat-reduction",
+      "cards": [
+        "Infest"
+      ],
+      "tests": [
+        "tests/Game/InfestPyroclasmCoverageTest.php::testPaidInfestReducesBothSidesWithoutDamageAndExpires",
+        "tests/Game/InfestPyroclasmCoverageTest.php::testPaidCounterspellStopsEitherSweeper"
+      ],
+      "scope": "Complete cached CLU Infest UUID a4683dd0-caf1-50aa-926c-8d09b1d0bded; paid 1BB cast by either seat, both controllers affected, zero-toughness indestructible death, no damage or shield consumption, surviving stats and cleanup after JSON, paid Counterspell response. The existing engine passed the 2-case baseline; no runtime fix.",
+      "limits": "Selected cached printing and listed paths only; synthetic creatures and Counterspell are controls, not supporting-card certificates. No whole-card certificate, newest-printing scan, general continuous-layer/replacement/APNAP or live Discord claim."
+    },
+    {
+      "id": "pyroclasm-paid-creature-damage",
+      "cards": [
+        "Pyroclasm"
+      ],
+      "tests": [
+        "tests/Game/InfestPyroclasmCoverageTest.php::testPaidPyroclasmDealsDamageUsesPreventionAndRespectsIndestructible",
+        "tests/Game/InfestPyroclasmCoverageTest.php::testPaidCounterspellStopsEitherSweeper"
+      ],
+      "scope": "Complete cached DSK Pyroclasm UUID aa3cdc04-b8f4-52a6-867c-81478d8accd4; paid 1R cast by either seat, both controllers affected, lethal creature damage, prevention shield consumption, indestructible survival, marked-damage cleanup after JSON and paid Counterspell response. The existing engine passed the 2-case baseline; no runtime fix.",
+      "limits": "Selected cached printing and listed paths only; synthetic creatures and Counterspell are controls, not supporting-card certificates. No whole-card certificate, newest-printing scan, general simultaneous-damage/replacement/APNAP or live Discord claim."
+    },
     {
       "id": "disfigure-paid-target-reduction",
       "cards": [
