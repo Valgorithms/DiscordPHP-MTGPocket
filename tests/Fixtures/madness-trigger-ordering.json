@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "meaning": "Complete cached paid-reproduction inputs; no whole-card certificate. Existing automatic Tormenting Voice discard-cost selection is isolated by a single available fodder card, not endorsed as human Ward selection.",
+  "provenance": {
+    "setCode": "SOI",
+    "releaseDate": "2016-04-08",
+    "mtgjsonVersion": "5.3.0+20261022",
+    "poolSha256": "05bed92b57366a8501ebddff6c14edf4ff7bb093a97a4d4b357d330424645635"
+  },
+  "cards": [
+    {
+      "uuid": "7157fd09-d3cd-5bc5-a656-d7819f1f5022",
+      "name": "Murderous Compulsion",
+      "number": "126",
+      "rarity": "common",
+      "colors": [
+        "B"
+      ],
+      "manaValue": 2,
+      "type": "Sorcery",
+      "scryfallId": "33b94db1-ac8c-4667-81d5-408df0f30879",
+      "manaCost": "{1}{B}",
+      "types": [
+        "Sorcery"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Destroy target tapped creature.\nMadness {1}{B} (If you discard this card, discard it into exile. When you do, cast it for its madness cost or put it into your graveyard.)",
+      "keywords": [
+        "Madness"
+      ],
+      "layout": "normal",
+      "colorIdentity": [
+        "B"
+      ]
+    },
+    {
+      "uuid": "b747d38b-10e5-5663-829f-7a501037e1a4",
+      "name": "Tormenting Voice",
+      "number": "186",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 2,
+      "type": "Sorcery",
+      "scryfallId": "2f5b0a20-2422-465e-b74e-4402b34fb57b",
+      "manaCost": "{1}{R}",
+      "types": [
+        "Sorcery"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "As an additional cost to cast this spell, discard a card.\nDraw two cards.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    }
+  ]
+}
