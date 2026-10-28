@@ -100,6 +100,11 @@ final class Game
      */
     public const int STATE_VERSION = 22;
 
+    /** Private Devour experiment; 17–22 belong to independent reviewed branches. */
+    public const int DEVOUR_EXPERIMENT_VERSION = 23;
+
+    private bool $devourChoicesEnabled = false;
+
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
 
@@ -609,6 +614,15 @@ final class Game
     public function setAutoPass(int $seat, bool $on): void
     {
         $this->autoPass[$seat] = $on;
+    }
+
+    /** Private opt-in; disabling while any entry decision is pending is unsafe. */
+    public function setDevourChoices(bool $enabled): void
+    {
+        if ($enabled !== $this->devourChoicesEnabled && ($this->pendingEntries !== [] || $this->pendingChoice !== null)) {
+            throw new GameException('Cannot change Devour mode during a pending decision.');
+        }
+        $this->devourChoicesEnabled = $enabled;
     }
 
     /**
@@ -3849,65 +3863,13 @@ final class Game
 
         if (! $ability && $card->isPermanentCard()) {
             $this->putOntoBattlefield($object, $item['controller'], true, $item['faceDown'] ?? false, $item['kicked'] ?? false, (int) ($item['x'] ?? 0), (bool) ($item['disturbed'] ?? false), entryState: ['cast' => ($item['fromHand'] ?? false) ? 'hand' : 'elsewhere']);
-            // Multikicker: a counter set for each time it was kicked.
-            if (($item['kicks'] ?? 0) > 1 && $card->kickerCounters > 0) {
-                $object->addCounters('+1/+1', $card->kickerCounters * ((int) $item['kicks'] - 1));
-            }
-            $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
-            // Impending (rule 702.176): with N time counters, not a creature until the last is removed.
-            if ($object->alt === 'impending') {
-                foreach ($card->keywords as $keyword) {
-                    if (preg_match('/^impending (\d+)$/', $keyword, $m)) {
-                        $object->addCounters('time', (int) $m[1]);
-                    }
-                }
-            }
-            // Sneak: a creature enters tapped and attacking.
-            if ($object->alt === 'sneak' && $this->isCreature($object) && in_array($this->step, [Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage], true)) {
-                $object->tapped = true;
-                $this->attackers[$object->id] = true;
-                $this->log("{$object->name()} enters tapped and attacking.");
-            }
-            foreach (($item['escaped'] ?? false) ? $card->keywords : [] as $keyword) {
-                if (preg_match('/^escapes with (\d+)$/', $keyword, $m)) {
-                    $object->addCounters('+1/+1', (int) $m[1]);
-                }
-            }
-            foreach ($card->keywords as $keyword) {
-                if (preg_match('/^raid counters (\d+)$/', $keyword, $m) && $this->players[$item['controller']]->attackedTurn === $this->turn) {
-                    $object->addCounters('+1/+1', (int) $m[1]);
-                }
-                if (preg_match('/^enters counters (\d+) if (.+)$/', $keyword, $m) && $this->conditionMet($m[2], $object, $item['controller'])) {
-                    $object->addCounters('+1/+1', (int) $m[1]);
-                }
-            }
-            $object->spent = (string) ($item['spent'] ?? '');
-            if (($item['sunburst'] ?? 0) > 0) {
-                $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
-            }
-            // Compleated: two fewer loyalty counters for each Phyrexian symbol paid with 2 life.
-            if (($item['compleated'] ?? 0) > 0) {
-                $object->addCounters('loyalty', -min($object->counter('loyalty'), (int) $item['compleated']));
-            }
-            // Evoke (rule 702.74): sacrificed as it enters; its own enters abilities resolve first.
-            if ($object->alt === 'evoke') {
-                array_unshift($this->pendingTriggers, [
-                    'source' => $object->id, 'incarnation' => $object->incarnation, 'controller' => $item['controller'],
-                    'effects' => [['type' => 'sacrifice', 'self' => true]], 'kinds' => [], 'label' => "{$object->name()}'s evoke", 'text' => 'Evoke: sacrifice it.',
-                ]);
-            }
-            if ($card->aura !== null && str_starts_with($item['targets'][0] ?? '', 'p:')) {
-                $object->enchantedPlayer = (int) substr($item['targets'][0], 2);
-            } elseif ($card->aura !== null || ($item['bestowed'] ?? false)) {
-                $object->attachedTo = $this->targetObject($item['targets'][0])?->id;
-                $object->bestowed = (bool) ($item['bestowed'] ?? false);
-            }
-            $this->log("{$object->name()} enters the battlefield".match (true) {
-                $object->attachedTo !== null => ' attached to '.$this->objects[$object->attachedTo]->name(),
-                $object->enchantedPlayer !== null => ' attached to '.$this->players[$object->enchantedPlayer]->name,
-                default => '',
-            }.'.');
+            if (($this->pendingChoice['type'] ?? null) === 'devour') {
+                $this->pendingChoice['spellTail'] = $item;
+                $this->pendingChoice['continuationKind'] = 'spell';
 
+                return;
+            }
+            $this->finishPermanentSpell($item, $card);
             return;
         }
 
@@ -3951,6 +3913,72 @@ final class Game
         $this->runSteps($item, $steps, $self);
     }
 
+    /** Finish the permanent spell after its entry choices, exactly once. */
+    private function finishPermanentSpell(array $item, ?CardDefinition $card = null): void
+    {
+        $object = $this->objects[$item['object']];
+        $card ??= $object->printed();
+        // Multikicker: a counter set for each time it was kicked.
+        if (($item['kicks'] ?? 0) > 1 && $card->kickerCounters > 0) {
+            $object->addCounters('+1/+1', $card->kickerCounters * ((int) $item['kicks'] - 1));
+        }
+        $object->alt = ($item['alt'] ?? '') === '' ? null : $item['alt'];
+        // Impending (rule 702.176): with N time counters, not a creature until the last is removed.
+        if ($object->alt === 'impending') {
+            foreach ($card->keywords as $keyword) {
+                if (preg_match('/^impending (\d+)$/', $keyword, $m)) {
+                    $object->addCounters('time', (int) $m[1]);
+                }
+            }
+        }
+        // Sneak: a creature enters tapped and attacking.
+        if ($object->alt === 'sneak' && $this->isCreature($object) && in_array($this->step, [Step::DeclareBlockers, Step::FirstStrikeDamage, Step::CombatDamage], true)) {
+            $object->tapped = true;
+            $this->attackers[$object->id] = true;
+            $this->log("{$object->name()} enters tapped and attacking.");
+        }
+        foreach (($item['escaped'] ?? false) ? $card->keywords : [] as $keyword) {
+            if (preg_match('/^escapes with (\d+)$/', $keyword, $m)) {
+                $object->addCounters('+1/+1', (int) $m[1]);
+            }
+        }
+        foreach ($card->keywords as $keyword) {
+            if (preg_match('/^raid counters (\d+)$/', $keyword, $m) && $this->players[$item['controller']]->attackedTurn === $this->turn) {
+                $object->addCounters('+1/+1', (int) $m[1]);
+            }
+            if (preg_match('/^enters counters (\d+) if (.+)$/', $keyword, $m) && $this->conditionMet($m[2], $object, $item['controller'])) {
+                $object->addCounters('+1/+1', (int) $m[1]);
+            }
+        }
+        $object->spent = (string) ($item['spent'] ?? '');
+        if (($item['sunburst'] ?? 0) > 0) {
+            $object->addCounters($this->isCreature($object) ? '+1/+1' : 'charge', (int) $item['sunburst']);
+        }
+        // Compleated: two fewer loyalty counters for each Phyrexian symbol paid with 2 life.
+        if (($item['compleated'] ?? 0) > 0) {
+            $object->addCounters('loyalty', -min($object->counter('loyalty'), (int) $item['compleated']));
+        }
+        // Evoke (rule 702.74): sacrificed as it enters; its own enters abilities resolve first.
+        if ($object->alt === 'evoke') {
+            array_unshift($this->pendingTriggers, [
+                'source' => $object->id, 'incarnation' => $object->incarnation, 'controller' => $item['controller'],
+                'effects' => [['type' => 'sacrifice', 'self' => true]], 'kinds' => [], 'label' => "{$object->name()}'s evoke", 'text' => 'Evoke: sacrifice it.',
+            ]);
+        }
+        if ($card->aura !== null && str_starts_with($item['targets'][0] ?? '', 'p:')) {
+            $object->enchantedPlayer = (int) substr($item['targets'][0], 2);
+        } elseif ($card->aura !== null || ($item['bestowed'] ?? false)) {
+            $object->attachedTo = $this->targetObject($item['targets'][0])?->id;
+            $object->bestowed = (bool) ($item['bestowed'] ?? false);
+        }
+        $this->log("{$object->name()} enters the battlefield".match (true) {
+            $object->attachedTo !== null => ' attached to '.$this->objects[$object->attachedTo]->name(),
+            $object->enchantedPlayer !== null => ' attached to '.$this->players[$object->enchantedPlayer]->name,
+            default => '',
+        }.'.');
+
+    }
+
     /**
      * Does a resolving spell's or ability's effects in order. One that needs
      * a player's choice (scry, surveil) waits for it with the rest, which
@@ -3967,6 +3995,9 @@ final class Game
         if ($this->pendingChoice !== null) {
             $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
             $this->sealDamageChoice();
+            if (($this->pendingChoice['type'] ?? null) === 'devour') {
+                $this->pendingChoice['continuationKind'] = 'effect';
+            }
 
             return;
         }
@@ -4061,6 +4092,9 @@ final class Game
                     $this->validateMadnessChoice($this->pendingChoice);
                 }
                 $this->sealDamageChoice();
+                if (($this->pendingChoice['type'] ?? null) === 'devour') {
+                    $this->pendingChoice['continuationKind'] = 'effect';
+                }
 
                 return;
             }
@@ -5405,8 +5439,14 @@ final class Game
 
             case 'reanimate':
                 if ($affected !== null && $affected->zone === GameObject::GRAVEYARD) {
-                    $this->putOntoBattlefield($affected, $controller, tapped: $effect['tapped'] ?? false, entryState: $this->endStepState($effect, $source, $controller, $sourceIncarnation));
-                    $this->log("{$affected->name()} returns to the battlefield.");
+                    $state = $this->endStepState($effect, $source, $controller, $sourceIncarnation);
+                    if ($this->devourChoicesEnabled) {
+                        $state['devourReturnLog'] = true;
+                    }
+                    $this->putOntoBattlefield($affected, $controller, tapped: $effect['tapped'] ?? false, entryState: $state);
+                    if (! $this->devourChoicesEnabled || $affected->zone === GameObject::BATTLEFIELD) {
+                        $this->log("{$affected->name()} returns to the battlefield.");
+                    }
                     $this->followed = [(string) $target => "o:{$affected->id}:{$affected->incarnation}"];
                 }
                 break;
@@ -9640,7 +9680,9 @@ final class Game
         // entries in this batch wait too; no entry triggers fire prematurely.
         $card = $object->printed();
         if ($payLife === null && $this->stage === self::PLAYING &&
-            (($this->pendingChoice['type'] ?? null) === 'entry_life' || (! $faceDown && $card->isLand() && isset($card->entersTappedUnless['life'])))) {
+            (in_array($this->pendingChoice['type'] ?? null, ['entry_life', 'devour'], true)
+                || (! $faceDown && $card->isLand() && isset($card->entersTappedUnless['life']))
+                || ($this->devourChoicesEnabled && ! $faceDown && $this->keywordAmount($object, 'devour') > 0))) {
             $this->pendingEntries[] = [
                 'object' => $object->id, 'incarnation' => $object->incarnation, 'zone' => $object->zone,
                 'controller' => $controller, 'triggers' => $triggers, 'faceDown' => $faceDown,
@@ -9712,7 +9754,7 @@ final class Game
             $object->addCounters($kind, $n === 'X' ? $x : (int) $n);
         }
         // Devour (rule 702.82): the game feeds it your creature tokens.
-        if (($n = $this->keywordAmount($object, 'devour')) > 0) {
+        if (! $this->devourChoicesEnabled && ($n = $this->keywordAmount($object, 'devour')) > 0) {
             $eaten = array_filter($this->permanents($controller), fn (GameObject $o) => $o->id !== $object->id && $o->definition()->isToken() && $this->isCreature($o));
             foreach ($eaten as $token) {
                 $this->moveTo($token, GameObject::GRAVEYARD);
@@ -9833,6 +9875,10 @@ final class Game
             $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
             throw new GameException('That entry choice is no longer available to you.');
         }
+        if ($this->devourChoicesEnabled) {
+            $this->validateDevourEntryQueue();
+        }
+        $this->validateQueuedDevourParent();
         $entry = $this->pendingEntries[0];
         $object = $this->objects[$entry['object']];
         if ($object->zone !== $entry['zone'] || $object->incarnation !== $entry['incarnation'] ||
@@ -9844,11 +9890,298 @@ final class Game
         array_shift($this->pendingEntries);
         $this->finishEntry($entry, $option === 'pay');
         $this->advanceEntries();
-        if (isset($choice['resume'])) {
+        $this->continueEntries($choice);
+    }
+
+    /** Answer one Devour entry decision after validating the entire selected group. */
+    public function chooseDevour(int $seat, int $choiceId, array $cards): void
+    {
+        $choice = $this->pendingChoice;
+        $entry = $this->pendingEntries[0] ?? null;
+        if (! $this->devourChoicesEnabled || $this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'devour'
+            || ($choice['seat'] ?? null) !== $seat || ($choice['id'] ?? null) !== $choiceId || ! is_array($entry)
+            || ! array_is_list($cards) || count(array_unique($cards, SORT_REGULAR)) !== count($cards)) {
+            throw new GameException('That Devour selection is no longer available.');
+        }
+        $this->validateDevourEntryQueue();
+        $this->validateDevourChoice();
+        $entrant = $this->objects[$entry['object']] ?? null;
+        if ($entrant === null || $entrant->zone !== $entry['zone'] || $entrant->incarnation !== $entry['incarnation']
+            || $choice['object'] !== $entry['object'] || $choice['incarnation'] !== $entry['incarnation'] || $entry['controller'] !== $seat) {
+            throw new GameException('That Devour entrant is no longer available.');
+        }
+        $victims = [];
+        foreach ($cards as $id) {
+            $object = is_int($id) ? ($this->objects[$id] ?? null) : null;
+            if ($object === null || ! in_array($id, $choice['cards'], true) || $object->zone !== GameObject::BATTLEFIELD
+                || $object->controller !== $seat || $object->incarnation !== ($choice['incarnations'][$id] ?? null) || ! $this->isCreature($object)) {
+                throw new GameException('That Devour creature is no longer available.');
+            }
+            $victims[] = $object;
+        }
+        $count = count($victims);
+        $number = $choice['number'];
+        $existing = $entry['entryState']['counters']['+1/+1'] ?? 0;
+        if (($count > 0 && $number > intdiv(2147483647, $count))
+            || $existing > 2147483647 - $count * $number) {
+            throw new GameException('Devour counters exceed the supported bound.');
+        }
+        foreach (array_slice($this->pendingEntries, 1) as $later) {
+            if (in_array($later['object'], $cards, true)) {
+                throw new GameException('A queued entrant cannot be selected for Devour.');
+            }
+        }
+        $this->followed = $choice['resume']['followed'] ?? $this->followed;
+        $this->pendingChoice = null;
+        array_shift($this->pendingEntries);
+        $this->withDeathObservers($victims, function (GameObject $victim): void {
+            $this->log("{$this->players[$victim->controller]->name} sacrifices {$victim->name()}.");
+            $this->sacrifice($victim);
+        });
+        $added = count($victims) * $choice['number'];
+        $entry['entryState']['counters']['+1/+1'] = ($entry['entryState']['counters']['+1/+1'] ?? 0) + $added;
+        $this->finishEntry($entry, false);
+        $this->advanceEntries();
+        $this->continueEntries($choice);
+    }
+
+    /** Carry the original outer resolution across every queued entry decision. */
+    private function continueEntries(array $choice): void
+    {
+        if ($this->pendingChoice !== null) {
+            foreach (['resume', 'spellTail'] as $key) {
+                if (isset($choice[$key])) {
+                    $this->pendingChoice[$key] = $choice[$key];
+                }
+            }
+            if (isset($this->pendingChoice['resume'])) {
+                $this->pendingChoice['resume']['followed'] = $this->followed;
+            }
+            if (($this->pendingChoice['type'] ?? null) === 'devour') {
+                $this->pendingChoice['continuationKind'] = isset($choice['spellTail']) ? 'spell' : (isset($choice['resume']) ? 'effect' : 'none');
+            } elseif (isset($choice['spellTail']) || isset($choice['resume'])) {
+                $kind = isset($choice['spellTail']) ? 'spell' : 'effect';
+                if (($choice['type'] ?? null) === 'devour' || isset($choice['devourParentKind'])) {
+                    $this->pendingChoice['devourParentKind'] = $kind;
+                    $this->pendingEntries[0]['devourParentKind'] = $kind;
+                }
+            }
+
+            return;
+        }
+        if (isset($choice['spellTail'])) {
+            $this->finishPermanentSpell($choice['spellTail']);
+        } elseif (isset($choice['resume'])) {
             $resume = $choice['resume'];
             $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
         }
         $this->settle();
+    }
+
+    /** Validate every queued entry and each field its later entry path consumes. */
+    private function validateDevourEntryQueue(): void
+    {
+        if (! array_is_list($this->pendingEntries)) {
+            throw new GameException('Invalid saved Devour entry queue.');
+        }
+        $seen = [];
+        foreach ($this->pendingEntries as $entry) {
+            if (! is_array($entry) || array_diff(array_keys($entry), ['object', 'incarnation', 'zone', 'controller', 'triggers', 'faceDown', 'kicked', 'x', 'transformed', 'tapped', 'entryState', 'devourParentKind']) !== []
+                || ! is_int($entry['object'] ?? null) || ! isset($this->objects[$entry['object']]) || isset($seen[$entry['object']])
+                || ! is_int($entry['incarnation'] ?? null) || $entry['incarnation'] < 0 || ! is_string($entry['zone'] ?? null)
+                || ! is_int($entry['controller'] ?? null) || ! isset($this->players[$entry['controller']])
+                || ! is_bool($entry['triggers'] ?? null) || ! is_bool($entry['faceDown'] ?? null) || ! is_bool($entry['kicked'] ?? null)
+                || ! is_int($entry['x'] ?? null) || $entry['x'] < 0 || $entry['x'] > 2147483647
+                || ! is_bool($entry['transformed'] ?? null) || ! is_bool($entry['tapped'] ?? null) || ! is_array($entry['entryState'] ?? null)
+                || (array_key_exists('devourParentKind', $entry) && ! in_array($entry['devourParentKind'], ['spell', 'effect'], true))) {
+                throw new GameException('Invalid saved Devour entry.');
+            }
+            $object = $this->objects[$entry['object']];
+            if ($object->zone !== $entry['zone'] || $object->incarnation !== $entry['incarnation']) {
+                throw new GameException('A queued Devour entrant is no longer available.');
+            }
+            $seen[$entry['object']] = true;
+            $state = $entry['entryState'];
+            if (array_diff(array_keys($state), ['alt', 'endExileContext', 'cast', 'unearthed', 'haste', 'counters', 'attacking', 'devourReturnLog']) !== []) {
+                throw new GameException('Invalid saved Devour entry state.');
+            }
+            foreach (['alt', 'cast'] as $key) {
+                if (array_key_exists($key, $state) && ! is_string($state[$key])) {
+                    throw new GameException('Invalid saved Devour entry text.');
+                }
+            }
+            foreach (['unearthed', 'haste', 'attacking', 'devourReturnLog'] as $key) {
+                if (array_key_exists($key, $state) && ! is_bool($state[$key])) {
+                    throw new GameException('Invalid saved Devour entry flag.');
+                }
+            }
+            if (array_key_exists('counters', $state)) {
+                if (! is_array($state['counters'])) {
+                    throw new GameException('Invalid saved Devour entry counters.');
+                }
+                foreach ($state['counters'] as $kind => $amount) {
+                    if (! is_string($kind) || $kind === '' || ! is_int($amount) || $amount < 0 || $amount > 2147483647) {
+                        throw new GameException('Invalid saved Devour entry counter.');
+                    }
+                }
+            }
+            if (array_key_exists('endExileContext', $state)) {
+                $context = $state['endExileContext'];
+                if (! is_array($context) || array_keys($context) !== ['source', 'incarnation', 'controller'] || ($state['alt'] ?? null) !== 'end_exile'
+                    || ! is_int($context['source'] ?? null) || ! isset($this->objects[$context['source']])
+                    || ! is_int($context['incarnation'] ?? null) || $context['incarnation'] < 0 || $context['incarnation'] > $this->objects[$context['source']]->incarnation
+                    || ! is_int($context['controller'] ?? null) || ! isset($this->players[$context['controller']])) {
+                    throw new GameException('Invalid saved Devour entry exile context.');
+                }
+            }
+        }
+    }
+
+    /** Validate the entire saved decision before exposing or answering it. */
+    private function validateDevourChoice(): void
+    {
+        $choice = $this->pendingChoice;
+        $entry = $this->pendingEntries[0] ?? null;
+        if (! $this->devourChoicesEnabled || $this->stage !== self::PLAYING || ! is_array($choice) || ($choice['type'] ?? null) !== 'devour'
+            || ! is_array($entry) || ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $choice['id'] >= $this->nextChoiceId
+            || ! is_int($choice['seat'] ?? null) || ! isset($this->players[$choice['seat']]) || ($entry['controller'] ?? null) !== $choice['seat']
+            || ! is_int($entry['object'] ?? null) || ! isset($this->objects[$entry['object']]) || ($choice['object'] ?? null) !== $entry['object']
+            || ! is_int($entry['incarnation'] ?? null) || ($choice['incarnation'] ?? null) !== $entry['incarnation']
+            || ! is_string($entry['zone'] ?? null) || ! is_bool($entry['faceDown'] ?? null) || $entry['faceDown']
+            || ! is_bool($entry['triggers'] ?? null) || ! is_bool($entry['kicked'] ?? null) || ! is_int($entry['x'] ?? null)
+            || ! is_bool($entry['transformed'] ?? null) || ! is_bool($entry['tapped'] ?? null) || ! is_array($entry['entryState'] ?? null)
+            || array_diff(array_keys($entry), ['object', 'incarnation', 'zone', 'controller', 'triggers', 'faceDown', 'kicked', 'x', 'transformed', 'tapped', 'entryState', 'devourParentKind']) !== []
+            || ! is_array($choice['cards'] ?? null) || ! array_is_list($choice['cards']) || $choice['cards'] === []
+            || count(array_unique($choice['cards'], SORT_REGULAR)) !== count($choice['cards']) || ! is_array($choice['incarnations'] ?? null)
+            || count($choice['incarnations']) !== count($choice['cards']) || (isset($choice['resume']) && isset($choice['spellTail']))
+            || ! in_array($choice['continuationKind'] ?? null, ['none', 'spell', 'effect'], true)
+            || (($choice['continuationKind'] === 'spell') !== isset($choice['spellTail']))
+            || (($choice['continuationKind'] === 'effect') !== isset($choice['resume']))
+            || ($entry['zone'] === GameObject::STACK && $choice['continuationKind'] !== 'spell')) {
+            throw new GameException('Invalid saved Devour choice.');
+        }
+        $entrant = $this->objects[$entry['object']];
+        if ($entrant->zone !== $entry['zone'] || $entrant->incarnation !== $entry['incarnation']
+            || ! is_int($choice['number'] ?? null) || $choice['number'] < 1 || $choice['number'] !== $this->keywordAmount($entrant, 'devour')) {
+            throw new GameException('Invalid saved Devour entrant.');
+        }
+        $allowed = ['type', 'id', 'seat', 'object', 'incarnation', 'number', 'continuationKind', 'cards', 'incarnations', 'spellTail', 'resume'];
+        if (array_diff(array_keys($choice), $allowed) !== []) {
+            throw new GameException('Invalid saved Devour choice fields.');
+        }
+        foreach ($choice['cards'] as $id) {
+            $object = is_int($id) ? ($this->objects[$id] ?? null) : null;
+            if ($object === null || $object->zone !== GameObject::BATTLEFIELD || $object->controller !== $choice['seat'] || ! $this->isCreature($object)
+                || ! is_int($choice['incarnations'][$id] ?? null) || $object->incarnation !== $choice['incarnations'][$id] || $id === $entry['object']) {
+                throw new GameException('Invalid saved Devour creature identity.');
+            }
+        }
+        $available = array_values(array_map(
+            fn (GameObject $candidate) => $candidate->id,
+            array_filter($this->permanents($choice['seat']), fn (GameObject $candidate) => $candidate->id !== $entry['object'] && $this->isCreature($candidate))
+        ));
+        if ($available !== $choice['cards']) {
+            throw new GameException('Invalid saved Devour creature set.');
+        }
+        $tail = $choice['spellTail'] ?? null;
+        $tailKeys = ['id', 'object', 'incarnation', 'controller', 'x', 'targets', 'modes', 'kicked', 'kicks', 'flashback', 'faceDown', 'fromHand',
+            'bestowed', 'alt', 'sunburst', 'spent', 'spliced', 'compleated', 'escaped', 'disturbed', 'buyback'];
+        if ($tail !== null && (! is_array($tail) || self::isAbility($tail) || ($tail['object'] ?? null) !== $entry['object']
+            || ($tail['incarnation'] ?? null) !== $entry['incarnation'] || ($tail['controller'] ?? null) !== $choice['seat']
+            || $entry['zone'] !== GameObject::STACK || ! is_int($tail['id'] ?? null) || $tail['id'] < 1 || $tail['id'] >= $this->nextStackId
+            || in_array($tail['id'], array_column($this->stack, 'id'), true) || ! is_int($tail['x'] ?? null) || ! is_array($tail['targets'] ?? null)
+            || ! array_is_list($tail['targets']) || array_diff(array_keys($tail), $tailKeys) !== [])) {
+            throw new GameException('Invalid saved Devour permanent-spell continuation.');
+        }
+        foreach (['kicks', 'sunburst', 'compleated'] as $key) {
+            if ($tail !== null && isset($tail[$key]) && (! is_int($tail[$key]) || $tail[$key] < 0)) {
+                throw new GameException('Invalid saved Devour spell amount.');
+            }
+        }
+        foreach (['kicked', 'flashback', 'faceDown', 'fromHand', 'bestowed', 'escaped', 'disturbed', 'buyback'] as $key) {
+            if ($tail !== null && isset($tail[$key]) && ! is_bool($tail[$key])) {
+                throw new GameException('Invalid saved Devour spell flag.');
+            }
+        }
+        foreach (['alt', 'spent'] as $key) {
+            if ($tail !== null && isset($tail[$key]) && ! is_string($tail[$key])) {
+                throw new GameException('Invalid saved Devour spell text.');
+            }
+        }
+        foreach ($tail['targets'] ?? [] as $target) {
+            if (! is_string($target)) {
+                throw new GameException('Invalid saved Devour spell target.');
+            }
+        }
+        $resume = $choice['resume'] ?? null;
+        if ($resume !== null && (! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null)
+            || ! array_is_list($resume['steps']) || ! array_key_exists('self', $resume) || ! is_array($resume['followed'] ?? null)
+            || array_keys($resume) !== ['item', 'steps', 'self', 'followed']
+            || ! is_int($resume['item']['object'] ?? null) || ! isset($this->objects[$resume['item']['object']])
+            || ! is_int($resume['item']['incarnation'] ?? null) || ! is_int($resume['item']['controller'] ?? null)
+            || ! isset($this->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null))) {
+            throw new GameException('Invalid saved Devour effect continuation.');
+        }
+        foreach ($resume['steps'] ?? [] as $step) {
+            if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0])
+                || ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                throw new GameException('Invalid saved Devour effect step.');
+            }
+        }
+        if ($resume !== null && $resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self'])
+            || count($resume['self']) !== 2 || ! is_int($resume['self'][0]) || ! isset($this->objects[$resume['self'][0]]) || ! is_int($resume['self'][1]))) {
+            throw new GameException('Invalid saved Devour effect source.');
+        }
+        foreach ($resume['followed'] ?? [] as $from => $to) {
+            if (! is_string($from) || ! is_string($to)) {
+                throw new GameException('Invalid saved Devour followed target.');
+            }
+        }
+    }
+
+    /** Validate an outer Devour continuation carried by a later land-entry choice. */
+    private function validateQueuedDevourParent(): void
+    {
+        $choice = $this->pendingChoice ?? [];
+        $entry = $this->pendingEntries[0] ?? [];
+        if (! is_array($entry)) {
+            throw new GameException('Invalid saved queued Devour entry.');
+        }
+        $kind = $choice['devourParentKind'] ?? null;
+        $entryKind = $entry['devourParentKind'] ?? null;
+        if (! array_key_exists('devourParentKind', $choice) && ! array_key_exists('devourParentKind', $entry) && ! array_key_exists('spellTail', $choice)) {
+            return;
+        }
+        if (! $this->devourChoicesEnabled || ($choice['type'] ?? null) !== 'entry_life' || ! in_array($kind, ['spell', 'effect'], true)
+            || $kind !== $entryKind || (($kind === 'spell') !== isset($choice['spellTail'])) || (($kind === 'effect') !== isset($choice['resume']))) {
+            throw new GameException('Invalid saved queued Devour continuation.');
+        }
+        if ($kind === 'spell') {
+            $tail = $choice['spellTail'];
+            $parent = is_array($tail) && is_int($tail['object'] ?? null) ? ($this->objects[$tail['object']] ?? null) : null;
+            if ($parent === null || $parent->zone !== GameObject::BATTLEFIELD || ! is_int($tail['incarnation'] ?? null)
+                || $parent->incarnation !== $tail['incarnation'] + 1 || self::isAbility($tail) || ! is_int($tail['controller'] ?? null)
+                || ! isset($this->players[$tail['controller']]) || ! is_int($tail['id'] ?? null) || $tail['id'] < 1
+                || $tail['id'] >= $this->nextStackId || in_array($tail['id'], array_column($this->stack, 'id'), true)
+                || ! is_int($tail['x'] ?? null) || ! is_array($tail['targets'] ?? null)) {
+                throw new GameException('Invalid saved queued Devour spell tail.');
+            }
+        } else {
+            $resume = $choice['resume'];
+            if (! is_array($resume) || array_keys($resume) !== ['item', 'steps', 'self', 'followed'] || ! is_array($resume['item'])
+                || ! is_int($resume['item']['object'] ?? null) || ! isset($this->objects[$resume['item']['object']])
+                || ! is_int($resume['item']['incarnation'] ?? null) || ! is_int($resume['item']['controller'] ?? null)
+                || ! isset($this->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null)
+                || ! is_array($resume['steps']) || ! array_is_list($resume['steps']) || ! is_array($resume['followed'])) {
+                throw new GameException('Invalid saved queued Devour effect tail.');
+            }
+            foreach ($resume['steps'] as $step) {
+                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0])
+                    || ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                    throw new GameException('Invalid saved queued Devour effect step.');
+                }
+            }
+        }
     }
 
     /**
@@ -10129,6 +10462,22 @@ final class Game
         while ($this->pendingEntries !== []) {
             $entry = $this->pendingEntries[0];
             $object = $this->objects[$entry['object']];
+            $devour = $entry['faceDown'] || ! $this->devourChoicesEnabled ? 0 : $this->keywordAmount($object, 'devour');
+            if ($devour > 0) {
+                $creatures = array_values(array_filter($this->permanents($entry['controller']), fn (GameObject $candidate) => $candidate->id !== $object->id && $this->isCreature($candidate)));
+                if ($creatures !== []) {
+                    $this->pendingChoice = ['type' => 'devour', 'id' => $this->nextChoiceId++, 'seat' => $entry['controller'],
+                        'object' => $object->id, 'incarnation' => $entry['incarnation'], 'number' => $devour, 'continuationKind' => 'none',
+                        'cards' => array_map(fn (GameObject $candidate) => $candidate->id, $creatures),
+                        'incarnations' => array_column(array_map(fn (GameObject $candidate) => ['id' => $candidate->id, 'incarnation' => $candidate->incarnation], $creatures), 'incarnation', 'id')];
+
+                    return;
+                }
+                array_shift($this->pendingEntries);
+                $this->finishEntry($entry, false);
+
+                continue;
+            }
             $life = $entry['faceDown'] ? null : ($object->printed()->entersTappedUnless['life'] ?? null);
             if ($life !== null && $object->printed()->isLand()) {
                 $this->pendingChoice = [
@@ -10161,6 +10510,9 @@ final class Game
             $payLife,
             $entry['entryState'] ?? []
         );
+        if (($entry['entryState']['devourReturnLog'] ?? false) === true) {
+            $this->log("{$this->objects[$entry['object']]->name()} returns to the battlefield.");
+        }
         foreach ($this->followed as $target => $replacement) {
             if ($replacement === $before) {
                 $object = $this->objects[$entry['object']];
@@ -11667,7 +12019,8 @@ final class Game
     public function toArray(): array
     {
         return [
-            'schemaVersion' => self::STATE_VERSION,
+            'schemaVersion' => $this->devourChoicesEnabled ? self::DEVOUR_EXPERIMENT_VERSION : self::STATE_VERSION,
+        ] + ($this->devourChoicesEnabled ? ['devourChoiceMode' => 2] : []) + [
             'wardExecution' => $this->wardExecutionState(),
             'damageEffects' => $this->damageEffects,
             'nextDamageEffectId' => $this->nextDamageEffectId,
@@ -11731,14 +12084,33 @@ final class Game
     public static function fromArray(array $data): self
     {
         $version = $data['schemaVersion'] ?? 1;
-        if (! is_int($version) || $version < 1 || $version > self::STATE_VERSION) {
+        if (! is_int($version) || $version < 1 || ($version > self::STATE_VERSION && $version !== self::DEVOUR_EXPERIMENT_VERSION)) {
             throw new GameException('Unsupported saved game schema version.');
         }
         if ($version < 22 && (($data['pendingChoice']['type'] ?? null) === 'optional_madness'
             || ($data['pendingDamage']['after']['kind'] ?? null) === 'madness_cast')) {
             throw new GameException('Madness continuations require saved game schema 22.');
         }
+        if (($version === self::DEVOUR_EXPERIMENT_VERSION && ($data['devourChoiceMode'] ?? null) !== 2)
+            || ($version !== self::DEVOUR_EXPERIMENT_VERSION && (array_key_exists('devourChoiceMode', $data)
+                || ($data['pendingChoice']['type'] ?? null) === 'devour' || array_key_exists('spellTail', (array) ($data['pendingChoice'] ?? []))
+                || array_key_exists('devourParentKind', (array) ($data['pendingChoice'] ?? []))
+                || array_key_exists('continuationKind', (array) ($data['pendingChoice'] ?? []))))) {
+            throw new GameException('Invalid saved Devour experiment state.');
+        }
+        if ($version === self::DEVOUR_EXPERIMENT_VERSION && (! is_array($data['pendingEntries'] ?? null) || ! array_is_list($data['pendingEntries']))) {
+            throw new GameException('Invalid saved Devour entry queue.');
+        }
+        if ($version !== self::DEVOUR_EXPERIMENT_VERSION) {
+            foreach ((array) ($data['pendingEntries'] ?? []) as $entry) {
+                if (is_array($entry) && (array_key_exists('devourParentKind', $entry)
+                    || array_key_exists('devourReturnLog', (array) ($entry['entryState'] ?? [])))) {
+                    throw new GameException('Invalid saved Devour experiment entry.');
+                }
+            }
+        }
         $game = new self((string) $data['id'], (string) $data['seed']);
+        $game->devourChoicesEnabled = $version === self::DEVOUR_EXPERIMENT_VERSION;
         $game->stage = (string) $data['stage'];
         $game->turn = (int) $data['turn'];
         $game->startingPlayer = (int) $data['startingPlayer'];
@@ -12091,6 +12463,22 @@ final class Game
             }
         }
         $game->validateDamageState();
+        if ($game->devourChoicesEnabled) {
+            $game->validateDevourEntryQueue();
+        }
+        if (($game->pendingChoice['type'] ?? null) === 'devour') {
+            $game->validateDevourChoice();
+        } elseif (($game->pendingChoice['type'] ?? null) === 'entry_life') {
+            $game->validateQueuedDevourParent();
+        }
+        if ($game->devourChoicesEnabled && $game->pendingEntries !== []) {
+            $entry = $game->pendingEntries[0];
+            $object = $game->objects[$entry['object'] ?? -1] ?? null;
+            if (! in_array($game->pendingChoice['type'] ?? null, ['entry_life', 'devour'], true) || $object === null
+                || (($game->pendingChoice['type'] ?? null) === 'entry_life' && ! $object->printed()->isLand())) {
+                throw new GameException('Invalid saved Devour entry queue.');
+            }
+        }
 
         return $game;
     }

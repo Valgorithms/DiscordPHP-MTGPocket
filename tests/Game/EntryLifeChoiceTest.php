@@ -384,7 +384,7 @@ final class EntryLifeChoiceTest extends GameTestCase
         $this->assertSame(Game::STATE_VERSION, $saved['schemaVersion']);
         $this->assertSame([], $saved['pendingEntries']);
         $this->assertSame(1, $saved['nextChoiceId']);
-        $data['schemaVersion'] = Game::STATE_VERSION + 1;
+        $data['schemaVersion'] = Game::DEVOUR_EXPERIMENT_VERSION + 1;
         $this->expectException(GameException::class);
         $this->expectExceptionMessage('Unsupported saved game schema');
         Game::fromArray($data);

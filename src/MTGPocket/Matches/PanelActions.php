@@ -93,6 +93,12 @@ final class PanelActions
                 $game->chooseSacrifice($seat, $choiceId, ($picks['id'] ?? null) === $choiceId ? $picks['selected'] : []);
             }),
             'sacpick', 'sacpage', 'sacreset' => $this->sacrificePanel($matchId, $playerId, $action, (int) ($args[0] ?? 0), (int) ($args[1] ?? 0), $ints),
+            'devgo' => $act(function (Game $game, int $seat, MatchRecord $match) use ($playerId, $args): void {
+                $choiceId = (int) ($args[0] ?? 0);
+                $picks = $match->choice($playerId)['devour'] ?? [];
+                $game->chooseDevour($seat, $choiceId, ($picks['id'] ?? null) === $choiceId ? $picks['selected'] : []);
+            }),
+            'devpick', 'devpage', 'devreset' => $this->sacrificePanel($matchId, $playerId, $action, (int) ($args[0] ?? 0), (int) ($args[1] ?? 0), $ints),
             'mode' => $act(fn (Game $game, int $seat) => $game->chooseMode($seat, (int) ($values[0] ?? 0))),
             'pass' => $act(fn (Game $game, int $seat) => $game->pass($seat)),
             'auto' => [$this->matches->act($matchId, $playerId, fn (Game $game, int $seat) => $game->setAutoPass($seat, ! ($game->autoPass[$seat] ?? true))), false],
@@ -138,28 +144,30 @@ final class PanelActions
     {
         return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($playerId, $action, $choiceId, $page, $ids): void {
             $choice = $game->choiceAwaiting();
-            if ($game->decision($seat) !== 'sacrifice' || ($choice['id'] ?? null) !== $choiceId) {
+            $devour = str_starts_with($action, 'dev');
+            $kind = $devour ? 'devour' : 'sacrifice';
+            if ($game->decision($seat) !== $kind || ($choice['id'] ?? null) !== $choiceId) {
                 throw new GameException('That sacrifice choice is no longer available to you.');
             }
             if ($page < 0 || $page > intdiv(count($choice['cards']) - 1, 25)) {
                 throw new GameException('That sacrifice page is unavailable.');
             }
-            $picks = $match->choice($playerId)['sacrifice'] ?? [];
+            $picks = $match->choice($playerId)[$kind] ?? [];
             $selected = ($picks['id'] ?? null) === $choiceId ? $picks['selected'] : [];
-            if ($action === 'sacpick') {
+            if (in_array($action, ['sacpick', 'devpick'], true)) {
                 $visible = array_slice($choice['cards'], $page * 25, 25);
                 if (count(array_unique($ids)) !== count($ids) || array_diff($ids, $visible) !== []) {
                     throw new GameException('Choose only creatures on this sacrifice page.');
                 }
                 $selected = array_values(array_merge(array_diff($selected, $visible), $ids));
-                if (count($selected) > $choice['count']) {
+                if (! $devour && count($selected) > $choice['count']) {
                     throw new GameException("Choose exactly {$choice['count']} creatures in total.");
                 }
-            } elseif ($action === 'sacreset') {
+            } elseif (in_array($action, ['sacreset', 'devreset'], true)) {
                 $selected = [];
                 $page = 0;
             }
-            $match->choices[$playerId]['sacrifice'] = ['id' => $choiceId, 'page' => $page, 'selected' => $selected];
+            $match->choices[$playerId][$kind] = ['id' => $choiceId, 'page' => $page, 'selected' => $selected];
         }), false];
     }
 

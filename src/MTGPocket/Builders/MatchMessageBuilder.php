@@ -374,6 +374,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'optional_life_gain' => 'choose whether to gain 5 life',
                 'optional_life_loss' => 'choose whether the targeted opponent loses 1 life',
                 'sacrifice' => 'choose creatures to sacrifice',
+                'devour' => 'choose creatures to devour, or choose none',
                 'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
@@ -549,6 +550,9 @@ class MatchMessageBuilder extends PocketMessageBuilder
         if ($decision === 'sacrifice' && ($choice['sacrifice']['id'] ?? null) !== $game->choiceAwaiting()['id']) {
             $choice['sacrifice'] = ['id' => $game->choiceAwaiting()['id'], 'page' => 0, 'selected' => []];
         }
+        if ($decision === 'devour' && ($choice['devour']['id'] ?? null) !== $game->choiceAwaiting()['id']) {
+            $choice['devour'] = ['id' => $game->choiceAwaiting()['id'], 'page' => 0, 'selected' => []];
+        }
         $playable = $decision === 'priority' ? $game->playableCards($seat) : [];
 
         $container = Container::new()->setAccentColor(CardMessageBuilder::ACCENTS['colorless']);
@@ -675,6 +679,32 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 if ($look['may'] || $look['take'] === 0) {
                     $message->addComponent(ActionRow::new()->addComponent(Button::new(Button::STYLE_SECONDARY, $id('takenone'))->setLabel($look['take'] === 0 ? 'Continue' : 'Take none')));
                 }
+                break;
+
+            case 'devour':
+                $devour = $game->choiceAwaiting();
+                $picks = $choice['devour'];
+                $page = $picks['page'];
+                $pages = (int) ceil(count($devour['cards']) / 25);
+                $visible = array_slice($devour['cards'], $page * 25, 25);
+                $message->addComponent(self::cardSelect(
+                    $id('devpick', (string) $devour['id'], (string) $page),
+                    'Choose creatures to devour (page '.($page + 1)."/{$pages})",
+                    $visible,
+                    fn (int $object) => $cardOption($object)->setDefault(in_array($object, $picks['selected'], true)),
+                    0,
+                    count($visible)
+                ));
+                $row = ActionRow::new();
+                if ($page > 0) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('devpage', (string) $devour['id'], (string) ($page - 1)))->setLabel('Previous page'));
+                }
+                if ($page + 1 < $pages) {
+                    $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('devpage', (string) $devour['id'], (string) ($page + 1)))->setLabel('Next page'));
+                }
+                $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('devreset', (string) $devour['id']))->setLabel('Clear selections'));
+                $row->addComponent(Button::new(Button::STYLE_DANGER, $id('devgo', (string) $devour['id']))->setLabel('Confirm Devour'));
+                $message->addComponent($row);
                 break;
 
             case 'sacrifice':
@@ -975,6 +1005,8 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'trigger_order' => 'Choose the next ability to put on the stack from your simultaneous group. Earlier selections resolve later; other controllers keep their active-player order.',
             'ward_unsupported' => 'This opt-in game is held for review: '.$game->choiceAwaiting()['reason'].' No automatic payment, cancellation or refund is available.',
             'damage_order' => 'Choose what applies next to the damage to **'.$game->describeTarget($game->choiceAwaiting()['target']).'**. Damage waits until all replacement and prevention choices are complete.',
+            'devour' => 'Choose any number of your creatures to sacrifice as this creature enters. Select none to keep them all.'
+                .' Selected: '.(($choice['devour']['selected'] ?? []) === [] ? 'none' : implode(', ', array_map(fn (int $id) => $game->objects[$id]->name(), $choice['devour']['selected']))),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
             'optional_recover' => '**'.$game->choiceAwaiting()['label'].'**: you may pay '.$game->choiceAwaiting()['cost'].' to return the original graveyard card to your hand. Otherwise, exile it. This does not target.',

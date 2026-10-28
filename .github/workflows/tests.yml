@@ -13,6 +13,20 @@ jobs:
         php: ['8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
+      - name: Check out public schema 16 reader
+        uses: actions/checkout@v4
+        with:
+          ref: 570771053d31f16d700178d9fbc742da37e9106d
+          path: .ci-readers/schema16
+      - name: Check out public schema 22 reader
+        uses: actions/checkout@v4
+        with:
+          ref: adf22caebdb0127f11aceb2a6f61b32536731bdc
+          path: .ci-readers/schema22
+      - name: Verify reader identities
+        run: |
+          test "$(git -C .ci-readers/schema16 rev-parse HEAD)" = 570771053d31f16d700178d9fbc742da37e9106d
+          test "$(git -C .ci-readers/schema22 rev-parse HEAD)" = adf22caebdb0127f11aceb2a6f61b32536731bdc
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -21,3 +35,7 @@ jobs:
       - run: composer update --no-interaction --no-progress --prefer-dist
       - run: vendor/bin/pint --config pint.json --test src tests bin bot.php
       - run: vendor/bin/phpunit
+        env:
+          DEVOUR_REQUIRE_PUBLIC_READERS: '1'
+          DEVOUR_OLD_SCHEMA16_ROOT: ${{ github.workspace }}/.ci-readers/schema16
+          DEVOUR_OLD_SCHEMA22_ROOT: ${{ github.workspace }}/.ci-readers/schema22
