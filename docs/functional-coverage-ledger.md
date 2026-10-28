@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [untap-symbol temporary-effects slice](untap-symbol-temporary-effects.md) adds three paid cached-card paths. The ledger has 57 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
+The [untap-symbol combat-support slice](untap-symbol-combat-support.md) adds two paid cached-card paths. The ledger has 59 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
+
+The [untap-symbol temporary-effects slice](untap-symbol-temporary-effects.md) adds three paid cached-card paths. That milestone recorded 57 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
 
 The [Tonberry Chef's Knife slice](tonberry-chefs-knife.md) addresses the previously explicit unread combat clause. That milestone recorded 54 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
 
