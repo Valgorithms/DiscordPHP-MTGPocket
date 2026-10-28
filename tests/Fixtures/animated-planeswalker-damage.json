@@ -1,0 +1,73 @@
+{
+  "source": {
+    "BFZ": {
+      "setCode": "BFZ",
+      "setName": "Battle for Zendikar",
+      "releaseDate": "2015-10-02",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "sourcePoolSha256": "4b46e3eac199ec81c6270e6b492e35df0acda086ba48efb79b50305cfb09aac1"
+    },
+    "M10": {
+      "setCode": "M10",
+      "setName": "Magic 2010",
+      "releaseDate": "2009-07-17",
+      "mtgjsonVersion": "5.3.0+20261022",
+      "importedAt": 1792723094,
+      "sourcePoolSha256": "8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0"
+    }
+  },
+  "scope": "Complete cached printed records; Gideon animation and unpreventable state are seeded to isolate damage bookkeeping, not its abilities.",
+  "cards": [
+    {
+      "uuid": "5ae34679-cf9a-5de0-a03f-aeb166372c7f",
+      "name": "Gideon, Ally of Zendikar",
+      "number": "29",
+      "rarity": "mythic",
+      "colors": [
+        "W"
+      ],
+      "manaValue": 4,
+      "type": "Legendary Planeswalker — Gideon",
+      "scryfallId": "187e887c-c39d-4d25-a506-cdc95fc70316",
+      "manaCost": "{2}{W}{W}",
+      "types": [
+        "Planeswalker"
+      ],
+      "supertypes": [
+        "Legendary"
+      ],
+      "subtypes": [
+        "Gideon"
+      ],
+      "loyalty": "4",
+      "text": "[+1]: Until end of turn, Gideon becomes a 5/5 Human Soldier Ally creature with indestructible that's still a planeswalker. Prevent all damage that would be dealt to him this turn.\n[0]: Create a 2/2 white Knight Ally creature token.\n[−4]: You get an emblem with \"Creatures you control get +1/+1.\"",
+      "layout": "normal",
+      "colorIdentity": [
+        "W"
+      ]
+    },
+    {
+      "uuid": "78380203-7623-50bc-ab48-577cd655ee9a",
+      "name": "Lightning Bolt",
+      "number": "146",
+      "rarity": "common",
+      "colors": [
+        "R"
+      ],
+      "manaValue": 1,
+      "type": "Instant",
+      "scryfallId": "435589bb-27c6-4a6d-9d63-394d5092b9d8",
+      "manaCost": "{R}",
+      "types": [
+        "Instant"
+      ],
+      "supertypes": [],
+      "subtypes": [],
+      "text": "Lightning Bolt deals 3 damage to any target.",
+      "layout": "normal",
+      "colorIdentity": [
+        "R"
+      ]
+    }
+  ]
+}
