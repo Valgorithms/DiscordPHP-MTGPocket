@@ -11,6 +11,7 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "tonberryKnife": {"base": "34ad266971d90e1b50a52b0db238fe5603b6f6b6", "baseline": "Paid FIN Tonberry casts for both seats: two tests reached ten assertions, both failed because first strike was absent on its controller turn.", "focused": "Nine tests and 76 assertions cover turn-dependent first strike and deathtouch, both-seat paid combat, source controller change, restore and unread controls. An initial hyphen-only correction failed four cases because the cached label uses an em dash; this failure remains historical.", "meaning": "The explicit Tonberry Chef's Knife gap is addressed for the selected cached record; no whole-card certificate or aggregate recognition update."},
     "silkbindUntapCost": {"base": "f1fba9d4328489b30f1c183f7681e0e7b9a00bd1", "baseline": "Paid Silkbind Faerie casts for both seats reached six assertions; both activations errored because the untap-symbol ability was unread.", "focused": "Twelve cases and 80 assertions pass for paid casts, actual hybrid activation costs, repeated stun replacement, target departure, haste, invalid activation and JSON restore.", "meaning": "Only the selected untap-symbol tap-target effect is recognized; prior recognition and validation remain historical."},
     "massUntapStun": {"base": "62df1ca5bd185b3b8d1d3db69abe5dbca6a9989f", "baseline": "Paid cached Vitalize and To Arms! cases for both seats: four tests, 26 reached assertions, four failures when stunned creatures untapped instead of losing a counter.", "focused": "Ten tests and 92 assertions pass, including paid casts, JSON restore, controlled and opposing creatures, mass tap and countered-spell controls.", "meaning": "Scoped mass-untap stun replacement only; prior validation and aggregate recognition remain historical."},
     "stunUntapRestriction": {"base": "6d0b4549240e82b1c66f824f95470cffc177636d", "baseline": "Ten restricted-untap and paid-activation cases reached 118 assertions; four non-frozen cases lost a stun counter, while frozen and paid-activation controls passed.", "focused": "The untap-step restriction is checked before stun replacement; 10 cases and 146 assertions pass for both seats, both cards, frozen control, restriction removal, paid untap and JSON restore. Earlier exact-head CI 40781490570 is historical.", "meaning": "Narrow untap-step correction; no Ward, general replacement or whole-card certification claim."},
@@ -424,9 +425,10 @@
     }
   },
   "sourcePins": {
+    "tests/Game/TonberryKnifeTest.php": "64e601f43acab69cdd2b0f6453ec1cc0151aeff5a1dd1920934f9b48e10e5168",
     "tests/Game/UntapSymbolCostTest.php": "659ec6ac9e8fae05a8de61f25963be79144eb708a7b34b5b0385bbd3d814c4bf",
     "tests/Game/MassUntapStunTest.php": "9c79ef93992e80d6e00a42392629cf47c4bcca7c0d1cf33228b903a83a57bccf",
-    "tests/Game/StunEntryTest.php": "b7aa58f7a6d173e63d3359958937e67de6538ed2d2b8b57861d155e320a925b9",
+    "tests/Game/StunEntryTest.php": "d7c86f613c5872d88e0edca920d9c83fdac963724a59fc296fcc98cbbf89205f",
     "tests/Game/JavelinBrickEntryTest.php": "667aeb5f4daf1a1afece00ee9d1eff5ef29a038e134e4d9cb7ab9c3298bf9351",
     "tests/Game/CounterCostSourceDamageTest.php": "246d17dc8b15e1719acd169fb44d37ca94876e59c300668ae56254d152b11a44",
     "tests/Game/FadingTest.php": "0cd93270abd23ef95b36323a82d480a98b5611069b016a0c1a630c1817646321",
@@ -437,7 +439,7 @@
     "tests/Game/InfestPyroclasmCoverageTest.php": "a78df15b9d11ca12652e305f93105f889d01cb9f38754890ed3582968dc575bc",
     "tests/Game/DisfigureCoverageTest.php": "db33d67173f684e8eb6dbabda8fe6686d5766feced96ad91aafd4a9bd750cc9f",
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "6a29490ede7c524cfca416f9fd9608c1f420137a0f679a5f8560d26b04aa067c",
-    "src/MTGPocket/Game/TextParser.php": "9109e594c142438483b8bc1df4b8674eda91467ba89cdd73a904879b50aa23de",
+    "src/MTGPocket/Game/TextParser.php": "197473afdfddf5281485586883b53f0de8f89a4cb4761998f167f989d8b73308",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
     "src/MTGPocket/Game/Game.php": "e37dc6e2549cf9674d1f55252a351e42a4c15512372fdcba50a5ec0c0689efe3",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -507,6 +509,21 @@
   },
   "scopedEvidence": [
     {
+      "id": "tonberry-chefs-knife-combat",
+      "cards": [
+        "Tonberry"
+      ],
+      "tests": [
+        "tests/Game/TonberryKnifeTest.php::testPaidTonberryHasKnifeKeywordsDuringControllersTurn",
+        "tests/Game/TonberryKnifeTest.php::testFirstStrikeDeathtouchKillsTougherBlockerBeforeDamage",
+        "tests/Game/TonberryKnifeTest.php::testOpponentsTurnBlockingDoesNotHaveKnifeKeywords",
+        "tests/Game/TonberryKnifeTest.php::testTurnKeywordsFollowNewControllerAfterPaidControlAura",
+        "tests/Game/TonberryKnifeTest.php::testUnrelatedLabelsAndUnknownKeywordsRemainUnread"
+      ],
+      "scope": "Paid cached FIN Tonberry gains first strike and deathtouch on its current controller turn. Both seats exercise actual attacking and blocking combat, control change, JSON restore and unread-label controls.",
+      "limits": "Only this cached label and tested combat paths; other ability labels, continuous layers, newer printings and whole-card behavior are not certified."
+    },
+    {
       "id": "silkbind-untap-symbol-cost",
       "cards": [
         "Silkbind Faerie"
@@ -547,12 +564,12 @@
         "tests/Game/StunEntryTest.php::testTonberryStunIsConsumedBeforeItCanUntap",
         "tests/Game/StunEntryTest.php::testPaidFaerieUntapRemovesOneStunInsteadAfterRestore",
         "tests/Game/StunEntryTest.php::testUnpaidFaerieActivationRejectsWithoutMutation",
-        "tests/Game/StunEntryTest.php::testTonberryCombatClauseRemainsExplicitlyUnread",
+        "tests/Game/StunEntryTest.php::testTonberryCombatClauseIsRecognized",
       "tests/Game/StunEntryTest.php::testUntapRestrictionPreservesStunUntilItIsRemoved",
       "tests/Game/StunEntryTest.php::testFaeriePaidUntapStillConsumesStunUnderRestriction"
       ],
       "scope": "Complete cached FIN Tonberry and WOE Sleep-Cursed Faerie: both seats pay casts and enter tapped with one or three stun counters. Ordinary untap steps and Faerie\u2019s paid untap consume counters before untapping, including JSON restore and unpaid activation rejection. A continuous untap-step restriction preserves stun counters until removed; paid untap still consumes one.",
-      "limits": "Only these cached printing paths. Tonberry\u2019s Chef\u2019s Knife combat clause remains unread; Faerie\u2019s Ward timing remains the existing upfront-payment behavior and is not certified. General entry replacements, Ward, newest printings and whole-card behavior remain outside this evidence."
+      "limits": "Only these cached printing paths. The original entry slice did not test Chef\u2019s Knife; the later Tonberry knife slice covers it. Faerie\u2019s Ward timing remains the existing upfront-payment behavior and is not certified. General entry replacements, Ward, newest printings and whole-card behavior remain outside this evidence."
     },
     {
       "id": "javelin-brick-paid-entry",
@@ -1527,13 +1544,6 @@
     }
   ],
   "explicitUnsupported": [
-      {
-        "id": "tonberry-chefs-knife-unread",
-        "cards": [
-          "Tonberry"
-        ],
-        "scope": "The cached Chef’s Knife turn-dependent first strike and deathtouch clause remains unread; stun entry has separate scoped evidence."
-      },
       {
         "id": "sleep-cursed-faerie-ward-timing",
         "cards": [

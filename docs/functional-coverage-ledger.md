@@ -1,10 +1,12 @@
 # Functional coverage evidence ledger
 
-The [Silkbind Faerie untap-cost slice](silkbind-untap-cost.md) adds one bounded paid activation path. The ledger has 54 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical.
+The [Tonberry Chef's Knife slice](tonberry-chefs-knife.md) addresses the previously explicit unread combat clause. The ledger retains 54 scoped names, now with three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
+
+The [Silkbind Faerie untap-cost slice](silkbind-untap-cost.md) adds one bounded paid activation path. That milestone recorded 54 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical.
 
 The [mass untap stun slice](mass-untap-stun.md) fixes a shared effect path with paid Vitalize and To Arms! tests. That milestone recorded 53 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates. Recognition remains historical.
 
-The [stun entry and untap slice](stun-entry-counters.md) adds paid Tonberry and Sleep-Cursed Faerie evidence. That milestone recorded 51 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical. Tonberry’s combat clause and Faerie’s Ward timing remain explicit gaps.
+The [stun entry and untap slice](stun-entry-counters.md) adds paid Tonberry and Sleep-Cursed Faerie evidence. That milestone recorded 51 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical. At that milestone, Tonberry’s combat clause and Faerie’s Ward timing remained explicit gaps.
 
 The [javelin and brick entry-counter slice](javelin-brick-entry-counters.md) adds paid evidence for Icatian Javelineers and Sunset Pyramid. That milestone recorded 49 scoped names and zero whole-card certificates; recognition remains historical.
 

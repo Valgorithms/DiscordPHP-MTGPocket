@@ -9,7 +9,7 @@ use MTGPocket\Game\GameObject;
 use MTGPocket\Game\GameException;
 use MTGPocket\Game\Step;
 
-/** Cached cards; Faerie's Ward and Tonberry's combat text are outside this slice. */
+/** Cached cards; Faerie's Ward timing is outside this slice. */
 final class StunEntryTest extends GameTestCase
 {
     private function prepare(int $seat, int $index): int
@@ -101,12 +101,11 @@ final class StunEntryTest extends GameTestCase
     }
 
     /** @dataProvider seats */
-    public function testTonberryCombatClauseRemainsExplicitlyUnread(int $seat): void
+    public function testTonberryCombatClauseIsRecognized(int $seat): void
     {
         $id = $this->prepare($seat, 0);
         $unsupported = $this->game->objects[$id]->definition()->unsupported;
-        $this->assertCount(1, $unsupported);
-        $this->assertStringContainsString("Chef's Knife", $unsupported[0]);
+        $this->assertSame([], $unsupported);
     }
 
     private function restrictUntap(int $seat, int $id): int
