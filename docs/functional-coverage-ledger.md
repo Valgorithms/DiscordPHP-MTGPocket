@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [stun entry and untap slice](stun-entry-counters.md) adds paid Tonberry and Sleep-Cursed Faerie evidence. The ledger has 51 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical. Tonberry’s combat clause and Faerie’s Ward timing remain explicit gaps.
+The [mass untap stun slice](mass-untap-stun.md) fixes a shared effect path with paid Vitalize and To Arms! tests. The ledger has 53 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates. Recognition remains historical.
+
+The [stun entry and untap slice](stun-entry-counters.md) adds paid Tonberry and Sleep-Cursed Faerie evidence. That milestone recorded 51 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical. Tonberry’s combat clause and Faerie’s Ward timing remain explicit gaps.
 
 The [javelin and brick entry-counter slice](javelin-brick-entry-counters.md) adds paid evidence for Icatian Javelineers and Sunset Pyramid. That milestone recorded 49 scoped names and zero whole-card certificates; recognition remains historical.
 
