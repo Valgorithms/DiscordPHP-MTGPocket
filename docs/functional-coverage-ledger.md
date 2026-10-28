@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [Emerge transformed mana-value slice](emerge-transformed-mana-value.md) corrects the existing automatic cost and fodder selection for paid Wretched Gryff. The ledger has 43 scoped names and zero whole-card certificates; recognition remains historical.
+The [stack X mana-value slice](counter-stack-x-mana-value.md) corrects paid Thoughtbind targeting of X spells. The ledger has 44 scoped names and zero whole-card certificates; recognition remains historical.
+
+The [Emerge transformed mana-value slice](emerge-transformed-mana-value.md) corrects the existing automatic cost and fodder selection for paid Wretched Gryff. That milestone recorded 43 scoped names and zero whole-card certificates; recognition remains historical.
 
 The [transformed mana-value selector slice](transformed-selector-mana-value.md) corrects paid Culling Sun selection using the existing battlefield mana-value helper. That milestone recorded 42 scoped names and zero whole-card certificates; recognition remains historical.
 
