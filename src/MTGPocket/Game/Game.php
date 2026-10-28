@@ -934,6 +934,9 @@ final class Game
             $object->untilEndOfTurn = [];
             $object->shields = 0;
             if ($object->borrowedFrom !== null) {
+                if ($object->controller !== $object->borrowedFrom) {
+                    $this->removeFromCombat($object);
+                }
                 $object->controller = $object->borrowedFrom;
                 $object->borrowedFrom = null;
                 $this->log("{$object->name()} returns to {$this->players[$object->controller]->name}'s control.");
@@ -5317,6 +5320,7 @@ final class Game
                 // Until end of turn (rule 613.1b): it comes back in the cleanup step.
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD && $affected->controller !== $controller) {
                     $affected->borrowedFrom ??= $affected->controller;
+                    $this->removeFromCombat($affected);
                     $affected->controller = $controller;
                     $affected->sick = true;
                     $this->log("{$this->players[$controller]->name} gains control of {$affected->name()} until end of turn.");
@@ -10734,6 +10738,29 @@ final class Game
         return $card->levels === [] ? null : $card->levelBand($object->counter('level'));
     }
 
+    /** Remove a permanent from combat while preserving surviving block relations. */
+    private function removeFromCombat(GameObject $object): void
+    {
+        $id = $object->id;
+        if (! isset($this->attackers[$id]) && ! isset($this->blockers[$id])) {
+            return;
+        }
+        unset($this->attackers[$id], $this->blockers[$id], $this->extraBlocks[$id], $this->blocked[$id], $this->struckFirst[$id]);
+        foreach ($this->blockers as $blocker => $attacker) {
+            $remaining = array_values(array_filter([$attacker, ...($this->extraBlocks[$blocker] ?? [])], fn (int $target) => $target !== $id));
+            if ($remaining === []) {
+                unset($this->blockers[$blocker], $this->extraBlocks[$blocker]);
+                continue;
+            }
+            $this->blockers[$blocker] = array_shift($remaining);
+            if ($remaining === []) {
+                unset($this->extraBlocks[$blocker]);
+            } else {
+                $this->extraBlocks[$blocker] = $remaining;
+            }
+        }
+    }
+
     /**
      * `You control enchanted creature.`: its controller is the Aura's while
      * the Aura is on it, and goes back to its owner after.
@@ -10747,6 +10774,9 @@ final class Game
                 $aura = $this->objects[$object->stolenBy] ?? null;
                 if ($aura === null || $aura->zone !== GameObject::BATTLEFIELD || $aura->attachedTo !== $object->id) {
                     $object->stolenBy = null;
+                    if ($object->controller !== $object->owner) {
+                        $this->removeFromCombat($object);
+                    }
                     $object->controller = $object->owner;
                     $object->sick = true;
                     $this->log("{$object->name()} returns to {$this->players[$object->owner]->name}'s control.");
@@ -10756,6 +10786,7 @@ final class Game
         foreach ($this->permanents() as $aura) {
             $stolen = $aura->attachedTo === null ? null : ($this->objects[$aura->attachedTo] ?? null);
             if (($aura->definition()->aura['control'] ?? false) && $stolen !== null && $stolen->zone === GameObject::BATTLEFIELD && $stolen->controller !== $aura->controller) {
+                $this->removeFromCombat($stolen);
                 $stolen->controller = $aura->controller;
                 $stolen->stolenBy = $aura->id;
                 $stolen->sick = true;
