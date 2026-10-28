@@ -3582,6 +3582,8 @@ final class TextParser
                 ['{2}{W}, {Q}', 'CARDNAME gets +0/+2 until end of turn.'],
                 ['{1}{U}, {Q}', 'CARDNAME gains flying until end of turn.'],
                 ['{1}{U/B}, {Q}', 'Target creature gets -2/-0 until end of turn.'],
+                ['{1}{W}, {Q}', 'Create a 1/1 white Kithkin Soldier creature token.'],
+                ['{1}{R/W}, {Q}', 'Attacking creatures get +1/+0 until end of turn.'],
             ], true)) {
                 // Bounded untap-symbol support for the tested effect and cost shapes.
                 $cost['untap'] = true;

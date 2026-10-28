@@ -1,0 +1,64 @@
+{
+  "set": "EVE",
+  "sourceSha256": "7f13f2b3ca96c79758df3b6de99dfe8c0801fa28339fbcc3b7bd5ab9fc2b1e46",
+  "cards": [
+    {
+      "uuid": "f622649f-9bdc-505a-9c29-6f7abf1dec8f",
+      "name": "Patrol Signaler",
+      "number": "12",
+      "rarity": "uncommon",
+      "colors": [
+        "W"
+      ],
+      "manaValue": 2,
+      "type": "Creature — Kithkin Soldier",
+      "scryfallId": "b3fd4ccb-e632-4fa0-8e36-6103806f020c",
+      "manaCost": "{1}{W}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Kithkin",
+        "Soldier"
+      ],
+      "power": "1",
+      "toughness": "1",
+      "text": "{1}{W}, {Q}: Create a 1/1 white Kithkin Soldier creature token. ({Q} is the untap symbol.)",
+      "layout": "normal",
+      "colorIdentity": [
+        "W"
+      ]
+    },
+    {
+      "uuid": "d55259b7-19b1-5cde-ad49-9098a8d78779",
+      "name": "Duergar Mine-Captain",
+      "number": "138",
+      "rarity": "uncommon",
+      "colors": [
+        "W",
+        "R"
+      ],
+      "manaValue": 3,
+      "type": "Creature — Dwarf Soldier",
+      "scryfallId": "e97983b9-6c93-41ce-8deb-ac08811a0834",
+      "manaCost": "{2}{R/W}",
+      "types": [
+        "Creature"
+      ],
+      "supertypes": [],
+      "subtypes": [
+        "Dwarf",
+        "Soldier"
+      ],
+      "power": "2",
+      "toughness": "1",
+      "text": "{1}{R/W}, {Q}: Attacking creatures get +1/+0 until end of turn. ({Q} is the untap symbol.)",
+      "layout": "normal",
+      "colorIdentity": [
+        "R",
+        "W"
+      ]
+    }
+  ]
+}
