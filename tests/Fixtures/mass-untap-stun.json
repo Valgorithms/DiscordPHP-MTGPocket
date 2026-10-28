@@ -1,0 +1,58 @@
+{
+  "records": [
+    {
+      "set": "6ED",
+      "sourceSha256": "e507e47e7251ad80caf5a6750065010c22e04287e83a3aa6e272b4ae2b337123",
+      "card": {
+        "uuid": "9086302a-37e4-59f8-9cc0-cf6fc52171ee",
+        "name": "Vitalize",
+        "number": "265",
+        "rarity": "common",
+        "colors": [
+          "G"
+        ],
+        "manaValue": 1,
+        "type": "Instant",
+        "scryfallId": "435a4569-fa62-4e1a-b837-f68159cb270d",
+        "manaCost": "{G}",
+        "types": [
+          "Instant"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "Untap all creatures you control.",
+        "layout": "normal",
+        "colorIdentity": [
+          "G"
+        ]
+      }
+    },
+    {
+      "set": "GPT",
+      "sourceSha256": "7378364f96741f7ddc6951366e8fc6ceea944e529a2c4fbe73e00c92a2a38f03",
+      "card": {
+        "uuid": "5a64edee-23a7-5c0d-8170-0cca6b8270ff",
+        "name": "To Arms!",
+        "number": "20",
+        "rarity": "uncommon",
+        "colors": [
+          "W"
+        ],
+        "manaValue": 2,
+        "type": "Instant",
+        "scryfallId": "2f72d4b7-3b65-411b-a072-8218a0202974",
+        "manaCost": "{1}{W}",
+        "types": [
+          "Instant"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "Untap all creatures you control.\nDraw a card.",
+        "layout": "normal",
+        "colorIdentity": [
+          "W"
+        ]
+      }
+    }
+  ]
+}

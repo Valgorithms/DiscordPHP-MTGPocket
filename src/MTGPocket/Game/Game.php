@@ -4456,6 +4456,16 @@ final class Game
         $this->settle();
     }
 
+    /** Apply an effect's tap or untap to one permanent, including stun replacement. */
+    private function setTappedByEffect(GameObject $object, bool $tapped): void
+    {
+        if (! $tapped && $object->tapped && $object->counter('stun') > 0) {
+            $object->addCounters('stun', -1);
+        } else {
+            $object->tapped = $tapped;
+        }
+    }
+
     /**
      * Does one effect of a resolving spell or ability.
      *
@@ -5092,18 +5102,13 @@ final class Game
                 if (isset($effect['each'])) {
                     foreach ($this->permanents() as $object) {
                         if ($this->isCreature($object) && ($object->controller === $controller) === ($effect['each'] === 'yours') && ! (($effect['other'] ?? false) && $object->id === $source->id)) {
-                            $object->tapped = $effect['type'] === 'tap';
+                            $this->setTappedByEffect($object, $effect['type'] === 'tap');
                         }
                     }
                     break;
                 }
                 if ($affected !== null && $affected->zone === GameObject::BATTLEFIELD) {
-                    if ($effect['type'] === 'untap' && $affected->tapped && $affected->counter('stun') > 0) {
-                        // Like an untap step, an untap effect consumes one stun counter instead.
-                        $affected->addCounters('stun', -1);
-                    } else {
-                        $affected->tapped = $effect['type'] === 'tap';
-                    }
+                    $this->setTappedByEffect($affected, $effect['type'] === 'tap');
                     $affected->frozen = $affected->frozen || ($effect['freeze'] ?? false);
                     $affected->addCounters('stun', (int) ($effect['stun'] ?? 0));
                 }
