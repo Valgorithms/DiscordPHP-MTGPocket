@@ -7123,6 +7123,14 @@ final class Game
                 return "{$card->name} has not been under your control since your turn began.";
             }
         }
+        if ($cost['untap'] ?? false) {
+            if (! $object->tapped) {
+                return "{$card->name} is untapped.";
+            }
+            if ($this->isCreature($object) && $object->sick && ! $this->hasKeyword($object, 'haste')) {
+                return "{$card->name} has not been under your control since your turn began.";
+            }
+        }
         if (isset($cost['crew']) && $this->crew($seat, $object, $cost['crew']) === null) {
             return (str_starts_with(strtolower($card->activated[$index]['text']), 'saddle') ? 'Saddling' : 'Crewing')." {$card->name} needs untapped creatures with total power {$cost['crew']} or more.";
         }
@@ -7521,8 +7529,8 @@ final class Game
      */
     private function abilityPayment(int $seat, GameObject $object, array $ability, string $wardMana = '', int $wardLife = 0): ?array
     {
-        // A source tapped for the cost itself cannot also make mana for it.
-        $exclude = ($ability['cost']['tap'] ?? false) ? [$object->id] : [];
+        // Reserve the source for its tap or untap cost rather than using it to produce mana.
+        $exclude = (($ability['cost']['tap'] ?? false) || ($ability['cost']['untap'] ?? false)) ? [$object->id] : [];
         $mana = $ability['cost']['mana'] ?? '';
         $this->abilityX = 0;
         // Waterbend (TLA): its generic cost can be paid by tapping untapped artifacts and creatures, {1} each; not ward's.
@@ -7585,6 +7593,9 @@ final class Game
         $this->pay($seat, $payment);
         if ($cost['tap'] ?? false) {
             $object->tapped = true;
+        }
+        if ($cost['untap'] ?? false) {
+            $this->setTappedByEffect($object, false);
         }
         foreach ($crew as $creature) {
             $this->objects[$creature]->tapped = true;

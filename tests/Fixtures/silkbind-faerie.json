@@ -1,0 +1,33 @@
+{
+  "uuid": "d4585183-1e13-5208-9f5e-6e166bb67f09",
+  "name": "Silkbind Faerie",
+  "number": "148",
+  "rarity": "common",
+  "colors": [
+    "W",
+    "U"
+  ],
+  "manaValue": 3,
+  "type": "Creature — Faerie Rogue",
+  "scryfallId": "12d06328-a124-40e4-a9d8-2342a881970e",
+  "manaCost": "{2}{W/U}",
+  "types": [
+    "Creature"
+  ],
+  "supertypes": [],
+  "subtypes": [
+    "Faerie",
+    "Rogue"
+  ],
+  "power": "1",
+  "toughness": "3",
+  "text": "Flying\n{1}{W/U}, {Q}: Tap target creature. ({Q} is the untap symbol.)",
+  "keywords": [
+    "Flying"
+  ],
+  "layout": "normal",
+  "colorIdentity": [
+    "U",
+    "W"
+  ]
+}

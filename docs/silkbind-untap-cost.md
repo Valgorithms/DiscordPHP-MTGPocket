@@ -1,0 +1,11 @@
+# Silkbind Faerie untap cost
+
+The cached Shadowmoor Silkbind Faerie has flying and `{1}{W/U}, {Q}: Tap target creature.` Its activation was unread after a paid cast. The engine now supports this exact effect and cost shape: the source must be tapped and a creature must be free of summoning sickness or have haste. Hybrid mana is paid and the untap action is performed as the activation cost before the ability resolves.
+
+Stun replaces that action by removing one counter; the cost is still paid and the source remains tapped. Repeated activations can therefore consume more stun counters when their mana is available. This follows comprehensive rules 107.6, 118.11 and 122.1d ([2026-09-25 rules](https://media.wizards.com/2026/downloads/MagicCompRules%2020260925.pdf)). A restriction applying only during the untap step does not prohibit the cost.
+
+At base `f1fba9d4328489b30f1c183f7681e0e7b9a00bd1`, the actual paid-cast baseline for both seats reached six assertions and produced two activation errors because there was no parsed ability. After the correction, 12 cases and 80 assertions pass, covering paid casts, repeated stun replacement, source and target state, target departure, self-target, haste, invalid costs, and JSON restoration. The original baseline remains distinct from subsequent setup and validation results.
+
+The complete cached SHM record UUID is `d4585183-1e13-5208-9f5e-6e166bb67f09`; the existing pool SHA-256 is `d2f7b7afdae8fecb211988e34236cac8b5afbdd3ae6407fb5863fa57bfbecfde`. The normalized fixture SHA-256 is `c560ba8c8adf9852029db2c2415be1f777b42cae899c219d2b7a9661f4df86f6`. No new corpus import or save schema change is involved. Rolling back restores the older unread parser behavior for future loads; old-reader gameplay is not certified.
+
+Only this exact `{1}{W/U}, {Q}: Tap target creature.` shape is enabled. Other untap-symbol abilities, untap observers, Ward timing, target leave-and-return identity, comprehensive replacement ordering and whole-card behavior are outside this evidence. Review-held branches #444–#452 require later integration and revalidation against current main.
