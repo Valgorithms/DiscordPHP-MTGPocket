@@ -11,6 +11,7 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "javelinBrickEntry": {"base": "dec343dddec15791d42ddd28d4b46337f386112a", "baseline": "Eight paid cases for cached Icatian Javelineers and Sunset Pyramid reached 36 assertions: four missing-entry failures and four activation errors for both seats.", "focused": "Existing entry counter allowlist recognizes javelin and brick: 19 tests and 144 assertions pass, including actual payment, summoning sickness, invalid costs, restore and recast.", "meaning": "Scoped gameplay evidence for two cached printings; aggregate recognition and earlier validation remain historical."},
     "counterCostSourceDamage": {"base": "e5a0d1c94c78db07efb2ec5e242cf478f2936ad1", "baseline": "Four paid cases for cached Ancient Hydra and Monoskelion reached 20 assertions; each failed because its activated ability was unread.", "focused": "Unambiguous self-counter costs normalize source damage: 21 tests and 198 assertions pass, including both seats, paid costs, invalid targets, prevention, source departure and JSON.", "meaning": "Scoped gameplay evidence for two cached printings; aggregate recognition and earlier validation remain historical."},
     "transformedPermanentTargetValue": {"base": "3ff9ce385106af573de73d73b25d4831981c3829", "baseline": "Paid cached Eliminate and target filters: 16 cases, 128 reached assertions, 12 failures: all five filters and illegal cast for both seats; four legal/revalidation controls passed.", "focused": "Five battlefield target comparisons use the existing battlefield-value helper; 20 cases and 166 assertions pass, including face-down, controller restrictions, atomic cost rejection and JSON.", "meaning": "Scoped target evidence only; earlier validation and historical recognition remain unchanged."},
     "counterStackX": {"base": "c4e2c0a30d9f77b0bac634c7d782e8ef4cb227d6", "baseline": "Paid cached Thoughtbind and Mind Spring: six tests, 48 reached assertions, four failures; X=3 was offered and accepted for both seats while X=2 controls passed.", "focused": "Stored stack X used in mana-value-limited targeting; eight tests and 74 assertions pass including X=0/2/3, atomic rejection and JSON restore.", "meaning": "Scoped stack target evidence only; earlier validation and historical recognition remain unchanged."},
@@ -419,6 +420,7 @@
     }
   },
   "sourcePins": {
+    "tests/Game/JavelinBrickEntryTest.php": "667aeb5f4daf1a1afece00ee9d1eff5ef29a038e134e4d9cb7ab9c3298bf9351",
     "tests/Game/CounterCostSourceDamageTest.php": "246d17dc8b15e1719acd169fb44d37ca94876e59c300668ae56254d152b11a44",
     "tests/Game/FadingTest.php": "0cd93270abd23ef95b36323a82d480a98b5611069b016a0c1a630c1817646321",
     "tests/Game/TargetTransformedManaValueTest.php": "8b4dd273ad1b12a258bbdbebf832077c60f0573caef04ad7671e7bd62002b87a",
@@ -428,7 +430,7 @@
     "tests/Game/InfestPyroclasmCoverageTest.php": "a78df15b9d11ca12652e305f93105f889d01cb9f38754890ed3582968dc575bc",
     "tests/Game/DisfigureCoverageTest.php": "db33d67173f684e8eb6dbabda8fe6686d5766feced96ad91aafd4a9bd750cc9f",
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "6a29490ede7c524cfca416f9fd9608c1f420137a0f679a5f8560d26b04aa067c",
-    "src/MTGPocket/Game/TextParser.php": "6286d2f94e9525376bcc73eaff5bccee91ec54de3b7bbbaafbf6d9493160dff7",
+    "src/MTGPocket/Game/TextParser.php": "739445ce298a279e05c35750783b691a841bb5687f96ca2183333811032932ea",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
     "src/MTGPocket/Game/Game.php": "6535b7d2b29689c9e9b131aa885bd6c3bcd4263e8d732d26917f5aefc326f35a",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -497,6 +499,23 @@
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
   },
   "scopedEvidence": [
+    {
+      "id": "javelin-brick-paid-entry",
+      "cards": [
+        "Icatian Javelineers",
+        "Sunset Pyramid"
+      ],
+      "tests": [
+        "tests/Game/JavelinBrickEntryTest.php::testPaidCastEntersWithNamedCountersAndSurvivesRestore",
+        "tests/Game/JavelinBrickEntryTest.php::testPaidCounterActivationResolvesAfterRestore",
+        "tests/Game/JavelinBrickEntryTest.php::testMissingCounterRejectsWithoutPaying",
+        "tests/Game/JavelinBrickEntryTest.php::testSummoningSicknessAndIllegalTargetRejectBeforeCosts",
+        "tests/Game/JavelinBrickEntryTest.php::testReturnedPermanentGetsFreshCountersOnRecast",
+        "tests/Game/JavelinBrickEntryTest.php::testUnknownNamedCounterStillStaysUnread"
+      ],
+      "scope": "Complete cached DMR Icatian Javelineers and CMR Sunset Pyramid: both seats pay casts, receive javelin or brick counters at entry, pay their first counter-cost activation, and resolve after saved stack. Summoning sickness, missing counter, illegal target and fresh counters after bounce and recast are covered.",
+      "limits": "Only the listed printings and paths. Pyramid\u2019s separate scry activation, general entry replacements, counter modifications, newest printings and whole-card behavior remain unverified. Historical recognition and earlier evidence remain unchanged."
+    },
     {
       "id": "self-counter-cost-source-damage",
       "cards": [

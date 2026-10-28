@@ -1,0 +1,62 @@
+{
+  "records": [
+    {
+      "set": "DMR",
+      "sourceSha256": "dcc7101803da8739508dc1f833beed745ae479e6ad291567e5181d6c4667921b",
+      "card": {
+        "uuid": "c0a52805-c0e7-52d5-be95-51d95e3f9168",
+        "name": "Icatian Javelineers",
+        "number": "9",
+        "rarity": "common",
+        "colors": [
+          "W"
+        ],
+        "manaValue": 1,
+        "type": "Creature — Human Soldier",
+        "scryfallId": "9ccce13a-77e6-4c74-9acc-d5e7c271872a",
+        "manaCost": "{W}",
+        "types": [
+          "Creature"
+        ],
+        "supertypes": [],
+        "subtypes": [
+          "Human",
+          "Soldier"
+        ],
+        "power": "1",
+        "toughness": "1",
+        "text": "This creature enters with a javelin counter on it.\n{T}, Remove a javelin counter from this creature: It deals 1 damage to any target.",
+        "layout": "normal",
+        "colorIdentity": [
+          "W"
+        ]
+      }
+    },
+    {
+      "set": "CMR",
+      "sourceSha256": "c02d07043f73aab7d9649e8f4e881d84a75daba0e82fb53e6e06880d3c3534d0",
+      "card": {
+        "uuid": "3bfe1300-4f02-5fd5-83c3-42257c2e54b2",
+        "name": "Sunset Pyramid",
+        "number": "345",
+        "rarity": "uncommon",
+        "colors": [],
+        "manaValue": 2,
+        "type": "Artifact",
+        "scryfallId": "5d346c67-744c-4605-be62-18d794e83049",
+        "manaCost": "{2}",
+        "types": [
+          "Artifact"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "This artifact enters with three brick counters on it.\n{2}, {T}, Remove a brick counter from this artifact: Draw a card.\n{2}, {T}: Scry 1.",
+        "keywords": [
+          "Scry"
+        ],
+        "layout": "normal",
+        "colorIdentity": []
+      }
+    }
+  ]
+}
