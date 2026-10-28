@@ -748,7 +748,7 @@ final class TextParser
 
                 continue;
             }
-            if (! $spell && preg_match('/^During your turn, CARDNAME has (.+?)\.$/', $line, $match) && ($keywords = self::keywordList($match[1])) !== null) {
+            if (! $spell && preg_match("/^(?:Chef's Knife (?:-|—) )?During your turn, CARDNAME has (.+?)\\.$/u", $line, $match) && ($keywords = self::keywordList($match[1])) !== null) {
                 $result['yourTurnKeywords'] = [...$result['yourTurnKeywords'], ...$keywords];
 
                 continue;
