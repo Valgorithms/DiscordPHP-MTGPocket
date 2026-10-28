@@ -23,7 +23,7 @@ Integrated baseline: main `710a47cde58525c24d59fb591ef81b6d63ee945d` (#329). The
 
 The nine newly wholly recognized cards are **Blastoderm**, **Cloudskate**, **Defender en-Vec**, **Jolting Merfolk**, **Phyrexian Prowler**, **Rejuvenation Chamber**, **Skyshroud Behemoth**, **Skyshroud Ridgeback**, and **Woodripper**.
 
-Other cards lose only their unsupported fading line. Ancient Hydra, Parallax Dementia, Parallax Nexus, Parallax Tide, Parallax Wave, Rusting Golem, Saproling Burst and Tangle Wire still report their unresolved extra clauses. Parallax Inhibitor and Old Fogey remain unsupported. None receives a blanket whole-card support claim.
+At that historical checkpoint, Ancient Hydra, Parallax Dementia, Parallax Nexus, Parallax Tide, Parallax Wave, Rusting Golem, Saproling Burst and Tangle Wire still had unresolved extra clauses. Parallax Inhibitor and Old Fogey were unsupported. The later [self-counter damage slice](counter-cost-source-damage.md) addresses Ancient Hydra’s specified activation. None receives a blanket whole-card support claim.
 
 ## Behavior evidence
 
