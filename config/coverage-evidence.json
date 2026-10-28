@@ -11,6 +11,7 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "emergeTransformedManaValue": {"base": "2614b809714309e426abc6e2149b38b8d2b2ad07", "baseline": "Paid cached Wretched Gryff: four cases reached 26 assertions, with two insufficient-payment errors and two incorrect automatic-fodder failures for both seats.", "focused": "Existing battlefield-value helper used for discount and automatic selection; 8 tests and 86 assertions pass including paid stack replay, face-down zero and colored-cost negative controls. Two subsequent fixture mistakes and their corrected runs are retained separately, not engine defects.", "meaning": "Scoped Emerge cost evidence only; prior validation and recognition remain historical."},
     "transformedSelectorManaValue": {"base": "906ba53d9fb4a7dbd95165f55b754adabe627018", "baseline": "Paid cached Culling Sun: 2 tests, 26 reached assertions, both seats fail when transformed mana-value-four creature is destroyed. A prior setup attempt could not pay the real colored cost and is not a gameplay failure.", "focused": "Corrected selector with existing battlefield mana-value helper: 2 tests, 42 assertions pass, including seeded face-down and copy-shape controls and JSON restore.", "meaning": "Scoped selector evidence only; prior validation and recognition records remain historical."},
     "sweeperEvidence": {
       "base": "1400dfa15900cb1c4f1291a618d48bd5954c525e",
@@ -415,13 +416,14 @@
     }
   },
   "sourcePins": {
+    "tests/Game/EmergeTransformedManaValueTest.php": "89e71d03ba6d60228dfebdc36909490ddb15ab7c62d5fdfd95ff06232b55534f",
     "tests/Game/TransformedSelectorManaValueTest.php": "67040b308267481dd9b88d66c9d1147ae5bdc83c06b82783675c387f75333d55",
     "tests/Game/InfestPyroclasmCoverageTest.php": "a78df15b9d11ca12652e305f93105f889d01cb9f38754890ed3582968dc575bc",
     "tests/Game/DisfigureCoverageTest.php": "db33d67173f684e8eb6dbabda8fe6686d5766feced96ad91aafd4a9bd750cc9f",
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "6a29490ede7c524cfca416f9fd9608c1f420137a0f679a5f8560d26b04aa067c",
     "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "8fe46e72489d3464fbc4dc8a0f389cb605e489acf0f89726795efca7cc1eeb56",
+    "src/MTGPocket/Game/Game.php": "9681f7162bfa21e98d154e69c8db1ddcb9c2e95f312f4feb550f5f89fe0459a7",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -488,6 +490,20 @@
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
   },
   "scopedEvidence": [
+    {
+      "id": "wretched-gryff-emerge-transformed-value",
+      "cards": [
+        "Wretched Gryff"
+      ],
+      "tests": [
+        "tests/Game/EmergeTransformedManaValueTest.php::testPaidEmergeDiscountUsesTransformedFrontValue",
+        "tests/Game/EmergeTransformedManaValueTest.php::testAutomaticFodderPolicyUsesTransformedFrontValue",
+        "tests/Game/EmergeTransformedManaValueTest.php::testFaceDownSourceHasZeroDiscountAndFailedPaymentIsAtomic",
+        "tests/Game/EmergeTransformedManaValueTest.php::testColoredEmergeCostCannotBeReducedAway"
+      ],
+      "scope": "Cached EMN Wretched Gryff UUID 9fde7c4e-1ca6-5fff-a266-3e4c8871ca09 pays emerge with seeded transformed Huntmaster on both seats. Its front mana value four supplies the generic discount and the existing automatic highest-value policy; cast-trigger draw and creature resolution survive saved-stack replay. Face-down zero and missing blue payment reject atomically.",
+      "limits": "Only listed cached printing and paths. Existing automatic sacrifice policy remains; player-selected sacrifice is not implemented. Huntmaster transformation is seeded and not certified. General copy, meld, replacement, selection, layers, newest-printing and whole-card behavior remain unverified. Recognition remains historical."
+    },
     {
       "id": "culling-sun-transformed-mana-value",
       "cards": [

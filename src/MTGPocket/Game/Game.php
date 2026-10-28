@@ -1973,7 +1973,7 @@ final class Game
             $tax -= $this->power($helper);
         }
         if ($options['alt'] === 'emerge' && ($fodder = $this->emergeFodder($seat, $id)) !== null) {
-            $tax -= $fodder->definition()->cost->manaValue();
+            $tax -= $fodder->battlefieldManaValue();
         }
         foreach ($options['alt'] === 'conditional' ? $card->keywords : [] as $keyword) {
             if (preg_match('/^conditional life (\d+)$/', $keyword, $m)) {
@@ -2700,7 +2700,7 @@ final class Game
     private function emergeFodder(int $seat, int $id): ?GameObject
     {
         $creatures = array_values(array_filter($this->permanents($seat), fn (GameObject $o) => $o->id !== $id && $this->isCreature($o)));
-        usort($creatures, fn (GameObject $a, GameObject $b) => [$b->definition()->cost->manaValue(), $this->power($a)] <=> [$a->definition()->cost->manaValue(), $this->power($b)]);
+        usort($creatures, fn (GameObject $a, GameObject $b) => [$b->battlefieldManaValue(), $this->power($a)] <=> [$a->battlefieldManaValue(), $this->power($b)]);
 
         return $creatures[0] ?? null;
     }
