@@ -1,0 +1,7 @@
+# Stack X and mana-value-limited counters
+
+Thoughtbind can target only a spell with mana value four or less. The target check ignored the stored X of a spell on the stack, treating Mind Spring cast with X=3 as mana value two instead of five. It now passes the selected stack entry's X to the existing mana-value calculation. [Wizards' rules notes](https://magic.wizards.com/en/news/feature/eldritch-moon-release-notes-2016-07-08) explain that a spell's chosen X counts on the stack.
+
+On main `c4e2c0a30d9f77b0bac634c7d782e8ef4cb227d6`, six paid cases reached 48 assertions and failed four times: the illegal target was offered and accepted for both seats; legal X=2 controls passed. The corrected expanded suite passes eight cases and 74 assertions, including X=0 and X=2 legal resolution, X=3 target exclusion and atomic cast rejection, and JSON restoration. No new schema or parser recognition claim is involved.
+
+The complete normalized fixture SHA-256 is `c7ca0c5747386ed3ad827b258279d9063cd8d09911d8b4a635978cd025002df0`. It contains CHK Thoughtbind UUID `df9fc4a1-8a2e-5b8e-8a46-17ac1ec559a1` from pool SHA-256 `54188d5e8dd0103e2c53855692e4fea3695419570250d3e49d242c03b978fe1d` and M10 Mind Spring UUID `e6009c2f-c44f-5649-910a-42a7232c766f` from pool SHA-256 `8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0`. Mind Spring is a supporting card, not independently certified. General spell-copy, multi-X, other targeting classes and newest-printing behavior remain outside this scoped evidence; no whole-card certificate is claimed.

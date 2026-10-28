@@ -1,0 +1,58 @@
+{
+  "records": [
+    {
+      "set": "CHK",
+      "sourceSha256": "54188d5e8dd0103e2c53855692e4fea3695419570250d3e49d242c03b978fe1d",
+      "card": {
+        "uuid": "df9fc4a1-8a2e-5b8e-8a46-17ac1ec559a1",
+        "name": "Thoughtbind",
+        "number": "96",
+        "rarity": "common",
+        "colors": [
+          "U"
+        ],
+        "manaValue": 3,
+        "type": "Instant",
+        "scryfallId": "7919cf41-67bb-4dc4-90de-cf3fa2096c2e",
+        "manaCost": "{2}{U}",
+        "types": [
+          "Instant"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "Counter target spell with mana value 4 or less.",
+        "layout": "normal",
+        "colorIdentity": [
+          "U"
+        ]
+      }
+    },
+    {
+      "set": "M10",
+      "sourceSha256": "8d3ac05dce2c6877cd38dccc987e4a82692488cd4f9ea4b497ab977a69642aa0",
+      "card": {
+        "uuid": "e6009c2f-c44f-5649-910a-42a7232c766f",
+        "name": "Mind Spring",
+        "number": "64",
+        "rarity": "rare",
+        "colors": [
+          "U"
+        ],
+        "manaValue": 2,
+        "type": "Sorcery",
+        "scryfallId": "72bea6b5-005c-48c8-9f2b-0dfb18039429",
+        "manaCost": "{X}{U}{U}",
+        "types": [
+          "Sorcery"
+        ],
+        "supertypes": [],
+        "subtypes": [],
+        "text": "Draw X cards.",
+        "layout": "normal",
+        "colorIdentity": [
+          "U"
+        ]
+      }
+    }
+  ]
+}

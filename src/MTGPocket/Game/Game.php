@@ -7789,7 +7789,7 @@ final class Game
                             'spell_targets_your_creature', 'spell_targets_you', 'spell_targets_you_or_creature' => array_filter($item['targets'], fn ($target) => ($kind !== 'spell_targets_your_creature' && $target === "p:{$controller}")
                                 || ($kind !== 'spell_targets_you' && ($object = $this->targetObject((string) $target)) !== null && $object->zone === GameObject::BATTLEFIELD && $object->controller === $controller && $this->isCreature($object))) !== [],
                             // `target spell with mana value 2 or less`.
-                            default => (bool) preg_match('/^spell_mv_le_(\d+)$/', $kind, $m) && $card->cost->manaValue() <= (int) $m[1],
+                            default => (bool) preg_match('/^spell_mv_le_(\d+)$/', $kind, $m) && $card->cost->manaValue((int) ($item['x'] ?? 0)) <= (int) $m[1],
                         };
                     }
                 }
