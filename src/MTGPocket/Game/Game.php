@@ -727,11 +727,13 @@ final class Game
                     $object->sick = false;
                     if ($object->frozen) {
                         $object->frozen = false;
-                    } elseif ($object->tapped && $object->counter('stun') > 0) {
-                        // Stun counters (rule 122.1d): one is removed instead.
-                        $object->addCounters('stun', -1);
                     } elseif (! $this->hasKeyword($object, "doesn't untap")) {
-                        $object->tapped = false;
+                        if ($object->tapped && $object->counter('stun') > 0) {
+                            // Stun counters (rule 122.1d): one is removed instead of untapping.
+                            $object->addCounters('stun', -1);
+                        } else {
+                            $object->tapped = false;
+                        }
                     }
                 }
                 $this->enterStep(Step::Upkeep);

@@ -109,6 +109,81 @@ final class StunEntryTest extends GameTestCase
         $this->assertStringContainsString("Chef's Knife", $unsupported[0]);
     }
 
+    private function restrictUntap(int $seat, int $id): int
+    {
+        $this->lands($seat, 'Island', 1);
+        $aura = $this->game->addCard($seat, ['name' => 'Untap Restriction Fixture', 'type' => 'Enchantment - Aura', 'manaCost' => '{U}',
+            'text' => "Enchant creature\nEnchanted creature doesn't untap during its controller's untap step."], GameObject::HAND)->id;
+        $this->game->cast($seat, $aura, 0, ['o:'.$id]);
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertSame(GameObject::BATTLEFIELD, $this->zone($aura));
+        $this->assertTrue($this->game->hasKeyword($this->game->objects[$id], "doesn't untap"));
+
+        return $aura;
+    }
+
+    /** @dataProvider restrictedCases */
+    public function testUntapRestrictionPreservesStunUntilItIsRemoved(int $seat, int $index, bool $frozen): void
+    {
+        $id = $this->prepare($seat, $index);
+        $aura = $this->restrictUntap($seat, $id);
+        $initial = $index === 0 ? 1 : 3;
+        $this->game->objects[$id]->frozen = $frozen;
+        $this->restore();
+        $firstUpkeep = $seat === 0 ? 3 : 4;
+        $this->passUntil(Step::Upkeep, $firstUpkeep);
+        $this->assertTrue($this->game->objects[$id]->tapped);
+        $this->assertFalse($this->game->objects[$id]->frozen);
+        $this->assertSame($initial, $this->game->objects[$id]->counter('stun'));
+        $this->restore();
+        $this->lands($seat, 'Forest', 2);
+        $removal = $this->game->addCard($seat, ['name' => 'Aura Removal Fixture', 'type' => 'Instant', 'manaCost' => '{1}{G}',
+            'text' => 'Destroy target artifact or enchantment.'], GameObject::HAND)->id;
+        $this->game->cast($seat, $removal, 0, ['o:'.$aura]);
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertSame(GameObject::GRAVEYARD, $this->zone($aura));
+        $this->assertFalse($this->game->hasKeyword($this->game->objects[$id], "doesn't untap"));
+        for ($i = 1; $i <= $initial; $i++) {
+            $this->passUntil(Step::Upkeep, $firstUpkeep + 2 * $i);
+            $this->assertTrue($this->game->objects[$id]->tapped);
+            $this->assertSame($initial - $i, $this->game->objects[$id]->counter('stun'));
+            $this->restore();
+        }
+        $this->passUntil(Step::Upkeep, $firstUpkeep + 2 * ($initial + 1));
+        $this->assertFalse($this->game->objects[$id]->tapped);
+    }
+
+    /** @dataProvider seats */
+    public function testFaeriePaidUntapStillConsumesStunUnderRestriction(int $seat): void
+    {
+        $id = $this->prepare($seat, 1);
+        $this->restrictUntap($seat, $id);
+        $this->lands($seat, 'Island', 2);
+        $this->game->activate($seat, $id, 0);
+        $this->restore();
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+        $this->assertTrue($this->game->hasKeyword($this->game->objects[$id], "doesn't untap"));
+        $this->assertTrue($this->game->objects[$id]->tapped);
+        $this->assertSame(2, $this->game->objects[$id]->counter('stun'));
+    }
+
+    public static function restrictedCases(): array
+    {
+        $out = [];
+        foreach ([0, 1] as $seat) {
+            foreach ([0, 1] as $index) {
+                foreach ([false, true] as $frozen) {
+                    $out[] = [$seat, $index, $frozen];
+                }
+            }
+        }
+
+        return $out;
+    }
+
     public static function cardsAndSeats(): array
     {
         return [[0, 0], [0, 1], [1, 0], [1, 1]];

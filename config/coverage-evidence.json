@@ -11,6 +11,7 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "stunUntapRestriction": {"base": "6d0b4549240e82b1c66f824f95470cffc177636d", "baseline": "Ten restricted-untap and paid-activation cases reached 118 assertions; four non-frozen cases lost a stun counter, while frozen and paid-activation controls passed.", "focused": "The untap-step restriction is checked before stun replacement; 10 cases and 146 assertions pass for both seats, both cards, frozen control, restriction removal, paid untap and JSON restore. Earlier exact-head CI 40781490570 is historical.", "meaning": "Narrow untap-step correction; no Ward, general replacement or whole-card certification claim."},
     "stunEntry": {"base": "fc77ab3f79572b3a68ebc4ab58e1204f5061b7e9", "baseline": "Eight paid cached-card cases reached 40 assertions and failed: both cards entered untapped without their stun counters, for both seats.", "focused": "The existing entry-counter path recognizes stun: 12 tests and 92 assertions pass, covering paid entry, untap replacement, atomic unpaid activation and saved state.", "meaning": "Scoped entry and untap evidence only; prior validation and aggregate recognition remain historical."},
     "javelinBrickEntry": {"base": "dec343dddec15791d42ddd28d4b46337f386112a", "baseline": "Eight paid cases for cached Icatian Javelineers and Sunset Pyramid reached 36 assertions: four missing-entry failures and four activation errors for both seats.", "focused": "Existing entry counter allowlist recognizes javelin and brick: 19 tests and 144 assertions pass, including actual payment, summoning sickness, invalid costs, restore and recast.", "meaning": "Scoped gameplay evidence for two cached printings; aggregate recognition and earlier validation remain historical."},
     "counterCostSourceDamage": {"base": "e5a0d1c94c78db07efb2ec5e242cf478f2936ad1", "baseline": "Four paid cases for cached Ancient Hydra and Monoskelion reached 20 assertions; each failed because its activated ability was unread.", "focused": "Unambiguous self-counter costs normalize source damage: 21 tests and 198 assertions pass, including both seats, paid costs, invalid targets, prevention, source departure and JSON.", "meaning": "Scoped gameplay evidence for two cached printings; aggregate recognition and earlier validation remain historical."},
@@ -421,7 +422,7 @@
     }
   },
   "sourcePins": {
-    "tests/Game/StunEntryTest.php": "2466acda3d8ef828b84a161e9f126cacb39b11367adf307bd1215cec544067af",
+    "tests/Game/StunEntryTest.php": "b7aa58f7a6d173e63d3359958937e67de6538ed2d2b8b57861d155e320a925b9",
     "tests/Game/JavelinBrickEntryTest.php": "667aeb5f4daf1a1afece00ee9d1eff5ef29a038e134e4d9cb7ab9c3298bf9351",
     "tests/Game/CounterCostSourceDamageTest.php": "246d17dc8b15e1719acd169fb44d37ca94876e59c300668ae56254d152b11a44",
     "tests/Game/FadingTest.php": "0cd93270abd23ef95b36323a82d480a98b5611069b016a0c1a630c1817646321",
@@ -434,7 +435,7 @@
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "6a29490ede7c524cfca416f9fd9608c1f420137a0f679a5f8560d26b04aa067c",
     "src/MTGPocket/Game/TextParser.php": "93b03ca05b4527b98306039b40ad716e08e2062e76877f4a65bece4f2a948514",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "6535b7d2b29689c9e9b131aa885bd6c3bcd4263e8d732d26917f5aefc326f35a",
+    "src/MTGPocket/Game/Game.php": "2cf8c214666230c900fcfbc8dda3bc171e19c9d1daa5f4a8403614a340c553c1",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -512,9 +513,11 @@
         "tests/Game/StunEntryTest.php::testTonberryStunIsConsumedBeforeItCanUntap",
         "tests/Game/StunEntryTest.php::testPaidFaerieUntapRemovesOneStunInsteadAfterRestore",
         "tests/Game/StunEntryTest.php::testUnpaidFaerieActivationRejectsWithoutMutation",
-        "tests/Game/StunEntryTest.php::testTonberryCombatClauseRemainsExplicitlyUnread"
+        "tests/Game/StunEntryTest.php::testTonberryCombatClauseRemainsExplicitlyUnread",
+      "tests/Game/StunEntryTest.php::testUntapRestrictionPreservesStunUntilItIsRemoved",
+      "tests/Game/StunEntryTest.php::testFaeriePaidUntapStillConsumesStunUnderRestriction"
       ],
-      "scope": "Complete cached FIN Tonberry and WOE Sleep-Cursed Faerie: both seats pay casts and enter tapped with one or three stun counters. Ordinary untap steps and Faerie\u2019s paid untap consume counters before untapping, including JSON restore and unpaid activation rejection.",
+      "scope": "Complete cached FIN Tonberry and WOE Sleep-Cursed Faerie: both seats pay casts and enter tapped with one or three stun counters. Ordinary untap steps and Faerie\u2019s paid untap consume counters before untapping, including JSON restore and unpaid activation rejection. A continuous untap-step restriction preserves stun counters until removed; paid untap still consumes one.",
       "limits": "Only these cached printing paths. Tonberry\u2019s Chef\u2019s Knife combat clause remains unread; Faerie\u2019s Ward timing remains the existing upfront-payment behavior and is not certified. General entry replacements, Ward, newest printings and whole-card behavior remain outside this evidence."
     },
     {
