@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [Tonberry Chef's Knife slice](tonberry-chefs-knife.md) addresses the previously explicit unread combat clause. The ledger retains 54 scoped names, now with three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
+The [untap-symbol temporary-effects slice](untap-symbol-temporary-effects.md) adds three paid cached-card paths. The ledger has 57 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
+
+The [Tonberry Chef's Knife slice](tonberry-chefs-knife.md) addresses the previously explicit unread combat clause. That milestone recorded 54 scoped names, three explicit-gap names, two overlaps and zero whole-card certificates; recognition remains historical.
 
 The [Silkbind Faerie untap-cost slice](silkbind-untap-cost.md) adds one bounded paid activation path. That milestone recorded 54 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical.
 

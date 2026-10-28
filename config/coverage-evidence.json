@@ -11,6 +11,7 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "untapTemporaryEffects": {"base": "8602b2150f7e7660d866ba7d25cc81e8bdf0ce9b", "baseline": "Six paid cached-card activations across both seats reached 24 assertions and all errored because the abilities were unread.", "focused": "Twenty tests and 182 assertions pass for three exact untap-symbol effects, both-seat costs, stun, invalid choices, target and source departure, expiry and JSON restore.", "meaning": "Only the three selected cached forms; prior recognition and validation remain historical."},
     "tonberryKnife": {"base": "34ad266971d90e1b50a52b0db238fe5603b6f6b6", "baseline": "Paid FIN Tonberry casts for both seats: two tests reached ten assertions, both failed because first strike was absent on its controller turn.", "focused": "Nine tests and 76 assertions cover turn-dependent first strike and deathtouch, both-seat paid combat, source controller change, restore and unread controls. An initial hyphen-only correction failed four cases because the cached label uses an em dash; this failure remains historical.", "meaning": "The explicit Tonberry Chef's Knife gap is addressed for the selected cached record; no whole-card certificate or aggregate recognition update."},
     "silkbindUntapCost": {"base": "f1fba9d4328489b30f1c183f7681e0e7b9a00bd1", "baseline": "Paid Silkbind Faerie casts for both seats reached six assertions; both activations errored because the untap-symbol ability was unread.", "focused": "Twelve cases and 80 assertions pass for paid casts, actual hybrid activation costs, repeated stun replacement, target departure, haste, invalid activation and JSON restore.", "meaning": "Only the selected untap-symbol tap-target effect is recognized; prior recognition and validation remain historical."},
     "massUntapStun": {"base": "62df1ca5bd185b3b8d1d3db69abe5dbca6a9989f", "baseline": "Paid cached Vitalize and To Arms! cases for both seats: four tests, 26 reached assertions, four failures when stunned creatures untapped instead of losing a counter.", "focused": "Ten tests and 92 assertions pass, including paid casts, JSON restore, controlled and opposing creatures, mass tap and countered-spell controls.", "meaning": "Scoped mass-untap stun replacement only; prior validation and aggregate recognition remain historical."},
@@ -425,6 +426,7 @@
     }
   },
   "sourcePins": {
+    "tests/Game/UntapTemporaryEffectsTest.php": "8d03413a6b6bb68095e23c2c83602fc36d01bfb94314e07e3f5ff18859dab4d5",
     "tests/Game/TonberryKnifeTest.php": "64e601f43acab69cdd2b0f6453ec1cc0151aeff5a1dd1920934f9b48e10e5168",
     "tests/Game/UntapSymbolCostTest.php": "659ec6ac9e8fae05a8de61f25963be79144eb708a7b34b5b0385bbd3d814c4bf",
     "tests/Game/MassUntapStunTest.php": "9c79ef93992e80d6e00a42392629cf47c4bcca7c0d1cf33228b903a83a57bccf",
@@ -439,7 +441,7 @@
     "tests/Game/InfestPyroclasmCoverageTest.php": "a78df15b9d11ca12652e305f93105f889d01cb9f38754890ed3582968dc575bc",
     "tests/Game/DisfigureCoverageTest.php": "db33d67173f684e8eb6dbabda8fe6686d5766feced96ad91aafd4a9bd750cc9f",
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "6a29490ede7c524cfca416f9fd9608c1f420137a0f679a5f8560d26b04aa067c",
-    "src/MTGPocket/Game/TextParser.php": "197473afdfddf5281485586883b53f0de8f89a4cb4761998f167f989d8b73308",
+    "src/MTGPocket/Game/TextParser.php": "345279862f0c955897fcc21895a29eca7184a9c4d180639a0d8f1aa9339ab8d2",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
     "src/MTGPocket/Game/Game.php": "e37dc6e2549cf9674d1f55252a351e42a4c15512372fdcba50a5ec0c0689efe3",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
@@ -508,6 +510,22 @@
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
   },
   "scopedEvidence": [
+    {
+      "id": "untap-symbol-temporary-effects",
+      "cards": [
+        "Safehold Sentry",
+        "Merrow Wavebreakers",
+        "Merrow Grimeblotter"
+      ],
+      "tests": [
+        "tests/Game/UntapTemporaryEffectsTest.php::testPaidUntapAbilityAndExpiration",
+        "tests/Game/UntapTemporaryEffectsTest.php::testStunReplacementAndAtomicInvalidCosts",
+        "tests/Game/UntapTemporaryEffectsTest.php::testSourceDepartureDoesNotRefundAndTargetedEffectStillResolves",
+        "tests/Game/UntapTemporaryEffectsTest.php::testDepartedTargetIsNotModifiedAndCostsRemainPaid"
+      ],
+      "scope": "Three complete cached SHM creatures: both seats pay casts and untap-symbol activations, resolving temporary +0/+2, flying or targeted -2/-0. Stun replacement, invalid costs, source/target departure, cleanup and JSON restoration are tested.",
+      "limits": "Only these exact cost and effect forms. Other untap-symbol abilities, untap observers, Ward timing, source or target re-entry, comprehensive replacement ordering and whole-card behavior remain outside the evidence."
+    },
     {
       "id": "tonberry-chefs-knife-combat",
       "cards": [
