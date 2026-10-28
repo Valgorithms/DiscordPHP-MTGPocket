@@ -46,6 +46,7 @@ final class Game
     use DamageResolution;
     use PaidActionContinuation;
     use RecoverResolution;
+    use MadnessResolution;
 
     public const string MULLIGAN = 'mulligan';
     public const string PLAYING = 'playing';
@@ -97,7 +98,7 @@ final class Game
      * Version 20 adds default-off fixed Ward and bounded controller-selected trigger groups; 19 pins already-paid targets.
      * Version 18 adds explicit Recover choices. Version 17 adds bounded resumable damage; older versions migrate it empty.
      */
-    public const int STATE_VERSION = 21;
+    public const int STATE_VERSION = 22;
 
     /** @var array<int, array> Entries waiting for an as-enters life choice. */
     private array $pendingEntries = [];
@@ -1546,10 +1547,14 @@ final class Game
         return $this->paymentFor($seat, $id, 0, $options) !== null;
     }
 
-    private function whyNotCast(int $seat, int $id, array $options): ?string
+    private function whyNotCast(int $seat, int $id, array $options, ?array $madnessChoice = null): ?string
     {
         $object = $this->objects[$id] ?? null;
         $player = $this->players[$seat];
+        if ($options['exiled'] === 'madness' && ($madnessChoice === null || ($madnessChoice['seat'] ?? null) !== $seat
+            || ($madnessChoice['object'] ?? null) !== $id || ($madnessChoice['incarnation'] ?? null) !== $object?->incarnation)) {
+            return 'Madness can be cast only while its original trigger resolves.';
+        }
         // `Your opponents can't cast spells during your turn.`
         foreach ($this->active !== $seat ? $this->permanents($this->active) : [] as $permanent) {
             if ($this->hasKeyword($permanent, 'opponents cast nothing on your turn')) {
@@ -1692,7 +1697,7 @@ final class Game
         if (! $options['faceDown'] && ! $options['flashback'] && ! $options['rebound'] && $options['alt'] === '' && ! in_array($options['exiled'], ['plot', 'madness', 'suspended', 'cascade'], true) && $card->cost->isEmpty() && array_key_exists('manaCost', $card->card)) {
             return "{$card->name} has no mana cost, so it cannot be cast.";
         }
-        if ($this->priority !== $seat) {
+        if ($madnessChoice === null && $this->priority !== $seat) {
             return 'You do not have priority.';
         }
         if (($split = $this->splitSecond()) !== null) {
@@ -2398,8 +2403,19 @@ final class Game
     public function cast(int $seat, int $id, int $x = 0, array $targets = [], string|array $how = ''): ?array
     {
         $this->expect($seat, 'priority');
+
+        return $this->castInternal($seat, $id, $x, $targets, $how, null);
+    }
+
+    private function castMadness(int $seat, int $id, int $x, array $targets, array $choice): ?array
+    {
+        return $this->castInternal($seat, $id, $x, $targets, 'md', $choice);
+    }
+
+    private function castInternal(int $seat, int $id, int $x, array $targets, string|array $how, ?array $madnessChoice): ?array
+    {
         $options = self::castOptions($how);
-        if (($reason = $this->whyNotCast($seat, $id, $options)) !== null) {
+        if (($reason = $this->whyNotCast($seat, $id, $options, $madnessChoice)) !== null) {
             throw new GameException($reason);
         }
         $object = $this->objects[$id];
@@ -2432,14 +2448,26 @@ final class Game
             $cost = ManaCost::parse(self::castCost($card, $options).$this->spliceCost($options['splice']));
             throw new GameException("You cannot pay {$cost}".($xCount > 0 ? " with X = {$x}" : '').($wardMana !== '' || $wardLife > 0 ? ' and ward' : '').'.');
         }
-        $after = ['kind' => 'cast', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
+        $after = ['kind' => $madnessChoice === null ? 'cast' : 'madness_cast', 'seat' => $seat, 'object' => $id, 'incarnation' => $object->incarnation,
             'x' => $x, 'targets' => $targets, 'options' => $options, 'payment' => $payment,
             'revealed' => $revealed?->id, 'wardDiscard' => $wardDiscard, 'wardLife' => $wardLife, 'xCount' => $xCount]
             + ($execution === null ? [] : ['wardExecution' => $execution]);
+        if ($madnessChoice !== null) {
+            $after['madnessChoice'] = $madnessChoice;
+            $this->validatePaidAction($after);
+            $this->pendingChoice = null;
+        }
         if ($this->pay($seat, $payment, $after)) {
             $this->pendingPaidWardObservation = $observation;
 
             return null;
+        }
+
+        if ($madnessChoice !== null) {
+            $committed = $this->finishMadnessCast($after, $observation);
+            $this->settle();
+
+            return $committed;
         }
 
         return $this->finishPaidCast($after, $observation);
@@ -2585,7 +2613,9 @@ final class Game
         }
         $this->castTriggers($seat, $object, $castFrom);
         $this->targetedTriggers($targets, $seat, true, $object);
-        $this->settle();
+        if ($after['kind'] !== 'madness_cast') {
+            $this->settle();
+        }
 
         return $committed;
     }
@@ -4026,6 +4056,10 @@ final class Game
                 $steps = array_merge($this->pendingChoice['nestedSteps'] ?? [], $steps);
                 unset($this->pendingChoice['nestedSteps']);
                 $this->pendingChoice['resume'] = ['item' => $item, 'steps' => $steps, 'self' => $self, 'followed' => $this->followed];
+                if (($this->pendingChoice['type'] ?? null) === 'optional_madness') {
+                    $this->pendingChoice['triggerId'] = $item['id'];
+                    $this->validateMadnessChoice($this->pendingChoice);
+                }
                 $this->sealDamageChoice();
 
                 return;
@@ -5538,10 +5572,12 @@ final class Game
                 break;
 
             case 'madness':
-                // Not cast while the trigger waited: into the graveyard.
-                if ($source->zone === GameObject::EXILE && $source->exiledBy === 'madness') {
-                    $this->moveTo($source, GameObject::GRAVEYARD);
-                    $this->log("{$source->name()} goes to the graveyard.");
+                if ($sourceIncarnation !== null && $source->zone === GameObject::EXILE && $source->exiledBy === 'madness'
+                    && $source->incarnation === $sourceIncarnation && $source->owner === $controller) {
+                    $this->pendingChoice = ['type' => 'optional_madness', 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                        'object' => $source->id, 'incarnation' => $sourceIncarnation, 'options' => ['accept', 'decline']];
+
+                    return true;
                 }
                 break;
 
@@ -11698,6 +11734,10 @@ final class Game
         if (! is_int($version) || $version < 1 || $version > self::STATE_VERSION) {
             throw new GameException('Unsupported saved game schema version.');
         }
+        if ($version < 22 && (($data['pendingChoice']['type'] ?? null) === 'optional_madness'
+            || ($data['pendingDamage']['after']['kind'] ?? null) === 'madness_cast')) {
+            throw new GameException('Madness continuations require saved game schema 22.');
+        }
         $game = new self((string) $data['id'], (string) $data['seed']);
         $game->stage = (string) $data['stage'];
         $game->turn = (int) $data['turn'];
@@ -11725,6 +11765,21 @@ final class Game
             }
         }
         $game->battlefield = array_map('intval', (array) $data['battlefield']);
+        // Do not coerce an unknown Madness source incarnation into a new identity.
+        foreach (['stack' => 'object', 'pendingTriggers' => 'source'] as $list => $idKey) {
+            foreach ((array) ($data[$list] ?? []) as $item) {
+                $effects = is_array($item) && is_array($item['effects'] ?? null) ? $item['effects'] : [];
+                if (array_filter($effects, fn ($effect) => is_array($effect) && ($effect['type'] ?? null) === 'madness') === []) {
+                    continue;
+                }
+                $sourceId = $item[$idKey] ?? null;
+                $incarnation = $item['incarnation'] ?? null;
+                if (! is_int($sourceId) || ! isset($game->objects[$sourceId]) || ! is_int($incarnation)
+                    || $incarnation < 0 || $incarnation > $game->objects[$sourceId]->incarnation) {
+                    throw new GameException('Madness trigger has unknown saved source identity.');
+                }
+            }
+        }
         foreach ((array) $data['stack'] as $item) {
             if (array_key_exists('uncounterable', $item) && (! self::isAbility($item) || ! is_bool($item['uncounterable']))) {
                 throw new GameException('Invalid saved stack-entry counter characteristic.');
@@ -12027,6 +12082,14 @@ final class Game
         }
         $game->validateRecoverSchema($version);
         $game->restoreWardExecutionState($data['wardExecution'] ?? null, $version);
+        if (($game->pendingChoice['type'] ?? null) === 'optional_madness') {
+            $game->validateMadnessChoice($game->pendingChoice);
+            $choice = $game->pendingChoice;
+            $source = $game->objects[$choice['object']];
+            if ($source->zone !== GameObject::EXILE || $source->exiledBy !== 'madness' || $source->incarnation !== $choice['incarnation']) {
+                throw new GameException('Unavailable saved Madness card incarnation.');
+            }
+        }
         $game->validateDamageState();
 
         return $game;

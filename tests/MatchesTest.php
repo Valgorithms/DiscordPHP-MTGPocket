@@ -1582,6 +1582,58 @@ final class MatchesTest extends PocketTestCase
         $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
     }
 
+    /** @dataProvider optionalLifeOptions */
+    public function testMadnessPanelPersistsSelectionAndRejectsStaleActions(string $option): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $cardId = $target = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$cardId, &$target): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/madness-trigger-ordering.json'), true, flags: JSON_THROW_ON_ERROR);
+            $card = array_values(array_filter($fixture['cards'], fn (array $card) => $card['name'] === 'Murderous Compulsion'))[0];
+            $cardId = $game->addCard($seat, $card, GameObject::HAND)->id;
+            for ($n = 0; $n < 2; $n++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Swamp'), GameObject::BATTLEFIELD);
+            }
+            $object = $game->addCard(1 - $seat, ['name' => 'Panel target boundary', 'type' => 'Creature', 'power' => '2', 'toughness' => '2'], GameObject::BATTLEFIELD);
+            $object->tapped = true;
+            $target = $object->id;
+            // Isolate persisted interaction; the separate engine test pays the discard spell.
+            (new \ReflectionMethod(Game::class, 'discardCards'))->invoke($game, $seat, [$cardId]);
+            (new \ReflectionMethod(Game::class, 'settle'))->invoke($game);
+        });
+        for ($n = 0; $match->game->choiceAwaiting() === null && $n < 8; $n++) {
+            [$match] = $panel->run($match->id, $match->game->players[$match->game->priority]->id, 'pass');
+        }
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('optional_madness', $choice['type']);
+        $this->assertStringContainsString('with Madness', MatchMessageBuilder::waiting($match)['text']);
+        $this->assertFalse($this->sacrificeComponent($match, $player, 'madness:'.$choice['id'].':accept')['disabled']);
+        $before = $match->game->toArray();
+        foreach ([[$other, $choice['id'], 'decline'], [$player, $choice['id'] + 1, 'accept']] as [$actor, $id, $answer]) {
+            $this->assertException(fn () => $panel->run($match->id, $actor, 'madness', [(string) $id, $answer]), 'no longer available');
+            $this->assertSame($before, $this->pocket->matches->find($match->id)->game->toArray());
+        }
+        [$match, $changed] = $panel->run($match->id, $player, 'madness', [(string) $choice['id'], $option]);
+        if ($option === 'accept') {
+            $this->assertFalse($changed, 'Target selection is staged before the engine action.');
+            $this->assertStringContainsString(':tgt', json_encode(MatchMessageBuilder::actions($match, $player)));
+            [$match, $changed] = $panel->run($match->id, $player, 'tgt', [], ['o:'.$target]);
+        }
+        $this->assertTrue($changed);
+        $this->assertSame($option === 'accept' ? GameObject::STACK : GameObject::GRAVEYARD, $match->game->objects[$cardId]->zone);
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+        $this->assertException(fn () => $panel->run($match->id, $player, 'madness', [(string) $choice['id'], $option]), 'no longer available');
+        $this->assertSame($match->game->toArray(), $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
     public static function recoverOptions(): array
     {
         return [['accept', true], ['decline', true], ['decline', false]];

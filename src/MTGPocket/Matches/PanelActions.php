@@ -77,6 +77,9 @@ final class PanelActions
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'fabricate' => $act(fn (Game $game, int $seat) => $game->chooseFabricate($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'recover' => $act(fn (Game $game, int $seat) => $game->chooseRecover($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
+            'madness' => ($args[1] ?? '') === 'decline'
+                ? $act(fn (Game $game, int $seat) => $game->chooseMadness($seat, (int) ($args[0] ?? 0), 'decline'))
+                : $this->madnessStart($matchId, $playerId, (int) ($args[0] ?? 0), (string) ($args[1] ?? '')),
             'maygoblin' => $act(fn (Game $game, int $seat) => $game->chooseOptionalRedGoblin($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'mayuntap' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceUntap($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'maycounter' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceCounter($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
@@ -172,6 +175,23 @@ final class PanelActions
      *
      * @return array{0: MatchRecord, 1: bool}
      */
+    private function madnessStart(string $matchId, string $playerId, int $choiceId, string $option): array
+    {
+        $match = $this->matches->find($matchId) ?? throw new \OutOfBoundsException('That match no longer exists.');
+        $game = $match->game;
+        $seat = $game->seatOf($playerId);
+        $choice = $game->choiceAwaiting();
+        if ($option !== 'accept' || $seat === null || ($choice['type'] ?? null) !== 'optional_madness'
+            || ($choice['seat'] ?? null) !== $seat || ($choice['id'] ?? null) !== $choiceId || ! $game->canCastMadness($seat)) {
+            throw new GameException('That Madness choice is no longer available or cannot be paid.');
+        }
+        $card = $game->objects[$choice['object']]->printed();
+        $options = Game::castOptions('md');
+
+        return $this->castStep($matchId, $playerId, fn () => ['id' => $choice['object'], 'how' => 'md', 'targets' => [], 'madnessChoiceId' => $choiceId]
+            + (self::xCount($card, $options) > 0 ? [] : ['x' => 0]));
+    }
+
     private function play(string $matchId, string $playerId, string $id, string $how): array
     {
         $id = (int) $id;
@@ -217,7 +237,8 @@ final class PanelActions
      */
     public static function xCount(CardDefinition $card, array $options): int
     {
-        return $options['faceDown'] ? 0 : ($options['flashback'] ? 0 : $card->cost->xCount);
+        return $options['faceDown'] ? 0 : ($options['flashback'] ? 0 : ($options['exiled'] === 'madness'
+            ? \MTGPocket\Game\Mana\ManaCost::parse((string) ($card->altCosts['madness'] ?? ''))->xCount : $card->cost->xCount));
     }
 
     /**
@@ -249,7 +270,14 @@ final class PanelActions
 
         try {
             return [$this->matches->act($matchId, $playerId, function (Game $game, int $seat, MatchRecord $match) use ($cast, $playerId): void {
-                $game->cast($seat, (int) $cast['id'], (int) $cast['x'], array_values($cast['targets']), (string) ($cast['how'] ?? ''));
+                if (isset($cast['madnessChoiceId'])) {
+                    if (($game->choiceAwaiting()['object'] ?? null) !== (int) $cast['id']) {
+                        throw new GameException('That Madness choice is no longer available.');
+                    }
+                    $game->chooseMadness($seat, (int) $cast['madnessChoiceId'], 'accept', array_values($cast['targets']), (int) $cast['x']);
+                } else {
+                    $game->cast($seat, (int) $cast['id'], (int) $cast['x'], array_values($cast['targets']), (string) ($cast['how'] ?? ''));
+                }
                 unset($match->choices[$playerId]);
             }), true];
         } catch (\InvalidArgumentException $e) {

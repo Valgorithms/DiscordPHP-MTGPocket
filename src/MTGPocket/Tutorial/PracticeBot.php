@@ -110,6 +110,25 @@ final class PracticeBot
                 $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
 
                 return true;
+            case 'optional_madness':
+                $choice = $game->choiceAwaiting();
+                $card = $game->objects[$choice['object']]->printed();
+                $targets = self::targets($game, $seat, Game::castTargetKinds($card, 'md', $game), $card->spellEffects(), $choice['object']);
+                if ($targets === null || ! $game->canCastMadness($seat)) {
+                    $game->chooseMadness($seat, $choice['id'], 'decline');
+                } else {
+                    try {
+                        $game->chooseMadness($seat, $choice['id'], 'accept', $targets);
+                    } catch (GameException $e) {
+                        if (($game->choiceAwaiting()['id'] ?? null) !== $choice['id']) {
+                            throw $e;
+                        }
+                        $game->chooseMadness($seat, $choice['id'], 'decline');
+                    }
+                }
+
+                return true;
+
             case 'optional_recover':
                 // Buy back when payable; the simple life-cost policy avoids paying the last life.
                 $choice = $game->choiceAwaiting();

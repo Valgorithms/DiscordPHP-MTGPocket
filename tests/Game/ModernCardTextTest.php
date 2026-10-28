@@ -1324,8 +1324,11 @@ final class ModernCardTextTest extends GameTestCase
         $compulsion = $this->put(0, 'Murderous Compulsion', GameObject::HAND);
         $game->cast(0, $this->put(0, 'Tormenting Voice', GameObject::HAND), 0, []);
         $this->assertSame(GameObject::EXILE, $this->zone($compulsion), 'Discarded into exile.');
-        $this->assertContains(['id' => $compulsion, 'how' => 'md'], $game->plays(0), 'Cast it at instant speed while the trigger waits.');
-        $game->cast(0, $compulsion, 0, ["o:{$bears}"], 'md');
+        $this->assertNotContains(['id' => $compulsion, 'how' => 'md'], $game->plays(0), 'The cast is offered only as the Madness trigger resolves.');
+        $this->resolve();
+        $choice = $game->choiceAwaiting();
+        $this->assertSame('optional_madness', $choice['type']);
+        $game->chooseMadness(0, $choice['id'], 'accept', ["o:{$bears}"]);
         $this->resolve();
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($bears));
         for ($i = 0; $i < 3 && $game->stack !== []; $i++) {
@@ -1343,6 +1346,8 @@ final class ModernCardTextTest extends GameTestCase
         $game->players[0]->hand = [];
         $again = $this->put(0, 'Murderous Compulsion', GameObject::HAND);
         $game->cast(0, $this->put(0, 'Tormenting Voice', GameObject::HAND), 0, []);
+        $this->resolve();
+        $game->chooseMadness(0, $game->choiceAwaiting()['id'], 'decline');
         for ($i = 0; $i < 3 && $game->stack !== []; $i++) {
             $this->resolve();
         }

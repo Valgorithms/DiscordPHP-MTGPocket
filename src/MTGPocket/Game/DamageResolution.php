@@ -204,6 +204,7 @@ trait DamageResolution
             $observation = $this->takePaidWardObservation();
             match ($pending['after']['kind']) {
                 'cast' => $this->finishPaidCast($pending['after'], $observation),
+                'madness_cast' => $this->finishMadnessCast($pending['after'], $observation),
                 'activate' => $this->finishPaidActivation($pending['after'], $observation),
                 default => $this->finishPaidUtility($pending['after'], $observation),
             };
@@ -362,8 +363,26 @@ trait DamageResolution
     }
 
     /** Only explicit cast/activation continuations are accepted, never method names. */
-    private function validatePaidAction(mixed $after): void
+    private function validatePaidAction(mixed $after, bool $madnessValidation = false): void
     {
+        if (is_array($after) && ($after['kind'] ?? null) === 'madness_cast') {
+            $choice = $after['madnessChoice'] ?? null;
+            if (! is_array($choice)) {
+                throw new GameException('Missing paid Madness resolution choice.');
+            }
+            $this->validateMadnessChoice($choice);
+            if (($after['seat'] ?? null) !== $choice['seat'] || ($after['object'] ?? null) !== $choice['object']
+                || ($after['incarnation'] ?? null) !== $choice['incarnation'] || ($after['options'] ?? null) !== self::castOptions('md')
+                || $this->objects[$choice['object']]->zone !== GameObject::EXILE
+                || $this->objects[$choice['object']]->exiledBy !== 'madness') {
+                throw new GameException('Invalid paid Madness source identity.');
+            }
+            unset($after['madnessChoice']);
+            $after['kind'] = 'cast';
+            $this->validatePaidAction($after, true);
+
+            return;
+        }
         $this->validatePaidWardSnapshot($after);
         if (is_array($after) && ($after['kind'] ?? null) === 'ward_trigger') {
             $this->validatePaidTrigger($after);
@@ -371,7 +390,7 @@ trait DamageResolution
             return;
         }
         if (! is_array($after) || ! in_array($after['kind'] ?? null, ['cast', 'activate', ...self::PAID_UTILITY_ACTIONS], true)
-            || ! in_array($after['seat'] ?? null, [0, 1], true) || $this->priority !== $after['seat']
+            || ! in_array($after['seat'] ?? null, [0, 1], true) || (! $madnessValidation && $this->priority !== $after['seat'])
             || ! is_int($after['object'] ?? null) || ! isset($this->objects[$after['object']])
             || ! is_int($after['incarnation'] ?? null) || $this->objects[$after['object']]->incarnation !== $after['incarnation']) {
             throw new GameException('Invalid saved paid-action continuation.');

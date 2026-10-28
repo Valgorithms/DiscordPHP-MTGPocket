@@ -365,6 +365,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
                 'optional_recover' => 'choose whether to pay recover '.$game->choiceAwaiting()['cost'].' for '.$game->choiceAwaiting()['label'],
+                'optional_madness' => 'choose whether to cast '.$game->objects[$game->choiceAwaiting()['object']]->name().' with Madness',
                 'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
                 'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
                 'optional_source_counter' => 'choose whether to put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on '.$game->choiceAwaiting()['label'],
@@ -702,6 +703,17 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $message->addComponent($row);
                 break;
 
+            case 'optional_madness':
+                $optional = $game->choiceAwaiting();
+                if (isset($choice['cast'])) {
+                    self::castControls($message, $match, $seat, $choice['cast']);
+                } else {
+                    $message->addComponent(ActionRow::new()
+                        ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('madness', (string) $optional['id'], 'accept'))->setLabel('Cast with Madness')->setDisabled(! $game->canCastMadness($seat)))
+                        ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('madness', (string) $optional['id'], 'decline'))->setLabel('Decline: put in graveyard')));
+                }
+                break;
+
             case 'optional_recover':
                 $optional = $game->choiceAwaiting();
                 $message->addComponent(ActionRow::new()
@@ -966,6 +978,7 @@ class MatchMessageBuilder extends PocketMessageBuilder
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
             'optional_recover' => '**'.$game->choiceAwaiting()['label'].'**: you may pay '.$game->choiceAwaiting()['cost'].' to return the original graveyard card to your hand. Otherwise, exile it. This does not target.',
+            'optional_madness' => '**'.$game->objects[$game->choiceAwaiting()['object']]->name().'**: cast this card for its Madness cost, or put it into its owner’s graveyard.',
             'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
             'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
             'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on this permanent. Only the original battlefield incarnation can receive it; this does not target.',
