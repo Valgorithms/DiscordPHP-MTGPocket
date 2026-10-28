@@ -137,6 +137,11 @@ final class PracticeBot
 
                 return true;
 
+            case 'devour':
+                // The practice policy keeps its existing creatures.
+                $game->chooseDevour($seat, $game->choiceAwaiting()['id'], []);
+
+                return true;
             case 'optional_red_goblin':
                 // Explicit policy: buy the Goblin when the normal mana planner can pay.
                 $game->chooseOptionalRedGoblin($seat, $game->choiceAwaiting()['id'], $game->canPayOptionalRedGoblin($seat) ? 'accept' : 'decline');

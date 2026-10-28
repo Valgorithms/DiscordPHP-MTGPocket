@@ -1918,6 +1918,155 @@ final class MatchesTest extends PocketTestCase
         return $repository->modify($match->id, fn (MatchRecord $match) => $change($match->game));
     }
 
+    public function testDevourChoicePersistsAndRejectsRepositoryRetry(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $food = $source = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$food, &$source): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $game->setDevourChoices(true);
+            for ($i = 0; $i < 4; $i++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+            $food = $game->addCard($seat, $this->pocket->deckBuilder->cardData('bears'), GameObject::BATTLEFIELD)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/thorn-thrash-devour.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+            $game->cast($seat, $source, 0, []);
+            $game->pass($game->priority);
+            $game->pass($game->priority);
+        });
+        $choice = $match->game->choiceAwaiting();
+        $this->assertSame('devour', $choice['type']);
+        $saved = $this->pocket->matches->find($match->id)->game->toArray();
+        $this->assertSame(23, $saved['schemaVersion']);
+        $this->assertException(fn () => $this->pocket->matches->act(
+            $match->id,
+            $other,
+            fn (Game $game, int $actor) => $game->chooseDevour($actor, $choice['id'], [$food])
+        ), 'no longer available');
+        $this->assertSame($saved, $this->pocket->matches->find($match->id)->game->toArray());
+        $match = $this->pocket->matches->act($match->id, $player, fn (Game $game, int $actor) => $game->chooseDevour($actor, $choice['id'], [$food]));
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$food]->zone);
+        $this->assertSame(2, $match->game->objects[$source]->counter('+1/+1'));
+        $saved = $this->pocket->matches->find($match->id)->game->toArray();
+        $this->assertException(fn () => $this->pocket->matches->act(
+            $match->id,
+            $player,
+            fn (Game $game, int $actor) => $game->chooseDevour($actor, $choice['id'], [$food])
+        ), 'no longer available');
+        $this->assertSame($saved, $this->pocket->matches->find($match->id)->game->toArray());
+    }
+
+    /** @dataProvider malformedDevourQueueCases */
+    public function testMalformedDevourQueueIsRejectedWithoutRepositoryMutation(string $case): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $food = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$food): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $game->setDevourChoices(true);
+            for ($i = 0; $i < 4; $i++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+            $food = $game->addCard($seat, $this->pocket->deckBuilder->cardData('bears'), GameObject::BATTLEFIELD)->id;
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/thorn-thrash-devour.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+            $land = $game->addCard($seat, ['name' => 'Breeding Pool', 'type' => 'Land — Forest Island',
+                'text' => "As this land enters, you may pay 2 life. If you don't, it enters tapped.\n{T}: Add {G} or {U}."], GameObject::HAND)->id;
+            $game->cast($seat, $source, 0, []);
+            $game->pass($game->priority);
+            $game->pass($game->priority);
+            (new \ReflectionMethod(Game::class, 'putOntoBattlefield'))->invoke($game, $game->objects[$land], $seat);
+        });
+        $id = $match->game->choiceAwaiting()['id'];
+        $store = $this->pocket->store;
+        $before = $store->get('matches', $match->id);
+        // Inject under the actual match lock; rejection must not save any partial mutation.
+        $this->assertException(fn () => $this->pocket->matches->act($match->id, $player, function (Game $game, int $actor) use ($case, $id, $food): void {
+            $prop = new \ReflectionProperty(Game::class, 'pendingEntries');
+            $queue = $prop->getValue($game);
+            if ($case === 'counter-array') {
+                $queue[0]['entryState']['counters']['+1/+1'] = [];
+            } else {
+                $queue[1]['object'] = 999999;
+            }
+            $prop->setValue($game, $queue);
+            $game->chooseDevour($actor, $id, [$food]);
+        }), 'Devour');
+        $this->assertSame($before, $store->get('matches', $match->id));
+        // A corrupted stored document is refused on read, and remains byte-for-byte equivalent.
+        $corrupt = $before;
+        if ($case === 'counter-array') {
+            $corrupt['game']['pendingEntries'][0]['entryState']['counters']['+1/+1'] = [];
+        } else {
+            $corrupt['game']['pendingEntries'][1]['object'] = 999999;
+        }
+        $store->put('matches', $match->id, $corrupt);
+        $stored = $store->get('matches', $match->id);
+        $this->assertException(fn () => $this->pocket->matches->act($match->id, $player, fn () => null), 'Devour');
+        $this->assertSame($stored, $store->get('matches', $match->id));
+    }
+
+    public static function malformedDevourQueueCases(): array
+    {
+        return [['counter-array'], ['later-entry']];
+    }
+
+    public function testDevourPanelStagesMultiplePagesAndSubmitsOnce(): void
+    {
+        $match = $this->startMatch();
+        $panel = new PanelActions($this->pocket->matches);
+        [$match] = $panel->run($match->id, self::ALICE, 'keep');
+        [$match] = $panel->run($match->id, self::BOB, 'keep');
+        $seat = $match->game->active;
+        $player = $match->game->players[$seat]->id;
+        $other = $match->game->players[1 - $seat]->id;
+        $food = [];
+        $source = null;
+        $match = $this->modifyGame($match, function (Game $game) use ($seat, &$food, &$source): void {
+            $game->setAutoPass(0, false);
+            $game->setAutoPass(1, false);
+            $game->setDevourChoices(true);
+            for ($i = 0; $i < 4; $i++) {
+                $game->addCard($seat, $this->pocket->deckBuilder->cardData('basic:Mountain'), GameObject::BATTLEFIELD);
+            }
+            for ($i = 0; $i < 26; $i++) {
+                $food[] = $game->addCard($seat, $this->pocket->deckBuilder->cardData('bears'), GameObject::BATTLEFIELD)->id;
+            }
+            $fixture = json_decode(file_get_contents(__DIR__.'/Fixtures/thorn-thrash-devour.json'), true, flags: JSON_THROW_ON_ERROR);
+            $source = $game->addCard($seat, $fixture['card'], GameObject::HAND)->id;
+            $game->cast($seat, $source, 0, []);
+            $game->pass($game->priority);
+            $game->pass($game->priority);
+        });
+        $id = $match->game->choiceAwaiting()['id'];
+        $this->assertStringContainsString('devpage:'.$id.':1', json_encode(MatchMessageBuilder::actions($match, $player)));
+        $this->assertException(fn () => $panel->run($match->id, $other, 'devpick', [(string) $id, '0'], [(string) $food[0]]), 'no longer available');
+        [$match] = $panel->run($match->id, $player, 'devpick', [(string) $id, '0'], [(string) $food[0]]);
+        [$match] = $panel->run($match->id, $player, 'devpage', [(string) $id, '1']);
+        [$match] = $panel->run($match->id, $player, 'devpick', [(string) $id, '1'], [(string) $food[25]]);
+        $this->assertSame([$food[0], $food[25]], $this->pocket->matches->find($match->id)->choice($player)['devour']['selected']);
+        [$match] = $panel->run($match->id, $player, 'devgo', [(string) $id]);
+        $this->assertSame(4, $match->game->objects[$source]->counter('+1/+1'));
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$food[0]]->zone);
+        $this->assertSame(GameObject::GRAVEYARD, $match->game->objects[$food[25]]->zone);
+        $this->assertSame(GameObject::BATTLEFIELD, $match->game->objects[$food[1]]->zone);
+        $this->assertException(fn () => $panel->run($match->id, $player, 'devgo', [(string) $id]), 'no longer available');
+    }
+
     private function giveShock(MatchRecord $match, int $seat): MatchRecord
     {
         return $this->modifyGame($match, function (Game $game) use ($seat): void {

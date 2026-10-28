@@ -103,6 +103,6 @@ final class SelectorStateCompatibilityTest extends GameTestCase
     {
         $this->expectException(GameException::class);
         $this->expectExceptionMessage('Unsupported saved game schema version.');
-        Game::fromArray(['schemaVersion' => Game::STATE_VERSION + 1]);
+        Game::fromArray(['schemaVersion' => Game::DEVOUR_EXPERIMENT_VERSION + 1]);
     }
 }
