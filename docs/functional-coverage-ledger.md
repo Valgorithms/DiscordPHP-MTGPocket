@@ -1,5 +1,7 @@
 # Functional coverage evidence ledger
 
+The [animated planeswalker damage slice](animated-planeswalker-damage.md) fixes the independently reproduced dual damage consequence using paid cached Lightning Bolt. This main-based ledger has 38 scoped names and zero whole-card certificates; recognition is historical. The separate open Disfigure, Infest and Pyroclasm branch is not included in this count.
+
 The [Quest for the Gemblades slice](quest-gemblades-combat-counters.md) fixes reproduced optional creature-to-creature combat counters and one-counter sacrifice activation. Current ledger: 37 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; recognition remains historical.
 
 The [Quest for Ancient Secrets slice](quest-ancient-secrets-graveyard-shuffle.md) fixes reproduced missing per-card optional burial counters, five-counter activation and target-player whole-graveyard shuffle. Current ledger: 36 scoped names, two Partner-gap names, one overlap and zero whole-card certificates; aggregate recognition remains historical.

@@ -9079,18 +9079,23 @@ final class Game
             if ($this->isCreature($object) && ! in_array($source->id, $object->damagedBy, true)) {
                 $object->damagedBy[] = $source->id;
             }
-            if ($object->definition()->isPlaneswalker() && ! $this->isCreature($object)) {
+            $planeswalker = $object->definition()->isPlaneswalker();
+            if ($planeswalker) {
                 $object->addCounters('loyalty', -$amount);
-            } elseif ($this->hasKeyword($source, 'infect') || $this->hasKeyword($source, 'wither')) {
-                // Infect and wither (rules 702.90 and 702.80): -1/-1 counters instead of damage.
-                $object->addCounters('-1/-1', $amount);
-                if ($this->hasKeyword($source, 'deathtouch')) {
-                    $object->deathtouched = true;
-                }
-            } else {
-                $object->damage += $amount;
-                if ($this->hasKeyword($source, 'deathtouch')) {
-                    $object->deathtouched = true;
+            }
+            // A permanent that is both a creature and a planeswalker has both results.
+            if (! $planeswalker || $this->isCreature($object)) {
+                if ($this->hasKeyword($source, 'infect') || $this->hasKeyword($source, 'wither')) {
+                    // Infect and wither (rules 702.90 and 702.80): -1/-1 counters instead of damage.
+                    $object->addCounters('-1/-1', $amount);
+                    if ($this->hasKeyword($source, 'deathtouch')) {
+                        $object->deathtouched = true;
+                    }
+                } else {
+                    $object->damage += $amount;
+                    if ($this->hasKeyword($source, 'deathtouch')) {
+                        $object->deathtouched = true;
+                    }
                 }
             }
             // Observe actual combat damage after all prevention, before state-based deaths.
