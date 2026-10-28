@@ -11,6 +11,7 @@
   "recognitionSource": "65134ebb3a748e9ee23ae3c188b1411a52023440",
   "engineSource": "0e51e5633e5faca48eed0a2666bb476a8ddd2adf",
   "validation": {
+    "transformedPermanentTargetValue": {"base": "3ff9ce385106af573de73d73b25d4831981c3829", "baseline": "Paid cached Eliminate and target filters: 16 cases, 128 reached assertions, 12 failures: all five filters and illegal cast for both seats; four legal/revalidation controls passed.", "focused": "Five battlefield target comparisons use the existing battlefield-value helper; 20 cases and 166 assertions pass, including face-down, controller restrictions, atomic cost rejection and JSON.", "meaning": "Scoped target evidence only; earlier validation and historical recognition remain unchanged."},
     "counterStackX": {"base": "c4e2c0a30d9f77b0bac634c7d782e8ef4cb227d6", "baseline": "Paid cached Thoughtbind and Mind Spring: six tests, 48 reached assertions, four failures; X=3 was offered and accepted for both seats while X=2 controls passed.", "focused": "Stored stack X used in mana-value-limited targeting; eight tests and 74 assertions pass including X=0/2/3, atomic rejection and JSON restore.", "meaning": "Scoped stack target evidence only; earlier validation and historical recognition remain unchanged."},
     "emergeTransformedManaValue": {"base": "2614b809714309e426abc6e2149b38b8d2b2ad07", "baseline": "Paid cached Wretched Gryff: four cases reached 26 assertions, with two insufficient-payment errors and two incorrect automatic-fodder failures for both seats.", "focused": "Existing battlefield-value helper used for discount and automatic selection; 8 tests and 86 assertions pass including paid stack replay, face-down zero and colored-cost negative controls. Two subsequent fixture mistakes and their corrected runs are retained separately, not engine defects.", "meaning": "Scoped Emerge cost evidence only; prior validation and recognition remain historical."},
     "transformedSelectorManaValue": {"base": "906ba53d9fb4a7dbd95165f55b754adabe627018", "baseline": "Paid cached Culling Sun: 2 tests, 26 reached assertions, both seats fail when transformed mana-value-four creature is destroyed. A prior setup attempt could not pay the real colored cost and is not a gameplay failure.", "focused": "Corrected selector with existing battlefield mana-value helper: 2 tests, 42 assertions pass, including seeded face-down and copy-shape controls and JSON restore.", "meaning": "Scoped selector evidence only; prior validation and recognition records remain historical."},
@@ -417,6 +418,7 @@
     }
   },
   "sourcePins": {
+    "tests/Game/TargetTransformedManaValueTest.php": "8b4dd273ad1b12a258bbdbebf832077c60f0573caef04ad7671e7bd62002b87a",
     "tests/Game/CounterXManaValueTest.php": "2b984393443aefdb87bc9c727b48367b3dbf540445502318b6544dbfec11da1c",
     "tests/Game/EmergeTransformedManaValueTest.php": "89e71d03ba6d60228dfebdc36909490ddb15ab7c62d5fdfd95ff06232b55534f",
     "tests/Game/TransformedSelectorManaValueTest.php": "67040b308267481dd9b88d66c9d1147ae5bdc83c06b82783675c387f75333d55",
@@ -425,7 +427,7 @@
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "6a29490ede7c524cfca416f9fd9608c1f420137a0f679a5f8560d26b04aa067c",
     "src/MTGPocket/Game/TextParser.php": "ed4ad6135d8ee3ebd97437fcc17bd76301de7b3db5d835c63350a4c0187bd4d4",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "12613830b2c8fac5495f893e42ead92fac2af03fc31ecf3a8b00b75d2b3f24f7",
+    "src/MTGPocket/Game/Game.php": "6535b7d2b29689c9e9b131aa885bd6c3bcd4263e8d732d26917f5aefc326f35a",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
     "src/MTGPocket/Game/Step.php": "25c8efe18d4221045bcb75a8f30c223d802e534b263a6722416dbc08d78f84e3",
@@ -492,6 +494,22 @@
     "tests/Game/QuestGembladesTest.php": "7a62e6c88ad7e02685f313641a87a1042bfefc48c6d1dd5e5b42acc961ca11bd"
   },
   "scopedEvidence": [
+    {
+      "id": "eliminate-transformed-target-value",
+      "cards": [
+        "Eliminate"
+      ],
+      "tests": [
+        "tests/Game/TargetTransformedManaValueTest.php::testTransformedValueExcludesItFromLimitedPermanentTargets",
+        "tests/Game/TargetTransformedManaValueTest.php::testIllegalEliminateRejectsBeforeCosts",
+        "tests/Game/TargetTransformedManaValueTest.php::testPaidEliminateDestroysLegalCreatureAfterRestore",
+        "tests/Game/TargetTransformedManaValueTest.php::testFaceDownLegalTargetBecomingFaceUpIsRechecked",
+        "tests/Game/TargetTransformedManaValueTest.php::testFaceDownCreatureRemainsLegalAndIsDestroyed",
+        "tests/Game/TargetTransformedManaValueTest.php::testOpponentFiltersDoNotSelectYourCreature"
+      ],
+      "scope": "Cached M21 Eliminate UUID 85d83776-c1ca-5d29-9fc6-986a61504046: both seats reject a seeded transformed mana-value-four Huntmaster before costs, resolve against legal targets, and revalidate a face-down-to-face-up characteristic change after saved stack. All five existing permanent mana-value target kinds and opposing-controller controls are exercised.",
+      "limits": "Only the cached printing and specified paths. Huntmaster transformation and face-up transition are seeded and not certified. No general copy, layers, replacement, newest-printing or whole-card certification. Recognition remains historical."
+    },
     {
       "id": "thoughtbind-stack-x-mana-value",
       "cards": [
