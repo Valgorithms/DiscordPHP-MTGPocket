@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [javelin and brick entry-counter slice](javelin-brick-entry-counters.md) adds paid evidence for Icatian Javelineers and Sunset Pyramid. The ledger has 49 scoped names and zero whole-card certificates; recognition remains historical.
+The [stun entry and untap slice](stun-entry-counters.md) adds paid Tonberry and Sleep-Cursed Faerie evidence. The ledger has 51 scoped names, four explicit-gap names, three overlaps and zero whole-card certificates; recognition remains historical. Tonberry’s combat clause and Faerie’s Ward timing remain explicit gaps.
+
+The [javelin and brick entry-counter slice](javelin-brick-entry-counters.md) adds paid evidence for Icatian Javelineers and Sunset Pyramid. That milestone recorded 49 scoped names and zero whole-card certificates; recognition remains historical.
 
 The [self-counter damage slice](counter-cost-source-damage.md) adds paid Ancient Hydra and Monoskelion evidence for a shared parser correction. That milestone recorded 47 scoped names and zero whole-card certificates; recognition remains historical.
 

@@ -1,6 +1,6 @@
 # Javelin and brick entry counters
 
-Icatian Javelineers and Sunset Pyramid had recognized counter-paid abilities, but their named entry counters were not in the existing entry parser's allowlist. Paid casts consequently entered without counters and could not use those abilities. The allowlist now includes javelin and brick; unrelated counter names remain unread. Existing generic counter storage and entry handling are reused, with no new serialized fields.
+Icatian Javelineers and Sunset Pyramid had recognized counter-paid abilities, but their named entry counters were not in the existing entry parser's allowlist. Paid casts consequently entered without counters and could not use those abilities. That milestone added javelin and brick to the allowlist without recognizing every counter name. The later [stun slice](stun-entry-counters.md) adds stun separately. Existing generic counter storage and entry handling are reused, with no new serialized fields.
 
 On main `dec343dddec15791d42ddd28d4b46337f386112a`, eight paid cases reached 36 assertions: four entry-counter failures and four activation errors across both seats. The corrected 19 cases pass 144 assertions, including paid casts and activations, saved state and stack, summoning sickness, invalid targets, missing-counter rejection and fresh counters after bounce and recast. Sunset Pyramid's separate scry activation is not tested here. No old-reader compatibility claim is made for the changed parsing behavior.
 
