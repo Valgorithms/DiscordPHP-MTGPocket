@@ -1786,7 +1786,7 @@ final class TextParser
             return true;
         }
         // Vivid lands: `This land enters tapped with two charge counters on it.`
-        if (preg_match('/^CARDNAME enters(?: the battlefield)?( tapped)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield) counters? on it\.?$/', $line, $match) && ($n = self::amount($match[2])) !== null) {
+        if (preg_match('/^CARDNAME enters(?: the battlefield)?( tapped)? with (\w+) (oil|charge|time|lore|loyalty|verse|fade|ice|age|quest|study|storage|page|shield|javelin|brick) counters? on it\.?$/', $line, $match) && ($n = self::amount($match[2])) !== null) {
             $result['otherCounters'][$match[3]] = $n;
             $result['entersTapped'] = $result['entersTapped'] || $match[1] !== '';
 

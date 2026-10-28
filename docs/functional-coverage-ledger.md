@@ -1,6 +1,8 @@
 # Functional coverage evidence ledger
 
-The [self-counter damage slice](counter-cost-source-damage.md) adds paid Ancient Hydra and Monoskelion evidence for a shared parser correction. The ledger has 47 scoped names and zero whole-card certificates; recognition remains historical.
+The [javelin and brick entry-counter slice](javelin-brick-entry-counters.md) adds paid evidence for Icatian Javelineers and Sunset Pyramid. The ledger has 49 scoped names and zero whole-card certificates; recognition remains historical.
+
+The [self-counter damage slice](counter-cost-source-damage.md) adds paid Ancient Hydra and Monoskelion evidence for a shared parser correction. That milestone recorded 47 scoped names and zero whole-card certificates; recognition remains historical.
 
 The [transformed permanent target slice](target-transformed-mana-value.md) corrects paid Eliminate targeting using battlefield mana value. That milestone recorded 45 scoped names and zero whole-card certificates; recognition remains historical.
 
