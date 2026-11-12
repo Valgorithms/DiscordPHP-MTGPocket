@@ -23,6 +23,7 @@ A Discord-hosted MTG collectible game (packs, collection, decks, rules-engine ma
 composer unit                      # phpunit; narrow with: vendor/bin/phpunit --filter=Class::method
 composer cs                        # php-cs-fixer (CI config); `composer pint` for pint
 composer card-coverage             # after changing rules-text parsing
+composer pins                      # after editing a file pinned in config/coverage-evidence.json
 ```
 
 CI is `.github/workflows/tests.yml` and `docs.yml`; check the exact target commit's runs before calling anything ready. Docs build with phpDocumentor (`phpdoc.dist.xml`); keep PHPDoc accurate and use narrow return types on overrides.

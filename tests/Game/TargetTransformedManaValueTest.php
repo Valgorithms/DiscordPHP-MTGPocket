@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace MTGPocket\Tests\Game;
 
-use MTGPocket\Game\Game;
 use MTGPocket\Game\GameException;
 use MTGPocket\Game\GameObject;
 use MTGPocket\Game\Step;
@@ -32,11 +31,6 @@ final class TargetTransformedManaValueTest extends GameTestCase
         $spell = $game->addCard($seat, $cards[0]['card'], GameObject::HAND)->id;
 
         return [$target, $bear, $spell];
-    }
-
-    private function restore(): void
-    {
-        $this->game = Game::fromArray(json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
     }
 
     /** @dataProvider kindsAndSeats */

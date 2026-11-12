@@ -32,12 +32,6 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
         return array_values(array_filter($cards, fn (array $card) => $card['name'] === $name))[0];
     }
 
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function quest(int $actor): int
     {
         $this->newGame();
@@ -87,11 +81,6 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
     public static function deaths(): array
     {
         return [[0, 0], [0, 1], [1, 0], [1, 1]];
-    }
-
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
     }
 
     private function reject(callable $action): void

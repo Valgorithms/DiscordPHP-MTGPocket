@@ -22,17 +22,6 @@ use MTGPocket\Tutorial\PracticeBot;
 /** @covers \MTGPocket\Game\Game */
 final class FangrenBurialChoiceTest extends GameTestCase
 {
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function marauder(int $seat): int
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/all-player-artifact-burial-candidates.json'));

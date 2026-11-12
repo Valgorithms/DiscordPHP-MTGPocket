@@ -20,17 +20,6 @@ use MTGPocket\Game\GameObject;
 /** @covers \MTGPocket\Game\Game */
 final class SacrificeObserverLookbackTest extends GameTestCase
 {
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function resolveAll(): void
     {
         for ($n = 0; $this->game->stack !== [] && $n < 20; $n++) {

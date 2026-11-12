@@ -23,11 +23,6 @@ use MTGPocket\Tutorial\PracticeBot;
 /** @covers \MTGPocket\Game\Game */
 final class BurnishedHartSearchTest extends GameTestCase
 {
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
     private function fixture(): array
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/burnished-hart-land-search.json'));
@@ -42,12 +37,6 @@ final class BurnishedHartSearchTest extends GameTestCase
         if ($actor === 1) {
             $this->passUntil(Step::PrecombatMain, $this->game->turn + 1);
         }
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
     }
 
     private function castHart(int $actor, bool $laterEffect = false): int

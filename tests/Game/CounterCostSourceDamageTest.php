@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace MTGPocket\Tests\Game;
 
 use MTGPocket\Game\CardDefinition;
-use MTGPocket\Game\Game;
 use MTGPocket\Game\GameObject;
 use MTGPocket\Game\GameException;
 use MTGPocket\Game\Step;
@@ -34,11 +33,6 @@ final class CounterCostSourceDamageTest extends GameTestCase
         $this->assertSame($count, $game->objects[$id]->counter($kind));
 
         return [$id, $lands, $kind, $count];
-    }
-
-    private function restore(): void
-    {
-        $this->game = Game::fromArray(json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
     }
 
     /** @dataProvider cardsAndSeats */

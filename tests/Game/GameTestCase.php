@@ -203,4 +203,27 @@ Equip {1}", 'colors' => []],
     {
         return $this->game->players[$seat]->life;
     }
+
+    /** Both players pass priority once, resolving the top of the stack. */
+    protected function resolveOne(): void
+    {
+        $this->game->pass($this->game->priority);
+        $this->game->pass($this->game->priority);
+    }
+
+    /**
+     * The game as it would be written to storage and read back.
+     *
+     * @return array<string, mixed>
+     */
+    protected function saved(): array
+    {
+        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /** Replaces the game with its saved-and-reloaded copy. */
+    protected function restore(): void
+    {
+        $this->game = Game::fromArray($this->saved());
+    }
 }
