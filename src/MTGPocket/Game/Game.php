@@ -4078,7 +4078,7 @@ final class Game
             return;
         }
         $token = $gift === 'tapped fish'
-            ? ['name' => 'Fish Token', 'type' => 'Token Creature — Fish', 'types' => ['Creature'], 'subtypes' => ['Fish'], 'colors' => ['U'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null]
+            ? Tokens::creature(['Fish'], ['U'], '1', '1')
             : TextParser::artifactToken(ucfirst($gift));
         $this->createToken($token, $seat)->tapped = $gift === 'tapped fish';
     }
@@ -4624,7 +4624,7 @@ final class Game
 
             case 'mobilize':
                 for ($i = 0; $i < $amount; $i++) {
-                    $token = $this->createToken(['name' => 'Warrior Token', 'type' => 'Token Creature — Warrior', 'types' => ['Creature'], 'subtypes' => ['Warrior'], 'colors' => ['R'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null], $controller);
+                    $token = $this->createToken(Tokens::creature(['Warrior'], ['R'], '1', '1'), $controller);
                     $token->tapped = true;
                     $token->alt = 'temporary';
                     if ($this->step === Step::DeclareAttackers || $this->step === Step::DeclareBlockers) {
@@ -4727,7 +4727,7 @@ final class Game
             case 'for_mirrodin':
                 // For Mirrodin! (rule 702.163): a 2/2 red Rebel token to carry it.
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
-                    $rebel = $this->createToken(['name' => 'Rebel Token', 'type' => 'Token Creature — Rebel', 'types' => ['Creature'], 'subtypes' => ['Rebel'], 'colors' => ['R'], 'power' => '2', 'toughness' => '2', 'text' => '', 'manaCost' => null], $controller);
+                    $rebel = $this->createToken(Tokens::creature(['Rebel'], ['R'], '2', '2'), $controller);
                     $self->attachedTo = $rebel->id;
                     $this->log("{$self->name()} is attached to a Rebel token.");
                 }
@@ -4735,7 +4735,7 @@ final class Game
 
             case 'living_weapon':
                 if ($self !== null && $self->zone === GameObject::BATTLEFIELD) {
-                    $germ = $this->createToken(['name' => 'Phyrexian Germ Token', 'type' => 'Token Creature — Phyrexian Germ', 'types' => ['Creature'], 'subtypes' => ['Phyrexian', 'Germ'], 'colors' => ['B'], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null], $controller);
+                    $germ = $this->createToken(Tokens::creature(['Phyrexian', 'Germ'], ['B'], '0', '0'), $controller);
                     $self->attachedTo = $germ->id;
                     $this->log("{$self->name()} is attached to a Germ token.");
                 }
@@ -5013,7 +5013,7 @@ final class Game
                 } elseif ($source->zone === GameObject::BATTLEFIELD) {
                     $source->addCounters('+1/+1', $amount);
                 } else {
-                    $this->createToken(['name' => 'Spirit Token', 'type' => 'Token Creature — Spirit', 'types' => ['Creature'], 'subtypes' => ['Spirit'], 'colors' => ['W'], 'power' => (string) $amount, 'toughness' => (string) $amount, 'text' => '', 'manaCost' => null], $controller);
+                    $this->createToken(Tokens::creature(['Spirit'], ['W'], (string) $amount, (string) $amount), $controller);
                 }
                 break;
 
@@ -5550,7 +5550,7 @@ final class Game
 
             case 'incubate':
                 $incubator = $this->createToken(['name' => 'Incubator Token', 'type' => 'Token Artifact — Incubator', 'types' => ['Artifact'], 'subtypes' => ['Incubator'], 'colors' => [], 'text' => '{2}: Transform Incubator Token.', 'manaCost' => null, 'layout' => 'transform',
-                    'back' => ['name' => 'Phyrexian Token', 'type' => 'Token Artifact Creature — Phyrexian', 'types' => ['Artifact', 'Creature'], 'subtypes' => ['Phyrexian'], 'colors' => [], 'power' => '0', 'toughness' => '0', 'text' => '', 'manaCost' => null]], $controller);
+                    'back' => Tokens::creature(['Phyrexian'], [], '0', '0', true)], $controller);
                 $incubator->addCounters('+1/+1', $amount);
                 $this->log("{$this->players[$controller]->name} incubates {$amount}.");
                 break;
@@ -5689,7 +5689,7 @@ final class Game
 
             case 'job_select':
                 // Job select: a 1/1 Hero token, and this Equipment attached to it.
-                $hero = $this->createToken(['name' => 'Hero Token', 'type' => 'Token Creature — Hero', 'types' => ['Creature'], 'subtypes' => ['Hero'], 'colors' => [], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null], $controller);
+                $hero = $this->createToken(Tokens::creature(['Hero'], [], '1', '1'), $controller);
                 if ($self !== null) {
                     $self->attachedTo = $hero->id;
                     $this->log("{$this->players[$controller]->name} creates a Hero token, and {$self->name()} is attached to it.");
@@ -9690,10 +9690,7 @@ final class Game
     /** Reuse ordinary token batching and its entry/creation observers. */
     private function fabricateServos(GameObject $source, int $controller, int $count): void
     {
-        $this->applyEffect(['type' => 'token', 'amount' => $count, 'token' => [
-            'name' => 'Servo Token', 'type' => 'Token Artifact Creature — Servo', 'types' => ['Artifact', 'Creature'],
-            'subtypes' => ['Servo'], 'colors' => [], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null,
-        ]], $source, null, $controller, 0, null);
+        $this->applyEffect(['type' => 'token', 'amount' => $count, 'token' => Tokens::creature(['Servo'], [], '1', '1', true)], $source, null, $controller, 0, null);
     }
 
     /** Starts the next entry decision, or completes entries without choices. */

@@ -5400,17 +5400,7 @@ final class TextParser
         return [
             'type' => 'token',
             'amount' => $count,
-            'token' => [
-                'name' => implode(' ', $subtypes).' Token',
-                'type' => 'Token '.($artifact ? 'Artifact ' : '').'Creature — '.implode(' ', $subtypes),
-                'types' => $artifact ? ['Artifact', 'Creature'] : ['Creature'],
-                'subtypes' => $subtypes,
-                'colors' => $tokenColors,
-                'power' => $m[2],
-                'toughness' => $m[3],
-                'text' => implode(', ', array_map('ucfirst', $keywords)),
-                'manaCost' => null,
-            ],
+            'token' => Tokens::creature($subtypes, $tokenColors, $m[2], $m[3], $artifact, implode(', ', array_map('ucfirst', $keywords))),
         ] + (($m[8] ?? '') !== '' ? ['attacking' => true] : []);
     }
 
