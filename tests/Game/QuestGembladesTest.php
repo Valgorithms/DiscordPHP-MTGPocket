@@ -89,7 +89,7 @@ final class QuestGembladesTest extends GameTestCase
         $this->resolveOne();
         $choice = $this->game->choiceAwaiting();
         $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('quest'));
     }
 
@@ -140,7 +140,7 @@ final class QuestGembladesTest extends GameTestCase
         $this->resolveOne();
         $choice = $this->game->choiceAwaiting();
         $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], $answer);
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], $answer);
     }
 
     private function earn(int $actor): void
@@ -433,12 +433,12 @@ final class QuestGembladesTest extends GameTestCase
         $choice = $this->game->choiceAwaiting();
         $this->assertSame($actor, $choice['seat']);
         $this->game = Game::fromArray($this->saved());
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter(1 - $actor, $choice['id'], 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'] + 1, 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'invalid'));
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+        $this->reject(fn () => $this->game->chooseOptional(1 - $actor, 'optional_source_counter', $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'] + 1, 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'invalid'));
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('quest'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept'));
     }
 
     /** @dataProvider sourceIncarnations */
@@ -461,7 +461,7 @@ final class QuestGembladesTest extends GameTestCase
             $this->resolveOne();
         }
         $choice = $this->game->choiceAwaiting();
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(0, $this->game->objects[$source]->counter('quest'));
         $this->assertSame($returns ? GameObject::BATTLEFIELD : GameObject::EXILE, $this->zone($source));
     }

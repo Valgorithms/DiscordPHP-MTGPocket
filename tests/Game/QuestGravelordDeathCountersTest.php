@@ -74,7 +74,7 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
         $choice = $this->game->choiceAwaiting();
         $this->assertNotNull($choice, 'A real paid creature death must offer the optional quest counter.');
         $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'decline');
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'decline');
         $this->assertSame(0, $this->game->objects[$source]->counter('quest'));
     }
 
@@ -102,7 +102,7 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
             $this->reject(fn () => $this->game->activate($actor, $source, 0));
             $this->death($actor, $n % 2);
             $choice = $this->game->choiceAwaiting();
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->assertSame($n, $this->game->objects[$source]->counter('quest'));
             $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
         }
@@ -139,14 +139,14 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
         $this->assertSame($actor, $choice['seat']);
         $this->game = Game::fromArray($this->saved());
         $pending = $this->saved();
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter(1 - $actor, $choice['id'], 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'] + 1, 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'invalid'));
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+        $this->reject(fn () => $this->game->chooseOptional(1 - $actor, 'optional_source_counter', $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'] + 1, 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'invalid'));
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('quest'));
         $this->assertSame(1 - $actor, $this->game->objects[$source]->controller);
         $expected = $this->saved();
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept'));
         $this->game = Game::fromArray($pending);
         $this->assertTrue(PracticeBot::act($this->game, $actor));
         $this->assertSame($expected, $this->saved());
@@ -169,7 +169,7 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
             $this->resolveOne();
         }
         $choice = $this->game->choiceAwaiting();
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(0, $this->game->objects[$source]->counter('quest'));
         $this->assertSame($returns ? GameObject::BATTLEFIELD : GameObject::EXILE, $this->zone($source));
     }
@@ -191,7 +191,7 @@ final class QuestGravelordDeathCountersTest extends GameTestCase
         if ($count === 1) {
             $this->assertSame($token ? GameObject::GONE : GameObject::GRAVEYARD, $object->zone);
             $this->resolveOne();
-            $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
         }
         $this->assertSame($count, $this->game->objects[$source]->counter('quest'));
         $this->assertNull($this->game->choiceAwaiting());

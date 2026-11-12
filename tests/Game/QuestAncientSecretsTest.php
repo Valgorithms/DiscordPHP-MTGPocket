@@ -76,7 +76,7 @@ final class QuestAncientSecretsTest extends GameTestCase
             $this->resolveOne();
             $choice = $this->game->choiceAwaiting();
             $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], $n === 6 ? 'decline' : 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], $n === 6 ? 'decline' : 'accept');
             $this->assertSame(min($n, 5), $this->game->objects[$source]->counter('quest'));
         }
     }
@@ -131,7 +131,7 @@ final class QuestAncientSecretsTest extends GameTestCase
             $this->resolveOne();
             $choice = $this->game->choiceAwaiting();
             $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], ++$n <= $accept ? 'accept' : 'decline');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], ++$n <= $accept ? 'accept' : 'decline');
         }
     }
 
@@ -191,8 +191,8 @@ final class QuestAncientSecretsTest extends GameTestCase
         $this->assertSame($actor, $choice['seat']);
         $pending = $this->saved();
         $this->game = Game::fromArray($pending);
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter(1 - $actor, $choice['id'], 'accept'));
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+        $this->reject(fn () => $this->game->chooseOptional(1 - $actor, 'optional_source_counter', $choice['id'], 'accept'));
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('quest'));
         $this->answerCounters($actor, 5);
         $this->assertSame(6, $this->game->objects[$source]->counter('quest'));

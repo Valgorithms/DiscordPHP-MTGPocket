@@ -72,7 +72,7 @@ final class ZektarShrineExpeditionTest extends GameTestCase
     {
         for ($n = 1; $n <= 3; $n++) {
             $choice = $this->landfall($actor);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->assertSame($n, $this->game->objects[$source]->counter('quest'));
         }
     }
@@ -134,11 +134,11 @@ final class ZektarShrineExpeditionTest extends GameTestCase
         $this->assertSame(0, $this->game->objects[$source]->counter('quest'));
         for ($n = 1; $n <= 2; $n++) {
             $choice = $this->landfall($actor);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         }
         $this->reject(fn () => $this->game->activate($actor, $source, 0));
         $choice = $this->landfall($actor);
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'decline');
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'decline');
         $this->assertSame(2, $this->game->objects[$source]->counter('quest'));
         $this->reject(fn () => $this->game->activate($actor, $source, 0));
         $this->assertSame(GameObject::BATTLEFIELD, $this->zone($source));

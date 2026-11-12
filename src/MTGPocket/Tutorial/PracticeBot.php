@@ -17,6 +17,7 @@ use MTGPocket\Game\Game;
 use MTGPocket\Game\GameException;
 use MTGPocket\Game\GameObject;
 use MTGPocket\Game\Mana\ManaCost;
+use MTGPocket\Game\OptionalChoices;
 use MTGPocket\Game\Step;
 
 /**
@@ -84,6 +85,15 @@ final class PracticeBot
      */
     public static function act(Game $game, int $seat): bool
     {
+        if (OptionalChoices::has($game->decision($seat))) {
+            // Explicit simple policy for every "you may …" decision: accept when it can be paid
+            // (harmless if the old source is gone), but never draw from an empty library.
+            $choice = $game->choiceAwaiting();
+            $draws = in_array('draw', array_column(OptionalChoices::effects($choice), 'type'), true);
+            $game->chooseOptional($seat, $choice['type'], $choice['id'], $game->canPayOptional($seat, $choice['type']) && ! ($draws && $game->players[$seat]->library === []) ? 'accept' : 'decline');
+
+            return true;
+        }
         switch ($game->decision($seat)) {
             case 'mulligan':
                 $lands = count(array_filter($game->players[$seat]->hand, fn (int $id) => $game->objects[$id]->definition()->isLand()));
@@ -104,48 +114,6 @@ final class PracticeBot
                 $cards = $choice['cards'];
                 usort($cards, fn (int $a, int $b) => [! $game->objects[$a]->definition()->isToken(), $game->power($game->objects[$a]) + $game->toughness($game->objects[$a])] <=> [! $game->objects[$b]->definition()->isToken(), $game->power($game->objects[$b]) + $game->toughness($game->objects[$b])]);
                 $game->chooseSacrifice($seat, $choice['id'], array_slice($cards, 0, $choice['count']));
-
-                return true;
-            case 'optional_red_goblin':
-                // Explicit policy: buy the Goblin when the normal mana planner can pay.
-                $game->chooseOptionalRedGoblin($seat, $game->choiceAwaiting()['id'], $game->canPayOptionalRedGoblin($seat) ? 'accept' : 'decline');
-
-                return true;
-
-            case 'optional_source_untap':
-                // Explicit policy, including a harmless accept if the old source is gone.
-                $game->chooseOptionalSourceUntap($seat, $game->choiceAwaiting()['id'], 'accept');
-
-                return true;
-
-            case 'optional_source_counter':
-                // Explicit policy, including a harmless accept if the old source is gone.
-                $game->chooseOptionalSourceCounter($seat, $game->choiceAwaiting()['id'], 'accept');
-
-                return true;
-
-            case 'optional_basic_land_search':
-                // Explicit practice policy: search, then use the existing legal tutor selection.
-                $game->chooseOptionalBasicLandSearch($seat, $game->choiceAwaiting()['id'], 'accept');
-
-                return true;
-
-            case 'optional_death_draw':
-                // Explicit practice policy: decline rather than draw from an empty library.
-                $game->chooseOptionalDeathDraw($seat, $game->choiceAwaiting()['id'], $game->players[$seat]->library === [] ? 'decline' : 'accept');
-
-                return true;
-
-            case 'optional_life_gain':
-                // Explicit simple practice policy: accept the optional controller gain.
-                $game->chooseOptionalLifeGain($seat, $game->choiceAwaiting()['id'], 'accept');
-
-                return true;
-
-            case 'optional_life_loss':
-                $choice = $game->choiceAwaiting();
-                // Explicit simple policy: accept this targeted opponent's life loss.
-                $game->chooseOptionalLifeLoss($seat, $choice['id'], 'accept');
 
                 return true;
             case 'fabricate':

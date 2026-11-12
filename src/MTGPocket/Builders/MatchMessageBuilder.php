@@ -27,6 +27,7 @@ use MTGPocket\Game\Game;
 use MTGPocket\Decks\DeckBuilder;
 use MTGPocket\Game\GameObject;
 use MTGPocket\Game\GameRecord;
+use MTGPocket\Game\OptionalChoices;
 use MTGPocket\Matches\Ladder;
 use MTGPocket\Matches\MatchRecord;
 use MTGPocket\Matches\PanelActions;
@@ -360,19 +361,13 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 'look' => 'choose from the top of their library',
                 'entry_life' => 'choose whether to pay life for '.$game->choiceAwaiting()['label'],
                 'fabricate' => 'choose counters or Servos for '.$game->choiceAwaiting()['label'],
-                'optional_red_goblin' => 'choose whether to pay {R} for a Goblin from '.$game->choiceAwaiting()['label'],
-                'optional_source_untap' => 'choose whether to untap '.$game->choiceAwaiting()['label'],
-                'optional_source_counter' => 'choose whether to put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on '.$game->choiceAwaiting()['label'],
-                'optional_death_draw' => 'choose whether to draw a card',
-                'optional_basic_land_search' => 'choose whether to search for a basic land',
-                'optional_life_gain' => 'choose whether to gain 5 life',
-                'optional_life_loss' => 'choose whether the targeted opponent loses 1 life',
                 'sacrifice' => 'choose creatures to sacrifice',
                 'mode' => 'choose modes for '.$game->choiceAwaiting()['label'],
                 'attack' => 'declare attackers',
                 'block' => 'declare blockers',
                 'discard' => $game->choiceAwaiting() === null ? 'discard down to seven' : 'discard',
-                default => $game->stack === [] ? 'act or pass' : 'respond or pass',
+                default => OptionalChoices::has($game->decision($seat)) ? OptionalChoices::text($game->choiceAwaiting(), 'status')
+                    : ($game->stack === [] ? 'act or pass' : 'respond or pass'),
             };
             $lines[] = "<@{$player->id}> to {$what}";
             $ids[] = $player->id;
@@ -596,6 +591,19 @@ class MatchMessageBuilder extends PocketMessageBuilder
         $cardOption = fn (int $objectId) => Option::new(Text::clip($game->objects[$objectId]->name(), 100), (string) $objectId)
             ->setDescription(Text::clip(self::cardDescription($game->objects[$objectId]), 100));
 
+        // Every "you may …" decision is the same two buttons; see OptionalChoices.
+        if (OptionalChoices::has($decision)) {
+            $optional = $game->choiceAwaiting();
+            $action = OptionalChoices::KINDS[$decision]['action'];
+            $accept = Button::new(Button::STYLE_SECONDARY, $id($action, (string) $optional['id'], 'accept'))->setLabel(OptionalChoices::text($optional, 'accept'));
+            if (OptionalChoices::KINDS[$decision]['cost'] !== null) {
+                $accept->setDisabled(! $game->canPayOptional($seat, $decision));
+            }
+            $message->addComponent(ActionRow::new()
+                ->addComponent($accept)
+                ->addComponent(Button::new(Button::STYLE_SECONDARY, $id($action, (string) $optional['id'], 'decline'))->setLabel(OptionalChoices::text($optional, 'decline'))));
+        }
+
         switch ($decision) {
             case 'mulligan':
                 $message->addComponent(ActionRow::new()
@@ -695,55 +703,6 @@ class MatchMessageBuilder extends PocketMessageBuilder
                 $row->addComponent(Button::new(Button::STYLE_SECONDARY, $id('sacreset', (string) $sacrifice['id']))->setLabel('Clear selections'));
                 $row->addComponent(Button::new(Button::STYLE_DANGER, $id('sacgo', (string) $sacrifice['id']))->setLabel('Confirm sacrifices')->setDisabled(count($picks['selected']) !== $sacrifice['count']));
                 $message->addComponent($row);
-                break;
-
-            case 'optional_red_goblin':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygoblin', (string) $optional['id'], 'accept'))->setLabel('Pay {R}: create a Goblin')->setDisabled(! $game->canPayOptionalRedGoblin($seat)))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygoblin', (string) $optional['id'], 'decline'))->setLabel('Decline')));
-                break;
-
-            case 'optional_source_untap':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mayuntap', (string) $optional['id'], 'accept'))->setLabel('Untap'))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('mayuntap', (string) $optional['id'], 'decline'))->setLabel('Decline')));
-                break;
-
-            case 'optional_source_counter':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'accept'))->setLabel('Put a '.($optional['counterKind'] ?? '+1/+1').' counter'))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maycounter', (string) $optional['id'], 'decline'))->setLabel('Decline')));
-                break;
-
-            case 'optional_basic_land_search':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maysearch', (string) $optional['id'], 'accept'))->setLabel('Search library'))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maysearch', (string) $optional['id'], 'decline'))->setLabel('Decline search')));
-                break;
-
-            case 'optional_death_draw':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maydraw', (string) $optional['id'], 'accept'))->setLabel('Draw a card'))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maydraw', (string) $optional['id'], 'decline'))->setLabel('Decline')));
-                break;
-
-            case 'optional_life_gain':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygain', (string) $optional['id'], 'accept'))->setLabel('Gain 5 life'))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maygain', (string) $optional['id'], 'decline'))->setLabel('Decline')));
-                break;
-
-            case 'optional_life_loss':
-                $optional = $game->choiceAwaiting();
-                $message->addComponent(ActionRow::new()
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maylife', (string) $optional['id'], 'accept'))->setLabel('Opponent loses 1 life'))
-                    ->addComponent(Button::new(Button::STYLE_SECONDARY, $id('maylife', (string) $optional['id'], 'decline'))->setLabel('Decline')));
                 break;
 
             case 'fabricate':
@@ -906,18 +865,16 @@ class MatchMessageBuilder extends PocketMessageBuilder
     private static function prompt(Game $game, int $seat, ?string $decision, array $choice): string
     {
         $player = $game->players[$seat];
+        if (OptionalChoices::has($decision)) {
+            $optional = $game->choiceAwaiting();
+
+            return OptionalChoices::text($optional, 'prompt', isset($optional['target']) ? $game->players[(int) substr($optional['target'], 2)]->name : '');
+        }
 
         return match ($decision) {
             'sacrifice' => self::sacrificePrompt($game, $choice),
             'entry_life' => 'As **'.$game->choiceAwaiting()['label'].'** enters, you may pay '.$game->choiceAwaiting()['life'].' life. If you do not, it enters tapped.'.($game->choiceAwaiting()['tapped'] ? ' It enters tapped regardless of payment because of another effect.' : ''),
             'fabricate' => '**'.$game->choiceAwaiting()['label'].'**: put '.$game->choiceAwaiting()['count'].' +1/+1 counters on it, or create that many 1/1 colorless Servo artifact creature tokens.',
-            'optional_red_goblin' => '**'.$game->choiceAwaiting()['label'].'**: you may pay {R} to create a 1/1 red Goblin creature token. It gains haste until end of turn. This does not target.',
-            'optional_source_untap' => '**'.$game->choiceAwaiting()['label'].'**: you may untap this artifact. Only the original battlefield incarnation can be untapped; this does not target.',
-            'optional_source_counter' => '**'.$game->choiceAwaiting()['label'].'**: you may put a '.($game->choiceAwaiting()['counterKind'] ?? '+1/+1').' counter on this permanent. Only the original battlefield incarnation can receive it; this does not target.',
-            'optional_death_draw' => '**'.$game->choiceAwaiting()['label'].'**: you may draw a card. This does not target a player; declining does not draw.',
-            'optional_basic_land_search' => '**'.$game->choiceAwaiting()['label'].'**: search for a basic land to enter tapped, then shuffle, or decline without searching or shuffling. If you search, you may fail to find.',
-            'optional_life_gain' => '**'.$game->choiceAwaiting()['label'].'**: you may gain 5 life. This does not target a player.',
-            'optional_life_loss' => '**'.$game->choiceAwaiting()['label'].'**: you may have **'.$game->players[(int) substr($game->choiceAwaiting()['target'], 2)]->name.'** lose 1 life.',
             'mulligan' => $player->mulligans === 0
                 ? 'Keep this hand, or shuffle it away and draw a new seven?'
                 : "Mulligan {$player->mulligans}: if you keep, you put {$player->mulligans} card".($player->mulligans === 1 ? '' : 's').' on the bottom.',

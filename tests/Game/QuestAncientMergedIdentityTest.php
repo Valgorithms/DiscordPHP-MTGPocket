@@ -102,7 +102,7 @@ final class QuestAncientMergedIdentityTest extends GameTestCase
             $this->resolveOne();
             $choice = $this->game->choiceAwaiting();
             $this->assertSame($actor, $choice['seat']);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
         }
     }
 

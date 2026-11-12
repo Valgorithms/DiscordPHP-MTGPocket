@@ -76,7 +76,7 @@ final class KhalniExpeditionSearchTest extends GameTestCase
     {
         for ($n = 1; $n <= 3; $n++) {
             $choice = $this->landfall($actor);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->assertSame($n, $this->game->objects[$source]->counter('quest'));
         }
     }
@@ -100,16 +100,16 @@ final class KhalniExpeditionSearchTest extends GameTestCase
         $choice = $this->landfall($actor);
         $this->assertSame(0, $this->game->objects[$source]->counter('quest'));
         $pending = $this->saved();
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter(1 - $actor, $choice['id'], 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'] + 1, 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'both'));
+        $this->reject(fn () => $this->game->chooseOptional(1 - $actor, 'optional_source_counter', $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'] + 1, 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'both'));
         foreach (['accept', 'decline'] as $answer) {
             $this->game = Game::fromArray($pending);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], $answer);
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], $answer);
             $this->assertSame($answer === 'accept' ? 1 : 0, $this->game->objects[$source]->counter('quest'));
             $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
             $this->assertNull($this->game->choiceAwaiting());
-            $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, $choice['id'], $answer));
+            $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], $answer));
             $this->reject(fn () => $this->game->activate($actor, $source, 0));
         }
     }
@@ -143,7 +143,7 @@ final class KhalniExpeditionSearchTest extends GameTestCase
         $this->reject(fn () => $this->game->take(1 - $actor, [$a]));
         $this->reject(fn () => $this->game->take($actor, [$nonbasic]));
         $this->reject(fn () => $this->game->take($actor, [$a, $b, $c]));
-        $this->reject(fn () => $this->game->chooseOptionalSourceCounter($actor, 0, 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_source_counter', 0, 'accept'));
         $selected = array_slice([$a, $b], 0, $count);
         $this->game->take($actor, $selected);
         foreach ([$a, $b] as $id) {
@@ -194,7 +194,7 @@ final class KhalniExpeditionSearchTest extends GameTestCase
             $loaded = Game::fromArray($legacy);
             $this->assertSame('+1/+1', $loaded->choiceAwaiting()['counterKind']);
             $loaded = Game::fromArray($loaded->toArray());
-            $loaded->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $loaded->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->assertSame(1, $loaded->objects[$source]->counter('+1/+1'));
             $this->assertSame(0, $loaded->objects[$source]->counter('quest'));
         }
@@ -239,9 +239,9 @@ final class KhalniExpeditionSearchTest extends GameTestCase
             $this->resolveOne();
             $choice = $this->game->choiceAwaiting();
             $this->assertSame($actor, $choice['seat']);
-            $this->reject(fn () => $this->game->chooseOptionalSourceCounter(1 - $actor, $choice['id'], 'accept'));
+            $this->reject(fn () => $this->game->chooseOptional(1 - $actor, 'optional_source_counter', $choice['id'], 'accept'));
             $this->game = Game::fromArray($this->saved());
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->assertSame($returns ? 0 : 1, $this->game->objects[$source]->counter('quest'));
         }
     }
@@ -263,7 +263,7 @@ final class KhalniExpeditionSearchTest extends GameTestCase
         $this->passUntil(Step::PrecombatMain, $this->game->turn + 1);
         for ($n = 1; $n <= 2; $n++) {
             $choice = $this->landfall($actor);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->reject(fn () => $this->game->activate($actor, $source, 0));
             $this->assertSame($n, $this->game->objects[$source]->counter('quest'));
         }

@@ -4526,6 +4526,18 @@ final class Game
             default => $target === null ? null : $this->targetObject($target),
         };
 
+        // Every "you may …" decision: its controller answers through chooseOptional().
+        if (OptionalChoices::has($effect['type'])) {
+            $this->pendingChoice = [
+                'type' => $effect['type'], 'id' => $this->nextChoiceId++, 'seat' => $controller,
+                'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
+            ] + (OptionalChoices::KINDS[$effect['type']]['targeted'] ? ['target' => $target] : []) + [
+                'label' => $source->name(), 'options' => ['accept', 'decline'],
+            ] + ($effect['type'] === 'optional_source_counter' ? ['counterKind' => $effect['kind'] ?? '+1/+1'] : []);
+
+            return true;
+        }
+
         switch ($effect['type']) {
             case 'damage':
                 // Harnessed Lightning: `then you may pay any amount of {E}. CARDNAME deals that much damage …`: all of it.
@@ -4740,69 +4752,6 @@ final class Game
                     $this->log("{$this->players[$controller]->name} extorts.");
                 }
                 break;
-
-            case 'optional_red_goblin':
-                $this->pendingChoice = [
-                    'type' => 'optional_red_goblin', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'],
-                ];
-
-                return true;
-
-            case 'optional_source_untap':
-                $this->pendingChoice = [
-                    'type' => 'optional_source_untap', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'],
-                ];
-
-                return true;
-
-            case 'optional_source_counter':
-                $this->pendingChoice = [
-                    'type' => 'optional_source_counter', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'], 'counterKind' => $effect['kind'] ?? '+1/+1',
-                ];
-
-                return true;
-
-            case 'optional_basic_land_search':
-                $this->pendingChoice = [
-                    'type' => 'optional_basic_land_search', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'],
-                ];
-
-                return true;
-
-            case 'optional_death_draw':
-                $this->pendingChoice = [
-                    'type' => 'optional_death_draw', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'],
-                ];
-
-                return true;
-
-            case 'optional_life_gain':
-                $this->pendingChoice = [
-                    'type' => 'optional_life_gain', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'label' => $source->name(), 'options' => ['accept', 'decline'],
-                ];
-
-                return true;
-
-            case 'optional_life_loss':
-                $this->pendingChoice = [
-                    'type' => 'optional_life_loss', 'id' => $this->nextChoiceId++, 'seat' => $controller,
-                    'object' => $source->id, 'incarnation' => $sourceIncarnation ?? $source->incarnation,
-                    'target' => $target, 'label' => $source->name(), 'options' => ['accept', 'decline'],
-                ];
-
-                return true;
 
             case 'lose_life':
                 $seats = match (true) {
@@ -9669,221 +9618,72 @@ final class Game
     }
 
     /**
-     * Whether the pending Goblin decision's original controller can pay {R}.
-     * Uses the ordinary mana planner without spending or tapping anything.
+     * Whether the pending optional decision of this kind can be accepted by its
+     * controller: always for a free one, otherwise when the ordinary mana
+     * planner can pay its cost. Nothing is spent or tapped.
      *
-     * @param int $seat
+     * @param int    $seat
+     * @param string $kind An {@see OptionalChoices} kind.
      *
      * @return bool
      */
-    public function canPayOptionalRedGoblin(int $seat): bool
+    public function canPayOptional(int $seat, string $kind): bool
     {
-        return $this->stage === self::PLAYING && ($this->pendingChoice['type'] ?? null) === 'optional_red_goblin'
-            && $this->pendingChoice['seat'] === $seat && $this->payFor($seat, '{R}') !== null;
+        $cost = OptionalChoices::KINDS[$kind]['cost'] ?? null;
+
+        return $this->stage === self::PLAYING && OptionalChoices::has($kind) && ($this->pendingChoice['type'] ?? null) === $kind
+            && $this->pendingChoice['seat'] === $seat && ($cost === null || $this->payFor($seat, $cost) !== null);
     }
 
     /**
-     * Answers the exact optional {R} payment for a temporary-haste Goblin.
-     * The trigger controller pays and creates the token even if the source left.
+     * Answers a pending "you may …" decision of any {@see OptionalChoices} kind
+     * at resolution. The original trigger controller answers, naming the kind
+     * the answer was meant for, so a control for one kind never answers another.
+     * Accepting pays the kind's cost, then applies its effects with the original
+     * source, incarnation and target; kinds bound to their source do nothing once
+     * that battlefield incarnation is gone. Either way the rest of the ability
+     * then resolves.
      *
      * @param int    $seat
+     * @param string $kind     An {@see OptionalChoices} kind.
      * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
+     * @param string $option   `accept` or `decline`.
+     *
+     * @throws GameException When the choice is stale, repeated, of another kind, not this player's, or unpayable; nothing changes.
      *
      * @return void
      */
-    public function chooseOptionalRedGoblin(int $seat, int $choiceId, string $option): void
+    public function chooseOptional(int $seat, string $kind, int $choiceId, string $option): void
     {
         $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_red_goblin' ||
+        $spec = OptionalChoices::KINDS[$kind] ?? null;
+        if ($this->stage !== self::PLAYING || $spec === null || ($choice['type'] ?? null) !== $kind ||
             $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional red-payment choice is no longer available to you.');
+            throw new GameException($spec['unavailable'] ?? 'That optional choice is no longer available to you.');
         }
-        $payment = $option === 'accept' ? $this->payFor($seat, '{R}') : null;
-        if ($option === 'accept' && $payment === null) {
-            throw new GameException('You cannot pay {R} for that Goblin.');
-        }
-        $resume = $choice['resume'];
-        $this->followed = $resume['followed'];
-        $this->pendingChoice = null;
-        if ($payment !== null) {
-            $this->pay($seat, $payment);
-            $this->applyEffect(['type' => 'token', 'amount' => 1, 'haste' => true, 'token' => [
-                'name' => 'Goblin Token', 'type' => 'Token Creature — Goblin', 'types' => ['Creature'],
-                'subtypes' => ['Goblin'], 'colors' => ['R'], 'power' => '1', 'toughness' => '1', 'text' => '', 'manaCost' => null,
-            ]], $this->objects[$choice['object']], null, $seat, 0, null, $choice['incarnation']);
-        }
-        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
-        $this->settle();
-    }
-
-    /**
-     * Answers the exact optional source-untap decision at resolution.
-     * The original trigger controller answers; only the same battlefield
-     * incarnation can be untapped. A departed source does not stop
-     * the rest of the ability from resolving.
-     *
-     * @param int    $seat
-     * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
-     *
-     * @return void
-     */
-    public function chooseOptionalSourceUntap(int $seat, int $choiceId, string $option): void
-    {
-        $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_source_untap' ||
-            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional source-untap choice is no longer available to you.');
-        }
-        $resume = $choice['resume'];
-        $this->followed = $resume['followed'];
-        $this->pendingChoice = null;
-        $source = $this->objects[$choice['object']];
-        if ($option === 'accept' && $source->zone === GameObject::BATTLEFIELD && $source->incarnation === $choice['incarnation']) {
-            $this->applyEffect(['type' => 'untap', 'self' => true], $source, $source, $seat, 0, null, $choice['incarnation']);
-        }
-        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
-        $this->settle();
-    }
-
-    /**
-     * Answers the optional +1/+1 or quest source-counter decision at resolution.
-     * The original trigger controller answers; only the same battlefield
-     * incarnation can receive a counter. A departed source does not stop
-     * the rest of the ability from resolving.
-     *
-     * @param int    $seat
-     * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
-     *
-     * @return void
-     */
-    public function chooseOptionalSourceCounter(int $seat, int $choiceId, string $option): void
-    {
-        $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_source_counter' ||
-            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional source-counter choice is no longer available to you.');
-        }
-        $resume = $choice['resume'];
-        $this->followed = $resume['followed'];
-        $this->pendingChoice = null;
-        $source = $this->objects[$choice['object']];
-        if ($option === 'accept' && $source->zone === GameObject::BATTLEFIELD && $source->incarnation === $choice['incarnation']) {
-            $this->applyEffect(['type' => 'counters', 'amount' => 1, 'self' => true, 'kind' => $choice['counterKind']], $source, $source, $seat, 0, null, $choice['incarnation']);
-        }
-        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
-        $this->settle();
-    }
-
-    /**
-     * Answers the optional five-life gain for the original trigger controller.
-     * This decision does not target a player.
-     *
-     * @param int    $seat
-     * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
-     *
-     * @return void
-     */
-    public function chooseOptionalLifeGain(int $seat, int $choiceId, string $option): void
-    {
-        $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_life_gain' ||
-            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional life-gain choice is no longer available to you.');
-        }
-        $resume = $choice['resume'];
-        $this->followed = $resume['followed'];
-        $this->pendingChoice = null;
-        if ($option === 'accept') {
-            $this->applyEffect(['type' => 'gain_life', 'amount' => 5], $this->objects[$choice['object']], null, $seat, 0, null, $choice['incarnation']);
-        }
-        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
-        $this->settle();
-    }
-
-    /**
-     * Answers the original trigger controller's optional self-death draw.
-     * The source does not need to remain in its graveyard incarnation.
-     *
-     * @param int    $seat
-     * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
-     *
-     * @return void
-     */
-    public function chooseOptionalDeathDraw(int $seat, int $choiceId, string $option): void
-    {
-        $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_death_draw' ||
-            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional death-draw choice is no longer available to you.');
-        }
-        $resume = $choice['resume'];
-        $this->followed = $resume['followed'];
-        $this->pendingChoice = null;
-        if ($option === 'accept') {
-            $this->applyEffect(['type' => 'draw', 'amount' => 1], $this->objects[$choice['object']], null, $seat, 0, null, $choice['incarnation']);
-        }
-        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
-        $this->settle();
-    }
-
-    /**
-     * Answers an optional basic-land search trigger for its original controller.
-     * Declining does not search or shuffle; accepting reuses the ordinary tutor choice.
-     *
-     * @param int    $seat
-     * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
-     *
-     * @return void
-     */
-    public function chooseOptionalBasicLandSearch(int $seat, int $choiceId, string $option): void
-    {
-        $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_basic_land_search' ||
-            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional basic-land search is no longer available to you.');
+        $accept = $option === 'accept';
+        $payment = $accept && $spec['cost'] !== null ? $this->payFor($seat, $spec['cost']) : null;
+        if ($accept && $spec['cost'] !== null && $payment === null) {
+            throw new GameException($spec['unpayable']);
         }
         $resume = $choice['resume'];
         $this->followed = $resume['followed'];
         $this->pendingChoice = null;
         $steps = $resume['steps'];
-        if ($option === 'accept') {
-            array_unshift($steps, [['type' => 'tutor', 'filter' => 'basic_land', 'to' => 'tapped'], null]);
+        if ($accept) {
+            if ($payment !== null) {
+                $this->pay($seat, $payment);
+            }
+            $source = $this->objects[$choice['object']];
+            if (! $spec['sourceOnly'] || ($source->zone === GameObject::BATTLEFIELD && $source->incarnation === $choice['incarnation'])) {
+                foreach (OptionalChoices::effects($choice) as $effect) {
+                    $this->applyEffect($effect, $source, $spec['sourceOnly'] ? $source : null, $seat, 0, $choice['target'] ?? null, $choice['incarnation']);
+                }
+            }
+            // Effects that ask their own question resolve first in the rest of the ability.
+            $steps = [...array_map(fn (array $step) => [$step, null], $spec['steps'] ?? []), ...$steps];
         }
         $this->runSteps($resume['item'], $steps, $resume['self']);
-        $this->settle();
-    }
-
-
-    /**
-     * Answers the optional targeted one-life loss when the ability resolves.
-     * Its controller and target remain those chosen for the original trigger.
-     *
-     * @param int    $seat
-     * @param int    $choiceId Identity from choiceAwaiting().
-     * @param string $option `accept` or `decline`.
-     *
-     * @return void
-     */
-    public function chooseOptionalLifeLoss(int $seat, int $choiceId, string $option): void
-    {
-        $choice = $this->pendingChoice;
-        if ($this->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'optional_life_loss' ||
-            $choice['seat'] !== $seat || $choice['id'] !== $choiceId || ! in_array($option, $choice['options'], true)) {
-            throw new GameException('That optional life-loss choice is no longer available to you.');
-        }
-        $resume = $choice['resume'];
-        $this->followed = $resume['followed'];
-        $this->pendingChoice = null;
-        if ($option === 'accept') {
-            $this->applyEffect(['type' => 'lose_life', 'amount' => 1], $this->objects[$choice['object']], null, $seat, 0, $choice['target'], $choice['incarnation']);
-        }
-        $this->runSteps($resume['item'], $resume['steps'], $resume['self']);
         $this->settle();
     }
 
@@ -11663,10 +11463,9 @@ final class Game
                 }
             }
         }
-        if (in_array($game->pendingChoice['type'] ?? null, ['optional_life_loss', 'optional_life_gain', 'optional_source_counter', 'optional_source_untap', 'optional_red_goblin', 'optional_death_draw', 'optional_basic_land_search'], true)) {
+        if (($kind = OptionalChoices::KINDS[$game->pendingChoice['type'] ?? ''] ?? null) !== null) {
             $choice = $game->pendingChoice;
-            $counter = $choice['type'] === 'optional_source_counter';
-            if ($counter) {
+            if ($choice['type'] === 'optional_source_counter') {
                 if (($version < 16 && array_key_exists('counterKind', $choice)) ||
                     ($version >= 16 && ! in_array($choice['counterKind'] ?? null, ['+1/+1', 'quest'], true))) {
                     throw new GameException('Invalid saved optional source-counter kind.');
@@ -11674,15 +11473,10 @@ final class Game
                 // Older source-counter choices always meant +1/+1. Upgrade before resaving.
                 $game->pendingChoice['counterKind'] = $choice['counterKind'] ?? '+1/+1';
             }
-            $untap = $choice['type'] === 'optional_source_untap';
-            $goblin = $choice['type'] === 'optional_red_goblin';
-            $deathDraw = $choice['type'] === 'optional_death_draw';
-            $basicSearch = $choice['type'] === 'optional_basic_land_search';
-            $choiceKind = $basicSearch ? 'basic-land-search' : ($deathDraw ? 'death-draw' : ($goblin ? 'red-payment' : ($untap ? 'source-untap' : ($counter ? 'source-counter' : 'life'))));
-            $untargeted = $choice['type'] !== 'optional_life_loss';
+            $untargeted = ! $kind['targeted'];
             $resume = $choice['resume'] ?? null;
             $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < ($basicSearch ? 14 : ($deathDraw ? 13 : ($goblin ? 12 : ($untap ? 11 : ($counter ? 10 : ($untargeted ? 9 : 8)))))) || $game->stage !== self::PLAYING || $source === null ||
+            if ($version < $kind['since'] || $game->stage !== self::PLAYING || $source === null ||
                 ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
                 ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
                 ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
@@ -11693,17 +11487,17 @@ final class Game
                 ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
                 ($resume['item']['targets'] ?? null) !== ($untargeted ? [] : [$choice['target']]) ||
                 ! array_key_exists('self', $resume) || ($resume['self'] !== null && $resume['self'] !== [$source->id, $choice['incarnation']]) || ! is_array($resume['followed'] ?? null)) {
-                throw new GameException('Invalid saved optional '.$choiceKind.' choice.');
+                throw new GameException('Invalid saved optional '.$kind['name'].' choice.');
             }
             foreach ($resume['steps'] as $step) {
                 if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
                     ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved optional '.$choiceKind.' continuation.');
+                    throw new GameException('Invalid saved optional '.$kind['name'].' continuation.');
                 }
             }
             foreach ($resume['followed'] as $from => $to) {
                 if (! is_string($from) || ! is_string($to)) {
-                    throw new GameException('Invalid saved optional '.$choiceKind.' continuation.');
+                    throw new GameException('Invalid saved optional '.$kind['name'].' continuation.');
                 }
             }
         }

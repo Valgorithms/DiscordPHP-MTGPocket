@@ -61,7 +61,7 @@ final class SoulStairExpeditionReturnsTest extends GameTestCase
             $this->resolveOne();
             $choice = $this->game->choiceAwaiting();
             $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-            $this->game->chooseOptionalSourceCounter($actor, $choice['id'], 'accept');
+            $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], 'accept');
             $this->assertSame($n, $this->game->objects[$source]->counter('quest'));
         }
     }

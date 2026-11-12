@@ -146,7 +146,7 @@ final class CultivateSearchTest extends GameTestCase
         $this->reject(fn () => $this->game->take(1 - $actor, [$lands[4], $lands[5]]));
         $this->reject(fn () => $this->game->take($actor, array_slice($lands, 0, 3)));
         $this->reject(fn () => $this->game->pass($actor));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, 1, 'decline'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', 1, 'decline'));
         $this->game->take($actor, [$lands[4], $lands[5]]);
         $this->reject(fn () => $this->game->take($actor, []));
         $this->reject(fn () => $this->game->take($actor, [$lands[0]]));

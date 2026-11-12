@@ -100,8 +100,8 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
     {
         $land = $this->lands($seat, 'Mountain', 1)[0];
         $choice = $this->game->choiceAwaiting();
-        $this->assertTrue($this->game->canPayOptionalRedGoblin($seat));
-        $this->game->chooseOptionalRedGoblin($seat, $choice['id'], 'accept');
+        $this->assertTrue($this->game->canPayOptional($seat, 'optional_red_goblin'));
+        $this->game->chooseOptional($seat, 'optional_red_goblin', $choice['id'], 'accept');
         $this->assertTrue($this->game->objects[$land]->tapped);
         $this->assertNull($this->game->choiceAwaiting());
         $this->assertCount(1, $tokens = $this->goblins($seat));
@@ -151,13 +151,13 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         }
         $this->game = Game::fromArray($this->saved());
         $before = $this->saved();
-        $this->assertSame($payable, $this->game->canPayOptionalRedGoblin(0));
-        $this->assertFalse($this->game->canPayOptionalRedGoblin(1));
+        $this->assertSame($payable, $this->game->canPayOptional(0, 'optional_red_goblin'));
+        $this->assertFalse($this->game->canPayOptional(1, 'optional_red_goblin'));
         $this->assertSame($before, $this->saved());
         $choice = $this->game->choiceAwaiting();
         if ($option === 'accept' && ! $payable) {
             try {
-                $this->game->chooseOptionalRedGoblin(0, $choice['id'], $option);
+                $this->game->chooseOptional(0, 'optional_red_goblin', $choice['id'], $option);
                 $this->fail('Unaffordable payment accepted.');
             } catch (GameException $error) {
                 $this->assertStringContainsString('cannot pay', $error->getMessage());
@@ -165,7 +165,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
             }
             $option = 'decline';
         }
-        $this->game->chooseOptionalRedGoblin(0, $choice['id'], $option);
+        $this->game->chooseOptional(0, 'optional_red_goblin', $choice['id'], $option);
         $this->assertCount($option === 'accept' ? 1 : 0, $this->goblins(0));
         $this->assertNull($this->game->choiceAwaiting());
         if ($land !== null) {
@@ -193,16 +193,16 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         $treasure = $this->game->addCard(0, ['name' => 'Treasure Payment Unit Fixture', 'type' => 'Token Artifact — Treasure', 'token' => true,
             'text' => '{T}, Sacrifice this artifact: Add one mana of any color.'], GameObject::BATTLEFIELD);
         $this->assertSame([], $treasure->definition()->unsupported);
-        $this->assertTrue($this->game->canPayOptionalRedGoblin(0));
+        $this->assertTrue($this->game->canPayOptional(0, 'optional_red_goblin'));
         $first = $this->game->choiceAwaiting()['id'];
-        $this->game->chooseOptionalRedGoblin(0, $first, 'accept');
+        $this->game->chooseOptional(0, 'optional_red_goblin', $first, 'accept');
         $this->assertSame(GameObject::GONE, $treasure->zone);
         $this->assertCount(1, $this->goblins(0));
         $this->assertCount(1, $this->game->stack);
         $this->resolveOne();
         $this->assertGreaterThan($first, $this->game->choiceAwaiting()['id']);
-        $this->assertFalse($this->game->canPayOptionalRedGoblin(0));
-        $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], 'decline');
+        $this->assertFalse($this->game->canPayOptional(0, 'optional_red_goblin'));
+        $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], 'decline');
         $this->assertCount(1, $this->goblins(0));
         $this->assertSame([], $this->game->stack);
     }
@@ -226,7 +226,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         $this->assertFalse($this->game->canActivate(0, $source, 0));
         $this->resolveOne();
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
         $this->resolveOne();
         foreach ([$this->game->objects[$source], $this->game->objects[$friendly->id], $this->goblins(0)[0]] as $object) {
@@ -251,7 +251,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         }
         $this->assertSame(0, $this->game->choiceAwaiting()['seat']);
         $this->lands(0, 'Mountain', 1);
-        $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertCount(1, $this->goblins(0));
         $this->assertCount(0, $this->goblins(1));
         $this->assertSame($returns ? GameObject::BATTLEFIELD : $zone, $this->zone($source));
@@ -300,7 +300,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
             $this->assertGreaterThan($last, $choice['id']);
             $last = $choice['id'];
             $this->game = Game::fromArray($this->saved());
-            $this->game->chooseOptionalRedGoblin($controller, $choice['id'], $option);
+            $this->game->chooseOptional($controller, 'optional_red_goblin', $choice['id'], $option);
             $this->assertSame($option === 'accept', $this->game->objects[$land]->tapped);
         }
         $this->assertCount(1, $this->goblins($controller));
@@ -325,7 +325,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         if ($count === 1) {
             $this->resolveOne();
             $this->assertSame('optional_red_goblin', $this->game->decision(0));
-            $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], 'decline');
+            $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], 'decline');
         }
         $this->assertCount(0, $this->goblins(0));
     }
@@ -345,7 +345,7 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $this->game->objects[$source], GameObject::EXILE);
         $this->lands(0, 'Mountain', 1);
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], $option);
+        $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], $option);
         $this->assertSame(22, $this->life(0));
         $this->game = Game::fromArray($this->saved());
         $this->assertSame(22, $this->life(0));
@@ -365,25 +365,25 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         foreach ([[1, $choice['id'], 'accept'], [0, $choice['id'] + 1, 'accept'], [0, $choice['id'], 'bad']] as [$seat, $id, $option]) {
             $before = $this->saved();
             try {
-                $this->game->chooseOptionalRedGoblin($seat, $id, $option);
+                $this->game->chooseOptional($seat, 'optional_red_goblin', $id, $option);
                 $this->fail('Invalid answer accepted.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        foreach (['chooseOptionalSourceCounter', 'chooseOptionalSourceUntap', 'chooseOptionalLifeGain', 'chooseOptionalLifeLoss'] as $method) {
+        foreach (['optional_source_counter', 'optional_source_untap', 'optional_life_gain', 'optional_life_loss'] as $kind) {
             $before = $this->saved();
             try {
-                $this->game->$method(0, $choice['id'], 'accept');
+                $this->game->chooseOptional(0, $kind, $choice['id'], 'accept');
                 $this->fail('Another effect answered a red-payment decision.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        $this->game->chooseOptionalRedGoblin(0, $choice['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_red_goblin', $choice['id'], 'accept');
         $before = $this->saved();
         try {
-            $this->game->chooseOptionalRedGoblin(0, $choice['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_red_goblin', $choice['id'], 'accept');
             $this->fail('Repeated answer accepted.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
@@ -416,9 +416,9 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         $land = $this->game->addCard(0, ['name' => 'Restricted Red Unit Fixture', 'type' => 'Land',
             'text' => '{T}: Add {R}. Spend this mana only to cast creature spells.'], GameObject::BATTLEFIELD);
         $this->assertSame([], $land->definition()->unsupported);
-        $this->assertFalse($this->game->canPayOptionalRedGoblin(0));
+        $this->assertFalse($this->game->canPayOptional(0, 'optional_red_goblin'));
         $this->assertFalse($land->tapped);
-        $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], 'decline');
+        $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], 'decline');
         $this->assertCount(0, $this->goblins(0));
     }
 
@@ -478,14 +478,14 @@ final class KrenkoRedGoblinChoiceTest extends GameTestCase
         $this->game = Game::fromArray($saved);
         $this->assertSame(Game::STATE_VERSION, $this->saved()['schemaVersion']);
         $before = $this->saved();
-        $this->assertFalse($this->game->canPayOptionalRedGoblin(0));
+        $this->assertFalse($this->game->canPayOptional(0, 'optional_red_goblin'));
         try {
-            $this->game->chooseOptionalRedGoblin(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_red_goblin', $this->game->choiceAwaiting()['id'], 'accept');
             $this->fail('Payment answered an untap decision.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
         }
-        $this->game->chooseOptionalSourceUntap(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_source_untap', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertFalse($this->game->objects[$source->id]->tapped);
     }
 

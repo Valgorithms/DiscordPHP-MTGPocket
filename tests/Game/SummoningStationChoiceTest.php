@@ -118,7 +118,7 @@ final class SummoningStationChoiceTest extends GameTestCase
         $this->assertSame('optional_source_untap', $this->game->decision($seat));
         $this->assertSame(['accept', 'decline'], $choice['options']);
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalSourceUntap($seat, $choice['id'], $option);
+        $this->game->chooseOptional($seat, 'optional_source_untap', $choice['id'], $option);
         $this->assertNull($this->game->choiceAwaiting());
     }
 
@@ -262,26 +262,26 @@ final class SummoningStationChoiceTest extends GameTestCase
         foreach ([[1, $choice['id'], 'accept'], [0, $choice['id'] + 1, 'accept'], [0, $choice['id'], 'bad']] as [$seat, $id, $option]) {
             $before = $this->saved();
             try {
-                $this->game->chooseOptionalSourceUntap($seat, $id, $option);
+                $this->game->chooseOptional($seat, 'optional_source_untap', $id, $option);
                 $this->fail('Invalid answer accepted.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        foreach (['chooseOptionalSourceCounter', 'chooseOptionalLifeGain', 'chooseOptionalLifeLoss'] as $method) {
+        foreach (['optional_source_counter', 'optional_life_gain', 'optional_life_loss'] as $kind) {
             $before = $this->saved();
             try {
-                $this->game->$method(0, $choice['id'], 'accept');
+                $this->game->chooseOptional(0, $kind, $choice['id'], 'accept');
                 $this->fail('Another effect answered an untap choice.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        $this->game->chooseOptionalSourceUntap(0, $choice['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_source_untap', $choice['id'], 'accept');
         $this->assertFalse($this->game->objects[$source]->tapped);
         $before = $this->saved();
         try {
-            $this->game->chooseOptionalSourceUntap(0, $choice['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_untap', $choice['id'], 'accept');
             $this->fail('Repeated answer accepted.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
@@ -401,12 +401,12 @@ final class SummoningStationChoiceTest extends GameTestCase
         $this->assertSame('+1/+1', $this->game->choiceAwaiting()['counterKind']);
         $before = $this->saved();
         try {
-            $this->game->chooseOptionalSourceUntap(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_untap', $this->game->choiceAwaiting()['id'], 'accept');
             $this->fail('Untap answered a counter decision.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
         }
-        $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('+1/+1'));
     }
 

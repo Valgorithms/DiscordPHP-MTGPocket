@@ -20,6 +20,7 @@ Continue card functionality through coherent ability families. Small wording fix
 ## Rules for engine work
 
 - Player decisions go through `pendingChoice`, `decision()` and the resolution resume path. The engine validates answers (responsible player, legal options, choice identity) and persists them; Discord panels and the practice bot use the same API. Automated selection belongs in bot policy, not in the engine.
+- A "you may …" decision at resolution is an entry in [OptionalChoices](../src/MTGPocket/Game/OptionalChoices.php) plus the parser wording that emits it. The engine, save validator, panel and practice bot read that table; do not add per-card choose methods, panel actions or prompts.
 - Prefer a general mechanism over a card-specific one: a new wording should reuse an existing effect, choice or selector before adding a new string discriminator.
 - Effects are associative arrays with string discriminators. Validate new kinds at the parser/engine boundary and extract cohesive families gradually behind existing behavior tests.
 - For each family, use actual card wording plus engine tests for successful resolution and negative controls: targeting, controller restrictions, payment, timing, target changes before resolution, and save/resume where relevant.
