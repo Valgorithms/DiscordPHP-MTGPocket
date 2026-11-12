@@ -33,4 +33,4 @@ After shipping, rebuild with `composer phpacker` and restart the running exe (bi
 
 ## Rules-engine continuation
 
-Before extending card functionality, read [the architecture review and continuation priorities](docs/rules-engine-continuation.md). Recognition coverage is separate from verified gameplay support; preserve the ownership boundaries recorded there.
+Before extending card functionality, read [the continuation guide](docs/rules-engine-continuation.md) (kept short; it is loaded into every agent session). Past milestones are in [the history](docs/rules-engine-history.md); append new ones there, not to the guide. Recognition coverage is separate from verified gameplay support; preserve the ownership boundaries recorded there.
