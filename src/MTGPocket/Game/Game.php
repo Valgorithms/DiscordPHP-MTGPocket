@@ -11359,154 +11359,9 @@ final class Game
             'text' => (string) ($trigger['text'] ?? ''),
         ] + (isset($trigger['modes']) ? ['modes' => array_values((array) $trigger['modes']), 'choose' => (array) $trigger['choose']] : []), (array) ($data['pendingTriggers'] ?? [])));
         $game->pendingChoice = isset($data['pendingChoice']) ? (array) $data['pendingChoice'] : null;
-        if (($game->pendingChoice['type'] ?? null) === 'look' && array_key_exists('reveal', $game->pendingChoice) && ! is_bool($game->pendingChoice['reveal'])) {
-            throw new GameException('Invalid saved search reveal policy.');
-        }
-        if (($game->pendingChoice['to'] ?? null) === 'split' || ($game->pendingChoice['rest'] ?? null) === 'split') {
-            $choice = $game->pendingChoice;
-            $finding = ($choice['to'] ?? null) === 'split';
-            $resume = $choice['resume'] ?? null;
-            $cards = $choice['cards'] ?? null;
-            if ($version < 15 || $game->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'look' ||
-                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
-                ! is_array($cards) || ! array_is_list($cards) || $cards === [] || count(array_unique($cards, SORT_REGULAR)) !== count($cards) ||
-                ($choice['eligible'] ?? null) !== $cards ||
-                ($choice['take'] ?? null) !== ($finding ? min(2, count($cards)) : 1) || ($choice['may'] ?? null) !== $finding ||
-                ($choice['rest'] ?? null) !== ($finding ? 'library' : 'split') || ($choice['to'] ?? null) !== ($finding ? 'split' : 'tapped') ||
-                (! $finding && count($cards) !== 2) ||
-                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
-                ! array_key_exists('self', $resume) || ! is_array($resume['followed'] ?? null) ||
-                ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
-                ! is_int($resume['item']['incarnation'] ?? null) || $resume['item']['incarnation'] < 0 ||
-                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) ||
-                ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
-                    ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1])))) {
-                throw new GameException('Invalid saved split land search.');
-            }
-            foreach ($cards as $id) {
-                $object = is_int($id) ? ($game->objects[$id] ?? null) : null;
-                if ($object === null || $object->owner !== $choice['seat'] || $object->zone !== GameObject::LIBRARY ||
-                    ! in_array($id, $game->players[$choice['seat']]->library, true) || ! $game->matchesFilter($object->printed(), 'basic_land')) {
-                    throw new GameException('Invalid saved split land search card.');
-                }
-            }
-            foreach ($resume['steps'] as $step) {
-                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
-                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved split land search continuation.');
-                }
-            }
-        }
         $game->pendingEntries = array_values((array) ($data['pendingEntries'] ?? []));
         $game->nextChoiceId = (int) ($data['nextChoiceId'] ?? 1);
-        if (($game->pendingChoice['type'] ?? null) === 'sacrifice') {
-            $choice = $game->pendingChoice;
-            $groups = $choice['groups'] ?? null;
-            $index = $choice['group'] ?? null;
-            $group = is_array($groups) && is_int($index) ? ($groups[$index] ?? null) : null;
-            $resume = $choice['resume'] ?? null;
-            if ($version < 5 || $game->stage !== self::PLAYING || ! is_array($group) || ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id'] ||
-                ! is_int($choice['count'] ?? null) || $choice['count'] < 1 ||
-                ! array_key_exists('selected', $group) || $group['selected'] !== null || ($choice['seat'] ?? null) !== ($group['seat'] ?? null) ||
-                ($choice['cards'] ?? null) !== ($group['cards'] ?? null) || ($choice['count'] ?? null) !== ($group['count'] ?? null) ||
-                ($choice['min'] ?? null) !== $choice['count'] || ($choice['max'] ?? null) !== $choice['count'] ||
-                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) || ! array_key_exists('self', $resume) ||
-                ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
-                ! is_int($resume['item']['incarnation'] ?? null) || ! is_int($resume['item']['controller'] ?? null) || ! isset($game->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null) ||
-                ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
-                    ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1]))) || ! is_array($resume['followed'] ?? null)) {
-                throw new GameException('Invalid saved sacrifice choice.');
-            }
-            foreach ($resume['steps'] as $step) {
-                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
-                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved sacrifice continuation.');
-                }
-            }
-            $game->validateEdictGroups($groups);
-            foreach ($groups as $previous => $candidate) {
-                if ($candidate['selected'] === null) {
-                    if ($previous !== $index) {
-                        throw new GameException('Invalid saved sacrifice choice order.');
-                    }
-                    break;
-                }
-            }
-        }
-        if (($game->pendingChoice['type'] ?? null) === 'fabricate') {
-            $choice = $game->pendingChoice;
-            $resume = $choice['resume'] ?? null;
-            $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < 7 || $game->stage !== self::PLAYING || $source === null ||
-                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
-                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) || ! is_int($choice['count'] ?? null) || $choice['count'] < 0 ||
-                ! is_int($choice['incarnation'] ?? null) || $source->incarnation !== $choice['incarnation'] || $source->zone !== GameObject::BATTLEFIELD ||
-                ($choice['options'] ?? null) !== ['counters', 'servos'] || ($choice['label'] ?? null) !== $source->name() ||
-                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
-                ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
-                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
-                ($resume['self'] ?? null) !== [$source->id, $choice['incarnation']] || ! is_array($resume['followed'] ?? null)) {
-                throw new GameException('Invalid saved Fabricate choice.');
-            }
-            foreach ($resume['steps'] as $step) {
-                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
-                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved Fabricate continuation.');
-                }
-            }
-            foreach ($resume['followed'] as $from => $to) {
-                if (! is_string($from) || ! is_string($to)) {
-                    throw new GameException('Invalid saved Fabricate continuation.');
-                }
-            }
-        }
-        if (($kind = OptionalChoices::KINDS[$game->pendingChoice['type'] ?? ''] ?? null) !== null) {
-            $choice = $game->pendingChoice;
-            if ($choice['type'] === 'optional_source_counter') {
-                if (($version < 16 && array_key_exists('counterKind', $choice)) ||
-                    ($version >= 16 && ! in_array($choice['counterKind'] ?? null, ['+1/+1', 'quest'], true))) {
-                    throw new GameException('Invalid saved optional source-counter kind.');
-                }
-                // Older source-counter choices always meant +1/+1. Upgrade before resaving.
-                $game->pendingChoice['counterKind'] = $choice['counterKind'] ?? '+1/+1';
-            }
-            $untargeted = ! $kind['targeted'];
-            $resume = $choice['resume'] ?? null;
-            $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
-            if ($version < $kind['since'] || $game->stage !== self::PLAYING || $source === null ||
-                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
-                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
-                ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
-                ($untargeted ? array_key_exists('target', $choice) : (! is_string($choice['target'] ?? null) || ! in_array($choice['target'], array_map(fn (int $seat) => "p:{$seat}", array_diff(array_keys($game->players), [$choice['seat']])), true))) ||
-                ($choice['options'] ?? null) !== ['accept', 'decline'] || ($choice['label'] ?? null) !== $source->name() ||
-                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
-                ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
-                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
-                ($resume['item']['targets'] ?? null) !== ($untargeted ? [] : [$choice['target']]) ||
-                ! array_key_exists('self', $resume) || ($resume['self'] !== null && $resume['self'] !== [$source->id, $choice['incarnation']]) || ! is_array($resume['followed'] ?? null)) {
-                throw new GameException('Invalid saved optional '.$kind['name'].' choice.');
-            }
-            foreach ($resume['steps'] as $step) {
-                if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
-                    ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
-                    throw new GameException('Invalid saved optional '.$kind['name'].' continuation.');
-                }
-            }
-            foreach ($resume['followed'] as $from => $to) {
-                if (! is_string($from) || ! is_string($to)) {
-                    throw new GameException('Invalid saved optional '.$kind['name'].' continuation.');
-                }
-            }
-        }
-        if (($game->pendingChoice['type'] ?? null) === 'entry_life') {
-            $choice = $game->pendingChoice;
-            $entry = $game->pendingEntries[0] ?? null;
-            if ($version < 2 || $entry === null || ! isset($game->objects[$entry['object'] ?? -1]) ||
-                ($choice['object'] ?? null) !== $entry['object'] || ($choice['seat'] ?? null) !== ($entry['controller'] ?? null) ||
-                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id']) {
-                throw new GameException('Invalid saved entry choice.');
-            }
-        }
+        self::validateSavedChoice($game, $data, $version);
         $game->exile = array_map('intval', (array) $data['exile']);
         $game->command = array_map('intval', (array) ($data['command'] ?? []));
         foreach ((array) ($data['commanders'] ?? []) as [$id, $casts]) {
@@ -11586,5 +11441,180 @@ final class Game
         $game->preventGain = array_map('intval', (array) ($data['preventGain'] ?? []));
 
         return $game;
+    }
+
+    /**
+     * Rejects a saved pending choice that the current rules could not have
+     * produced, before anything resumes from it. Each kind checks its own
+     * fields, the schema version that introduced it, and its continuation.
+     * Legacy fields are upgraded in place where a later version added one.
+     *
+     * @param self  $game    The game being loaded; players, objects, entries and the choice counter are set.
+     * @param array $data    The saved record.
+     * @param int   $version Its schema version.
+     *
+     * @throws GameException When the saved choice is invalid.
+     *
+     * @return void
+     */
+    private static function validateSavedChoice(self $game, array $data, int $version): void
+    {
+        if (($game->pendingChoice['type'] ?? null) === 'look' && array_key_exists('reveal', $game->pendingChoice) && ! is_bool($game->pendingChoice['reveal'])) {
+            throw new GameException('Invalid saved search reveal policy.');
+        }
+        if (($game->pendingChoice['to'] ?? null) === 'split' || ($game->pendingChoice['rest'] ?? null) === 'split') {
+            $choice = $game->pendingChoice;
+            $finding = ($choice['to'] ?? null) === 'split';
+            $resume = $choice['resume'] ?? null;
+            $cards = $choice['cards'] ?? null;
+            if ($version < 15 || $game->stage !== self::PLAYING || ($choice['type'] ?? null) !== 'look' ||
+                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
+                ! is_array($cards) || ! array_is_list($cards) || $cards === [] || count(array_unique($cards, SORT_REGULAR)) !== count($cards) ||
+                ($choice['eligible'] ?? null) !== $cards ||
+                ($choice['take'] ?? null) !== ($finding ? min(2, count($cards)) : 1) || ($choice['may'] ?? null) !== $finding ||
+                ($choice['rest'] ?? null) !== ($finding ? 'library' : 'split') || ($choice['to'] ?? null) !== ($finding ? 'split' : 'tapped') ||
+                (! $finding && count($cards) !== 2) ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
+                ! array_key_exists('self', $resume) || ! is_array($resume['followed'] ?? null) ||
+                ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
+                ! is_int($resume['item']['incarnation'] ?? null) || $resume['item']['incarnation'] < 0 ||
+                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) ||
+                ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
+                    ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1])))) {
+                throw new GameException('Invalid saved split land search.');
+            }
+            foreach ($cards as $id) {
+                $object = is_int($id) ? ($game->objects[$id] ?? null) : null;
+                if ($object === null || $object->owner !== $choice['seat'] || $object->zone !== GameObject::LIBRARY ||
+                    ! in_array($id, $game->players[$choice['seat']]->library, true) || ! $game->matchesFilter($object->printed(), 'basic_land')) {
+                    throw new GameException('Invalid saved split land search card.');
+                }
+            }
+            self::assertSavedSteps($resume['steps'], 'Invalid saved split land search continuation.');
+        }
+        if (($game->pendingChoice['type'] ?? null) === 'sacrifice') {
+            $choice = $game->pendingChoice;
+            $groups = $choice['groups'] ?? null;
+            $index = $choice['group'] ?? null;
+            $group = is_array($groups) && is_int($index) ? ($groups[$index] ?? null) : null;
+            $resume = $choice['resume'] ?? null;
+            if ($version < 5 || $game->stage !== self::PLAYING || ! is_array($group) || ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id'] ||
+                ! is_int($choice['count'] ?? null) || $choice['count'] < 1 ||
+                ! array_key_exists('selected', $group) || $group['selected'] !== null || ($choice['seat'] ?? null) !== ($group['seat'] ?? null) ||
+                ($choice['cards'] ?? null) !== ($group['cards'] ?? null) || ($choice['count'] ?? null) !== ($group['count'] ?? null) ||
+                ($choice['min'] ?? null) !== $choice['count'] || ($choice['max'] ?? null) !== $choice['count'] ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) || ! array_key_exists('self', $resume) ||
+                ! is_int($resume['item']['object'] ?? null) || ! isset($game->objects[$resume['item']['object']]) ||
+                ! is_int($resume['item']['incarnation'] ?? null) || ! is_int($resume['item']['controller'] ?? null) || ! isset($game->players[$resume['item']['controller']]) || ! is_int($resume['item']['x'] ?? null) ||
+                ($resume['self'] !== null && (! is_array($resume['self']) || ! array_is_list($resume['self']) || count($resume['self']) !== 2 ||
+                    ! is_int($resume['self'][0]) || ! isset($game->objects[$resume['self'][0]]) || ! is_int($resume['self'][1]))) || ! is_array($resume['followed'] ?? null)) {
+                throw new GameException('Invalid saved sacrifice choice.');
+            }
+            self::assertSavedSteps($resume['steps'], 'Invalid saved sacrifice continuation.');
+            $game->validateEdictGroups($groups);
+            foreach ($groups as $previous => $candidate) {
+                if ($candidate['selected'] === null) {
+                    if ($previous !== $index) {
+                        throw new GameException('Invalid saved sacrifice choice order.');
+                    }
+                    break;
+                }
+            }
+        }
+        if (($game->pendingChoice['type'] ?? null) === 'fabricate') {
+            $choice = $game->pendingChoice;
+            $resume = $choice['resume'] ?? null;
+            $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
+            if ($version < 7 || $game->stage !== self::PLAYING || $source === null ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
+                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) || ! is_int($choice['count'] ?? null) || $choice['count'] < 0 ||
+                ! is_int($choice['incarnation'] ?? null) || $source->incarnation !== $choice['incarnation'] || $source->zone !== GameObject::BATTLEFIELD ||
+                ($choice['options'] ?? null) !== ['counters', 'servos'] || ($choice['label'] ?? null) !== $source->name() ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
+                ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
+                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
+                ($resume['self'] ?? null) !== [$source->id, $choice['incarnation']] || ! is_array($resume['followed'] ?? null)) {
+                throw new GameException('Invalid saved Fabricate choice.');
+            }
+            self::assertSavedSteps($resume['steps'], 'Invalid saved Fabricate continuation.');
+            self::assertSavedFollowed($resume['followed'], 'Invalid saved Fabricate continuation.');
+        }
+        if (($kind = OptionalChoices::KINDS[$game->pendingChoice['type'] ?? ''] ?? null) !== null) {
+            $choice = $game->pendingChoice;
+            if ($choice['type'] === 'optional_source_counter') {
+                if (($version < 16 && array_key_exists('counterKind', $choice)) ||
+                    ($version >= 16 && ! in_array($choice['counterKind'] ?? null, ['+1/+1', 'quest'], true))) {
+                    throw new GameException('Invalid saved optional source-counter kind.');
+                }
+                // Older source-counter choices always meant +1/+1. Upgrade before resaving.
+                $game->pendingChoice['counterKind'] = $choice['counterKind'] ?? '+1/+1';
+            }
+            $untargeted = ! $kind['targeted'];
+            $resume = $choice['resume'] ?? null;
+            $source = is_int($choice['object'] ?? null) ? ($game->objects[$choice['object']] ?? null) : null;
+            if ($version < $kind['since'] || $game->stage !== self::PLAYING || $source === null ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || ! is_int($data['nextChoiceId'] ?? null) || $game->nextChoiceId <= $choice['id'] ||
+                ! is_int($choice['seat'] ?? null) || ! isset($game->players[$choice['seat']]) ||
+                ! is_int($choice['incarnation'] ?? null) || $choice['incarnation'] < 0 ||
+                ($untargeted ? array_key_exists('target', $choice) : (! is_string($choice['target'] ?? null) || ! in_array($choice['target'], array_map(fn (int $seat) => "p:{$seat}", array_diff(array_keys($game->players), [$choice['seat']])), true))) ||
+                ($choice['options'] ?? null) !== ['accept', 'decline'] || ($choice['label'] ?? null) !== $source->name() ||
+                ! is_array($resume) || ! is_array($resume['item'] ?? null) || ! is_array($resume['steps'] ?? null) || ! array_is_list($resume['steps']) ||
+                ($resume['item']['object'] ?? null) !== $source->id || ($resume['item']['incarnation'] ?? null) !== $choice['incarnation'] ||
+                ($resume['item']['controller'] ?? null) !== $choice['seat'] || ! is_int($resume['item']['x'] ?? null) || ! self::isAbility($resume['item']) ||
+                ($resume['item']['targets'] ?? null) !== ($untargeted ? [] : [$choice['target']]) ||
+                ! array_key_exists('self', $resume) || ($resume['self'] !== null && $resume['self'] !== [$source->id, $choice['incarnation']]) || ! is_array($resume['followed'] ?? null)) {
+                throw new GameException('Invalid saved optional '.$kind['name'].' choice.');
+            }
+            self::assertSavedSteps($resume['steps'], 'Invalid saved optional '.$kind['name'].' continuation.');
+            self::assertSavedFollowed($resume['followed'], 'Invalid saved optional '.$kind['name'].' continuation.');
+        }
+        if (($game->pendingChoice['type'] ?? null) === 'entry_life') {
+            $choice = $game->pendingChoice;
+            $entry = $game->pendingEntries[0] ?? null;
+            if ($version < 2 || $entry === null || ! isset($game->objects[$entry['object'] ?? -1]) ||
+                ($choice['object'] ?? null) !== $entry['object'] || ($choice['seat'] ?? null) !== ($entry['controller'] ?? null) ||
+                ! is_int($choice['id'] ?? null) || $choice['id'] < 1 || $game->nextChoiceId <= $choice['id']) {
+                throw new GameException('Invalid saved entry choice.');
+            }
+        }
+    }
+
+    /**
+     * The remaining steps of a saved continuation: a list of `[effect, target]` pairs.
+     *
+     * @param array  $steps
+     * @param string $message Error when malformed.
+     *
+     * @throws GameException
+     *
+     * @return void
+     */
+    private static function assertSavedSteps(array $steps, string $message): void
+    {
+        foreach ($steps as $step) {
+            if (! is_array($step) || ! array_is_list($step) || count($step) !== 2 || ! is_array($step[0]) ||
+                ! is_string($step[0]['type'] ?? null) || ($step[1] !== null && ! is_string($step[1]))) {
+                throw new GameException($message);
+            }
+        }
+    }
+
+    /**
+     * The followed-target map of a saved continuation: target string to target string.
+     *
+     * @param array  $followed
+     * @param string $message  Error when malformed.
+     *
+     * @throws GameException
+     *
+     * @return void
+     */
+    private static function assertSavedFollowed(array $followed, string $message): void
+    {
+        foreach ($followed as $from => $to) {
+            if (! is_string($from) || ! is_string($to)) {
+                throw new GameException($message);
+            }
+        }
     }
 }

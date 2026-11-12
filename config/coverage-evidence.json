@@ -443,7 +443,7 @@
     "tests/Game/AnimatedPlaneswalkerDamageTest.php": "4432068a7ebb638c019fafa857219b051b7d4b49f09c04ab97e969dc58086130",
     "src/MTGPocket/Game/TextParser.php": "f948da7f003798d9d6fc747617120ddca583ff8e91dc6c00dd51233b1a2797b0",
     "src/MTGPocket/Game/CardDefinition.php": "0af8c9d6c854c7ce44a0bde36298ad2780c33f42972be5d844f1cbdb43e098e7",
-    "src/MTGPocket/Game/Game.php": "3305b4d0cbaa873bff59709a043e996b28e1241bca027ce1550018638b6d9ec9",
+    "src/MTGPocket/Game/Game.php": "2690baca7f11369064b2cf6f2a50c148560a4c96f4a91ee6aa84119dae6f3b95",
     "src/MTGPocket/Game/OptionalChoices.php": "7d6c2299186ce56ef037fe3513c92e570bdf15ac7e2c9e23227c92630fadb28d",
     "tests/Game/DepartingPermanentAbilityTest.php": "f3fe87cacb29081cbb9413b7280921cb8c013c279ff9cf59189c5c16df2d2f7c",
     "tests/Game/DepartureCreatureStatusTest.php": "c0306ee7d419814c0aefcd524724135d5f714e41fa38750f366df2b09ab77f7b",
