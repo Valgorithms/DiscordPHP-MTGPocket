@@ -21,17 +21,6 @@ use MTGPocket\Game\GameObject;
 /** @covers \MTGPocket\Game\Game */
 final class FaceDownTokenCopyTest extends GameTestCase
 {
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function loxodon(): array
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/woolly-loxodon-morph.json'));

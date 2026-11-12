@@ -9,7 +9,7 @@ This is a continuation plan, not a claim of complete Magic rules support or auth
 - Counts of scoped names, explicit gaps, overlaps and whole-card certificates live only in [the functional coverage ledger](functional-coverage-ledger.md) and `config/coverage-evidence.json`. Do not copy them elsewhere.
 - Recognition (a parser match) is separate from verified gameplay support. No whole-card certificates have been issued.
 - Saved games carry `schemaVersion` (`Game::STATE_VERSION`). Older versions load through deliberate migration; newer or invalid versions are rejected.
-- `config/coverage-evidence.json` pins the SHA-256 of evidence sources and tests. After changing a pinned file, refresh its pin; `FunctionalCoverageLedgerTest` fails otherwise.
+- `config/coverage-evidence.json` pins the SHA-256 of evidence sources and tests. After changing a pinned file, run `composer pins`; `FunctionalCoverageLedgerTest` fails otherwise.
 
 ## Foundation to preserve
 

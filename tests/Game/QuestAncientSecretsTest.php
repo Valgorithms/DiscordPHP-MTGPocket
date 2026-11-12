@@ -31,17 +31,6 @@ final class QuestAncientSecretsTest extends GameTestCase
         return array_values(array_filter($cards, fn (array $card) => $card['name'] === $name))[0];
     }
 
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
     private function quest(int $actor, bool $seedGraveyards = false): int
     {
         $this->newGame();

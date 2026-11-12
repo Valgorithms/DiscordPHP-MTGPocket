@@ -32,12 +32,6 @@ final class ZektarShrineExpeditionTest extends GameTestCase
         return $card;
     }
 
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function expedition(int $actor): int
     {
         $this->newGame();
@@ -166,11 +160,6 @@ final class ZektarShrineExpeditionTest extends GameTestCase
     public static function actors(): array
     {
         return [[0], [1]];
-    }
-
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
     }
 
     /** @dataProvider actors */

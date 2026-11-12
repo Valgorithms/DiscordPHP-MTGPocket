@@ -22,17 +22,6 @@ use MTGPocket\Game\Step;
 /** @covers \MTGPocket\Game\Game */
 final class IorRuinExpeditionTest extends GameTestCase
 {
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
     private function expedition(int $actor): int
     {
         $this->newGame();

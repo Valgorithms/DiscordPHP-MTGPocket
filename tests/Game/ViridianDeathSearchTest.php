@@ -23,17 +23,6 @@ use MTGPocket\Tutorial\PracticeBot;
 /** @covers \MTGPocket\Game\Game */
 final class ViridianDeathSearchTest extends GameTestCase
 {
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function fixture(string $file = 'viridian-emissary-optional-search.json'): array
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/'.$file));

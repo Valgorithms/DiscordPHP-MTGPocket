@@ -29,17 +29,6 @@ final class StateBasedDeathObserverTest extends GameTestCase
         return $this->game->addCard($owner, $card, $zone)->id;
     }
 
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function resolveAll(): void
     {
         for ($i = 0; $this->game->stack !== [] && $i < 30; $i++) {

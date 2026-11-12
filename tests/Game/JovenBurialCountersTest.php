@@ -22,17 +22,6 @@ use MTGPocket\Builders\MatchMessageBuilder;
 /** @covers \MTGPocket\Game\Game */
 final class JovenBurialCountersTest extends GameTestCase
 {
-    private function saved(): array
-    {
-        return json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-    }
-
-    private function resolveOne(): void
-    {
-        $this->game->pass($this->game->priority);
-        $this->game->pass($this->game->priority);
-    }
-
     private function selected(): array
     {
         $bytes = str_replace("\r\n", "\n", file_get_contents(__DIR__.'/../Fixtures/all-player-artifact-burial-candidates.json'));

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace MTGPocket\Tests\Game;
 
-use MTGPocket\Game\Game;
 use MTGPocket\Game\GameObject;
 use MTGPocket\Game\GameException;
 use MTGPocket\Game\Step;
@@ -30,11 +29,6 @@ final class StunEntryTest extends GameTestCase
         $this->assertSame(GameObject::BATTLEFIELD, $this->zone($id));
 
         return $id;
-    }
-
-    private function restore(): void
-    {
-        $this->game = Game::fromArray(json_decode(json_encode($this->game->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
     }
 
     /** @dataProvider cardsAndSeats */
