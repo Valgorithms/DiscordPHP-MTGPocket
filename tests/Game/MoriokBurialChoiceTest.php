@@ -105,7 +105,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
             $last = $choice['id'];
             $this->assertSame($option === 'accept' ? 0 : 1, $this->game->objects[$source]->counter('+1/+1'));
             $this->game = Game::fromArray($this->saved());
-            $this->game->chooseOptionalSourceCounter($seat, $choice['id'], $option);
+            $this->game->chooseOptional($seat, 'optional_source_counter', $choice['id'], $option);
         }
         $this->assertNull($this->game->choiceAwaiting());
         $this->assertSame([], $this->game->stack);
@@ -142,7 +142,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
         foreach ([1, 2] as $count) {
             $this->resolveOne();
             $this->game = Game::fromArray($this->saved());
-            $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
             $this->assertSame($count, $this->game->objects[$source]->counter('+1/+1'));
         }
         $this->assertSame([4, 4], [$this->game->power($this->game->objects[$source]), $this->game->toughness($this->game->objects[$source])]);
@@ -157,26 +157,26 @@ final class MoriokBurialChoiceTest extends GameTestCase
         foreach ([[1, $choice['id'], 'accept'], [0, $choice['id'] + 1, 'accept'], [0, $choice['id'], 'invalid']] as [$seat, $id, $option]) {
             $before = $this->saved();
             try {
-                $this->game->chooseOptionalSourceCounter($seat, $id, $option);
+                $this->game->chooseOptional($seat, 'optional_source_counter', $id, $option);
                 $this->fail('An illegal answer was accepted.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        foreach (['chooseOptionalLifeGain', 'chooseOptionalLifeLoss'] as $method) {
+        foreach (['optional_life_gain', 'optional_life_loss'] as $kind) {
             $before = $this->saved();
             try {
-                $this->game->$method(0, $choice['id'], 'accept');
+                $this->game->chooseOptional(0, $kind, $choice['id'], 'accept');
                 $this->fail('Another effect answered this decision.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        $this->game->chooseOptionalSourceCounter(0, $choice['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_source_counter', $choice['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('+1/+1'));
         $before = $this->saved();
         try {
-            $this->game->chooseOptionalSourceCounter(0, $choice['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_counter', $choice['id'], 'accept');
             $this->fail('A repeated answer was accepted.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
@@ -198,7 +198,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
             $this->resolveOne();
         }
         $this->assertSame(0, $this->game->choiceAwaiting()['seat']);
-        $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
         $this->assertNull($this->game->choiceAwaiting());
         $this->assertSame($returns ? GameObject::BATTLEFIELD : $zone, $this->zone($source));
@@ -224,7 +224,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
         $this->game->objects[$source]->controller = 1;
         $this->game = Game::fromArray($this->saved());
         $this->assertSame(0, $this->game->choiceAwaiting()['seat']);
-        $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame(1, $this->game->objects[$source]->counter('+1/+1'));
         $this->assertSame(1, $this->game->objects[$source]->controller);
     }
@@ -242,7 +242,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
         if ($count === 1) {
             $this->assertSame($token ? GameObject::GONE : GameObject::GRAVEYARD, $object->zone);
             $this->resolveOne();
-            $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
         }
         $this->assertSame($count, $this->game->objects[$source]->counter('+1/+1'));
         $this->assertNull($this->game->choiceAwaiting());
@@ -279,7 +279,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
         $this->assertSame(20, $this->life(0));
         (new \ReflectionMethod(Game::class, 'moveTo'))->invoke($this->game, $this->game->objects[$source], GameObject::EXILE);
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], $option);
+        $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], $option);
         $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
         $this->assertSame(22, $this->life(0));
         $this->game = Game::fromArray($this->saved());
@@ -335,12 +335,12 @@ final class MoriokBurialChoiceTest extends GameTestCase
         $this->game = Game::fromArray($saved);
         $before = $this->saved();
         try {
-            $this->game->chooseOptionalSourceCounter(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_source_counter', $this->game->choiceAwaiting()['id'], 'accept');
             $this->fail('A counter answer was accepted for an old life-gain choice.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
         }
-        $this->game->chooseOptionalLifeGain(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_life_gain', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame(25, $this->life(0));
     }
 
@@ -369,7 +369,7 @@ final class MoriokBurialChoiceTest extends GameTestCase
             $choice = $this->game->choiceAwaiting();
             $this->assertSame([$controller, $old], [$choice['seat'], $choice['incarnation']]);
             $this->game = Game::fromArray($this->saved());
-            $this->game->chooseOptionalSourceCounter($controller, $choice['id'], $option);
+            $this->game->chooseOptional($controller, 'optional_source_counter', $choice['id'], $option);
         }
         $this->assertSame(0, $this->game->objects[$source]->counter('+1/+1'));
         $this->assertSame([], $this->game->stack);

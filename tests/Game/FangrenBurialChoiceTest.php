@@ -99,7 +99,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
             $this->assertGreaterThan($last, $choice['id']);
             $last = $choice['id'];
             $this->game = Game::fromArray($this->saved());
-            $this->game->chooseOptionalLifeGain($seat, $choice['id'], $option);
+            $this->game->chooseOptional($seat, 'optional_life_gain', $choice['id'], $option);
         }
         $this->assertSame([], $this->game->stack);
         $this->assertNull($this->game->choiceAwaiting());
@@ -126,17 +126,17 @@ final class FangrenBurialChoiceTest extends GameTestCase
         foreach ([[1, $choice['id'], 'accept'], [0, $choice['id'] + 1, 'accept'], [0, $choice['id'], 'invalid']] as [$seat, $id, $option]) {
             $before = $this->saved();
             try {
-                $this->game->chooseOptionalLifeGain($seat, $id, $option);
+                $this->game->chooseOptional($seat, 'optional_life_gain', $id, $option);
                 $this->fail('An illegal answer was accepted.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
             }
         }
-        $this->game->chooseOptionalLifeGain(0, $choice['id'], 'decline');
+        $this->game->chooseOptional(0, 'optional_life_gain', $choice['id'], 'decline');
         $this->assertSame(20, $this->life(1));
         $before = $this->saved();
         try {
-            $this->game->chooseOptionalLifeGain(0, $choice['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_life_gain', $choice['id'], 'accept');
             $this->fail('The old answer was accepted twice.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
@@ -155,7 +155,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $this->assertSame([0, $incarnation], [$choice['seat'], $choice['incarnation']]);
         $this->assertArrayNotHasKey('target', $choice);
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalLifeGain(0, $choice['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_life_gain', $choice['id'], 'accept');
         $this->assertSame([25, 20], [$this->life(0), $this->life(1)]);
     }
 
@@ -173,7 +173,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
             $this->assertSame($token ? GameObject::GONE : GameObject::GRAVEYARD, $object->zone);
             $this->resolveOne();
             $this->assertSame('optional_life_gain', $this->game->decision(0));
-            $this->game->chooseOptionalLifeGain(0, $this->game->choiceAwaiting()['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_life_gain', $this->game->choiceAwaiting()['id'], 'accept');
         }
         $this->assertSame([20 + 5 * $count, 20], [$this->life(0), $this->life(1)]);
     }
@@ -210,7 +210,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $this->resolveOne();
         $this->assertSame(20, $this->life(0));
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalLifeGain(0, $this->game->choiceAwaiting()['id'], $option);
+        $this->game->chooseOptional(0, 'optional_life_gain', $this->game->choiceAwaiting()['id'], $option);
         $this->assertSame([$option === 'accept' ? 27 : 22, 20], [$this->life(0), $this->life(1)]);
         $this->assertNull($this->game->choiceAwaiting());
         $this->game = Game::fromArray($this->saved());
@@ -282,7 +282,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $this->assertSame([], $this->game->stack[0]['targets']);
         $this->resolveOne();
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalLifeGain(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_life_gain', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame([25, 20], [$this->life(0), $this->life(1)]);
     }
 
@@ -300,7 +300,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $this->assertSame([], (new CardDefinition($rule))->unsupported);
         $this->game->addCard($seat, $rule, GameObject::BATTLEFIELD);
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalLifeGain(0, $this->game->choiceAwaiting()['id'], $option);
+        $this->game->chooseOptional(0, 'optional_life_gain', $this->game->choiceAwaiting()['id'], $option);
         $this->assertSame([$life, 20], [$this->life(0), $this->life(1)]);
         $this->assertNull($this->game->choiceAwaiting());
     }
@@ -326,7 +326,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $this->game->addCard(0, $observer, GameObject::BATTLEFIELD);
         $this->resolveOne();
         $hand = count($this->game->players[0]->hand);
-        $this->game->chooseOptionalLifeGain(0, $this->game->choiceAwaiting()['id'], $option);
+        $this->game->chooseOptional(0, 'optional_life_gain', $this->game->choiceAwaiting()['id'], $option);
         $this->assertCount($option === 'accept' ? 1 : 0, $this->game->stack);
         if ($option === 'accept') {
             $this->game = Game::fromArray($this->saved());
@@ -353,9 +353,9 @@ final class FangrenBurialChoiceTest extends GameTestCase
             $saved = $this->saved();
             try {
                 if ($choice['type'] === 'optional_life_loss') {
-                    $this->game->chooseOptionalLifeGain(0, $choice['id'], 'accept');
+                    $this->game->chooseOptional(0, 'optional_life_gain', $choice['id'], 'accept');
                 } else {
-                    $this->game->chooseOptionalLifeLoss(0, $choice['id'], 'accept');
+                    $this->game->chooseOptional(0, 'optional_life_loss', $choice['id'], 'accept');
                 }
                 $this->fail('A different optional effect answered this choice.');
             } catch (GameException) {
@@ -364,12 +364,12 @@ final class FangrenBurialChoiceTest extends GameTestCase
             if ($choice['type'] === 'optional_life_loss') {
                 $this->assertSame('p:1', $choice['target']);
                 $this->game = Game::fromArray($saved);
-                $this->game->chooseOptionalLifeLoss(0, $choice['id'], 'accept');
+                $this->game->chooseOptional(0, 'optional_life_loss', $choice['id'], 'accept');
             } else {
                 $this->assertSame('optional_life_gain', $choice['type']);
                 $this->assertArrayNotHasKey('target', $choice);
                 $this->game = Game::fromArray($saved);
-                $this->game->chooseOptionalLifeGain(0, $choice['id'], 'accept');
+                $this->game->chooseOptional(0, 'optional_life_gain', $choice['id'], 'accept');
             }
         }
         sort($types);
@@ -389,7 +389,7 @@ final class FangrenBurialChoiceTest extends GameTestCase
         $saved = $this->saved();
         $saved['schemaVersion'] = 8;
         $this->game = Game::fromArray($saved);
-        $this->game->chooseOptionalLifeLoss(0, $this->game->choiceAwaiting()['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_life_loss', $this->game->choiceAwaiting()['id'], 'accept');
         $this->assertSame([20, 19], [$this->life(0), $this->life(1)]);
         $this->assertSame(Game::STATE_VERSION, $this->saved()['schemaVersion']);
     }

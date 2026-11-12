@@ -78,7 +78,7 @@ final class ViridianDeathSearchTest extends GameTestCase
         $this->assertSame($before['players'][$actor]['library'], $this->game->players[$actor]->library);
         $this->assertSame($before['shuffles'], $this->saved()['shuffles']);
         $this->game = Game::fromArray($this->saved());
-        $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], $option);
+        $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], $option);
         if ($option === 'accept') {
             $this->assertSame('look', $this->game->choiceAwaiting()['type']);
             $this->game->take($actor, [$land]);
@@ -125,8 +125,8 @@ final class ViridianDeathSearchTest extends GameTestCase
         $this->assertSame($controller, $choice['seat']);
         $this->assertSame(20, $this->life($controller));
         $before = $this->saved();
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], $option));
-        $this->game->chooseOptionalBasicLandSearch($controller, $choice['id'], $option);
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], $option));
+        $this->game->chooseOptional($controller, 'optional_basic_land_search', $choice['id'], $option);
         if ($option === 'accept') {
             $this->assertSame(20, $this->life($controller));
             $this->game = Game::fromArray($this->saved());
@@ -144,7 +144,7 @@ final class ViridianDeathSearchTest extends GameTestCase
         $after = $this->saved();
         $this->game = Game::fromArray($after);
         $this->assertSame($after, $this->saved());
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($controller, $choice['id'], $option));
+        $this->reject(fn () => $this->game->chooseOptional($controller, 'optional_basic_land_search', $choice['id'], $option));
     }
 
     /** @dataProvider actors */
@@ -157,19 +157,19 @@ final class ViridianDeathSearchTest extends GameTestCase
         $this->resolveOne();
         $choice = $this->game->choiceAwaiting();
         foreach ([[1 - $actor, $choice['id'], 'accept'], [$actor, $choice['id'] - 1, 'decline'], [$actor, $choice['id'] + 1, 'accept'], [$actor, $choice['id'], 'both']] as [$seat, $id, $option]) {
-            $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($seat, $id, $option));
+            $this->reject(fn () => $this->game->chooseOptional($seat, 'optional_basic_land_search', $id, $option));
         }
-        $this->reject(fn () => $this->game->chooseOptionalDeathDraw($actor, $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_death_draw', $choice['id'], 'accept'));
         $this->reject(fn () => $this->game->pass($this->game->priority));
         $before = $this->saved();
         $legacy = $before;
         $legacy['schemaVersion'] = 13;
         $this->expectInvalidSearchSave($legacy);
-        $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], 'accept');
+        $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], 'accept');
         $this->assertSame('look', $this->game->choiceAwaiting()['type']);
         $this->reject(fn () => $this->game->take($actor, [$nonbasic]));
         $this->reject(fn () => $this->game->take($actor, [$opposing]));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], 'decline'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], 'decline'));
         $search = $this->saved();
         $this->game->take($actor, []);
         $this->assertSame($before['shuffles'] + 1, $this->saved()['shuffles']);
@@ -208,7 +208,7 @@ final class ViridianDeathSearchTest extends GameTestCase
         $this->assertSame('optional_basic_land_search', $choice['type']);
         $before = $this->saved();
         $this->game = Game::fromArray($before);
-        $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], $option);
+        $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], $option);
         $this->assertNull($this->game->choiceAwaiting());
         $this->assertSame($before['players'][$actor]['library'], $this->game->players[$actor]->library);
         $this->assertSame($before['shuffles'] + ($option === 'accept' ? 1 : 0), $this->saved()['shuffles']);

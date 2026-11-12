@@ -157,7 +157,7 @@ final class DiabolicTutorSearchTest extends GameTestCase
             $this->reject(fn () => $this->game->take($actor, $ids));
         }
         $this->reject(fn () => $this->game->pass($actor));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, 1, 'decline'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', 1, 'decline'));
         $this->game->take($actor, [$a]);
         $this->assertSame(GameObject::HAND, $this->zone($a));
         $this->assertSame(GameObject::LIBRARY, $this->zone($b));

@@ -57,7 +57,7 @@ final class SunspringExpeditionTest extends GameTestCase
         $this->resolveOne();
         $choice = $this->game->choiceAwaiting();
         $this->assertSame(['optional_source_counter', 'quest', $actor], [$choice['type'], $choice['counterKind'], $choice['seat']]);
-        $this->game->chooseOptionalSourceCounter($actor, $choice['id'], $answer);
+        $this->game->chooseOptional($actor, 'optional_source_counter', $choice['id'], $answer);
     }
 
     private function charge(int $actor, int $source): void

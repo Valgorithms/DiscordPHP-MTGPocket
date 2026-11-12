@@ -135,7 +135,7 @@ final class RampantGrowthSearchTest extends GameTestCase
         $this->reject(fn () => $this->game->take(1 - $actor, [$land]));
         $this->reject(fn () => $this->game->take($actor, array_values($eligible)));
         $this->reject(fn () => $this->game->pass($actor));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, 1, 'decline'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', 1, 'decline'));
         $before = $this->saved();
         $this->game = Game::fromArray($before);
         $this->game->take($actor, [$land]);

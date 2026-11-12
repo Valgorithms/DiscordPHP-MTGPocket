@@ -16,6 +16,7 @@ namespace MTGPocket\Matches;
 use MTGPocket\Game\CardDefinition;
 use MTGPocket\Game\Game;
 use MTGPocket\Game\GameException;
+use MTGPocket\Game\OptionalChoices;
 
 /**
  * What each control of a player's action panel does. A spell is cast in
@@ -42,7 +43,7 @@ final class PanelActions
      *
      * @param string   $matchId
      * @param string   $playerId
-     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, `maylife`, `maygain`, `maycounter`, `mayuntap`, `maygoblin`, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
+     * @param string   $action   From the custom id: `keep`, `mull`, `bottom`, `play`, `x`, `tgt`, `ability`, `atgt`, `trig`, `cancel`, `pass`, `auto`, `atk`, `atkgo`, `noatk`, `blk`, `blkgo`, `noblk`, `disc`, `away`, `keepall`, `entrylife`, `fabricate`, the `may…` action of an {@see OptionalChoices} kind, `sacpick`, `sacpage`, `sacreset`, `sacgo` or `panel`.
      * @param string[] $args     The rest of the custom id.
      * @param string[] $values   What was picked, for select menus.
      *
@@ -59,6 +60,11 @@ final class PanelActions
         }), true];
         $choose = fn (callable $change) => [$this->matches->choose($matchId, $playerId, $change), false];
 
+        // Every "you may …" decision: the action names its kind; see OptionalChoices.
+        if (($kind = OptionalChoices::kindForAction($action)) !== null) {
+            return $act(fn (Game $game, int $seat) => $game->chooseOptional($seat, $kind, (int) ($args[0] ?? 0), $args[1] ?? ''));
+        }
+
         return match ($action) {
             'panel' => [$this->matches->find($matchId) ?? throw new \OutOfBoundsException('That match no longer exists.'), false],
             'keep' => $act(fn (Game $game, int $seat) => $game->keep($seat)),
@@ -72,13 +78,6 @@ final class PanelActions
             'takenone' => $act(fn (Game $game, int $seat) => $game->take($seat, [])),
             'entrylife' => $act(fn (Game $game, int $seat) => $game->chooseEntryLife($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'fabricate' => $act(fn (Game $game, int $seat) => $game->chooseFabricate($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'maygoblin' => $act(fn (Game $game, int $seat) => $game->chooseOptionalRedGoblin($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'mayuntap' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceUntap($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'maycounter' => $act(fn (Game $game, int $seat) => $game->chooseOptionalSourceCounter($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'maydraw' => $act(fn (Game $game, int $seat) => $game->chooseOptionalDeathDraw($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'maysearch' => $act(fn (Game $game, int $seat) => $game->chooseOptionalBasicLandSearch($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'maygain' => $act(fn (Game $game, int $seat) => $game->chooseOptionalLifeGain($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
-            'maylife' => $act(fn (Game $game, int $seat) => $game->chooseOptionalLifeLoss($seat, (int) ($args[0] ?? 0), $args[1] ?? '')),
             'sacgo' => $act(function (Game $game, int $seat, MatchRecord $match) use ($playerId, $args): void {
                 $choiceId = (int) ($args[0] ?? 0);
                 $picks = $match->choice($playerId)['sacrifice'] ?? [];

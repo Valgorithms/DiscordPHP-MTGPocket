@@ -76,7 +76,7 @@ final class SolemnEntrySearchTest extends GameTestCase
 
     private function answer(int $actor, string $option): void
     {
-        $this->game->chooseOptionalBasicLandSearch($actor, $this->game->choiceAwaiting()['id'], $option);
+        $this->game->chooseOptional($actor, 'optional_basic_land_search', $this->game->choiceAwaiting()['id'], $option);
     }
 
     /** @dataProvider options */
@@ -91,7 +91,7 @@ final class SolemnEntrySearchTest extends GameTestCase
         $this->assertSame($actor, $choice['seat']);
         $before = $this->saved();
         $this->game = Game::fromArray($before);
-        $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], $option);
+        $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], $option);
         if ($option === 'accept') {
             $this->assertSame('look', $this->game->choiceAwaiting()['type']);
             $this->game->take($actor, [$land]);
@@ -126,16 +126,16 @@ final class SolemnEntrySearchTest extends GameTestCase
         $this->castSolemn($actor);
         $this->resolveOne();
         $choice = $this->game->choiceAwaiting();
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch(1 - $actor, $choice['id'], 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'] + 1, 'accept'));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'] - 1, 'decline'));
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], 'both'));
-        $this->reject(fn () => $this->game->chooseOptionalDeathDraw($actor, $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional(1 - $actor, 'optional_basic_land_search', $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'] + 1, 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'] - 1, 'decline'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], 'both'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_death_draw', $choice['id'], 'accept'));
         $this->reject(fn () => $this->game->pass($actor));
         $this->answer($actor, 'accept');
         $this->assertEqualsCanonicalizing($eligible, $this->game->choiceAwaiting()['eligible']);
         $this->assertSame([], (new CardDefinition($this->fixture()))->unsupported);
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], 'accept'));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], 'accept'));
         foreach ($bad as $id) {
             $this->reject(fn () => $this->game->take($actor, [$id]));
         }
@@ -185,7 +185,7 @@ final class SolemnEntrySearchTest extends GameTestCase
             $this->game->take($actor, []);
         }
         $this->assertSame($after, $this->saved());
-        $this->reject(fn () => $this->game->chooseOptionalBasicLandSearch($actor, $choice['id'], $option));
+        $this->reject(fn () => $this->game->chooseOptional($actor, 'optional_basic_land_search', $choice['id'], $option));
     }
 
     /** @dataProvider libraries */
@@ -219,7 +219,7 @@ final class SolemnEntrySearchTest extends GameTestCase
         $this->resolveOne();
         $this->assertSame(GameObject::GRAVEYARD, $this->zone($source));
         $this->resolveOne();
-        $this->game->chooseOptionalDeathDraw($actor, $this->game->choiceAwaiting()['id'], 'decline');
+        $this->game->chooseOptional($actor, 'optional_death_draw', $this->game->choiceAwaiting()['id'], 'decline');
         $this->game = Game::fromArray($this->saved());
         $this->resolveOne();
         $this->assertSame($actor, $this->game->choiceAwaiting()['seat']);

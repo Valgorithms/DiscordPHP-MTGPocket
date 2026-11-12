@@ -50,7 +50,7 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $this->resolveOne();
         $this->assertSame(GameObject::BATTLEFIELD, $this->zone($source));
         $this->resolveOne();
-        $this->game->chooseOptionalBasicLandSearch($actor, $this->game->choiceAwaiting()['id'], 'decline');
+        $this->game->chooseOptional($actor, 'optional_basic_land_search', $this->game->choiceAwaiting()['id'], 'decline');
         $this->game->objects[$source]->controller = $controller;
         $smelt = json_decode(file_get_contents(__DIR__.'/../Fixtures/artifact-burial-smelt.json'), true, flags: JSON_THROW_ON_ERROR)['card'];
         $mountain = $this->lands($actor, 'Mountain', 1)[0];
@@ -78,7 +78,7 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $choice = $this->game->choiceAwaiting();
         $this->assertSame($actor, $choice['seat']);
         $this->game = Game::fromArray($before);
-        $this->game->chooseOptionalDeathDraw($actor, $choice['id'], $option);
+        $this->game->chooseOptional($actor, 'optional_death_draw', $choice['id'], $option);
         $this->assertCount(count($before['players'][$actor]['hand']) + ($option === 'accept' ? 1 : 0), $this->game->players[$actor]->hand);
         $this->assertSame($before['players'][1 - $actor], $this->saved()['players'][1 - $actor]);
         if ($option === 'accept') {
@@ -96,7 +96,7 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $before = $this->saved();
         foreach ([[1, $choice['id'], 'accept'], [0, $choice['id'] + 1, 'accept'], [0, $choice['id'] - 1, 'decline'], [0, $choice['id'], 'both']] as [$seat, $id, $option]) {
             try {
-                $this->game->chooseOptionalDeathDraw($seat, $id, $option);
+                $this->game->chooseOptional($seat, 'optional_death_draw', $id, $option);
                 $this->fail('An invalid answer consumed the choice.');
             } catch (GameException) {
                 $this->assertSame($before, $this->saved());
@@ -108,10 +108,10 @@ final class SolemnOptionalDrawTest extends GameTestCase
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
         }
-        $this->game->chooseOptionalDeathDraw(0, $choice['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_death_draw', $choice['id'], 'accept');
         $after = $this->saved();
         try {
-            $this->game->chooseOptionalDeathDraw(0, $choice['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_death_draw', $choice['id'], 'accept');
             $this->fail('A repeated answer drew again.');
         } catch (GameException) {
             $this->assertSame($after, $this->saved());
@@ -137,13 +137,13 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $this->game->objects[$source]->controller = $actor;
         $before = $this->saved();
         $this->game = Game::fromArray($before);
-        $this->game->chooseOptionalDeathDraw($controller, $choice['id'], $option);
+        $this->game->chooseOptional($controller, 'optional_death_draw', $choice['id'], $option);
         $this->assertCount(count($before['players'][$controller]['hand']) + ($option === 'accept' ? 1 : 0), $this->game->players[$controller]->hand);
         $this->assertSame($before['players'][$actor]['hand'], $this->game->players[$actor]->hand);
         $this->assertSame(22, $this->life($controller));
         $after = $this->saved();
         $this->game = Game::fromArray($before);
-        $this->game->chooseOptionalDeathDraw($controller, $choice['id'], $option);
+        $this->game->chooseOptional($controller, 'optional_death_draw', $choice['id'], $option);
         $this->assertSame($after, $this->saved(), 'JSON resume produces the identical draw and continuation.');
     }
 
@@ -162,7 +162,7 @@ final class SolemnOptionalDrawTest extends GameTestCase
         if ($practice) {
             $this->assertTrue(PracticeBot::act($this->game, 0));
         } else {
-            $this->game->chooseOptionalDeathDraw(0, $this->game->choiceAwaiting()['id'], $option);
+            $this->game->chooseOptional(0, 'optional_death_draw', $this->game->choiceAwaiting()['id'], $option);
         }
         $this->assertSame($option === 'accept', $this->game->players[0]->drewFromEmpty);
         $this->assertSame($option === 'accept' ? 1 : null, $this->game->winner);
@@ -218,12 +218,12 @@ final class SolemnOptionalDrawTest extends GameTestCase
         $before = $this->saved();
         $choice = $this->game->choiceAwaiting();
         try {
-            $this->game->chooseOptionalBasicLandSearch(0, $choice['id'], 'accept');
+            $this->game->chooseOptional(0, 'optional_basic_land_search', $choice['id'], 'accept');
             $this->fail('Search answered a saved death-draw decision.');
         } catch (GameException) {
             $this->assertSame($before, $this->saved());
         }
-        $this->game->chooseOptionalDeathDraw(0, $choice['id'], 'accept');
+        $this->game->chooseOptional(0, 'optional_death_draw', $choice['id'], 'accept');
         $this->assertCount(count($before['players'][0]['hand']) + 1, $this->game->players[0]->hand);
     }
 
